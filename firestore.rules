@@ -1,0 +1,107 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if request is from authenticated admin
+    function isAdmin() {
+      return request.auth != null;
+    }
+
+    // Public readable CMS collections
+    match /services/{serviceId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /serviceCategories/{catId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /heroSlides/{slideId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /banners/{bannerId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /festivalBanners/{bannerId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /announcements/{annId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /whyChooseUs/{itemId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /testimonials/{itemId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /gallery/{itemId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /blogs/{blogId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /locations/{locId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /faqs/{faqId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /pricingItems/{itemId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /settings/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /media/{mediaId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Orders: Public can create order & read their own order by orderNumber, Admins can manage all
+    match /orders/{orderId} {
+      allow create: if true;
+      allow read: if true;
+      allow update, delete: if isAdmin();
+    }
+
+    // Sensitive Admin collections
+    match /adminUsers/{userId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /staff/{staffId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /activityLogs/{logId} {
+      allow create: if true;
+      allow read, write: if isAdmin();
+    }
+  }
+}

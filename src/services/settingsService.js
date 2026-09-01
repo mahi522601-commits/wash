@@ -1,0 +1,171 @@
+/**
+ * Global Settings & Business Information Service for Tech Wash
+ * Controls branding, contact info, store locations, SEO, announcement banner, and maintenance mode.
+ */
+import { db, isFirebaseConfigured } from './firebase.js';
+import { doc, getDoc, setDoc, collection, getDocs, deleteDoc, updateDoc } from 'firebase/firestore';
+
+const SETTINGS_STORAGE_KEY = 'techwash_site_settings';
+const LOCATIONS_STORAGE_KEY = 'techwash_store_locations';
+const CONTACTS_STORAGE_KEY = 'techwash_contacts_data';
+
+// Baseline default settings (pure structure, fully customizable from /admin/settings)
+export const DEFAULT_SETTINGS = {
+  general: {
+    businessName: 'Tech Wash Laundry Services',
+    tagline: 'Next-Generation Premium Garment Care & Express Doorstep Service',
+    logoUrl: '',
+    faviconUrl: '',
+    supportEmail: 'support@techwash.in',
+    primaryPhone: '+91 98765 43210',
+    whatsappNumber: '+91 98765 43210',
+    whatsappDefaultMessage: 'Hello Tech Wash, I would like to schedule a premium garment pickup.',
+  },
+  branding: {
+    primaryColor: '#0284c7', // Brand 600
+    accentColor: '#0ea5e9', // Brand 500
+    royalColor: '#1d4ed8', // Royal 700
+    buttonStyle: 'rounded-xl', // rounded-md, rounded-xl, rounded-full
+    borderRadius: '16px',
+    enableGlowEffects: true,
+  },
+  website: {
+    maintenanceMode: false,
+    announcementBarEnabled: true,
+    announcementText: '✨ First Order Offer: Flat 20% OFF on Premium Dry Cleaning & Steam Ironing | Use Code: TECHWASH20',
+    announcementLink: '/offers',
+    floatingWhatsAppEnabled: true,
+    showTrustStats: true,
+    showVideoShowcase: true,
+    showStoreLocations: true,
+    showTestimonials: true,
+    showBlogSection: true,
+    showGallerySection: true,
+    showFaqSection: true,
+  },
+  seo: {
+    metaTitle: 'Tech Wash Laundry Services — Next-Gen Premium Garment Care & Dry Cleaning',
+    metaDescription: 'Technology-driven laundry, eco-friendly dry cleaning, steam pressing, and shoe care with doorstep pickup and 24-hr express delivery.',
+    keywords: 'laundry service, dry cleaning, steam ironing, shoe laundry, garment care, doorstep laundry pickup',
+    ogImageUrl: '',
+    canonicalUrl: 'https://techwash.in',
+  },
+  social: {
+    instagram: 'https://instagram.com/techwashlaundry',
+    facebook: 'https://facebook.com/techwashlaundry',
+    youtube: 'https://youtube.com',
+    googleBusiness: 'https://maps.google.com',
+  },
+  workingHours: {
+    weekdays: '8:00 AM - 9:00 PM',
+    weekends: '8:00 AM - 9:00 PM',
+    weeklyHolidays: 'Open 7 Days a Week',
+  }
+};
+
+export const settingsService = {
+  /**
+   * Fetch site settings from Firestore or cache
+   */
+  async getSettings() {
+    if (isFirebaseConfigured && db) {
+      try {
+        const snap = await getDoc(doc(db, 'settings', 'global'));
+        if (snap.exists()) {
+          return { ...DEFAULT_SETTINGS, ...snap.data() };
+        }
+      } catch (e) {
+        console.warn("Firestore settings read failed, using cached settings:", e);
+      }
+    }
+
+    try {
+      const cached = localStorage.getItem(SETTINGS_STORAGE_KEY);
+      return cached ? JSON.parse(cached) : DEFAULT_SETTINGS;
+    } catch (e) {
+      return DEFAULT_SETTINGS;
+    }
+  },
+
+  /**
+   * Save site settings
+   */
+  async saveSettings(updatedSettings) {
+    if (isFirebaseConfigured && db) {
+      try {
+        await setDoc(doc(db, 'settings', 'global'), updatedSettings, { merge: true });
+      } catch (e) {
+        console.warn("Firestore settings write failed, saving locally:", e);
+      }
+    }
+
+    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(updatedSettings));
+    return updatedSettings;
+  },
+
+  /**
+   * Fetch all store/branch locations
+   */
+  async getLocations() {
+    if (isFirebaseConfigured && db) {
+      try {
+        const snap = await getDocs(collection(db, 'locations'));
+        if (!snap.empty) {
+          return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        }
+      } catch (e) {
+        console.warn("Firestore locations read error:", e);
+      }
+    }
+
+    try {
+      const cached = localStorage.getItem(LOCATIONS_STORAGE_KEY);
+      return cached ? JSON.parse(cached) : [];
+    } catch (e) {
+      return [];
+    }
+  },
+
+  /**
+   * Save / Update store location
+   */
+  async saveLocation(locationData) {
+    const locId = locationData.id || `loc-${Date.now()}`;
+    const payload = { ...locationData, id: locId, updatedAt: new Date().toISOString() };
+
+    if (isFirebaseConfigured && db) {
+      try {
+        await setDoc(doc(db, 'locations', locId), payload, { merge: true });
+      } catch (e) {
+        console.warn("Firestore location save failed:", e);
+      }
+    }
+
+    const locations = await this.getLocations();
+    const index = locations.findIndex(l => l.id === locId);
+    if (index >= 0) {
+      locations[index] = payload;
+    } else {
+      locations.push(payload);
+    }
+    localStorage.setItem(LOCATIONS_STORAGE_KEY, JSON.stringify(locations));
+    return payload;
+  },
+
+  /**
+   * Delete store location
+   */
+  async deleteLocation(locId) {
+    if (isFirebaseConfigured && db) {
+      try {
+        await deleteDoc(doc(db, 'locations', locId));
+      } catch (e) {
+        console.warn("Firestore delete location error:", e);
+      }
+    }
+
+    const locations = (await this.getLocations()).filter(l => l.id !== locId);
+    localStorage.setItem(LOCATIONS_STORAGE_KEY, JSON.stringify(locations));
+    return true;
+  }
+};
