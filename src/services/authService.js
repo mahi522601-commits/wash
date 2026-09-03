@@ -1,11 +1,7 @@
 /**
- * Authentication and Role-Based Access Control (RBAC) for Tech Wash
- * Roles:
- * - super_admin: Full system, RBAC, financial & system health access
- * - admin: Full website CMS, services, pricing, banners, media
- * - manager: Manage orders, customer CRM, staff operational dispatch
- * - staff: Order processing stage updates & QC checkpoints
- * - delivery_executive: Pickup/delivery tasks & proof of delivery
+ * Real Firebase Authentication & Firestore Admin Authorization Service for Tech Wash
+ * Connects directly to project: laundry-37abc
+ * Enforces admin authorization via: admins/{uid} document verification
  */
 import { 
   signInWithEmailAndPassword, 
@@ -13,160 +9,172 @@ import {
   sendPasswordResetEmail,
   onAuthStateChanged
 } from 'firebase/auth';
-import { auth, db, isFirebaseConfigured } from './firebase.js';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { auth, db } from './firebase.js';
+import { doc, getDoc } from 'firebase/firestore';
 
 export const USER_ROLES = {
-  SUPER_ADMIN: 'super_admin',
+  SUPERADMIN: 'superadmin',
   ADMIN: 'admin',
   MANAGER: 'manager',
   STAFF: 'staff',
   DELIVERY_EXECUTIVE: 'delivery_executive',
 };
 
+export const AUTHORIZED_ADMIN_ROLES = [
+  'superadmin',
+  'super_admin',
+  'admin',
+  'manager'
+];
+
 export const ROLE_PERMISSIONS = {
-  [USER_ROLES.SUPER_ADMIN]: ['all'],
-  [USER_ROLES.ADMIN]: ['cms', 'orders', 'services', 'pricing', 'media', 'customers', 'locations', 'banners', 'seo'],
+  [USER_ROLES.SUPERADMIN]: ['all'],
+  'super_admin': ['all'],
+  [USER_ROLES.ADMIN]: ['cms', 'orders', 'services', 'pricing', 'media', 'customers', 'locations', 'banners', 'seo', 'offers'],
   [USER_ROLES.MANAGER]: ['orders', 'customers', 'services', 'pricing', 'locations'],
   [USER_ROLES.STAFF]: ['orders_stage_update', 'qc_check'],
   [USER_ROLES.DELIVERY_EXECUTIVE]: ['pickup_delivery_only'],
 };
 
-// Local storage key for offline/demo/cached user profile
-const AUTH_STORAGE_KEY = 'techwash_auth_user';
-
 export const authService = {
   /**
-   * Log in user with Firebase Auth or fallback demo credential
+   * Log in user with Firebase Auth and verify Firestore admin document: admins/{uid}
    */
   async login(email, password) {
-    if (isFirebaseConfigured && auth) {
-      try {
-        const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        const user = userCredential.user;
-        
-        // Fetch role from Firestore
-        let role = USER_ROLES.SUPER_ADMIN;
-        try {
-          const userDoc = await getDoc(doc(db, 'adminUsers', user.uid));
-          if (userDoc.exists()) {
-            role = userDoc.data().role || USER_ROLES.ADMIN;
-          }
-        } catch (e) {
-          console.warn("Could not fetch user role from Firestore, defaulting:", e);
-        }
+    if (!auth || !db) {
+      throw new Error('Unable to connect to the authentication service. Please try again.');
+    }
 
-        const userData = {
-          uid: user.uid,
-          email: user.email,
-          displayName: user.displayName || email.split('@')[0],
-          role,
-          token: await user.getIdToken(),
-        };
+    try {
+      // 1. Authenticate with Firebase Authentication
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
 
-        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(userData));
-        return userData;
-      } catch (err) {
-        throw new Error(err.message || 'Authentication failed');
+      // 2. Verify admin document in Firestore: admins/{currentUser.uid}
+      const adminSnap = await getDoc(doc(db, 'admins', user.uid));
+
+      // 3. Document must exist
+      if (!adminSnap.exists()) {
+        await signOut(auth);
+        throw new Error('You are not authorized to access the Admin Portal.');
       }
-    }
 
-    // Safe Development / Demo Login Mode for initial administration setup
-    if (email === 'admin@techwash.in' && password === 'TechWash@2026') {
-      const demoUser = {
-        uid: 'techwash-superadmin-001',
-        email: 'admin@techwash.in',
-        displayName: 'Tech Wash Super Admin',
-        role: USER_ROLES.SUPER_ADMIN,
-        token: 'mock-jwt-token-demo',
-      };
-      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(demoUser));
-      return demoUser;
-    } else if (email.includes('manager')) {
-      const managerUser = {
-        uid: 'techwash-manager-002',
-        email,
-        displayName: 'Operations Manager',
-        role: USER_ROLES.MANAGER,
-        token: 'mock-jwt-token-demo',
-      };
-      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(managerUser));
-      return managerUser;
-    } else if (password === 'admin123' || password === 'TechWash@2026') {
-      const genericAdmin = {
-        uid: `admin-${Date.now()}`,
-        email,
-        displayName: email.split('@')[0],
-        role: USER_ROLES.ADMIN,
-        token: 'mock-jwt-token-demo',
-      };
-      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(genericAdmin));
-      return genericAdmin;
-    }
+      const adminData = adminSnap.data() || {};
 
-    throw new Error('Invalid email or password. Use admin@techwash.in / TechWash@2026 for development access.');
+      // 4. Must be active: true
+      if (adminData.active === false) {
+        await signOut(auth);
+        throw new Error('Your admin account is currently disabled.');
+      }
+
+      // 5. Must have authorized role
+      const userRole = (adminData.role || '').toLowerCase();
+      if (!AUTHORIZED_ADMIN_ROLES.includes(userRole)) {
+        await signOut(auth);
+        throw new Error('You do not have permission to access the Admin Portal.');
+      }
+
+      // 6. Return verified admin profile
+      const adminProfile = {
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName || adminData.name || (user.email ? user.email.split('@')[0] : 'Admin'),
+        role: adminData.role,
+        active: true,
+        token: await user.getIdToken(),
+      };
+
+      return adminProfile;
+    } catch (err) {
+      // Log raw error to development console for precise diagnostics
+      console.error("Firebase Login Error:", err);
+
+      // If error was already our custom authorization error, rethrow it
+      if (
+        err.message === 'You are not authorized to access the Admin Portal.' ||
+        err.message === 'Your admin account is currently disabled.' ||
+        err.message === 'You do not have permission to access the Admin Portal.'
+      ) {
+        throw err;
+      }
+
+      // Handle Firebase Auth error codes
+      const errorCode = err.code || '';
+      if (
+        errorCode === 'auth/user-not-found' ||
+        errorCode === 'auth/wrong-password' ||
+        errorCode === 'auth/invalid-credential' ||
+        errorCode === 'auth/invalid-email'
+      ) {
+        throw new Error('Incorrect email or password.');
+      } else if (errorCode === 'auth/user-disabled') {
+        throw new Error('Your admin account is currently disabled.');
+      } else if (errorCode === 'auth/network-request-failed') {
+        throw new Error('Unable to connect to the authentication service. Please try again.');
+      } else if (errorCode === 'auth/too-many-requests') {
+        throw new Error('Too many failed login attempts. Please try again later.');
+      } else if (errorCode === 'auth/api-key-not-valid' || errorCode === 'auth/invalid-api-key') {
+        throw new Error('Authentication service configuration error (API Key).');
+      }
+
+      throw new Error(err.message || 'Incorrect email or password.');
+    }
   },
 
   /**
-   * Log out user
+   * Verify Firestore admin document for an existing Firebase User: admins/{uid}
+   */
+  async verifyAdminDocument(uid) {
+    if (!db || !uid) return null;
+
+    try {
+      const adminSnap = await getDoc(doc(db, 'admins', uid));
+      if (!adminSnap.exists()) return null;
+
+      const adminData = adminSnap.data() || {};
+      if (adminData.active === false) return null;
+
+      const userRole = (adminData.role || '').toLowerCase();
+      if (!AUTHORIZED_ADMIN_ROLES.includes(userRole)) return null;
+
+      return adminData;
+    } catch (e) {
+      console.warn("Firestore admin authorization check failed:", e);
+      return null;
+    }
+  },
+
+  /**
+   * Log out current user from Firebase Auth
    */
   async logout() {
-    if (isFirebaseConfigured && auth) {
+    if (auth) {
       try {
         await signOut(auth);
       } catch (e) {
         console.warn("Sign out error:", e);
       }
     }
-    localStorage.removeItem(AUTH_STORAGE_KEY);
   },
 
   /**
-   * Send Password Reset Email
+   * Send Password Reset Email via Firebase Auth
    */
   async resetPassword(email) {
-    if (isFirebaseConfigured && auth) {
+    if (auth) {
       return await sendPasswordResetEmail(auth, email);
     }
-    return true;
+    throw new Error('Authentication service unavailable.');
   },
 
   /**
-   * Get current authenticated user from storage or memory
-   */
-  getCurrentUser() {
-    try {
-      const saved = localStorage.getItem(AUTH_STORAGE_KEY);
-      if (saved) return JSON.parse(saved);
-
-      // Default to Super Admin for seamless admin suite access
-      const defaultUser = {
-        uid: 'techwash-superadmin-001',
-        email: 'admin@techwash.in',
-        displayName: 'Tech Wash Super Admin',
-        role: USER_ROLES.SUPER_ADMIN,
-        token: 'mock-jwt-token-demo',
-      };
-      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(defaultUser));
-      return defaultUser;
-    } catch (e) {
-      return {
-        uid: 'techwash-superadmin-001',
-        email: 'admin@techwash.in',
-        displayName: 'Tech Wash Super Admin',
-        role: USER_ROLES.SUPER_ADMIN,
-        token: 'mock-jwt-token-demo',
-      };
-    }
-  },
-
-  /**
-   * Check if user has permission
+   * Check if user role has required permission scope
    */
   hasPermission(userRole, requiredScope) {
     if (!userRole) return false;
-    if (userRole === USER_ROLES.SUPER_ADMIN) return true;
-    const permissions = ROLE_PERMISSIONS[userRole] || [];
+    const normalizedRole = userRole.toLowerCase();
+    if (normalizedRole === 'superadmin' || normalizedRole === 'super_admin') return true;
+    const permissions = ROLE_PERMISSIONS[normalizedRole] || [];
     return permissions.includes(requiredScope) || permissions.includes('all');
   }
 };

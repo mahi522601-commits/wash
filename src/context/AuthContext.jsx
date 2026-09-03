@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from '../services/firebase.js';
 import { authService, USER_ROLES } from '../services/authService';
 
 const AuthContext = createContext(null);
@@ -8,12 +10,41 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check existing stored user profile
-    const user = authService.getCurrentUser();
-    if (user) {
-      setCurrentUser(user);
+    if (!auth) {
+      setLoading(false);
+      return;
     }
-    setLoading(false);
+
+    // Real Firebase Auth listener with Firestore admin verification
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        try {
+          const adminData = await authService.verifyAdminDocument(firebaseUser.uid);
+          if (adminData) {
+            setCurrentUser({
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              displayName: firebaseUser.displayName || adminData.name || (firebaseUser.email ? firebaseUser.email.split('@')[0] : 'Admin'),
+              role: adminData.role || 'superadmin',
+              active: true,
+            });
+          } else {
+            // Not an authorized admin in Firestore -> sign out
+            await authService.logout();
+            setCurrentUser(null);
+          }
+        } catch (e) {
+          console.warn("Auth listener admin check failed:", e);
+          await authService.logout();
+          setCurrentUser(null);
+        }
+      } else {
+        setCurrentUser(null);
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const login = async (email, password) => {
