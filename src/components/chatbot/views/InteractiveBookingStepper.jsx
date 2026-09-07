@@ -32,7 +32,7 @@ export const InteractiveBookingStepper = ({
 
   // State
   const [selectedService, setSelectedService] = useState(
-    initialService?.title || 'Premium Dry Cleaning'
+    initialService?.title || 'Laundry'
   );
   
   const [items, setItems] = useState(
@@ -274,12 +274,10 @@ export const InteractiveBookingStepper = ({
 
           <div className="grid grid-cols-2 gap-2">
             {[
-              'Premium Dry Cleaning',
-              'Eco RO Soft Wash',
-              '3D Steam Press',
-              'Pure Silk Saree Spa',
-              'Designer Shoe Spa',
-              'Curtains & Drapes Care',
+              'Laundry',
+              'Steam Iron',
+              'Stains Remover',
+              'Dry Cleaning',
             ].map((srv) => (
               <button
                 key={srv}

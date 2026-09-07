@@ -33,11 +33,10 @@ export const Footer = () => {
   ];
 
   const serviceCategories = [
-    { label: 'Premium Dry Cleaning', path: '/services/premium-dry-cleaning' },
-    { label: 'Steam Ironing & Form Press', path: '/services/steam-ironing-and-form-press' },
-    { label: 'RO Soft Water Laundry', path: '/services/ro-soft-water-laundry' },
-    { label: 'Saree Rolling & Polish', path: '/services/saree-rolling-and-polish' },
-    { label: 'Designer Footwear & Leather Spa', path: '/services/shoe-spa-and-leather-care' },
+    { label: 'Laundry', path: '/services/laundry' },
+    { label: 'Steam Iron', path: '/services/steam-iron' },
+    { label: 'Stains Remover', path: '/services/stains-remover' },
+    { label: 'Dry Cleaning', path: '/services/dry-cleaning' },
   ];
 
   return (

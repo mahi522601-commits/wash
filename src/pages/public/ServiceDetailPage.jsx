@@ -83,7 +83,7 @@ export const ServiceDetailPage = () => {
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <Link
             to="/services"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-cyan-300 hover:text-white mb-6 transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#F97316] hover:text-white mb-6 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>All Services</span>
@@ -106,11 +106,11 @@ export const ServiceDetailPage = () => {
 
               {/* Price Callout & Action */}
               <div className="pt-4 flex items-center gap-6 flex-wrap">
-                <div className="bg-slate-900/80 border border-slate-700/80 rounded-2xl px-5 py-3 backdrop-blur-md">
+                <div className="bg-slate-900/80 border border-[#F97316]/30 rounded-2xl px-5 py-3 backdrop-blur-md">
                   <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">
                     Starting Rate ({service.pricingType || 'per piece'})
                   </span>
-                  <span className="text-3xl font-black font-display text-cyan-400">
+                  <span className="text-3xl font-black font-display text-[#F97316]">
                     {service.startingPrice ? formatCurrency(service.startingPrice) : 'Custom Quote'}
                   </span>
                 </div>
@@ -126,16 +126,16 @@ export const ServiceDetailPage = () => {
             {/* Quick Guarantees Card */}
             <div className="lg:col-span-5">
               <div className="p-6 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-luxury space-y-4 backdrop-blur-xl">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-cyan-300 font-display">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-[#F97316] font-display">
                   Tech Wash Care Standards
                 </h3>
                 <div className="space-y-3 text-xs sm:text-sm text-slate-300">
                   <div className="flex items-start gap-3">
-                    <Droplets className="w-5 h-5 text-cyan-400 shrink-0 mt-0.5" />
+                    <Droplets className="w-5 h-5 text-[#F97316] shrink-0 mt-0.5" />
                     <span>Pure softened RO water processing protecting delicate fibers</span>
                   </div>
                   <div className="flex items-start gap-3">
-                    <Flame className="w-5 h-5 text-purple-400 shrink-0 mt-0.5" />
+                    <Flame className="w-5 h-5 text-[#F97316] shrink-0 mt-0.5" />
                     <span>Micro-temperature 3D tension steam pressing</span>
                   </div>
                   <div className="flex items-start gap-3">

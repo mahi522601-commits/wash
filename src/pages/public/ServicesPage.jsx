@@ -42,23 +42,23 @@ export const ServicesPage = () => {
     <div className="py-16 sm:py-24 bg-brand-50 min-h-screen relative overflow-hidden">
       
       {/* Background Lighting */}
-      <div className="absolute top-10 right-0 w-[500px] h-[500px] bg-brand-200/40 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-10 left-0 w-[500px] h-[500px] bg-cyan-200/30 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-10 right-0 w-[500px] h-[500px] bg-[#F97316]/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-10 left-0 w-[500px] h-[500px] bg-[#F97316]/5 rounded-full blur-3xl pointer-events-none" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 space-y-12">
         
         {/* Page Header */}
         <div className="text-center max-w-3xl mx-auto space-y-4">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-brand-100 border border-brand-200 text-brand-700 text-xs font-bold uppercase tracking-wider">
-            <Sparkles className="w-3.5 h-3.5 text-cyan-600" />
-            <span>Complete Garment Menu</span>
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#FFF7ED] border border-[#F97316]/30 text-[#F97316] text-xs font-bold uppercase tracking-wider">
+            <Sparkles className="w-3.5 h-3.5 text-[#F97316]" />
+            <span>Complete Garment Care Menu</span>
           </div>
-          <h1 className="text-4xl sm:text-6xl font-black text-navy-800 font-display tracking-tight leading-tight">
+          <h1 className="text-4xl sm:text-6xl font-black text-slate-900 font-display tracking-tight leading-tight">
             Specialized Care <br />
-            <span className="text-gradient-purple">Services Catalog</span>
+            <span className="text-[#F97316]">Services Catalog</span>
           </h1>
           <p className="text-sm sm:text-base text-slate-600 font-normal leading-relaxed">
-            Every garment is unique. Our certified fabric technicians provide customized treatment using RO soft water, bio-enzymes, and eco-safe hydrocarbon dry cleaning.
+            Every garment is unique. Our certified fabric technicians provide customized treatment using RO soft water, bio-enzymes, ultrasonic stain removal, and eco-safe hydrocarbon dry cleaning.
           </p>
         </div>
 

@@ -201,11 +201,10 @@ export const AdminGalleryPage = () => {
               onChange={(e) => setCurrentGallery({ ...currentGallery, category: e.target.value })}
               className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 text-xs"
             >
-              <option value="Couture">Couture & Ethnic</option>
+              <option value="Laundry">Laundry</option>
+              <option value="Steam Iron">Steam Iron</option>
+              <option value="Stains Remover">Stains Remover</option>
               <option value="Dry Cleaning">Dry Cleaning</option>
-              <option value="Steam Ironing">Steam Ironing</option>
-              <option value="Shoe Spa">Shoe Spa & Sneakers</option>
-              <option value="Laundry">Laundry & Soft Wash</option>
             </select>
           </div>
 

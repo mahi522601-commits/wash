@@ -406,12 +406,10 @@ export const AdminServicesPage = () => {
                       onChange={(e) => setCurrentService({ ...currentService, category: e.target.value })}
                       className="w-full bg-white border border-slate-200 rounded-xl py-2.5 px-3.5 text-xs text-slate-800"
                     >
+                      <option value="Laundry">Laundry</option>
+                      <option value="Steam Iron">Steam Iron</option>
+                      <option value="Stains Remover">Stains Remover</option>
                       <option value="Dry Cleaning">Dry Cleaning</option>
-                      <option value="Laundry">Laundry & Wash</option>
-                      <option value="Steam Ironing">Steam Ironing</option>
-                      <option value="Footwear Care">Footwear Care & Spa</option>
-                      <option value="Couture & Ethnic">Couture & Ethnic</option>
-                      <option value="Household Care">Household & Curtains</option>
                     </select>
                   </div>
 

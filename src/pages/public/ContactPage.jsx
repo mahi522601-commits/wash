@@ -156,10 +156,10 @@ export const ContactPage = () => {
                       onChange={(e) => setFormData({ ...formData, service: e.target.value })}
                       className="w-full bg-white border border-slate-200 rounded-xl py-2.5 px-3.5 text-sm text-slate-800 focus:ring-2 focus:ring-brand-500"
                     >
-                      <option value="Dry Cleaning">Premium Dry Cleaning</option>
-                      <option value="Wash & Steam Iron">Wash & Steam Iron</option>
-                      <option value="Shoe Spa">Luxury Shoe Care</option>
-                      <option value="Couture & Lehengas">Bridal & Couture Care</option>
+                      <option value="Laundry">Laundry</option>
+                      <option value="Steam Iron">Steam Iron</option>
+                      <option value="Stains Remover">Stains Remover</option>
+                      <option value="Dry Cleaning">Dry Cleaning</option>
                       <option value="Corporate / Bulk">Corporate / Bulk Inquiry</option>
                     </select>
                   </div>

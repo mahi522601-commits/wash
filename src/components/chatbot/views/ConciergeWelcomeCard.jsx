@@ -15,7 +15,7 @@ export const ConciergeWelcomeCard = ({ onSelectAction }) => {
       id: 'services',
       icon: Layers,
       title: 'Explore Fabric Care',
-      subtitle: 'Dry clean, steam press, saree spa',
+      subtitle: 'Laundry, steam iron, stains, dry clean',
       actionValue: 'Explore Cleaning Services',
     },
     {
