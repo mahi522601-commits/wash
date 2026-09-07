@@ -85,6 +85,112 @@
   .animate-nudge-periodic {
     animation: nudgePeriodic 10s ease-in-out infinite;
   }
+
+  /* 6-Stage Precision Processing Roadmap Flow Animations */
+  .animate-flow-dashes {
+    stroke-dasharray: 8 6;
+    animation: flowDashes 1.2s linear infinite;
+  }
+
+  .animate-pulse-ring {
+    animation: pulseGlowRing 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  .animate-scan-beam {
+    animation: scanBeam 2.4s ease-in-out infinite alternate;
+  }
+
+  .animate-steam-rise {
+    animation: steamRise 2s ease-out infinite;
+  }
+
+  .animate-drum-spin {
+    animation: drumSpin 8s linear infinite;
+  }
+
+  .animate-water-ripple {
+    animation: waterRipple 3s ease-in-out infinite;
+  }
+
+  .animate-flow-energy {
+    background-size: 200% 200%;
+    animation: flowEnergy 3s linear infinite;
+  }
+}
+
+@keyframes flowDashes {
+  to {
+    stroke-dashoffset: -28;
+  }
+}
+
+@keyframes pulseGlowRing {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.75;
+  }
+  50% {
+    transform: scale(1.22);
+    opacity: 0.15;
+  }
+}
+
+@keyframes scanBeam {
+  0% {
+    top: 5%;
+    opacity: 0.2;
+  }
+  20% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    top: 90%;
+    opacity: 0.2;
+  }
+}
+
+@keyframes steamRise {
+  0% {
+    transform: translateY(0px) scale(0.9);
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateY(-24px) scale(1.3);
+    opacity: 0;
+  }
+}
+
+@keyframes drumSpin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes waterRipple {
+  0%, 100% {
+    transform: translateY(0px) scale(1);
+  }
+  50% {
+    transform: translateY(-5px) scale(1.05);
+  }
+}
+
+@keyframes flowEnergy {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
 }
 
 @keyframes nudge {
