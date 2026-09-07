@@ -14,8 +14,8 @@ export const DEFAULT_SETTINGS = {
   general: {
     businessName: 'Tech Wash Laundry Services',
     tagline: 'Next-Generation Premium Garment Care & Express Doorstep Service',
-    logoUrl: '',
-    faviconUrl: '',
+    logoUrl: '/techwashlogo.webp',
+    faviconUrl: '/techwashlogo.webp',
     supportEmail: 'support@techwash.in',
     primaryPhone: '+91 98765 43210',
     whatsappNumber: '+91 98765 43210',
@@ -113,23 +113,32 @@ export const settingsService = {
    * Fetch site settings from Firestore or cache
    */
   async getSettings() {
+    let settings = DEFAULT_SETTINGS;
     if (isFirebaseConfigured && db) {
       try {
         const snap = await getDoc(doc(db, 'settings', 'global'));
         if (snap.exists()) {
-          return { ...DEFAULT_SETTINGS, ...snap.data() };
+          settings = { ...DEFAULT_SETTINGS, ...snap.data() };
         }
       } catch (e) {
         console.warn("Firestore settings read failed, using cached settings:", e);
       }
+    } else {
+      try {
+        const cached = localStorage.getItem(SETTINGS_STORAGE_KEY);
+        if (cached) settings = JSON.parse(cached);
+      } catch (e) {
+        settings = DEFAULT_SETTINGS;
+      }
     }
 
-    try {
-      const cached = localStorage.getItem(SETTINGS_STORAGE_KEY);
-      return cached ? JSON.parse(cached) : DEFAULT_SETTINGS;
-    } catch (e) {
-      return DEFAULT_SETTINGS;
+    if (!settings.general?.logoUrl) {
+      settings.general = { ...settings.general, logoUrl: '/techwashlogo.webp' };
     }
+    if (!settings.general?.faviconUrl) {
+      settings.general = { ...settings.general, faviconUrl: '/techwashlogo.webp' };
+    }
+    return settings;
   },
 
   /**

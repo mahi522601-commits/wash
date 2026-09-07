@@ -78,8 +78,13 @@ export const Footer = () => {
           {/* Col 1: Brand & Identity (Col 4) */}
           <div className="lg:col-span-4 space-y-5">
             <Link to="/" className="flex items-center gap-3 group">
-              <div className="w-10 h-10 rounded-2xl bg-[#F97316] flex items-center justify-center text-white shadow-[0_0_20px_rgba(249,115,22,0.4)] group-hover:scale-105 transition-transform">
-                <Sparkles className="w-5 h-5 fill-current text-white" />
+              <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center p-1 shadow-[0_0_20px_rgba(249,115,22,0.3)] group-hover:scale-105 transition-transform overflow-hidden">
+                <img 
+                  src="/techwashlogo.webp" 
+                  alt="Tech Wash" 
+                  className="w-full h-full object-contain"
+                  onError={(e) => { e.target.style.display = 'none'; }}
+                />
               </div>
               <div>
                 <span className="font-black font-display text-2xl tracking-tight text-white block leading-none">

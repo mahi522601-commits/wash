@@ -163,8 +163,13 @@ export const FloatingOffersWidget = () => {
           {/* Header Banner */}
           <div className="px-4 py-3 bg-[#1F2937] text-white flex items-center justify-between border-b border-slate-700">
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-lg bg-[#F97316] flex items-center justify-center text-white shadow-sm">
-                <Sparkles className="w-3.5 h-3.5 fill-current text-white" />
+              <div className="w-6 h-6 rounded-lg bg-white p-0.5 flex items-center justify-center overflow-hidden border border-[#FED7AA]/60">
+                <img 
+                  src="/techwashlogo.webp" 
+                  alt="Tech Wash" 
+                  className="w-full h-full object-contain"
+                  onError={(e) => { e.target.style.display = 'none'; }}
+                />
               </div>
               <span className="text-xs font-black font-display tracking-tight text-white uppercase">
                 Special Offers & Promos

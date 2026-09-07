@@ -75,8 +75,13 @@ export const FloatingActionHub = ({ onOpenAssistant }) => {
           {/* Subtle Ambient Glow Ring */}
           <span className="absolute -inset-0.5 rounded-full bg-orange-400/30 animate-pulse pointer-events-none" />
           
-          <div className="relative z-10 flex flex-col items-center justify-center">
-            <Sparkles className="w-6 h-6 text-[#F97316] group-hover:rotate-12 transition-transform" />
+          <div className="relative z-10 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white p-0.5 flex items-center justify-center overflow-hidden group-hover:scale-105 transition-transform">
+            <img 
+              src="/techwashlogo.webp" 
+              alt="Tech Wash" 
+              className="w-full h-full object-contain"
+              onError={(e) => { e.target.style.display = 'none'; }}
+            />
           </div>
 
           {/* Active Status Dot */}

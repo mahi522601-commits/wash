@@ -85,7 +85,15 @@ export const AdminHeader = ({ onMenuToggle, onOpenSearch }) => {
         </button>
 
         <div className="flex items-center gap-2 truncate">
-          <span className="text-[11px] font-bold text-purple-300/80 hidden sm:inline">Command Center</span>
+          <div className="w-7 h-7 rounded-lg bg-white p-0.5 border border-white/20 shrink-0 lg:hidden overflow-hidden">
+            <img 
+              src="/techwashlogo.webp" 
+              alt="Tech Wash Logo" 
+              className="w-full h-full object-contain"
+              onError={(e) => { e.target.style.display = 'none'; }}
+            />
+          </div>
+          <span className="text-[11px] font-bold text-[#FED7AA] hidden sm:inline">Command Center</span>
           <span className="text-slate-600 hidden sm:inline">/</span>
           <h1 className="text-xs sm:text-sm font-black font-display text-white tracking-tight truncate">
             {formattedTitle}

@@ -199,8 +199,13 @@ export const ConciergeWindow = ({ isOpen, onClose }) => {
       ───────────────────────────────────────────────────────── */}
       <div className="px-4 py-3 bg-[#1F2937] text-white flex items-center justify-between border-b border-slate-700 shrink-0">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-[#F97316] flex items-center justify-center text-white shadow-sm">
-            <Sparkles className="w-4 h-4 fill-current text-white" />
+          <div className="w-8 h-8 rounded-xl bg-white flex items-center justify-center p-0.5 shadow-sm border border-[#FED7AA]/50 overflow-hidden">
+            <img 
+              src="/techwashlogo.webp" 
+              alt="Tech Wash Bot" 
+              className="w-full h-full object-contain"
+              onError={(e) => { e.target.style.display = 'none'; }}
+            />
           </div>
           <div>
             <h3 className="text-xs font-black font-display tracking-tight text-white flex items-center gap-1.5 leading-none">
@@ -261,8 +266,13 @@ export const ConciergeWindow = ({ isOpen, onClose }) => {
               {/* Conversational Text Intro (Short, 1-2 sentences) */}
               {msg.text && (
                 <div className="flex items-start gap-2">
-                  <div className="w-6 h-6 rounded-full bg-[#F97316] flex items-center justify-center text-white shrink-0 mt-0.5 shadow-sm">
-                    <Sparkles className="w-3 h-3 text-white fill-current" />
+                  <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center p-0.5 text-white shrink-0 mt-0.5 shadow-sm border border-[#FED7AA]/50 overflow-hidden">
+                    <img 
+                      src="/techwashlogo.webp" 
+                      alt="Tech Wash Bot" 
+                      className="w-full h-full object-contain"
+                      onError={(e) => { e.target.style.display = 'none'; }}
+                    />
                   </div>
                   <div className="max-w-[85%] p-3 rounded-2xl rounded-tl-xs bg-white text-slate-800 border border-brand-200/80 shadow-sm text-xs leading-relaxed">
                     {msg.text}

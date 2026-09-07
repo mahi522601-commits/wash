@@ -83,8 +83,13 @@ export const PrintReceipt = ({
         {/* Left: Brand Identity */}
         <div className="space-y-1 max-w-sm">
           <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#1F2937] via-[#EA580C] to-[#F97316] flex items-center justify-center text-white shadow-md print:shadow-none">
-              <Sparkles className="w-5 h-5 text-brand-200" />
+            <div className="w-12 h-12 rounded-2xl bg-white border border-[#FED7AA] flex items-center justify-center p-1 shadow-md print:shadow-none overflow-hidden">
+              <img 
+                src="/techwashlogo.webp" 
+                alt="Tech Wash" 
+                className="w-full h-full object-contain"
+                onError={(e) => { e.target.style.display = 'none'; }}
+              />
             </div>
             <div>
               <h1 className="text-xl font-black font-display tracking-tight text-[#1F2937] uppercase">

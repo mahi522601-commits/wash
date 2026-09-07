@@ -71,8 +71,13 @@ export const AdminLoginPage = () => {
         
         {/* 2. BRAND COMMAND HEADER */}
         <div className="text-center space-y-2">
-          <div className="w-14 h-14 rounded-3xl bg-[#F97316] flex items-center justify-center text-white mx-auto shadow-lg shadow-brand-500/30 mb-3 group hover:scale-105 transition-transform duration-300">
-            <Sparkles className="w-7 h-7 text-white fill-white" />
+          <div className="w-16 h-16 rounded-3xl bg-white flex items-center justify-center p-1 mx-auto shadow-xl shadow-black/40 mb-3 group hover:scale-105 transition-transform duration-300 border border-[#F97316]/40 overflow-hidden">
+            <img 
+              src="/techwashlogo.webp" 
+              alt="Tech Wash Logo" 
+              className="w-full h-full object-contain"
+              onError={(e) => { e.target.style.display = 'none'; }}
+            />
           </div>
 
           <h1 className="text-2xl sm:text-3xl font-black font-display text-white tracking-tight leading-none">

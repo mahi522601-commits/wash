@@ -122,16 +122,21 @@ export const AdminSidebar = ({ isOpen, onClose, isCollapsed, onToggleCollapse })
         {/* 1. SIDEBAR BRAND HEADER */}
         <div className="h-16 px-4 flex items-center justify-between border-b border-white/10 bg-[#080716] shrink-0">
           <Link to="/admin/dashboard" className="flex items-center gap-3 group overflow-hidden">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#6D28D9] via-[#7C3AED] to-[#06B6D4] flex items-center justify-center text-white shadow-lg shadow-purple-900/40 shrink-0 group-hover:scale-105 transition-transform">
-              <Sparkles className="w-5 h-5 fill-cyan-200 text-cyan-200" />
+            <div className="w-10 h-10 rounded-2xl bg-white flex items-center justify-center p-0.5 shadow-lg shadow-black/40 shrink-0 group-hover:scale-105 transition-transform overflow-hidden">
+              <img 
+                src="/techwashlogo.webp" 
+                alt="Tech Wash" 
+                className="w-full h-full object-contain"
+                onError={(e) => { e.target.style.display = 'none'; }}
+              />
             </div>
 
             {!isCollapsed && (
               <div className="flex flex-col truncate animate-fade-in">
                 <span className="font-black font-display text-sm tracking-tight text-white leading-none">
-                  TECH <span className="text-cyan-400">WASH</span>
+                  TECH <span className="text-[#F97316]">WASH</span>
                 </span>
-                <span className="text-[9px] font-black tracking-widest text-purple-300 uppercase mt-0.5">
+                <span className="text-[9px] font-black tracking-widest text-[#FED7AA] uppercase mt-0.5">
                   COMMAND CENTER
                 </span>
               </div>

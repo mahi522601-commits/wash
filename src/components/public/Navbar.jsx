@@ -107,8 +107,13 @@ export const Navbar = () => {
           
           {/* Brand Logo */}
           <Link to="/" className="flex items-center gap-2.5 group shrink-0">
-            <div className="w-9 h-9 rounded-2xl bg-[#F97316] flex items-center justify-center text-white shadow-sm group-hover:scale-105 transition-transform font-black">
-              <Sparkles className="w-4 h-4 fill-current text-white" />
+            <div className="w-10 h-10 rounded-2xl bg-white flex items-center justify-center p-0.5 shadow-sm border border-[#FED7AA]/50 group-hover:scale-105 transition-transform overflow-hidden">
+              <img 
+                src="/techwashlogo.webp" 
+                alt="Tech Wash" 
+                className="w-full h-full object-contain"
+                onError={(e) => { e.target.style.display = 'none'; }}
+              />
             </div>
             <div className="flex flex-col">
               <span className="font-black font-display text-base sm:text-lg tracking-tight leading-none text-[#1F2937]">

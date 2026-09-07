@@ -39,8 +39,13 @@ export const ConciergeWelcomeCard = ({ onSelectAction }) => {
       
       {/* Greeting Header */}
       <div className="flex items-center gap-2.5 pb-2 border-b border-slate-100">
-        <div className="w-7 h-7 rounded-xl bg-[#F97316] flex items-center justify-center text-white shadow-sm">
-          <Sparkles className="w-3.5 h-3.5 fill-current text-white" />
+        <div className="w-8 h-8 rounded-xl bg-white flex items-center justify-center p-0.5 shadow-sm border border-[#FED7AA]/60 overflow-hidden">
+          <img 
+            src="/techwashlogo.webp" 
+            alt="Tech Wash" 
+            className="w-full h-full object-contain"
+            onError={(e) => { e.target.style.display = 'none'; }}
+          />
         </div>
         <div>
           <h4 className="text-xs font-bold font-display text-[#1F2937]">

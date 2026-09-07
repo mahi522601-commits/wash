@@ -78,24 +78,55 @@ export const AdminSettingsPage = () => {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input
-              label="Brand Logo Graphic URL"
-              placeholder="https://..."
-              value={form.general?.logoUrl}
-              onChange={(e) => setForm({
-                ...form,
-                general: { ...form.general, logoUrl: e.target.value }
-              })}
-            />
-            <Input
-              label="Browser Favicon URL"
-              placeholder="https://..."
-              value={form.general?.faviconUrl}
-              onChange={(e) => setForm({
-                ...form,
-                general: { ...form.general, faviconUrl: e.target.value }
-              })}
-            />
+            <div>
+              <Input
+                label="Brand Logo Graphic URL"
+                placeholder="/techwashlogo.webp"
+                value={form.general?.logoUrl}
+                onChange={(e) => setForm({
+                  ...form,
+                  general: { ...form.general, logoUrl: e.target.value }
+                })}
+              />
+              {form.general?.logoUrl && (
+                <div className="mt-2 flex items-center gap-2">
+                  <span className="text-[10px] font-bold text-slate-400">Current Logo:</span>
+                  <div className="w-8 h-8 rounded-lg bg-slate-100 p-0.5 border border-slate-200 overflow-hidden">
+                    <img 
+                      src={form.general.logoUrl} 
+                      alt="Logo Preview" 
+                      className="w-full h-full object-contain"
+                      onError={(e) => { e.target.style.display = 'none'; }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div>
+              <Input
+                label="Browser Favicon URL"
+                placeholder="/techwashlogo.webp"
+                value={form.general?.faviconUrl}
+                onChange={(e) => setForm({
+                  ...form,
+                  general: { ...form.general, faviconUrl: e.target.value }
+                })}
+              />
+              {form.general?.faviconUrl && (
+                <div className="mt-2 flex items-center gap-2">
+                  <span className="text-[10px] font-bold text-slate-400">Favicon Preview:</span>
+                  <div className="w-6 h-6 rounded-md bg-slate-100 p-0.5 border border-slate-200 overflow-hidden">
+                    <img 
+                      src={form.general.faviconUrl} 
+                      alt="Favicon Preview" 
+                      className="w-full h-full object-contain"
+                      onError={(e) => { e.target.style.display = 'none'; }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </Card>
 
