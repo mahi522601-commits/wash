@@ -106,11 +106,11 @@ export const FloatingOffersWidget = () => {
         {showFirstVisitTeaser && !isOpen && (
           <div
             onClick={() => setIsOpen(true)}
-            className="mr-2 p-2.5 rounded-2xl bg-[#1E1B4B] text-white border border-[#06B6D4]/50 shadow-2xl animate-fade-in flex items-center gap-2 cursor-pointer hover:scale-105 transition-transform"
+            className="mr-2 p-2.5 rounded-2xl bg-[#1F2937] text-white border border-[#F97316]/50 shadow-2xl animate-fade-in flex items-center gap-2 cursor-pointer hover:scale-105 transition-transform"
           >
-            <Sparkles className="w-4 h-4 text-cyan-300 animate-pulse" />
+            <Sparkles className="w-4 h-4 text-[#F97316] animate-pulse" />
             <div className="text-[11px] leading-tight">
-              <span className="font-black text-cyan-300 block">{currentOffer.discountValue}</span>
+              <span className="font-black text-[#F97316] block">{currentOffer.discountValue}</span>
               <span className="text-slate-300 text-[10px]">{currentOffer.title}</span>
             </div>
           </div>
@@ -120,27 +120,27 @@ export const FloatingOffersWidget = () => {
         <button
           type="button"
           onClick={() => setIsOpen(!isOpen)}
-          className="relative group p-2.5 sm:px-3.5 sm:py-3 rounded-2xl sm:rounded-full bg-gradient-to-tr from-[#1E1B4B] via-[#151336] to-[#6D28D9] text-white border-2 border-[#06B6D4]/60 shadow-[0_10px_35px_rgba(109,40,217,0.45)] hover:shadow-[0_15px_45px_rgba(6,182,212,0.55)] hover:scale-105 active:scale-95 transition-all duration-300 flex items-center gap-2 animate-nudge-periodic"
+          className="relative group p-2.5 sm:px-3.5 sm:py-3 rounded-2xl sm:rounded-full bg-[#1F2937] text-white border-2 border-[#F97316] shadow-[0_10px_35px_rgba(249,115,22,0.35)] hover:shadow-[0_15px_45px_rgba(249,115,22,0.5)] hover:scale-105 active:scale-95 transition-all duration-300 flex items-center gap-2 animate-nudge-periodic"
           title="View Exclusive Special Offers & Promo Codes"
           aria-label="View Special Offers"
         >
           {/* Ambient Glow Aura */}
-          <span className="absolute -inset-1 rounded-2xl sm:rounded-full bg-cyan-400/25 animate-pulse pointer-events-none" />
+          <span className="absolute -inset-1 rounded-2xl sm:rounded-full bg-orange-400/25 animate-pulse pointer-events-none" />
 
           {/* Active Promo Notification Dot */}
-          <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-cyan-400 border-2 border-[#1E1B4B] rounded-full shadow-sm animate-ping" />
-          <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-cyan-400 border-2 border-[#1E1B4B] rounded-full shadow-sm" />
+          <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-[#F97316] border-2 border-[#1F2937] rounded-full shadow-sm animate-ping" />
+          <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-[#F97316] border-2 border-[#1F2937] rounded-full shadow-sm" />
 
-          <div className="w-7 h-7 rounded-xl bg-gradient-to-tr from-[#6D28D9] to-[#06B6D4] flex items-center justify-center text-white shrink-0 shadow-glow-cyan group-hover:rotate-12 transition-transform">
-            <Tag className="w-4 h-4 text-cyan-200 fill-current" />
+          <div className="w-7 h-7 rounded-xl bg-[#F97316] flex items-center justify-center text-white shrink-0 shadow-sm group-hover:rotate-12 transition-transform">
+            <Tag className="w-4 h-4 text-white fill-current" />
           </div>
 
           <div className="hidden sm:block text-left pr-1">
             <div className="text-xs font-black font-display tracking-wider text-white flex items-center gap-1 leading-none">
               <span>OFFERS</span>
-              <Sparkles className="w-3 h-3 text-cyan-300" />
+              <Sparkles className="w-3 h-3 text-[#F97316]" />
             </div>
-            <span className="text-[10px] font-bold text-cyan-300 leading-none block mt-1">
+            <span className="text-[10px] font-bold text-[#F97316] leading-none block mt-1">
               Save More
             </span>
           </div>
@@ -155,16 +155,16 @@ export const FloatingOffersWidget = () => {
       {isOpen && (
         <div
           ref={popupRef}
-          className="fixed z-50 right-3 sm:right-6 top-[32%] sm:top-[35%] w-[calc(100%-24px)] sm:w-[360px] max-w-[380px] bg-white rounded-[28px] shadow-[0_25px_70px_-15px_rgba(21,19,54,0.4)] border-2 border-[#6D28D9]/30 overflow-hidden animate-fade-in no-print"
+          className="fixed z-50 right-3 sm:right-6 top-[32%] sm:top-[35%] w-[calc(100%-24px)] sm:w-[360px] max-w-[380px] bg-white rounded-[28px] shadow-[0_25px_70px_-15px_rgba(31,41,55,0.3)] border-2 border-[#FED7AA] overflow-hidden animate-fade-in no-print"
           role="dialog"
           aria-label="Tech Wash Special Offers"
         >
           
           {/* Header Banner */}
-          <div className="px-4 py-3 bg-gradient-to-r from-[#1E1B4B] via-[#151336] to-[#6D28D9] text-white flex items-center justify-between border-b border-[#6D28D9]/30">
+          <div className="px-4 py-3 bg-[#1F2937] text-white flex items-center justify-between border-b border-slate-700">
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-[#6D28D9] to-[#06B6D4] flex items-center justify-center text-white shadow-sm">
-                <Sparkles className="w-3.5 h-3.5 fill-current text-cyan-200" />
+              <div className="w-6 h-6 rounded-lg bg-[#F97316] flex items-center justify-center text-white shadow-sm">
+                <Sparkles className="w-3.5 h-3.5 fill-current text-white" />
               </div>
               <span className="text-xs font-black font-display tracking-tight text-white uppercase">
                 Special Offers & Promos
@@ -186,7 +186,7 @@ export const FloatingOffersWidget = () => {
             
             {/* Top Badges & Carousel Counter */}
             <div className="flex items-center justify-between">
-              <span className="px-2.5 py-0.5 rounded-full bg-[#F5F3FF] border border-[#6D28D9]/30 text-[#6D28D9] text-[10px] font-black tracking-wider uppercase">
+              <span className="px-2.5 py-0.5 rounded-full bg-[#FFF7ED] border border-[#FED7AA] text-[#F97316] text-[10px] font-black tracking-wider uppercase">
                 {currentOffer.badgeText || '✨ LIMITED TIME'}
               </span>
 
@@ -217,10 +217,10 @@ export const FloatingOffersWidget = () => {
 
             {/* Offer Title & Big Discount Headline */}
             <div>
-              <h3 className="text-sm font-bold text-[#1E1B4B] font-display">
+              <h3 className="text-sm font-bold text-slate-900 font-display">
                 {currentOffer.title}
               </h3>
-              <div className="text-2xl sm:text-3xl font-black font-display tracking-tight text-[#6D28D9] mt-0.5">
+              <div className="text-2xl sm:text-3xl font-black font-display tracking-tight text-[#F97316] mt-0.5">
                 {currentOffer.discountValue}
               </div>
               <p className="text-[11px] text-slate-600 mt-1 leading-snug">
@@ -231,19 +231,19 @@ export const FloatingOffersWidget = () => {
             {/* Meta Information Bar */}
             <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-[10px] text-slate-600">
               <span className="font-semibold">Min. Order: <strong className="text-slate-900">{currentOffer.minOrder}</strong></span>
-              <span className="flex items-center gap-1 text-emerald-700 font-bold">
-                <Clock className="w-3 h-3" />
+              <span className="flex items-center gap-1 text-[#F97316] font-bold">
+                <Clock className="w-3.5 h-3.5" />
                 <span>{currentOffer.validTill}</span>
               </span>
             </div>
 
             {/* Interactive Promo Code Box with Real Copy Button */}
-            <div className="p-2.5 rounded-2xl bg-[#F5F3FF] border-2 border-dashed border-[#6D28D9]/40 flex items-center justify-between gap-2">
+            <div className="p-2.5 rounded-2xl bg-[#FFF7ED] border-2 border-dashed border-[#FED7AA] flex items-center justify-between gap-2">
               <div className="pl-1">
-                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block leading-none">
+                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block leading-none">
                   Coupon Code
                 </span>
-                <span className="font-mono font-black text-sm text-[#1E1B4B] tracking-wider mt-0.5 block leading-tight">
+                <span className="font-mono font-black text-sm text-[#1F2937] tracking-wider mt-0.5 block leading-tight">
                   {currentOffer.code}
                 </span>
               </div>
@@ -254,7 +254,7 @@ export const FloatingOffersWidget = () => {
                 className={`py-1.5 px-3 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm ${
                   copiedCode === currentOffer.code
                     ? 'bg-emerald-600 text-white'
-                    : 'bg-[#6D28D9] hover:bg-[#5B21B6] text-white hover:scale-105 active:scale-95'
+                    : 'bg-[#F97316] hover:bg-[#EA580C] text-white hover:scale-105 active:scale-95'
                 }`}
               >
                 {copiedCode === currentOffer.code ? (
@@ -275,10 +275,10 @@ export const FloatingOffersWidget = () => {
             <button
               type="button"
               onClick={() => handleBookNow(currentOffer)}
-              className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-[#1E1B4B] to-[#6D28D9] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all"
+              className="w-full py-2.5 px-4 rounded-xl bg-[#F97316] hover:bg-[#EA580C] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all"
             >
               <span>Book With This Offer</span>
-              <ArrowRight className="w-3.5 h-3.5 text-cyan-300" />
+              <ArrowRight className="w-3.5 h-3.5 text-white" />
             </button>
 
             {/* Footer Navigation Link */}
@@ -289,7 +289,7 @@ export const FloatingOffersWidget = () => {
                     key={idx}
                     onClick={() => setCurrentIndex(idx)}
                     className={`w-2 h-2 rounded-full cursor-pointer transition-all ${
-                      currentIndex === idx ? 'w-4 bg-[#6D28D9]' : 'bg-slate-300'
+                      currentIndex === idx ? 'w-4 bg-[#F97316]' : 'bg-slate-300'
                     }`}
                   />
                 ))}
@@ -298,7 +298,7 @@ export const FloatingOffersWidget = () => {
               <Link
                 to="/offers"
                 onClick={() => setIsOpen(false)}
-                className="font-bold text-[#6D28D9] hover:underline flex items-center gap-1"
+                className="font-bold text-[#F97316] hover:underline flex items-center gap-1"
               >
                 <span>View All Offers ({offers.length})</span>
                 <ArrowRight className="w-3 h-3" />

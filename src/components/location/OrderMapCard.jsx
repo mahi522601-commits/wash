@@ -56,7 +56,7 @@ export const OrderMapCard = ({
       {/* Header & Source Badge */}
       <div className="flex items-center justify-between flex-wrap gap-2 pb-3 border-b border-slate-100">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#6D28D9] to-[#06B6D4] flex items-center justify-center text-white shadow-glow-purple">
+          <div className="w-9 h-9 rounded-2xl bg-[#F97316] flex items-center justify-center text-white shadow-lg shadow-brand-500/20">
             <MapPin className="w-4 h-4" />
           </div>
           <div>
@@ -69,7 +69,7 @@ export const OrderMapCard = ({
           </div>
         </div>
 
-        <Badge variant={location.locationSource === 'GPS' ? 'emerald' : 'royal'} size="sm">
+        <Badge variant={location.locationSource === 'GPS' ? 'emerald' : 'brand'} size="sm">
           {location.locationSource === 'GPS' ? '🛰️ Live GPS Verified' : '📍 ' + (location.locationSource || 'Manual')}
         </Badge>
       </div>
@@ -110,7 +110,7 @@ export const OrderMapCard = ({
             variant="primary"
             size="md"
             icon={ExternalLink}
-            className="w-full justify-center text-xs font-bold shadow-glow-purple"
+            className="w-full justify-center text-xs font-bold shadow-lg shadow-brand-500/20"
           >
             Open in Google Maps
           </Button>

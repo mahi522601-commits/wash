@@ -109,7 +109,7 @@ export const GalleryPage = () => {
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/25 to-transparent opacity-85 group-hover:opacity-95 transition-opacity" />
 
               <div className="absolute top-4 left-4">
-                <Badge variant="royal" size="md">{item.category || 'Showcase'}</Badge>
+                <Badge variant="brand" size="md">{item.category || 'Showcase'}</Badge>
               </div>
 
               <div className="absolute bottom-0 inset-x-0 p-6 text-white">
@@ -146,7 +146,7 @@ export const GalleryPage = () => {
             </div>
             <div className="p-6 bg-slate-900">
               <div className="flex items-center gap-2 mb-2">
-                <Badge variant="cyan" size="sm">{activeItem.category || 'Showcase'}</Badge>
+                <Badge variant="brand" size="sm">{activeItem.category || 'Showcase'}</Badge>
               </div>
               <h3 className="text-xl font-bold font-display text-white">{activeItem.title}</h3>
               {activeItem.description && (

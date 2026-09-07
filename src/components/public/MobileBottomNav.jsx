@@ -84,7 +84,7 @@ export const MobileBottomNav = ({ onOpenAssistant }) => {
           <div className="relative flex justify-center -top-5">
             <Link
               to="/book-pickup"
-              className="w-14 h-14 rounded-full bg-gradient-to-tr from-brand-700 via-brand-600 to-cyan-500 text-white flex flex-col items-center justify-center shadow-glow-purple border-4 border-white transform active:scale-95 hover:scale-105 transition-all"
+              className="w-14 h-14 rounded-full bg-[#F97316] text-white flex flex-col items-center justify-center shadow-glow-orange border-4 border-white transform active:scale-95 hover:scale-105 transition-all"
               aria-label="Book Doorstep Pickup"
             >
               <Calendar className="w-5 h-5 mb-0.5" />
@@ -146,7 +146,7 @@ export const MobileBottomNav = ({ onOpenAssistant }) => {
                 to="/how-it-works"
                 className="p-3.5 rounded-2xl bg-brand-50 border border-brand-200 flex flex-col gap-1 text-xs font-bold text-slate-800"
               >
-                <Sparkles className="w-4 h-4 text-cyan-600" />
+                <Sparkles className="w-4 h-4 text-[#F97316]" />
                 <span>6-Stage Process</span>
               </Link>
 
@@ -173,9 +173,9 @@ export const MobileBottomNav = ({ onOpenAssistant }) => {
                   setMoreDrawerOpen(false);
                   onOpenAssistant();
                 }}
-                className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-navy-800 to-brand-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg"
+                className="w-full py-3.5 px-4 rounded-2xl bg-[#F97316] hover:bg-[#EA580C] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg"
               >
-                <Sparkles className="w-4 h-4 text-cyan-300" />
+                <Sparkles className="w-4 h-4 text-white" />
                 <span>Open AI Concierge Assistant</span>
               </button>
             )}

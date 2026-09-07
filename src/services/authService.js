@@ -1,7 +1,7 @@
 /**
  * Real Firebase Authentication & Firestore Admin Authorization Service for Tech Wash
  * Connects directly to project: laundry-37abc
- * Enforces admin authorization via: admins/{uid} document verification
+ * Enforces admin authorization via: users/{uid} document verification (role: admin)
  */
 import { 
   signInWithEmailAndPassword, 
@@ -38,48 +38,63 @@ export const ROLE_PERMISSIONS = {
 
 export const authService = {
   /**
-   * Log in user with Firebase Auth and verify Firestore admin document: admins/{uid}
+   * Log in user with Firebase Auth and verify Firestore admin document: users/{uid}
    */
   async login(email, password) {
     if (!auth || !db) {
-      throw new Error('Unable to connect to the authentication service. Please try again.');
+      throw new Error('Unable to connect to the authentication service. Please check Firebase configuration.');
     }
 
     try {
       // 1. Authenticate with Firebase Authentication
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
       const user = userCredential.user;
 
-      // 2. Verify admin document in Firestore: admins/{currentUser.uid}
-      const adminSnap = await getDoc(doc(db, 'admins', user.uid));
-
-      // 3. Document must exist
-      if (!adminSnap.exists()) {
+      // 2. Verify admin document in Firestore: users/{currentUser.uid}
+      let userDocSnap;
+      try {
+        userDocSnap = await getDoc(doc(db, 'users', user.uid));
+      } catch (firestoreErr) {
+        console.error("Firestore read error for UID:", user.uid, firestoreErr);
         await signOut(auth);
-        throw new Error('You are not authorized to access the Admin Portal.');
+        const code = firestoreErr?.code || '';
+        if (code === 'permission-denied') {
+          throw new Error('Firestore Permission Denied: Your Firebase Firestore Security Rules are blocking reads. Please publish the Firestore Security Rules in Firebase Console.');
+        }
+        if (code === 'unavailable' || code === 'deadline-exceeded') {
+          throw new Error('Firestore Database is currently unreachable. Please check your network or Firestore region status.');
+        }
+        throw new Error(`Firestore Error (${code || 'read-failed'}): Unable to read users/${user.uid}. Please check Firestore rules in Firebase Console.`);
       }
 
-      const adminData = adminSnap.data() || {};
+      // 3. Document must exist in 'users' collection
+      if (!userDocSnap.exists()) {
+        await signOut(auth);
+        throw new Error('Access denied. Admin privileges required.');
+      }
 
-      // 4. Must be active: true
-      if (adminData.active === false) {
+      const userData = userDocSnap.data() || {};
+
+      // 4. Must be active (if active flag is set)
+      if (userData.active === false) {
         await signOut(auth);
         throw new Error('Your admin account is currently disabled.');
       }
 
-      // 5. Must have authorized role
-      const userRole = (adminData.role || '').toLowerCase();
-      if (!AUTHORIZED_ADMIN_ROLES.includes(userRole)) {
+      // 5. Must have role === 'admin'
+      const userRole = (userData.role || '').toLowerCase().trim();
+      if (userRole !== 'admin') {
         await signOut(auth);
-        throw new Error('You do not have permission to access the Admin Portal.');
+        throw new Error('Access denied. Admin privileges required.');
       }
 
       // 6. Return verified admin profile
       const adminProfile = {
         uid: user.uid,
         email: user.email,
-        displayName: user.displayName || adminData.name || (user.email ? user.email.split('@')[0] : 'Admin'),
-        role: adminData.role,
+        displayName: userData.name || user.displayName || (user.email ? user.email.split('@')[0] : 'Admin'),
+        name: userData.name || 'Tech Wash Admin',
+        role: userData.role || 'admin',
         active: true,
         token: await user.getIdToken(),
       };
@@ -91,9 +106,10 @@ export const authService = {
 
       // If error was already our custom authorization error, rethrow it
       if (
-        err.message === 'You are not authorized to access the Admin Portal.' ||
-        err.message === 'Your admin account is currently disabled.' ||
-        err.message === 'You do not have permission to access the Admin Portal.'
+        err.message?.startsWith('Access denied') ||
+        err.message?.startsWith('Firestore') ||
+        err.message?.startsWith('Your admin account') ||
+        err.message?.startsWith('Unable to connect')
       ) {
         throw err;
       }
@@ -103,18 +119,21 @@ export const authService = {
       if (
         errorCode === 'auth/user-not-found' ||
         errorCode === 'auth/wrong-password' ||
-        errorCode === 'auth/invalid-credential' ||
-        errorCode === 'auth/invalid-email'
+        errorCode === 'auth/invalid-credential'
       ) {
         throw new Error('Incorrect email or password.');
+      } else if (errorCode === 'auth/invalid-email') {
+        throw new Error('Please enter a valid email address.');
       } else if (errorCode === 'auth/user-disabled') {
-        throw new Error('Your admin account is currently disabled.');
+        throw new Error('Your account has been disabled in Firebase Authentication.');
+      } else if (errorCode === 'auth/operation-not-allowed') {
+        throw new Error('Email/Password provider is disabled in Firebase Console. Please enable Email/Password under Authentication > Sign-in method.');
       } else if (errorCode === 'auth/network-request-failed') {
-        throw new Error('Unable to connect to the authentication service. Please try again.');
+        throw new Error('Network connection error. Unable to reach Firebase authentication servers.');
       } else if (errorCode === 'auth/too-many-requests') {
         throw new Error('Too many failed login attempts. Please try again later.');
       } else if (errorCode === 'auth/api-key-not-valid' || errorCode === 'auth/invalid-api-key') {
-        throw new Error('Authentication service configuration error (API Key).');
+        throw new Error('Firebase API Key is invalid. Please update VITE_FIREBASE_API_KEY in your .env file with the valid Web API Key from Firebase Console (Project Settings > General).');
       }
 
       throw new Error(err.message || 'Incorrect email or password.');
@@ -122,24 +141,24 @@ export const authService = {
   },
 
   /**
-   * Verify Firestore admin document for an existing Firebase User: admins/{uid}
+   * Verify Firestore admin document for an existing Firebase User: users/{uid}
    */
   async verifyAdminDocument(uid) {
     if (!db || !uid) return null;
 
     try {
-      const adminSnap = await getDoc(doc(db, 'admins', uid));
-      if (!adminSnap.exists()) return null;
+      const userSnap = await getDoc(doc(db, 'users', uid));
+      if (!userSnap.exists()) return null;
 
-      const adminData = adminSnap.data() || {};
-      if (adminData.active === false) return null;
+      const userData = userSnap.data() || {};
+      if (userData.active === false) return null;
 
-      const userRole = (adminData.role || '').toLowerCase();
-      if (!AUTHORIZED_ADMIN_ROLES.includes(userRole)) return null;
+      const userRole = (userData.role || '').toLowerCase().trim();
+      if (userRole !== 'admin') return null;
 
-      return adminData;
+      return userData;
     } catch (e) {
-      console.warn("Firestore admin authorization check failed:", e);
+      console.warn("Firestore user admin authorization check failed:", e);
       return null;
     }
   },

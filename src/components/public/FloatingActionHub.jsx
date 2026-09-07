@@ -33,40 +33,22 @@ export const FloatingActionHub = ({ onOpenAssistant }) => {
   return (
     <>
       {/* ─────────────────────────────────────────────────────────
-          1. LEFT SIDE: GOOGLE REVIEW BUTTON
-      ───────────────────────────────────────────────────────── */}
-      {googleReviewUrl && (
-        <div className="fixed left-4 sm:left-6 bottom-[85px] sm:bottom-[90px] z-40 flex items-center pointer-events-auto no-print">
-          <a
-            href={googleReviewUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="group flex items-center gap-2 px-3.5 py-2.5 rounded-full bg-white/90 backdrop-blur-md text-slate-800 border border-brand-200 shadow-luxury hover:shadow-xl hover:border-amber-300 hover:scale-105 transition-all duration-300 text-xs font-bold"
-            title="Review us on Google"
-          >
-            <Star className="w-4 h-4 text-amber-400 fill-amber-400 group-hover:rotate-12 transition-transform" />
-            <span className="text-[11px] text-slate-700 font-bold hidden sm:inline">Review Us</span>
-          </a>
-        </div>
-      )}
-
-      {/* ─────────────────────────────────────────────────────────
-          2. RIGHT SIDE: STACKED FLOATING CONTROLS
+          RIGHT SIDE: NEATLY STACKED FLOATING ACTION CONTROLS
           Stack Order (Bottom to Top):
-          1. AI Chatbot Trigger (Bottom: 85px mobile / 90px desktop)
-          2. WhatsApp Button (Bottom: 150px mobile / 160px desktop)
-          3. Phone Call Button (Bottom: 212px mobile / 228px desktop)
+          1. AI Chatbot Trigger (Bottom)
+          2. WhatsApp Button
+          3. Phone Call Button
       ───────────────────────────────────────────────────────── */}
-      <div className="fixed right-4 sm:right-6 bottom-[85px] sm:bottom-[90px] z-40 flex flex-col items-end gap-3 pointer-events-auto no-print">
+      <div className="fixed right-4 sm:right-6 bottom-6 sm:bottom-8 z-40 flex flex-col items-end gap-3 pointer-events-auto no-print">
         
         {/* Direct Call Button (Top of Stack) */}
         <a
           href={`tel:${cleanPhone}`}
-          className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-white/95 backdrop-blur-md text-brand-700 border border-brand-200 shadow-luxury flex items-center justify-center hover:bg-brand-50 hover:scale-110 transition-all duration-300 group"
+          className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-white/95 backdrop-blur-md text-brand-500 border border-brand-200 shadow-luxury flex items-center justify-center hover:bg-brand-50 hover:scale-110 transition-all duration-300 group"
           title={`Call ${primaryPhone}`}
           aria-label="Call concierge"
         >
-          <Phone className="w-4 h-4 sm:w-5 sm:h-5 group-hover:rotate-12 transition-transform text-[#6D28D9]" />
+          <Phone className="w-4 h-4 sm:w-5 sm:h-5 group-hover:rotate-12 transition-transform text-[#F97316]" />
         </a>
 
         {/* WhatsApp Button with Glow Ring (Middle of Stack) */}
@@ -74,11 +56,11 @@ export const FloatingActionHub = ({ onOpenAssistant }) => {
           href={`https://wa.me/${cleanWa}?text=${encodeURIComponent(whatsappMsg)}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="relative w-12 h-12 sm:w-13 sm:h-13 p-3 rounded-full bg-emerald-500 text-white shadow-luxury hover:bg-emerald-600 hover:scale-110 transition-all duration-300 flex items-center justify-center group"
+          className="relative w-12 h-12 sm:w-13 sm:h-13 p-3 rounded-full bg-[#F97316] text-white shadow-luxury hover:bg-[#EA580C] hover:scale-110 transition-all duration-300 flex items-center justify-center group"
           title="Chat on WhatsApp Concierge"
           aria-label="Chat on WhatsApp"
         >
-          <span className="absolute -inset-1 rounded-full bg-emerald-400/40 animate-ping pointer-events-none" />
+          <span className="absolute -inset-1 rounded-full bg-orange-400/40 animate-ping pointer-events-none" />
           <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6 fill-current relative z-10" />
         </a>
 
@@ -86,19 +68,19 @@ export const FloatingActionHub = ({ onOpenAssistant }) => {
         <button
           type="button"
           onClick={onOpenAssistant}
-          className="relative w-[54px] h-[54px] sm:w-[58px] sm:h-[58px] rounded-full bg-gradient-to-tr from-[#1E1B4B] via-[#151336] to-[#6D28D9] text-white border-2 border-[#06B6D4]/50 shadow-[0_10px_30px_rgba(109,40,217,0.4)] hover:shadow-[0_15px_35px_rgba(6,182,212,0.5)] hover:scale-110 active:scale-95 transition-all duration-300 flex items-center justify-center group"
+          className="relative w-[54px] h-[54px] sm:w-[58px] sm:h-[58px] rounded-full bg-[#1F2937] text-white border-2 border-[#F97316] shadow-[0_10px_30px_rgba(249,115,22,0.35)] hover:shadow-[0_15px_35px_rgba(249,115,22,0.5)] hover:scale-110 active:scale-95 transition-all duration-300 flex items-center justify-center group"
           title="Open Tech Wash AI Concierge"
           aria-label="Open Tech Wash AI Concierge"
         >
           {/* Subtle Ambient Glow Ring */}
-          <span className="absolute -inset-0.5 rounded-full bg-cyan-400/30 animate-pulse pointer-events-none" />
+          <span className="absolute -inset-0.5 rounded-full bg-orange-400/30 animate-pulse pointer-events-none" />
           
           <div className="relative z-10 flex flex-col items-center justify-center">
-            <Sparkles className="w-6 h-6 text-cyan-300 group-hover:rotate-12 transition-transform" />
+            <Sparkles className="w-6 h-6 text-[#F97316] group-hover:rotate-12 transition-transform" />
           </div>
 
           {/* Active Status Dot */}
-          <span className="absolute top-1 right-1 w-3 h-3 bg-emerald-400 border-2 border-white rounded-full shadow-sm z-20" />
+          <span className="absolute top-1 right-1 w-3 h-3 bg-[#F97316] border-2 border-white rounded-full shadow-sm z-20" />
         </button>
 
       </div>

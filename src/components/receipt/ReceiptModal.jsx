@@ -115,7 +115,7 @@ export const ReceiptModal = ({
               size="md"
               icon={Printer}
               onClick={handlePrint}
-              className="shadow-glow-purple"
+              className="shadow-lg shadow-brand-500/20"
             >
               Print / Save PDF
             </Button>

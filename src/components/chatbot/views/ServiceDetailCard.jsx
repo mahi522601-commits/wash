@@ -36,9 +36,9 @@ export const ServiceDetailCard = ({ service, onBack, onBookService }) => {
           alt={service.title}
           className="w-full h-full object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#1E1B4B]/80 via-transparent to-transparent flex items-end p-2.5">
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end p-2.5">
           <div>
-            <span className="px-2 py-0.5 rounded-full bg-[#06B6D4] text-white text-[9px] font-bold">
+            <span className="px-2 py-0.5 rounded-full bg-[#F97316] text-white text-[9px] font-bold">
               {service.category}
             </span>
             <h4 className="text-sm font-black text-white mt-0.5">{service.title}</h4>
@@ -51,7 +51,7 @@ export const ServiceDetailCard = ({ service, onBack, onBookService }) => {
             onClick={() => setShowVideo(!showVideo)}
             className="absolute top-2 right-2 px-2 py-1 rounded-full bg-white/90 backdrop-blur-md text-slate-800 text-[10px] font-bold flex items-center gap-1 shadow-sm hover:scale-105 transition-transform"
           >
-            <Play className="w-3 h-3 text-rose-600 fill-rose-600" />
+            <Play className="w-3 h-3 text-[#F97316] fill-[#F97316]" />
             <span>Process Video</span>
           </button>
         )}
@@ -70,7 +70,7 @@ export const ServiceDetailCard = ({ service, onBack, onBookService }) => {
             href={service.youtubeUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="block p-2 rounded-lg bg-white/10 hover:bg-white/20 text-center text-cyan-300 font-bold text-[11px] transition-colors"
+            className="block p-2 rounded-lg bg-white/10 hover:bg-white/20 text-center text-[#FED7AA] font-bold text-[11px] transition-colors"
           >
             ▶ Watch "{service.youtubeTitle || 'Inside Care Lab'}" on YouTube
           </a>
@@ -83,8 +83,8 @@ export const ServiceDetailCard = ({ service, onBack, onBookService }) => {
       </p>
 
       {/* Structured Key Highlights */}
-      <div className="p-2.5 rounded-xl bg-[#F5F3FF] border border-[#6D28D9]/20 space-y-1 text-[11px]">
-        <div className="font-bold text-[#6D28D9] text-[10px] uppercase tracking-wider">
+      <div className="p-2.5 rounded-xl bg-[#FFF7ED] border border-[#FED7AA] space-y-1 text-[11px]">
+        <div className="font-bold text-[#F97316] text-[10px] uppercase tracking-wider">
           Laboratory Standards
         </div>
         {(service.features?.length > 0 ? service.features.slice(0, 3) : [
@@ -93,7 +93,7 @@ export const ServiceDetailCard = ({ service, onBack, onBookService }) => {
           'Dual optical & tactile QC inspection'
         ]).map((feat, idx) => (
           <div key={idx} className="flex items-center gap-1.5 text-slate-700">
-            <Check className="w-3 h-3 text-emerald-600 shrink-0" />
+            <Check className="w-3 h-3 text-[#F97316] shrink-0" />
             <span>{feat}</span>
           </div>
         ))}
@@ -103,7 +103,7 @@ export const ServiceDetailCard = ({ service, onBack, onBookService }) => {
       <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
         <div>
           <span className="text-[9px] text-slate-400 block">Starting Rate:</span>
-          <span className="text-sm font-black font-mono text-[#1E1B4B]">
+          <span className="text-sm font-black font-mono text-[#1F2937]">
             {formatCurrency(service.startingPrice || 129)}
           </span>
           <span className="text-[9px] text-slate-500 ml-1 font-medium">{service.pricingType || 'per piece'}</span>
@@ -112,10 +112,10 @@ export const ServiceDetailCard = ({ service, onBack, onBookService }) => {
         <button
           type="button"
           onClick={() => onBookService(service)}
-          className="py-2 px-4 rounded-xl bg-[#6D28D9] hover:bg-[#5B21B6] text-white font-bold text-xs flex items-center gap-1.5 shadow-sm hover:scale-105 active:scale-95 transition-all"
+          className="py-2 px-4 rounded-xl bg-[#F97316] hover:bg-[#EA580C] text-white font-bold text-xs flex items-center gap-1.5 shadow-sm hover:scale-105 active:scale-95 transition-all"
         >
           <span>Book {service.title}</span>
-          <ArrowRight className="w-3.5 h-3.5 text-cyan-300" />
+          <ArrowRight className="w-3.5 h-3.5 text-white" />
         </button>
       </div>
 

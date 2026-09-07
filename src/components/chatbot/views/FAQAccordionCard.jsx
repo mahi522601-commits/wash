@@ -12,7 +12,7 @@ export const FAQAccordionCard = ({ faqs = [] }) => {
           <HelpCircle className="w-3.5 h-3.5" />
         </div>
         <div>
-          <h4 className="text-xs font-bold text-[#1E1B4B]">Frequently Asked Questions</h4>
+          <h4 className="text-xs font-bold text-[#1F2937]">Frequently Asked Questions</h4>
           <span className="text-[10px] text-slate-400">Tap to expand answer</span>
         </div>
       </div>
@@ -32,7 +32,7 @@ export const FAQAccordionCard = ({ faqs = [] }) => {
               >
                 <span>{faq.question}</span>
                 {isOpen ? (
-                  <ChevronUp className="w-3.5 h-3.5 text-[#6D28D9] shrink-0" />
+                  <ChevronUp className="w-3.5 h-3.5 text-[#F97316] shrink-0" />
                 ) : (
                   <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                 )}

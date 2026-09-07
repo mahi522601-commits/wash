@@ -798,7 +798,7 @@ export const BookPickupPage = () => {
                       {/* Display UPI QR code if UPI_QR selected */}
                       {paymentMethod === 'UPI_QR' && paymentConfig?.upi?.enabled && (
                         <div className="mt-4 p-5 rounded-2xl bg-slate-900 text-white text-center space-y-3">
-                          <p className="text-xs text-cyan-300 font-semibold">
+                          <p className="text-xs text-brand-400 font-semibold">
                             Scan & Pay Instant via Any UPI App
                           </p>
                           {paymentConfig.upi.qrImageUrl ? (

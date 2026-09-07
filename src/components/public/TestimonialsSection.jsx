@@ -63,12 +63,12 @@ export const TestimonialsSection = ({ testimonials = [] }) => {
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-4 border-b border-brand-200/80">
           <div className="space-y-3 max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-brand-100 border border-brand-200 text-brand-700 text-xs font-bold uppercase tracking-wider">
-              <Sparkles className="w-3.5 h-3.5 text-cyan-600" />
+              <Sparkles className="w-3.5 h-3.5 text-brand-600" />
               <span>Verified Patron Reviews</span>
             </div>
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black font-display tracking-tight text-navy-800 leading-tight">
               Trusted by Discerning <br />
-              <span className="text-gradient-purple">Garment Owners</span>
+              <span className="text-brand-500">Garment Owners</span>
             </h2>
           </div>
 

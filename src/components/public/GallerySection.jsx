@@ -65,12 +65,12 @@ export const GallerySection = ({ gallery = [] }) => {
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-4 border-b border-slate-100">
           <div className="space-y-3 max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-brand-100 border border-brand-200 text-brand-700 text-xs font-bold uppercase tracking-wider">
-              <Sparkles className="w-3.5 h-3.5 text-cyan-600" />
+              <Sparkles className="w-3.5 h-3.5 text-[#F97316]" />
               <span>Craftsmanship Portfolio</span>
             </div>
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black font-display tracking-tight text-navy-800 leading-tight">
               Before & After <br />
-              <span className="text-gradient-purple">Transformations</span>
+              <span className="text-[#F97316]">Transformations</span>
             </h2>
           </div>
 
@@ -129,7 +129,7 @@ export const GallerySection = ({ gallery = [] }) => {
                   {/* Caption Details */}
                   <div className="absolute bottom-4 inset-x-4 p-4 rounded-2xl glass-card-dark text-white space-y-1">
                     <h3 className="text-sm font-bold font-display">{item.title}</h3>
-                    <p className="text-[11px] text-cyan-200 line-clamp-1">{item.description}</p>
+                    <p className="text-[11px] text-[#FED7AA] line-clamp-1">{item.description}</p>
                   </div>
                 </div>
               </div>

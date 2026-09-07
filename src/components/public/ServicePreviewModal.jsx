@@ -23,7 +23,7 @@ export const ServicePreviewModal = ({
     >
       <div className="bg-slate-900 text-white p-4 flex items-center justify-between border-b border-slate-800">
         <div className="flex items-center gap-2">
-          <Badge variant="cyan" size="sm">Live Public Preview Mode</Badge>
+          <Badge variant="brand" size="sm">Live Public Preview Mode</Badge>
           <span className="text-xs text-slate-300 font-mono">/services/{service.slug || 'preview'}</span>
         </div>
         <Button variant="outline" size="sm" onClick={onClose} className="text-white border-slate-700 hover:bg-slate-800">
@@ -42,7 +42,7 @@ export const ServicePreviewModal = ({
             />
           </div>
           <div className="relative z-10 max-w-3xl space-y-4">
-            <Badge variant="royal" size="md">{service.category || 'Specialized Service'}</Badge>
+            <Badge variant="brand" size="md">{service.category || 'Specialized Service'}</Badge>
             <h1 className="text-3xl sm:text-4xl font-black font-display text-white">
               {service.title || 'Untitled Service'}
             </h1>
@@ -50,7 +50,7 @@ export const ServicePreviewModal = ({
               {service.shortDescription || 'Service short summary description.'}
             </p>
             <div className="flex items-center gap-4 pt-2">
-              <div className="text-2xl font-black font-display text-cyan-400">
+              <div className="text-2xl font-black font-display text-brand-400">
                 {service.startingPrice ? `${formatCurrency(service.startingPrice)}` : 'Custom Quote'}
                 <span className="text-xs font-normal text-slate-400 ml-1">/ {service.pricingType || 'per piece'}</span>
               </div>

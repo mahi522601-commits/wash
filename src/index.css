@@ -9,54 +9,45 @@
   }
   
   body {
-    @apply bg-brand-50 font-sans antialiased selection:bg-brand-500 selection:text-white;
-    color: #171717;
+    @apply bg-white font-sans antialiased selection:bg-brand-500 selection:text-white;
+    color: #1F2937;
   }
 }
 
 @layer utilities {
-  /* Editorial Glassmorphism */
+  /* Clean White & Orange Glassmorphism */
   .glass-card {
-    background: rgba(255, 255, 255, 0.88);
+    background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(221, 214, 254, 0.6);
+    border: 1px solid rgba(254, 215, 170, 0.6);
   }
 
   .glass-card-dark {
-    background: rgba(30, 27, 75, 0.85);
+    background: rgba(31, 41, 55, 0.95);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(109, 40, 217, 0.35);
+    border: 1px solid rgba(249, 115, 22, 0.35);
   }
 
   .glass-pill-nav {
-    background: rgba(255, 255, 255, 0.92);
+    background: rgba(255, 255, 255, 0.98);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(221, 214, 254, 0.8);
-    box-shadow: 0 12px 36px -8px rgba(30, 27, 75, 0.1), 0 0 0 1px rgba(255, 255, 255, 0.9) inset;
+    border: 1px solid rgba(254, 215, 170, 0.8);
+    box-shadow: 0 12px 36px -8px rgba(31, 41, 55, 0.08), 0 0 0 1px rgba(255, 255, 255, 0.9) inset;
   }
 
-  /* Luxury Text Gradients */
-  .text-gradient-purple {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-brand-700 via-brand-600 to-cyan-500;
-  }
-
-  .text-gradient-cyan {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-cyan-300 to-brand-300;
-  }
-
+  /* Orange Brand Accents */
+  .text-gradient-purple,
+  .text-gradient-cyan,
   .text-gradient-luxury {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-navy-800 via-brand-700 to-brand-900;
+    @apply text-brand-500;
   }
 
-  .bg-radial-purple-glow {
-    background: radial-gradient(circle at 50% 50%, rgba(109, 40, 217, 0.22) 0%, rgba(30, 27, 75, 0) 70%);
-  }
-
+  .bg-radial-purple-glow,
   .bg-radial-cyan-glow {
-    background: radial-gradient(circle at 50% 50%, rgba(6, 182, 212, 0.25) 0%, rgba(30, 27, 75, 0) 70%);
+    background: radial-gradient(circle at 50% 50%, rgba(249, 115, 22, 0.12) 0%, rgba(255, 255, 255, 0) 70%);
   }
 
   /* Organic Image Masking Shapes */
@@ -133,16 +124,16 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: #f5f3ff;
+  background: #FFF7ED;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #c4b5fd;
+  background: #FED7AA;
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #6d28d9;
+  background: #F97316;
 }
 
 /* High-Fidelity One-Page A4 / A5 Print Styling for Tech Wash */

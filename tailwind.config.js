@@ -7,46 +7,52 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Exact Brand Palette
+        // Strict White & Vibrant Orange Brand Palette
         brand: {
-          50: '#f5f3ff',   // Luxury Light Canvas Background
-          100: '#ede9fe',
-          200: '#ddd6fe',
-          300: '#c4b5fd',
-          400: '#a78bfa',
-          500: '#8b5cf6',
-          600: '#6d28d9',  // Primary Brand Purple (#6D28D9)
-          700: '#5b21b6',
-          800: '#4c1d95',
-          900: '#3b0764',
-          950: '#2e1065',
+          50: '#FFF7ED',   // Soft Orange Canvas & Hero Tint (#FFF7ED)
+          100: '#FFEDD5',
+          200: '#FED7AA',  // Subtle Warm Orange Border
+          300: '#FDBA74',
+          400: '#FB923C',
+          500: '#F97316',  // Primary Vibrant Orange (#F97316)
+          600: '#EA580C',  // Orange Active / Hover
+          700: '#C2410C',
+          800: '#9A3412',
+          900: '#7C2D12',
+          950: '#431407',
+        },
+        charcoal: {
+          800: '#1F2937',  // Dark Charcoal Typography & Structure (#1F2937)
+          900: '#111827',
+          950: '#030712',
         },
         navy: {
-          800: '#1e1b4b',  // Dark Deep Navy (#1E1B4B)
-          900: '#151336',
-          950: '#0c0a24',
+          800: '#1F2937',  // Cleanly mapped to Dark Charcoal
+          900: '#111827',
+          950: '#030712',
         },
         cyan: {
-          300: '#67e8f9',
-          400: '#22d3ee',
-          500: '#06b6d4',  // Electric Accent Cyan (#06B6D4)
-          600: '#0891b2',
+          300: '#FED7AA',
+          400: '#FB923C',
+          500: '#F97316',
+          600: '#EA580C',
         },
-        canvas: '#F5F3FF',
-        ink: '#171717',
+        canvas: '#FFFFFF',
+        ink: '#1F2937',
       },
       fontFamily: {
         sans: ['Plus Jakarta Sans', 'Inter', 'system-ui', 'sans-serif'],
         display: ['Outfit', 'Plus Jakarta Sans', 'sans-serif'],
       },
       boxShadow: {
-        'glass': '0 8px 32px 0 rgba(109, 40, 217, 0.08)',
-        'glass-hover': '0 16px 40px 0 rgba(109, 40, 217, 0.16)',
-        'luxury': '0 20px 50px -12px rgba(30, 27, 75, 0.08), 0 0 0 1px rgba(221, 214, 254, 0.6)',
-        'luxury-hover': '0 25px 60px -15px rgba(109, 40, 217, 0.22), 0 0 0 1px rgba(109, 40, 217, 0.4)',
-        'glow-purple': '0 0 35px -5px rgba(109, 40, 217, 0.45)',
-        'glow-cyan': '0 0 30px -5px rgba(6, 182, 212, 0.55)',
-        'pill': '0 10px 30px -5px rgba(15, 23, 42, 0.08), 0 0 0 1px rgba(255, 255, 255, 0.8) inset',
+        'glass': '0 8px 32px 0 rgba(249, 115, 22, 0.06)',
+        'glass-hover': '0 16px 40px 0 rgba(249, 115, 22, 0.12)',
+        'luxury': '0 20px 50px -12px rgba(31, 41, 55, 0.06), 0 0 0 1px rgba(254, 215, 170, 0.5)',
+        'luxury-hover': '0 25px 60px -15px rgba(249, 115, 22, 0.18), 0 0 0 1px rgba(249, 115, 22, 0.3)',
+        'glow-orange': '0 0 35px -5px rgba(249, 115, 22, 0.45)',
+        'glow-purple': '0 0 35px -5px rgba(249, 115, 22, 0.45)',
+        'glow-cyan': '0 0 30px -5px rgba(249, 115, 22, 0.55)',
+        'pill': '0 10px 30px -5px rgba(31, 41, 55, 0.06), 0 0 0 1px rgba(255, 255, 255, 0.8) inset',
       },
       borderRadius: {
         'organic-1': '60% 40% 70% 30% / 40% 50% 60% 50%',

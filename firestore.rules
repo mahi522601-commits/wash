@@ -90,6 +90,12 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    // Users collection: Authenticated user can read own profile, Admins can manage all
+    match /users/{userId} {
+      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      allow write: if isAdmin();
+    }
+
     // Sensitive Admin collections
     match /adminUsers/{userId} {
       allow read, write: if isAdmin();

@@ -24,12 +24,13 @@ export const AuthProvider = ({ children }) => {
             setCurrentUser({
               uid: firebaseUser.uid,
               email: firebaseUser.email,
-              displayName: firebaseUser.displayName || adminData.name || (firebaseUser.email ? firebaseUser.email.split('@')[0] : 'Admin'),
-              role: adminData.role || 'superadmin',
+              displayName: adminData.name || firebaseUser.displayName || (firebaseUser.email ? firebaseUser.email.split('@')[0] : 'Admin'),
+              name: adminData.name || 'Tech Wash Admin',
+              role: adminData.role || 'admin',
               active: true,
             });
           } else {
-            // Not an authorized admin in Firestore -> sign out
+            // Not an authorized admin in Firestore (role is not 'admin' or doc missing) -> sign out
             await authService.logout();
             setCurrentUser(null);
           }

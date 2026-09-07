@@ -80,7 +80,7 @@ export const ServicesShowcase = ({ services = [] }) => {
       
       {/* Subtle Background Glows */}
       <div className="absolute top-10 right-0 w-96 h-96 bg-brand-200/40 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-10 left-0 w-96 h-96 bg-cyan-200/30 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-10 left-0 w-96 h-96 bg-brand-200/30 rounded-full blur-3xl pointer-events-none" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 space-y-12">
         
@@ -88,12 +88,12 @@ export const ServicesShowcase = ({ services = [] }) => {
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-4 border-b border-brand-200/80">
           <div className="space-y-3 max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-brand-100 border border-brand-200 text-brand-700 text-xs font-bold uppercase tracking-wider">
-              <Sparkles className="w-3.5 h-3.5 text-cyan-600" />
+              <Sparkles className="w-3.5 h-3.5 text-brand-600" />
               <span>Tailored Textile Solutions</span>
             </div>
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black font-display tracking-tight text-navy-800 leading-tight">
               Specialized Care for <br />
-              <span className="text-gradient-purple">Every Fabric Type</span>
+              <span className="text-brand-500">Every Fabric Type</span>
             </h2>
           </div>
 
@@ -155,7 +155,7 @@ export const ServicesShowcase = ({ services = [] }) => {
 
                   {/* Starting Rate Badge */}
                   <div className="absolute bottom-4 left-4 glass-card-dark px-3.5 py-1.5 rounded-2xl flex items-center gap-1.5 text-white">
-                    <span className="text-[10px] uppercase font-bold text-cyan-300">From</span>
+                    <span className="text-[10px] uppercase font-bold text-brand-300">From</span>
                     <span className="text-sm font-black font-display">
                       {formatCurrency(service.startingPrice)}
                     </span>
@@ -177,7 +177,7 @@ export const ServicesShowcase = ({ services = [] }) => {
                   {/* Micro Benefit Points */}
                   <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-brand-700">
                     <span className="flex items-center gap-1">
-                      <ShieldCheck className="w-4 h-4 text-cyan-600" />
+                      <ShieldCheck className="w-4 h-4 text-brand-600" />
                       <span>Fabric-Safe Cleaning</span>
                     </span>
                     <span className="group-hover:translate-x-1 transition-transform">
@@ -198,7 +198,7 @@ export const ServicesShowcase = ({ services = [] }) => {
             className="inline-flex items-center gap-2 px-8 py-4 rounded-full bg-navy-800 text-white font-bold text-sm shadow-xl hover:bg-brand-600 transform hover:-translate-y-0.5 transition-all"
           >
             <span>View Full Service Catalog & Rates</span>
-            <ArrowUpRight className="w-4 h-4 text-cyan-400" />
+            <ArrowUpRight className="w-4 h-4 text-brand-400" />
           </Link>
         </div>
 

@@ -25,7 +25,7 @@ export const OrderTrackingCard = ({ order }) => {
       <div className="flex items-center justify-between pb-2 border-b border-slate-100">
         <div>
           <div className="flex items-center gap-1.5">
-            <span className="px-2 py-0.5 rounded-full bg-cyan-100 text-cyan-800 text-[10px] font-bold">
+            <span className="px-2 py-0.5 rounded-full bg-[#FFF7ED] text-[#F97316] border border-[#FED7AA] text-[10px] font-bold">
               Active Progression
             </span>
             <span className="font-mono font-bold text-slate-800 text-xs">
@@ -37,7 +37,7 @@ export const OrderTrackingCard = ({ order }) => {
           </p>
         </div>
 
-        <span className="text-xs font-black text-[#6D28D9] font-mono">
+        <span className="text-xs font-black text-[#F97316] font-mono">
           {formatCurrency(order.totalAmount || order.priceSnapshot?.finalTotal)}
         </span>
       </div>
@@ -58,7 +58,7 @@ export const OrderTrackingCard = ({ order }) => {
                 <div
                   className={`w-3.5 h-3.5 rounded-full -ml-[13px] flex items-center justify-center text-[8px] font-bold ${
                     isCompleted
-                      ? 'bg-[#6D28D9] text-white ring-2 ring-brand-100'
+                      ? 'bg-[#F97316] text-white ring-2 ring-orange-100'
                       : 'bg-slate-200 text-slate-400'
                   }`}
                 >
@@ -67,7 +67,7 @@ export const OrderTrackingCard = ({ order }) => {
                 <span
                   className={
                     isCurrent
-                      ? 'font-bold text-[#6D28D9]'
+                      ? 'font-bold text-[#F97316]'
                       : isCompleted
                       ? 'font-semibold text-slate-800'
                       : 'text-slate-400'
@@ -76,7 +76,7 @@ export const OrderTrackingCard = ({ order }) => {
                   {stage.label}
                 </span>
                 {isCurrent && (
-                  <span className="px-1.5 py-0.2 rounded bg-[#6D28D9] text-white text-[9px] font-bold animate-pulse">
+                  <span className="px-1.5 py-0.2 rounded bg-[#F97316] text-white text-[9px] font-bold animate-pulse">
                     Current
                   </span>
                 )}
@@ -89,7 +89,7 @@ export const OrderTrackingCard = ({ order }) => {
       {/* Doorstep Location Pin */}
       <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1 text-[11px]">
         <div className="flex items-center gap-1.5 font-bold text-slate-800">
-          <MapPin className="w-3.5 h-3.5 text-[#6D28D9]" />
+          <MapPin className="w-3.5 h-3.5 text-[#F97316]" />
           <span>Pickup Address</span>
         </div>
         <p className="text-[10px] text-slate-600 leading-snug">
@@ -100,7 +100,7 @@ export const OrderTrackingCard = ({ order }) => {
       {/* Action Button to Full Tracking Page */}
       <a
         href={`/track-order?id=${order.orderNumber}`}
-        className="block py-2 px-3 rounded-xl bg-[#6D28D9] hover:bg-[#5B21B6] text-white font-bold text-center text-[11px] shadow-sm transition-all flex items-center justify-center gap-1.5"
+        className="block py-2 px-3 rounded-xl bg-[#F97316] hover:bg-[#EA580C] text-white font-bold text-center text-[11px] shadow-sm transition-all flex items-center justify-center gap-1.5"
       >
         <span>Open Live GPS Map & Tax Invoice</span>
         <ExternalLink className="w-3.5 h-3.5" />

@@ -246,7 +246,7 @@ export const AdminSidebar = ({ isOpen, onClose, isCollapsed, onToggleCollapse })
                 </div>
                 <div className="truncate">
                   <div className="text-xs font-bold text-white truncate">
-                    {currentUser?.displayName || 'Super Admin'}
+                    {currentUser?.displayName || currentUser?.name || 'Tech Wash Admin'}
                   </div>
                   <div className="text-[10px] text-cyan-400 font-medium truncate flex items-center gap-1">
                     <ShieldCheck className="w-3 h-3 text-cyan-400 inline shrink-0" />

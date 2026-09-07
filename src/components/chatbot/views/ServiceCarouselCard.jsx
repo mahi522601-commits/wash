@@ -33,7 +33,7 @@ export const ServiceCarouselCard = ({ services = [], onSelectService, onBookServ
             {/* Service Details Body */}
             <div className="p-3 flex-1 flex flex-col justify-between space-y-2">
               <div>
-                <h5 className="text-xs font-bold text-[#1E1B4B] line-clamp-1 group-hover:text-[#6D28D9] transition-colors">
+                <h5 className="text-xs font-bold text-[#1F2937] line-clamp-1 group-hover:text-[#F97316] transition-colors">
                   {srv.title}
                 </h5>
                 <p className="text-[10px] text-slate-500 line-clamp-2 mt-0.5 leading-snug">
@@ -45,7 +45,7 @@ export const ServiceCarouselCard = ({ services = [], onSelectService, onBookServ
               <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
                 <div>
                   <span className="text-[9px] text-slate-400 block">Starting:</span>
-                  <span className="text-xs font-black font-mono text-[#6D28D9]">
+                  <span className="text-xs font-black font-mono text-[#F97316]">
                     {srv.startingPrice ? formatCurrency(srv.startingPrice) : 'Quote'}
                   </span>
                 </div>
@@ -54,14 +54,14 @@ export const ServiceCarouselCard = ({ services = [], onSelectService, onBookServ
                   <button
                     type="button"
                     onClick={() => onSelectService(srv)}
-                    className="px-2 py-1 rounded-lg bg-[#F5F3FF] hover:bg-[#EDE9FE] text-[#6D28D9] text-[10px] font-bold transition-colors"
+                    className="px-2 py-1 rounded-lg bg-[#FFF7ED] hover:bg-[#FFEDD5] text-[#F97316] text-[10px] font-bold transition-colors"
                   >
                     Details
                   </button>
                   <button
                     type="button"
                     onClick={() => onBookService(srv)}
-                    className="p-1 rounded-lg bg-[#6D28D9] hover:bg-[#5B21B6] text-white transition-colors"
+                    className="p-1 rounded-lg bg-[#F97316] hover:bg-[#EA580C] text-white transition-colors"
                     title="Book this service"
                   >
                     <ArrowRight className="w-3 h-3" />

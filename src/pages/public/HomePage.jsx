@@ -60,20 +60,21 @@ export const HomePage = () => {
       {/* 2. PHOTO-FIRST EDITORIAL SERVICES SHOWCASE */}
       <ServicesShowcase services={services} />
 
-      {/* 4. LARGE EDITORIAL TYPOGRAPHY STATEMENT (Requirement #80) */}
-      <section className="py-20 lg:py-24 bg-gradient-to-r from-navy-900 via-brand-900 to-navy-900 text-white relative overflow-hidden text-center">
+      {/* 4. LARGE EDITORIAL TYPOGRAPHY STATEMENT */}
+      <section className="py-20 lg:py-24 bg-[#1F2937] text-white relative overflow-hidden text-center">
+        <div className="absolute inset-0 bg-[#F97316]/5 pointer-events-none" />
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6 relative z-10">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-brand-600/30 border border-brand-400/40 text-cyan-300 text-xs font-bold uppercase tracking-wider">
-            <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#F97316]/15 border border-[#F97316]/40 text-[#F97316] text-xs font-bold uppercase tracking-wider">
+            <Sparkles className="w-3.5 h-3.5 text-[#F97316]" />
             <span>The Tech Wash Philosophy</span>
           </div>
           
           <h2 className="text-4xl sm:text-6xl lg:text-7xl font-black font-display tracking-tighter text-white leading-[1.05] uppercase">
             YOUR CLOTHES. <br />
-            <span className="text-gradient-cyan">OUR CRAFT.</span>
+            <span className="text-[#F97316]">OUR CRAFT.</span>
           </h2>
 
-          <p className="text-sm sm:text-lg text-brand-100/90 max-w-2xl mx-auto font-normal leading-relaxed">
+          <p className="text-sm sm:text-lg text-slate-300 max-w-2xl mx-auto font-normal leading-relaxed">
             We reject harsh standard chemicals and abrasive mass-washing. Every weave receives individual fiber analysis, RO demineralized care, and tension form steam press.
           </p>
         </div>

@@ -47,8 +47,8 @@ export const AdminLayout = () => {
     );
   }
 
-  // Protected Admin Routes check
-  if (!currentUser) {
+  // Protected Admin Routes check: must be authenticated and have role: admin
+  if (!currentUser || (currentUser.role || '').toLowerCase().trim() !== 'admin') {
     return <Navigate to="/admin/login" replace />;
   }
 

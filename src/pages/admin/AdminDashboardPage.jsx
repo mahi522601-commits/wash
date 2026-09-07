@@ -126,26 +126,26 @@ export const AdminDashboardPage = () => {
     <div className="space-y-8 animate-fade-in">
       
       {/* ─────────────────────────────────────────────────────────
-          1. EXECUTIVE WELCOME COMMAND BANNER
+          1. REAL-TIME OPERATIONS COMMAND HERO BANNER
       ───────────────────────────────────────────────────────── */}
-      <div className="relative rounded-[32px] bg-gradient-to-r from-[#18153A] via-[#2E1065] to-[#5B21B6] text-white p-6 sm:p-8 shadow-2xl border border-purple-500/20 overflow-hidden">
+      <div className="relative rounded-[32px] bg-gradient-to-r from-[#1F2937] via-[#111827] to-[#1F2937] text-white p-6 sm:p-8 shadow-2xl border border-brand-500/20 overflow-hidden">
         
         {/* Ambient atmospheric glows */}
-        <div className="absolute -top-24 -right-24 w-80 h-80 bg-[#06B6D4]/20 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-[#6D28D9]/40 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -top-24 -right-24 w-80 h-80 bg-[#F97316]/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-[#FED7AA]/10 rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
           <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/15 text-cyan-300 text-[11px] font-bold backdrop-blur-md">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/15 text-brand-300 text-[11px] font-bold backdrop-blur-md">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
               <span>System Operational • Central Lab 01 (Hyderabad)</span>
             </div>
 
             <h1 className="text-2xl sm:text-4xl font-black font-display tracking-tight text-white leading-tight">
-              {greeting}, <span className="text-[#00F0FF]">Super Admin</span>
+              {greeting}, <span className="text-[#F97316]">Super Admin</span>
             </h1>
 
-            <p className="text-xs sm:text-sm text-purple-200/90 max-w-xl font-normal">
+            <p className="text-xs sm:text-sm text-slate-300 max-w-xl font-normal">
               {currentDateFormatted} • Real-time operational command, revenue radar, and customer logistics.
             </p>
           </div>
@@ -157,7 +157,7 @@ export const AdminDashboardPage = () => {
                 variant="primary"
                 size="md"
                 icon={Plus}
-                className="bg-white text-[#1E1B4B] hover:bg-cyan-300 shadow-lg"
+                className="bg-[#F97316] text-white hover:bg-[#EA580C] shadow-lg"
               >
                 + New Order
               </Button>
@@ -190,7 +190,7 @@ export const AdminDashboardPage = () => {
               size="sm"
               icon={RefreshCw}
               onClick={loadDashboardData}
-              className="text-purple-300 hover:text-white p-2.5 rounded-2xl bg-white/5 border border-white/10"
+              className="text-brand-300 hover:text-white p-2.5 rounded-2xl bg-white/5 border border-white/10"
               title="Refresh Radar Data"
             />
           </div>
@@ -207,7 +207,7 @@ export const AdminDashboardPage = () => {
         <div className="p-5 rounded-3xl bg-white border border-slate-200/80 shadow-sm hover:shadow-md transition-shadow space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500">Today's Orders</span>
-            <div className="w-8 h-8 rounded-xl bg-purple-50 text-[#6D28D9] flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center">
               <ShoppingBag className="w-4 h-4" />
             </div>
           </div>
@@ -244,7 +244,7 @@ export const AdminDashboardPage = () => {
         <div className="p-5 rounded-3xl bg-white border border-slate-200/80 shadow-sm hover:shadow-md transition-shadow space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500">In Processing</span>
-            <div className="w-8 h-8 rounded-xl bg-cyan-50 text-cyan-600 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-brand-100 text-brand-700 flex items-center justify-center">
               <Sparkles className="w-4 h-4" />
             </div>
           </div>
@@ -252,7 +252,7 @@ export const AdminDashboardPage = () => {
             <div className="text-2xl font-black text-slate-900 font-display">
               {ops.inProcessing || 0}
             </div>
-            <div className="text-[11px] text-cyan-600 font-bold mt-1">
+            <div className="text-[11px] text-brand-600 font-bold mt-1">
               Inspection / Wash / QC
             </div>
           </div>
@@ -280,7 +280,7 @@ export const AdminDashboardPage = () => {
         <div className="p-5 rounded-3xl bg-white border border-slate-200/80 shadow-sm hover:shadow-md transition-shadow space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500">Active Customers</span>
-            <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center">
               <Users className="w-4 h-4" />
             </div>
           </div>
@@ -288,7 +288,7 @@ export const AdminDashboardPage = () => {
             <div className="text-2xl font-black text-slate-900 font-display">
               {cust.totalCustomers || 0}
             </div>
-            <div className="text-[11px] text-indigo-600 font-bold mt-1">
+            <div className="text-[11px] text-slate-700 font-bold mt-1">
               {cust.repeatRatePercent || 0}% Repeat Retention
             </div>
           </div>
@@ -490,9 +490,9 @@ export const AdminDashboardPage = () => {
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
-                  <linearGradient id="purpleGlow" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#6D28D9" stopOpacity={0.4}/>
-                    <stop offset="95%" stopColor="#6D28D9" stopOpacity={0.0}/>
+                  <linearGradient id="orangeGlow" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#F97316" stopOpacity={0.4}/>
+                    <stop offset="95%" stopColor="#F97316" stopOpacity={0.0}/>
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
@@ -500,9 +500,9 @@ export const AdminDashboardPage = () => {
                 <YAxis stroke="#94A3B8" fontSize={11} tickFormatter={(v) => `₹${v}`} />
                 <Tooltip 
                   formatter={(value) => [`₹${value}`, 'Revenue']}
-                  contentStyle={{ backgroundColor: '#1E1B4B', borderRadius: '16px', color: '#fff', border: 'none', fontSize: '12px' }}
+                  contentStyle={{ backgroundColor: '#1F2937', borderRadius: '16px', color: '#fff', border: 'none', fontSize: '12px' }}
                 />
-                <Area type="monotone" dataKey="revenue" stroke="#6D28D9" strokeWidth={3} fillOpacity={1} fill="url(#purpleGlow)" />
+                <Area type="monotone" dataKey="revenue" stroke="#F97316" strokeWidth={3} fillOpacity={1} fill="url(#orangeGlow)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>

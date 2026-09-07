@@ -82,25 +82,25 @@ export const HowItWorksSection = () => {
   }, []);
 
   return (
-    <section className="py-20 lg:py-28 bg-navy-900 text-white relative overflow-hidden">
+    <section className="py-20 lg:py-28 bg-[#FFF7ED] text-slate-900 relative overflow-hidden">
       
       {/* Background ambient lighting */}
-      <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-brand-600/15 rounded-full blur-[140px] pointer-events-none" />
-      <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-cyan-500/15 rounded-full blur-[140px] pointer-events-none" />
+      <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-[#FED7AA]/40 rounded-full blur-[140px] pointer-events-none" />
+      <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-[#FED7AA]/30 rounded-full blur-[140px] pointer-events-none" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 space-y-16">
         
         {/* Header */}
         <div className="text-center max-w-3xl mx-auto space-y-4">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-brand-600/30 border border-brand-400/40 text-cyan-300 text-xs font-bold uppercase tracking-wider backdrop-blur-md">
-            <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white border border-[#FED7AA] text-[#F97316] text-xs font-bold uppercase tracking-wider shadow-sm">
+            <Sparkles className="w-3.5 h-3.5 text-[#F97316]" />
             <span>The Garment Care Journey</span>
           </div>
-          <h2 className="text-3xl sm:text-5xl font-black font-display tracking-tight text-white leading-tight">
+          <h2 className="text-3xl sm:text-5xl font-black font-display tracking-tight text-[#1F2937] leading-tight">
             6-Stage Precision <br />
-            <span className="text-gradient-cyan">Processing Roadmap</span>
+            <span className="text-[#F97316]">Processing Roadmap</span>
           </h2>
-          <p className="text-sm sm:text-base text-brand-100/80 font-normal max-w-xl mx-auto leading-relaxed">
+          <p className="text-sm sm:text-base text-slate-600 font-normal max-w-xl mx-auto leading-relaxed">
             Every garment entrusted to Tech Wash passes through a strictly monitored multi-stage custodial workflow.
           </p>
         </div>
@@ -110,29 +110,29 @@ export const HowItWorksSection = () => {
           {steps.map((step, idx) => (
             <div
               key={step.id || idx}
-              className="relative p-7 sm:p-8 rounded-[36px] bg-navy-800/90 border border-brand-500/30 shadow-2xl hover:border-cyan-400/60 transition-all duration-300 group flex flex-col justify-between"
+              className="relative p-7 sm:p-8 rounded-[36px] bg-white border border-[#FED7AA] shadow-luxury hover:border-[#F97316] hover:shadow-luxury-hover transition-all duration-300 group flex flex-col justify-between"
             >
               <div className="space-y-4">
                 {/* Step Number & Glowing Icon */}
                 <div className="flex items-center justify-between">
-                  <span className="text-3xl sm:text-4xl font-black font-display text-cyan-400">
+                  <span className="text-3xl sm:text-4xl font-black font-display text-[#F97316]">
                     {step.stepNumber || `0${idx + 1}`}
                   </span>
-                  <div className="w-10 h-10 rounded-2xl bg-brand-600/40 border border-brand-400/40 flex items-center justify-center text-cyan-300 group-hover:scale-110 transition-transform">
+                  <div className="w-10 h-10 rounded-2xl bg-[#FFF7ED] border border-[#FED7AA] flex items-center justify-center text-[#F97316] group-hover:scale-110 transition-transform">
                     <CheckCircle2 className="w-5 h-5" />
                   </div>
                 </div>
 
                 {/* Step Title */}
-                <h3 className="text-xl font-bold font-display text-white group-hover:text-cyan-300 transition-colors">
+                <h3 className="text-xl font-bold font-display text-[#1F2937] group-hover:text-[#F97316] transition-colors">
                   {step.title}
                 </h3>
 
                 {/* Structured Bullet Points */}
-                <ul className="space-y-2.5 pt-2 border-t border-brand-700/60">
+                <ul className="space-y-2.5 pt-2 border-t border-slate-100">
                   {step.bullets?.map((bullet, bIdx) => (
-                    <li key={bIdx} className="text-xs text-brand-100/80 flex items-start gap-2 leading-relaxed">
-                      <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 mt-1.5 shrink-0" />
+                    <li key={bIdx} className="text-xs text-slate-600 flex items-start gap-2 leading-relaxed">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#F97316] mt-1.5 shrink-0" />
                       <span>{bullet}</span>
                     </li>
                   ))}
@@ -140,9 +140,9 @@ export const HowItWorksSection = () => {
               </div>
 
               {/* Bottom Subtle Node Indicator */}
-              <div className="pt-6 mt-4 border-t border-brand-700/40 flex items-center justify-between text-[11px] text-brand-300 font-mono">
+              <div className="pt-6 mt-4 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400 font-mono">
                 <span>Stage {idx + 1} of {steps.length}</span>
-                <span className="text-cyan-400">Verified Protocol</span>
+                <span className="text-[#F97316] font-bold">Verified Protocol</span>
               </div>
             </div>
           ))}

@@ -191,20 +191,20 @@ export const PricingPage = () => {
                     {item.dryClean && (
                       <button
                         onClick={() => addToBasket(item, 'Dry Clean', item.dryClean)}
-                        className="px-3 py-1.5 rounded-xl bg-royal-50 hover:bg-royal-100 text-royal-800 text-xs font-semibold border border-royal-200/60 transition-colors flex items-center gap-1.5"
+                        className="px-3 py-1.5 rounded-xl bg-brand-100 hover:bg-brand-200 text-brand-900 text-xs font-semibold border border-brand-300/60 transition-colors flex items-center gap-1.5"
                       >
                         <span>Dry Clean: {formatCurrency(item.dryClean)}</span>
-                        <Plus className="w-3 h-3 text-royal-600" />
+                        <Plus className="w-3 h-3 text-brand-700" />
                       </button>
                     )}
 
                     {item.steamIron && (
                       <button
                         onClick={() => addToBasket(item, 'Steam Iron', item.steamIron)}
-                        className="px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-800 text-xs font-semibold border border-purple-200/60 transition-colors flex items-center gap-1.5"
+                        className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold border border-slate-200 transition-colors flex items-center gap-1.5"
                       >
                         <span>Steam Iron: {formatCurrency(item.steamIron)}</span>
-                        <Plus className="w-3 h-3 text-purple-600" />
+                        <Plus className="w-3 h-3 text-slate-600" />
                       </button>
                     )}
                   </div>

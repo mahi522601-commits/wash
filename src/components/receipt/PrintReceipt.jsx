@@ -78,19 +78,19 @@ export const PrintReceipt = ({
       {/* ─────────────────────────────────────────────────────────
           1. HEADER: BRANDING (LEFT) + INVOICE META (RIGHT)
       ───────────────────────────────────────────────────────── */}
-      <div className="flex justify-between items-start pb-6 border-b-2 border-[#6D28D9]/30">
+      <div className="flex justify-between items-start pb-6 border-b-2 border-brand-500/30">
         
         {/* Left: Brand Identity */}
         <div className="space-y-1 max-w-sm">
           <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#1E1B4B] via-[#6D28D9] to-[#06B6D4] flex items-center justify-center text-white shadow-md print:shadow-none">
-              <Sparkles className="w-5 h-5 text-cyan-200" />
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#1F2937] via-[#EA580C] to-[#F97316] flex items-center justify-center text-white shadow-md print:shadow-none">
+              <Sparkles className="w-5 h-5 text-brand-200" />
             </div>
             <div>
-              <h1 className="text-xl font-black font-display tracking-tight text-[#1E1B4B] uppercase">
+              <h1 className="text-xl font-black font-display tracking-tight text-[#1F2937] uppercase">
                 {config.businessName || 'Tech Wash'}
               </h1>
-              <p className="text-[10px] font-bold text-[#6D28D9] tracking-wider uppercase">
+              <p className="text-[10px] font-bold text-[#F97316] tracking-wider uppercase">
                 {config.tagline || 'Next-Gen Fabric Care & Couture Spa'}
               </p>
             </div>
@@ -107,7 +107,7 @@ export const PrintReceipt = ({
             </div>
             {config.showGst && config.gstNumber && (
               <p className="font-bold text-slate-800">
-                GSTIN: <span className="font-mono text-[#6D28D9]">{config.gstNumber}</span>
+                GSTIN: <span className="font-mono text-[#F97316]">{config.gstNumber}</span>
               </p>
             )}
           </div>
@@ -115,12 +115,12 @@ export const PrintReceipt = ({
 
         {/* Right: Invoice Number & Dates */}
         <div className="text-right space-y-1.5">
-          <div className="inline-block px-3 py-1 rounded-lg bg-[#F5F3FF] border border-[#6D28D9]/20 text-[#6D28D9] text-xs font-black tracking-wider uppercase">
+          <div className="inline-block px-3 py-1 rounded-lg bg-[#FFF7ED] border border-brand-200 text-[#F97316] text-xs font-black tracking-wider uppercase">
             Tax Invoice / Receipt
           </div>
           
           <div>
-            <div className="text-lg sm:text-xl font-black font-display text-[#1E1B4B] font-mono tracking-tight">
+            <div className="text-lg sm:text-xl font-black font-display text-[#1F2937] font-mono tracking-tight">
               {invoiceNumber}
             </div>
             <div className="text-[11px] font-bold text-slate-400">
@@ -142,8 +142,8 @@ export const PrintReceipt = ({
       <div className="grid grid-cols-2 gap-4 py-4 text-xs">
         
         {/* Customer Information */}
-        <div className="p-3.5 rounded-xl bg-[#F5F3FF]/70 border border-[#6D28D9]/20 space-y-1">
-          <span className="text-[10px] font-bold text-[#6D28D9] uppercase tracking-wider block">
+        <div className="p-3.5 rounded-xl bg-[#FFF7ED]/70 border border-brand-200 space-y-1">
+          <span className="text-[10px] font-bold text-[#F97316] uppercase tracking-wider block">
             Billed & Delivered To
           </span>
           <div className="font-black text-slate-900 text-sm">{customer.name}</div>
@@ -177,7 +177,7 @@ export const PrintReceipt = ({
           </div>
           <div className="flex justify-between pt-0.5 border-t border-slate-200">
             <span className="text-slate-500">Delivery Speed:</span>
-            <span className="font-bold text-[#6D28D9]">
+            <span className="font-bold text-[#F97316]">
               {priceSnapshot?.expressFee > 0 ? '⚡ 24H Express Turnaround' : 'Standard 48H Eco-Care'}
             </span>
           </div>
@@ -191,7 +191,7 @@ export const PrintReceipt = ({
       <div className="pt-2">
         <table className="w-full text-left text-xs border-collapse">
           <thead>
-            <tr className="bg-[#1E1B4B] text-white text-[10px] font-bold uppercase tracking-wider">
+            <tr className="bg-[#1F2937] text-white text-[10px] font-bold uppercase tracking-wider">
               <th className="py-2.5 px-3 rounded-l-lg w-10 text-center">#</th>
               <th className="py-2.5 px-3">Service & Garment Description</th>
               <th className="py-2.5 px-3 text-center w-16">Qty</th>
@@ -249,7 +249,7 @@ export const PrintReceipt = ({
                 paymentStatus === 'PAID'
                   ? 'bg-emerald-100 text-emerald-800'
                   : paymentStatus === 'REFUNDED'
-                  ? 'bg-purple-100 text-purple-800'
+                  ? 'bg-brand-100 text-brand-800'
                   : 'bg-amber-100 text-amber-800'
               }`}>
                 {paymentStatus === 'PAID' ? '✓ PAID IN FULL' : paymentStatus}
@@ -296,7 +296,7 @@ export const PrintReceipt = ({
           </div>
 
           {priceSnapshot?.expressFee > 0 && (
-            <div className="flex justify-between py-0.5 text-[#6D28D9]">
+            <div className="flex justify-between py-0.5 text-[#F97316]">
               <span>Express Priority Fee:</span>
               <span className="font-mono font-bold">+{formatCurrency(priceSnapshot.expressFee)}</span>
             </div>
@@ -322,14 +322,14 @@ export const PrintReceipt = ({
           </div>
 
           {/* GRAND TOTAL HIGHLIGHT BOX */}
-          <div className="mt-2 p-3 rounded-xl bg-gradient-to-r from-[#1E1B4B] to-[#6D28D9] text-white flex items-center justify-between shadow-md print:shadow-none">
+          <div className="mt-2 p-3 rounded-xl bg-[#1F2937] text-white flex items-center justify-between shadow-md print:shadow-none border border-brand-500/30">
             <div>
-              <div className="text-[10px] font-bold uppercase tracking-widest text-cyan-300">
+              <div className="text-[10px] font-bold uppercase tracking-widest text-brand-300">
                 Grand Total Payable
               </div>
               <div className="text-[10px] text-slate-300">Net Amount (INR)</div>
             </div>
-            <div className="text-xl font-black font-display font-mono text-white">
+            <div className="text-xl font-black font-display font-mono text-[#F97316]">
               {formatCurrency(priceSnapshot?.finalTotal || receiptData.totalAmount)}
             </div>
           </div>
@@ -354,17 +354,17 @@ export const PrintReceipt = ({
                 <div
                   className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold ${
                     isCompleted
-                      ? 'bg-[#6D28D9] text-white'
+                      ? 'bg-[#F97316] text-white'
                       : 'bg-slate-200 text-slate-400'
                   }`}
                 >
                   {isCompleted ? '✓' : idx + 1}
                 </div>
-                <span className={isCurrent ? 'font-bold text-[#6D28D9]' : isCompleted ? 'text-slate-800' : 'text-slate-400'}>
+                <span className={isCurrent ? 'font-bold text-[#F97316]' : isCompleted ? 'text-slate-800' : 'text-slate-400'}>
                   {m.label}
                 </span>
                 {idx < MILESTONES.length - 1 && (
-                  <span className={`mx-1 text-[8px] ${isCompleted ? 'text-[#6D28D9]' : 'text-slate-300'}`}>
+                  <span className={`mx-1 text-[8px] ${isCompleted ? 'text-[#F97316]' : 'text-slate-300'}`}>
                     →
                   </span>
                 )}
@@ -381,11 +381,11 @@ export const PrintReceipt = ({
         
         {/* Left: Location Confirmation text */}
         <div className="col-span-8 space-y-1">
-          <div className="flex items-center gap-1.5 text-[#6D28D9] font-bold text-[11px]">
-            <MapPin className="w-3.5 h-3.5 text-[#06B6D4]" />
+          <div className="flex items-center gap-1.5 text-[#F97316] font-bold text-[11px]">
+            <MapPin className="w-3.5 h-3.5 text-[#F97316]" />
             <span>Doorstep Pickup Coordinates Locked</span>
             {pickupLocation?.locationSource === 'GPS' && (
-              <span className="text-[9px] px-2 py-0.5 rounded bg-cyan-100 text-cyan-800 font-mono">
+              <span className="text-[9px] px-2 py-0.5 rounded bg-brand-100 text-brand-800 font-mono">
                 🛰️ GPS Verified
               </span>
             )}
@@ -437,7 +437,7 @@ export const PrintReceipt = ({
         </div>
 
         <div className="text-right shrink-0">
-          <div className="text-[10px] font-bold text-[#1E1B4B]">Authorized Signatory</div>
+          <div className="text-[10px] font-bold text-[#1F2937]">Authorized Signatory</div>
           <div className="text-[9px] text-slate-400 font-mono">Tech Wash Operations</div>
         </div>
 

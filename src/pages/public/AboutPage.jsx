@@ -64,7 +64,7 @@ export const AboutPage = () => {
           </Card>
 
           <Card variant="luxury" className="p-8 space-y-4">
-            <div className="w-12 h-12 rounded-2xl bg-royal-50 text-royal-600 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center">
               <ShieldCheck className="w-6 h-6" />
             </div>
             <h3 className="text-xl font-bold text-slate-900 font-display">Zero Mixing Policy</h3>
@@ -74,7 +74,7 @@ export const AboutPage = () => {
           </Card>
 
           <Card variant="luxury" className="p-8 space-y-4">
-            <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-2xl bg-brand-100 text-brand-700 flex items-center justify-center">
               <Sparkles className="w-6 h-6" />
             </div>
             <h3 className="text-xl font-bold text-slate-900 font-display">Eco-Safe Chemistry</h3>

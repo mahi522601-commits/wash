@@ -281,24 +281,24 @@ export const AdminHeader = ({ onMenuToggle, onOpenSearch }) => {
               {(currentUser?.displayName || currentUser?.email || 'A')[0].toUpperCase()}
             </div>
             <div className="hidden lg:block text-left leading-none">
-              <div className="text-xs font-bold text-white truncate max-w-[100px]">
-                {currentUser?.displayName || 'Admin'}
+              <div className="text-xs font-bold text-white truncate max-w-[120px]">
+                {currentUser?.displayName || currentUser?.name || 'Tech Wash Admin'}
               </div>
-              <div className="text-[9px] font-bold text-cyan-400 uppercase mt-0.5">
-                SUPER ADMIN
+              <div className="text-[9px] font-bold text-[#F97316] uppercase mt-0.5 tracking-wider">
+                {(currentUser?.role || 'admin').toUpperCase()}
               </div>
             </div>
             <ChevronDown className="w-3.5 h-3.5 text-slate-400 hidden sm:block" />
           </button>
 
           {profileOpen && (
-            <div className="absolute right-0 mt-2 w-52 bg-[#161333] border border-purple-500/30 rounded-2xl shadow-2xl p-2 z-50 text-xs animate-scale-up">
+            <div className="absolute right-0 mt-2 w-56 bg-[#161333] border border-purple-500/30 rounded-2xl shadow-2xl p-2 z-50 text-xs animate-scale-up">
               <div className="p-2.5 border-b border-white/10">
                 <div className="font-bold text-white truncate">
-                  {currentUser?.displayName || 'Super Admin'}
+                  {currentUser?.displayName || currentUser?.name || 'Tech Wash Admin'}
                 </div>
-                <div className="text-[10px] text-purple-300 truncate">
-                  {currentUser?.email || 'admin@techwash.in'}
+                <div className="text-[10px] text-purple-300 truncate font-mono">
+                  {currentUser?.email || ''}
                 </div>
               </div>
 
