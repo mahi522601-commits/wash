@@ -32,7 +32,9 @@ import {
   Check, 
   Truck, 
   QrCode,
-  Tag
+  Tag,
+  Navigation,
+  Edit3
 } from 'lucide-react';
 
 const STEPS = [
@@ -538,19 +540,32 @@ export const BookPickupPage = () => {
                         </button>
                       </div>
 
-                      <div className="p-4 rounded-2xl bg-brand-50/70 border border-brand-200/80 space-y-1.5 text-xs">
-                        <div className="font-bold text-navy-800 text-sm">
-                          {pickupLocation.formattedAddress}
-                        </div>
-                        {pickupLocation.landmark && (
-                          <div className="text-[11px] text-slate-600 font-medium">
-                            <strong className="text-brand-700">Landmark:</strong> {pickupLocation.landmark}
+                      <div className="p-4 rounded-2xl bg-brand-50/70 border border-brand-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                        <div className="space-y-1">
+                          <div className="font-bold text-navy-800 text-sm">
+                            {pickupLocation.formattedAddress}
                           </div>
-                        )}
-                        <div className="text-[10px] text-slate-400 font-mono pt-1">
-                          GPS: {pickupLocation.latitude?.toFixed(5)}, {pickupLocation.longitude?.toFixed(5)}
-                          {pickupLocation.accuracy ? ` (±${pickupLocation.accuracy}m)` : ''}
+                          {pickupLocation.landmark && (
+                            <div className="text-[11px] text-slate-600 font-medium">
+                              <strong className="text-brand-700">Landmark:</strong> {pickupLocation.landmark}
+                            </div>
+                          )}
+                          <div className="text-[10px] text-slate-400 font-mono pt-1">
+                            GPS: {pickupLocation.latitude?.toFixed(5)}, {pickupLocation.longitude?.toFixed(5)}
+                            {pickupLocation.accuracy ? ` (±${pickupLocation.accuracy}m)` : ''}
+                          </div>
                         </div>
+
+                        <a
+                          href={pickupLocation.latitude && pickupLocation.longitude ? `https://www.google.com/maps/dir/?api=1&destination=${pickupLocation.latitude},${pickupLocation.longitude}` : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(pickupLocation.formattedAddress)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-brand-300 text-brand-700 hover:bg-brand-50 text-xs font-bold shrink-0 shadow-xs transition-colors"
+                          title="Open directions in Google Maps"
+                        >
+                          <Navigation className="w-3.5 h-3.5 text-[#F97316]" />
+                          <span>Google Maps Directions ↗</span>
+                        </a>
                       </div>
 
                       <div className="pt-2 flex justify-end">

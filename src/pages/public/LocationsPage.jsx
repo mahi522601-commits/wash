@@ -105,18 +105,17 @@ export const LocationsPage = () => {
                   </div>
 
                   <div className="p-6 pt-0 flex items-center gap-2 flex-wrap">
-                    {loc.googleMapsUrl && (
-                      <a
-                        href={loc.googleMapsUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex-1"
-                      >
-                        <Button variant="outline" size="sm" className="w-full" icon={Navigation}>
-                          Directions
-                        </Button>
-                      </a>
-                    )}
+                    <a
+                      href={loc.googleMapsUrl || (loc.latitude && loc.longitude ? `https://www.google.com/maps/dir/?api=1&destination=${loc.latitude},${loc.longitude}` : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(loc.address ? `${loc.name}, ${loc.address}` : loc.name)}`)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1"
+                      title={`Get directions to ${loc.name} on Google Maps`}
+                    >
+                      <Button variant="outline" size="sm" className="w-full" icon={Navigation}>
+                        Directions
+                      </Button>
+                    </a>
 
                     <a href={`tel:${rawPhone}`} className="flex-1">
                       <Button variant="secondary" size="sm" className="w-full" icon={Phone}>

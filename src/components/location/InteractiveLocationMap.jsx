@@ -132,6 +132,20 @@ export const InteractiveLocationMap = ({
         </button>
       )}
 
+      {/* Floating Google Maps Directions Button */}
+      {latitude && longitude && (
+        <a
+          href={`https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="absolute bottom-4 left-4 z-10 px-3 py-1.5 rounded-xl bg-white/95 hover:bg-white text-slate-800 shadow-md border border-slate-200 hover:border-[#F97316] transition-all flex items-center gap-1.5 text-[11px] font-bold group/btn"
+          title="Open directions in Google Maps"
+        >
+          <Navigation className="w-3.5 h-3.5 text-[#F97316] group-hover/btn:scale-110 transition-transform" />
+          <span>Google Maps Directions ↗</span>
+        </a>
+      )}
+
     </div>
   );
 };

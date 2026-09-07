@@ -228,19 +228,29 @@ export const locationService = {
   },
 
   /**
-   * Generate Direct Google Maps Navigation URL for Admin / Delivery Fleet
+   * Generate Direct Google Maps Navigation / Search URL
    */
-  getGoogleMapsUrl(latitude, longitude) {
-    if (!latitude || !longitude) return 'https://maps.google.com';
-    return `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
+  getGoogleMapsUrl(latitude, longitude, address = '') {
+    if (latitude && longitude && Number(latitude) !== 0 && Number(longitude) !== 0) {
+      return `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
+    }
+    if (address && typeof address === 'string' && address.trim()) {
+      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address.trim())}`;
+    }
+    return 'https://www.google.com/maps';
   },
 
   /**
    * Generate Google Maps Turn-by-Turn Directions URL
    */
-  getGoogleMapsDirectionsUrl(latitude, longitude) {
-    if (!latitude || !longitude) return 'https://maps.google.com';
-    return `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`;
+  getGoogleMapsDirectionsUrl(latitude, longitude, address = '') {
+    if (latitude && longitude && Number(latitude) !== 0 && Number(longitude) !== 0) {
+      return `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`;
+    }
+    if (address && typeof address === 'string' && address.trim()) {
+      return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address.trim())}`;
+    }
+    return 'https://www.google.com/maps';
   },
 
   /**

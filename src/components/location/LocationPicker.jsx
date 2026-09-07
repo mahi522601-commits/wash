@@ -465,11 +465,21 @@ export const LocationPicker = ({
               </Badge>
             </div>
 
-            {/* Resolved Readable Address Summary */}
-            <div className="p-4 rounded-2xl bg-brand-50/60 border border-brand-200/70 space-y-1">
+            {/* Resolved Readable Address Summary with Google Maps directions shortcut */}
+            <div className="p-4 rounded-2xl bg-brand-50/60 border border-brand-200/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="text-xs font-semibold text-slate-800 leading-relaxed">
                 {addressDetails.formattedAddress || 'Location selected on map'}
               </div>
+              <a
+                href={locationService.getGoogleMapsDirectionsUrl(coordinates.latitude, coordinates.longitude, addressDetails.formattedAddress)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white border border-brand-300 text-brand-700 hover:bg-brand-50 text-[11px] font-bold shrink-0 shadow-xs transition-colors"
+                title="Open in Google Maps"
+              >
+                <Navigation className="w-3.5 h-3.5 text-[#F97316]" />
+                <span>View on Google Maps ↗</span>
+              </a>
             </div>
 
             {/* Granular Editable Fields */}

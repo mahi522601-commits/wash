@@ -63,6 +63,51 @@ export const DEFAULT_SETTINGS = {
   }
 };
 
+export const DEFAULT_STORE_LOCATIONS = [
+  {
+    id: 'loc-jubilee-hills',
+    name: 'Tech Wash Flagship Lounge — Jubilee Hills',
+    address: 'Road No. 36, CBI Colony, Jubilee Hills, Hyderabad, Telangana 500033',
+    phone: '+91 98765 43210',
+    whatsapp: '+91 98765 43210',
+    timings: '8:00 AM - 9:00 PM (All Days)',
+    weeklyHolidays: 'Open 7 Days a Week',
+    latitude: 17.4319,
+    longitude: 78.4073,
+    googleMapsUrl: 'https://www.google.com/maps/dir/?api=1&destination=17.4319,78.4073',
+    isMain: true,
+    active: true,
+  },
+  {
+    id: 'loc-hitec-city',
+    name: 'Tech Wash Express Hub — Hitec City',
+    address: 'Near Cyber Towers, Madhapur, Hitec City, Hyderabad, Telangana 500081',
+    phone: '+91 98765 43210',
+    whatsapp: '+91 98765 43210',
+    timings: '8:00 AM - 9:00 PM (All Days)',
+    weeklyHolidays: 'Open 7 Days a Week',
+    latitude: 17.4504,
+    longitude: 78.3808,
+    googleMapsUrl: 'https://www.google.com/maps/dir/?api=1&destination=17.4504,78.3808',
+    isMain: false,
+    active: true,
+  },
+  {
+    id: 'loc-banjara-hills',
+    name: 'Tech Wash Care Center — Banjara Hills',
+    address: 'Road No. 12, MLA Colony, Banjara Hills, Hyderabad, Telangana 500034',
+    phone: '+91 98765 43210',
+    whatsapp: '+91 98765 43210',
+    timings: '8:00 AM - 9:00 PM (All Days)',
+    weeklyHolidays: 'Open 7 Days a Week',
+    latitude: 17.4156,
+    longitude: 78.4350,
+    googleMapsUrl: 'https://www.google.com/maps/dir/?api=1&destination=17.4156,78.4350',
+    isMain: false,
+    active: true,
+  }
+];
+
 export const settingsService = {
   /**
    * Fetch site settings from Firestore or cache
@@ -120,9 +165,9 @@ export const settingsService = {
 
     try {
       const cached = localStorage.getItem(LOCATIONS_STORAGE_KEY);
-      return cached ? JSON.parse(cached) : [];
+      return cached && JSON.parse(cached).length > 0 ? JSON.parse(cached) : DEFAULT_STORE_LOCATIONS;
     } catch (e) {
-      return [];
+      return DEFAULT_STORE_LOCATIONS;
     }
   },
 

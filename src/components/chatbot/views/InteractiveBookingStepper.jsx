@@ -407,10 +407,22 @@ export const InteractiveBookingStepper = ({
 
           {/* Resolved or manual address fields */}
           {address.formattedAddress ? (
-            <div className="p-2.5 rounded-xl bg-emerald-50/60 border border-emerald-200 text-[11px] text-emerald-900 space-y-1">
-              <div className="font-bold flex items-center gap-1 text-emerald-800">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Doorstep Pinned</span>
+            <div className="p-2.5 rounded-xl bg-emerald-50/60 border border-emerald-200 text-[11px] text-emerald-900 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <div className="font-bold flex items-center gap-1 text-emerald-800">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Doorstep Pinned</span>
+                </div>
+                <a
+                  href={address.latitude && address.longitude ? `https://www.google.com/maps/dir/?api=1&destination=${address.latitude},${address.longitude}` : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address.formattedAddress)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[10px] font-bold text-[#F97316] hover:underline flex items-center gap-0.5"
+                  title="Open in Google Maps"
+                >
+                  <Navigation className="w-3 h-3 text-[#F97316]" />
+                  <span>Google Maps ↗</span>
+                </a>
               </div>
               <p className="leading-snug">{address.formattedAddress}</p>
             </div>
