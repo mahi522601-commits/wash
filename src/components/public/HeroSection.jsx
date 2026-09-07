@@ -139,40 +139,43 @@ export const HeroSection = ({ slides = [] }) => {
           </div>
 
           {/* ─────────────────────────────────────────────────────
-              RIGHT COLUMN: MODERN PHOTO CARD & FLOATING BADGES (Cols 7-12)
+              RIGHT COLUMN: SEAMLESS CUT-OUT VISUAL & FLOATING BADGES (Cols 7-12)
           ───────────────────────────────────────────────────── */}
-          <div className="lg:col-span-6 relative">
+          <div className="lg:col-span-6 relative flex items-center justify-center">
             
-            {/* Main Visual Container */}
-            <div className="relative rounded-[36px] overflow-hidden border-2 border-[#FED7AA] shadow-[0_20px_50px_rgba(31,41,55,0.12)] bg-[#1F2937] aspect-[4/3] sm:aspect-[16/11] group">
+            {/* Soft Ambient Backlight Glow Behind Cutout */}
+            <div className="absolute -inset-4 bg-gradient-to-tr from-[#FED7AA]/50 via-[#F97316]/15 to-transparent rounded-full blur-3xl scale-95 pointer-events-none" />
+
+            {/* Seamless Cut-Out Composition */}
+            <div className="relative w-full max-w-lg lg:max-w-none flex items-center justify-center">
               <img
-                src={currentSlide.desktopImage || 'https://images.unsplash.com/photo-1545173168-9f1947eebb7f?auto=format&fit=crop&w=1400&q=85'}
-                alt="Tech Wash High-Tech Modern Laundry Lab"
-                className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-out"
+                src="/techwash_hero_cutout.webp"
+                onError={(e) => {
+                  e.target.src = '/techwashh.webp';
+                }}
+                alt="Tech Wash Happy Family with Clean Laundry"
+                className="w-full h-auto max-h-[440px] sm:max-h-[500px] lg:max-h-[560px] object-contain select-none filter drop-shadow-[0_20px_35px_rgba(249,115,22,0.18)] drop-shadow-[0_10px_20px_rgba(31,41,55,0.08)] transition-transform duration-700 hover:scale-[1.02]"
               />
-              
-              {/* Soft Gradient Overlay for Readability */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/20 pointer-events-none" />
 
               {/* Floating Badge 1: Top-Right Rating */}
-              <div className="absolute top-4 sm:top-5 right-4 sm:right-5 px-3.5 py-2 rounded-2xl bg-white/95 backdrop-blur-md border border-[#FED7AA] text-[#1F2937] shadow-lg flex items-center gap-2 text-xs font-bold">
+              <div className="absolute top-2 sm:top-4 right-0 sm:right-2 px-3.5 py-2 rounded-2xl bg-white/95 backdrop-blur-md border border-[#FED7AA] text-[#1F2937] shadow-lg flex items-center gap-2 text-xs font-bold animate-float-slow">
                 <div className="flex text-amber-400">
                   <Star className="w-3.5 h-3.5 fill-current" />
                 </div>
                 <span>4.9/5 Rating</span>
-                <span className="text-[10px] text-slate-400 font-normal">• 2,500+ Orders</span>
+                <span className="text-[10px] text-slate-400 font-normal hidden sm:inline">• 2,500+ Orders</span>
               </div>
 
               {/* Floating Badge 2: Bottom-Left Eco Hydro-Clean */}
-              <div className="absolute bottom-4 sm:bottom-5 left-4 sm:left-5 p-3 sm:p-3.5 rounded-2xl bg-white/95 backdrop-blur-md text-[#1F2937] shadow-xl border border-[#FED7AA] flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-[#FFF7ED] text-[#F97316] flex items-center justify-center shrink-0 border border-[#FED7AA]">
-                  <Leaf className="w-5 h-5 fill-[#F97316] text-[#F97316]" />
+              <div className="absolute bottom-2 sm:bottom-4 left-0 sm:left-2 p-2.5 sm:p-3 rounded-2xl bg-white/95 backdrop-blur-md text-[#1F2937] shadow-xl border border-[#FED7AA] flex items-center gap-2.5 sm:gap-3 animate-float">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#FFF7ED] text-[#F97316] flex items-center justify-center shrink-0 border border-[#FED7AA]">
+                  <Leaf className="w-4 h-4 sm:w-5 sm:h-5 fill-[#F97316] text-[#F97316]" />
                 </div>
                 <div>
-                  <div className="text-sm sm:text-base font-black font-display text-[#1F2937] leading-none">
+                  <div className="text-xs sm:text-sm font-black font-display text-[#1F2937] leading-none">
                     100% Eco Hydro-Clean
                   </div>
-                  <div className="text-[11px] font-bold text-[#F97316] mt-1 leading-none">
+                  <div className="text-[10px] sm:text-[11px] font-bold text-[#F97316] mt-1 leading-none">
                     Demineralized RO Soft Water
                   </div>
                 </div>
