@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSettings } from '../../context/SettingsContext';
 import { cmsService } from '../../services/cmsService';
+import { WhatsAppLogo, PhoneCallLogo } from '../ui/BrandIcons';
 import { 
   MessageCircle, 
   Phone, 
@@ -41,27 +42,27 @@ export const FloatingActionHub = ({ onOpenAssistant }) => {
       ───────────────────────────────────────────────────────── */}
       <div className="fixed right-4 sm:right-6 bottom-6 sm:bottom-8 z-40 flex flex-col items-end gap-3 pointer-events-auto no-print">
         
-        {/* Direct Call Button (Top of Stack) */}
+        {/* Direct Call Button (Top of Stack: Phone Dialer Green) */}
         <a
           href={`tel:${cleanPhone}`}
-          className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-white/95 backdrop-blur-md text-brand-500 border border-brand-200 shadow-luxury flex items-center justify-center hover:bg-brand-50 hover:scale-110 transition-all duration-300 group"
+          className="w-12 h-12 sm:w-13 sm:h-13 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-luxury flex items-center justify-center hover:scale-110 transition-all duration-300 group border-2 border-white/80"
           title={`Call ${primaryPhone}`}
           aria-label="Call concierge"
         >
-          <Phone className="w-4 h-4 sm:w-5 sm:h-5 group-hover:rotate-12 transition-transform text-[#F97316]" />
+          <PhoneCallLogo className="w-5 h-5 sm:w-6 sm:h-6 fill-current text-white group-hover:rotate-12 transition-transform" />
         </a>
 
-        {/* WhatsApp Button with Glow Ring (Middle of Stack) */}
+        {/* WhatsApp Button with Glow Ring (Middle of Stack: Official WhatsApp Green) */}
         <a
           href={`https://wa.me/${cleanWa}?text=${encodeURIComponent(whatsappMsg)}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="relative w-12 h-12 sm:w-13 sm:h-13 p-3 rounded-full bg-[#F97316] text-white shadow-luxury hover:bg-[#EA580C] hover:scale-110 transition-all duration-300 flex items-center justify-center group"
+          className="relative w-12 h-12 sm:w-13 sm:h-13 rounded-full bg-[#25D366] hover:bg-[#1EBE5D] text-white shadow-luxury hover:scale-110 transition-all duration-300 flex items-center justify-center group border-2 border-white/80"
           title="Chat on WhatsApp Concierge"
           aria-label="Chat on WhatsApp"
         >
-          <span className="absolute -inset-1 rounded-full bg-orange-400/40 animate-ping pointer-events-none" />
-          <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6 fill-current relative z-10" />
+          <span className="absolute -inset-1 rounded-full bg-[#25D366]/40 animate-ping pointer-events-none" />
+          <WhatsAppLogo className="w-6 h-6 sm:w-7 sm:h-7 fill-current text-white relative z-10" />
         </a>
 
         {/* AI Chatbot Trigger Button (Bottom of Stack: 54px mobile / 58px desktop) */}

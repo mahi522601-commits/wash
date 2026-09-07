@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { useSettings } from '../../context/SettingsContext';
 import { useToast } from '../../context/ToastContext';
+import { WhatsAppLogo, PhoneCallLogo } from '../../components/ui/BrandIcons';
 import { Card } from '../../components/ui/Card';
 import { Input, Textarea } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
-import { Phone, Mail, Clock, MessageSquare, MapPin, Send, Sparkles } from 'lucide-react';
+import { Mail, Clock, MapPin, Send, Sparkles } from 'lucide-react';
 
 export const ContactPage = () => {
   const { settings } = useSettings();
@@ -37,42 +38,43 @@ export const ContactPage = () => {
     <div className="py-12 sm:py-20 bg-slate-50 min-h-screen">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
-        <div className="text-center max-w-3xl mx-auto mb-16">
+        {/* Header */}
+        <div className="text-center max-w-2xl mx-auto mb-12">
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-brand-50 border border-brand-200/80 text-brand-700 text-xs font-semibold uppercase tracking-wider mb-3">
             <Sparkles className="w-3.5 h-3.5" />
-            <span>We are Here to Help</span>
+            <span>Customer Concierge</span>
           </div>
           <h1 className="text-3xl sm:text-5xl font-black text-slate-900 font-display tracking-tight">
-            Contact Tech Wash Concierge
+            Get in Touch
           </h1>
-          <p className="text-sm sm:text-base text-slate-600 mt-3 leading-relaxed">
-            Have questions regarding garment care, corporate tie-ups, or doorstep scheduling? Reach out directly.
+          <p className="text-sm sm:text-base text-slate-600 mt-2">
+            Have questions regarding garment care, corporate inquiries, or specialized stains? We are here to assist you 7 days a week.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
-          {/* Contact Details Column */}
+          {/* Quick Contact Cards Column */}
           <div className="lg:col-span-5 space-y-6">
-            <Card variant="luxury" className="p-7 space-y-6">
-              <h3 className="text-xl font-bold text-slate-900 font-display">
-                Direct Contact Channels
+            <Card variant="luxury" className="p-6 sm:p-8 bg-white space-y-6">
+              <h3 className="text-lg font-bold text-slate-900 font-display border-b border-slate-100 pb-3">
+                Direct Channels
               </h3>
 
               <div className="space-y-4 text-xs sm:text-sm text-slate-600">
                 <div className="flex items-start gap-3.5">
-                  <div className="w-10 h-10 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center shrink-0">
-                    <Phone className="w-5 h-5" />
+                  <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                    <PhoneCallLogo className="w-5 h-5 fill-current" />
                   </div>
                   <div>
                     <div className="font-bold text-slate-900">Phone Support</div>
-                    <a href={`tel:${phone}`} className="text-brand-700 hover:underline">{phone}</a>
+                    <a href={`tel:${phone}`} className="text-emerald-700 font-semibold hover:underline">{phone}</a>
                   </div>
                 </div>
 
                 <div className="flex items-start gap-3.5">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                    <MessageSquare className="w-5 h-5" />
+                  <div className="w-10 h-10 rounded-xl bg-[#25D366]/15 text-[#25D366] flex items-center justify-center shrink-0">
+                    <WhatsAppLogo className="w-5 h-5 fill-current" />
                   </div>
                   <div>
                     <div className="font-bold text-slate-900">WhatsApp Concierge</div>
@@ -80,7 +82,7 @@ export const ContactPage = () => {
                       href={`https://wa.me/${whatsapp}?text=${encodeURIComponent('Hello Tech Wash, I have an inquiry.')}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-emerald-700 hover:underline"
+                      className="text-[#25D366] font-semibold hover:underline"
                     >
                       Chat with Support
                     </a>
