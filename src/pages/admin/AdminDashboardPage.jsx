@@ -516,9 +516,9 @@ export const AdminDashboardPage = () => {
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
                 <h3 className="text-base font-bold text-slate-900 font-display">Live Telemetry</h3>
               </div>
-              <Link to="/admin/activity-log" className="text-xs font-bold text-brand-600 hover:text-brand-700">
-                Audit Log →
-              </Link>
+              <span className="text-[11px] font-bold text-slate-400 bg-slate-50 px-2 py-0.5 rounded-lg border border-slate-200">
+                Real-time
+              </span>
             </div>
 
             <div className="divide-y divide-slate-100 text-xs space-y-3 pt-2">

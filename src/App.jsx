@@ -40,34 +40,13 @@ import { AdminDashboardPage } from './pages/admin/AdminDashboardPage';
 import { AdminAnalyticsPage } from './pages/admin/AdminAnalyticsPage';
 import { AdminOrdersPage } from './pages/admin/AdminOrdersPage';
 import { AdminCustomersPage } from './pages/admin/AdminCustomersPage';
-import { AdminHeroSlidesPage } from './pages/admin/AdminHeroSlidesPage';
 import { AdminServicesPage } from './pages/admin/AdminServicesPage';
-import { AdminQualityServicesPage } from './pages/admin/AdminQualityServicesPage';
-import { AdminProcessPage } from './pages/admin/AdminProcessPage';
 import { AdminPricingPage } from './pages/admin/AdminPricingPage';
-import { AdminBannersPage } from './pages/admin/AdminBannersPage';
-import { AdminFestivalBannersPage } from './pages/admin/AdminFestivalBannersPage';
-import { AdminAnnouncementsPage } from './pages/admin/AdminAnnouncementsPage';
-import { AdminWhyChooseUsPage } from './pages/admin/AdminWhyChooseUsPage';
-import { AdminTestimonialsPage } from './pages/admin/AdminTestimonialsPage';
-import { AdminGalleryPage } from './pages/admin/AdminGalleryPage';
-import { AdminMediaPage } from './pages/admin/AdminMediaPage';
+import { AdminOffersPage } from './pages/admin/AdminOffersPage';
 import { AdminBlogPage } from './pages/admin/AdminBlogPage';
 import { AdminLocationsPage } from './pages/admin/AdminLocationsPage';
-import { AdminContactsPage } from './pages/admin/AdminContactsPage';
 import { AdminPaymentsPage } from './pages/admin/AdminPaymentsPage';
-import { AdminChatbotPage } from './pages/admin/AdminChatbotPage';
-import { AdminFloatingActionsPage } from './pages/admin/AdminFloatingActionsPage';
-import { AdminOffersPage } from './pages/admin/AdminOffersPage';
 import { AdminStaffPage } from './pages/admin/AdminStaffPage';
-import { AdminFAQPage } from './pages/admin/AdminFAQPage';
-import { AdminSettingsPage } from './pages/admin/AdminSettingsPage';
-import { AdminServiceAreaPage } from './pages/admin/AdminServiceAreaPage';
-import { AdminReceiptSettingsPage } from './pages/admin/AdminReceiptSettingsPage';
-import { AdminUsersPage } from './pages/admin/AdminUsersPage';
-import { AdminActivityLogPage } from './pages/admin/AdminActivityLogPage';
-import { AdminSystemHealthPage } from './pages/admin/AdminSystemHealthPage';
-import { AdminSEOPage } from './pages/admin/AdminSEOPage';
 
 // Scroll to top helper with instant jump on route change
 const ScrollToTop = () => {
@@ -148,34 +127,13 @@ export function App() {
               <Route path="analytics" element={<AdminAnalyticsPage />} />
               <Route path="orders" element={<AdminOrdersPage />} />
               <Route path="customers" element={<AdminCustomersPage />} />
-              <Route path="hero-slides" element={<AdminHeroSlidesPage />} />
               <Route path="services" element={<AdminServicesPage />} />
-              <Route path="quality-services" element={<AdminQualityServicesPage />} />
-              <Route path="process" element={<AdminProcessPage />} />
               <Route path="pricing" element={<AdminPricingPage />} />
-              <Route path="banners" element={<AdminBannersPage />} />
-              <Route path="festival-banners" element={<AdminFestivalBannersPage />} />
               <Route path="offers" element={<AdminOffersPage />} />
-              <Route path="announcements" element={<AdminAnnouncementsPage />} />
-              <Route path="why-choose-us" element={<AdminWhyChooseUsPage />} />
-              <Route path="testimonials" element={<AdminTestimonialsPage />} />
-              <Route path="gallery" element={<AdminGalleryPage />} />
-              <Route path="media" element={<AdminMediaPage />} />
               <Route path="blog" element={<AdminBlogPage />} />
               <Route path="locations" element={<AdminLocationsPage />} />
-              <Route path="contacts" element={<AdminContactsPage />} />
               <Route path="payments" element={<AdminPaymentsPage />} />
-              <Route path="chatbot" element={<AdminChatbotPage />} />
-              <Route path="floating-actions" element={<AdminFloatingActionsPage />} />
               <Route path="staff" element={<AdminStaffPage />} />
-              <Route path="faq" element={<AdminFAQPage />} />
-              <Route path="settings" element={<AdminSettingsPage />} />
-              <Route path="settings/service-area" element={<AdminServiceAreaPage />} />
-              <Route path="settings/receipt" element={<AdminReceiptSettingsPage />} />
-              <Route path="admin-users" element={<AdminUsersPage />} />
-              <Route path="activity-log" element={<AdminActivityLogPage />} />
-              <Route path="system-health" element={<AdminSystemHealthPage />} />
-              <Route path="seo" element={<AdminSEOPage />} />
             </Route>
 
             {/* Catch-all Fallback */}

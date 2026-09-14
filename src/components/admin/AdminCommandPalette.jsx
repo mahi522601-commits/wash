@@ -35,30 +35,11 @@ const SEARCHABLE_ITEMS = [
   { title: 'Payments & QR Code', category: 'Operations', path: '/admin/payments', icon: CreditCard, keywords: 'upi gateway transactions razorpay rayzon' },
   { title: 'Operations Staff & Riders', category: 'Operations', path: '/admin/staff', icon: Users, keywords: 'delivery boys riders managers' },
   
-  // CMS & Content
-  { title: 'Services Catalog CMS', category: 'Content CMS', path: '/admin/services', icon: Sparkles, keywords: 'dry cleaning laundry shoe care steam press' },
-  { title: 'Process Roadmap Builder', category: 'Content CMS', path: '/admin/process', icon: Sparkles, keywords: 'steps sorting washing quality check delivery' },
-  { title: 'Pricing Master Engine', category: 'Content CMS', path: '/admin/pricing', icon: DollarSign, keywords: 'rates apparel rates items' },
-  { title: 'Media Library & Assets', category: 'Content CMS', path: '/admin/media', icon: ImageIcon, keywords: 'images photos uploads crop compress' },
-  { title: 'Hero Slides & Editorial Masks', category: 'Content CMS', path: '/admin/hero-slides', icon: Film, keywords: 'homepage banners organic cutouts' },
-  { title: 'General Banners', category: 'Content CMS', path: '/admin/banners', icon: ImageIcon, keywords: 'marketing promotional ads' },
-  { title: 'Festival & Seasonal Banners', category: 'Content CMS', path: '/admin/festival-banners', icon: Sparkles, keywords: 'diwali pongal festive holiday' },
-  { title: 'Offers & 1:1 Popup Campaign Manager', category: 'Content CMS', path: '/admin/offers', icon: Tag, keywords: 'discounts promo codes coupons first order popup' },
-  { title: 'Announcements Bar', category: 'Content CMS', path: '/admin/announcements', icon: Megaphone, keywords: 'alert broadcast ticker message' },
-  { title: 'Customer Testimonials', category: 'Content CMS', path: '/admin/testimonials', icon: MessageSquareQuote, keywords: 'reviews ratings google 5 star' },
-  { title: 'Photo Gallery & Showcase', category: 'Content CMS', path: '/admin/gallery', icon: ImageIcon, keywords: 'before after lab equipment facility' },
-  { title: 'Blog & Garment Care Guides', category: 'Content CMS', path: '/admin/blog', icon: BookOpen, keywords: 'articles silk wool stain removal' },
-  
-  // System & Concierge
-  { title: 'AI Concierge Chatbot Settings', category: 'Concierge', path: '/admin/chatbot', icon: Sparkles, keywords: 'virtual assistant faqs automated responses' },
-  { title: 'Floating Actions & Contacts', category: 'Concierge', path: '/admin/floating-actions', icon: Sliders, keywords: 'whatsapp call phone quick actions' },
-  { title: 'Service Area & GPS Geofences', category: 'System', path: '/admin/settings/service-area', icon: MapPin, keywords: 'delivery radius pincodes zones' },
-  { title: 'A4/A5 Printable Invoice & Receipt CMS', category: 'System', path: '/admin/settings/receipt', icon: FileText, keywords: 'bill thermal template gst qr tax' },
-  { title: 'Global System Settings', category: 'System', path: '/admin/settings', icon: Sliders, keywords: 'business info brand colors phone email' },
-  { title: 'Admin Users & RBAC Permissions', category: 'System', path: '/admin/admin-users', icon: ShieldAlert, keywords: 'roles staff access passwords' },
-  { title: 'Activity Audit Log', category: 'System', path: '/admin/activity-log', icon: Activity, keywords: 'history events security who what when' },
-  { title: 'System Health & Engine Telemetry', category: 'System', path: '/admin/system-health', icon: Activity, keywords: 'database firebase uptime storage latency' },
-  { title: 'SEO & Meta Tag Configurator', category: 'System', path: '/admin/seo', icon: Search, keywords: 'google ranking open graph sitemap' },
+  // Catalog & Offers
+  { title: 'Services Catalog CMS', category: 'Catalog', path: '/admin/services', icon: Sparkles, keywords: 'dry cleaning laundry shoe care steam press' },
+  { title: 'Pricing Master Engine', category: 'Catalog', path: '/admin/pricing', icon: DollarSign, keywords: 'rates apparel rates items' },
+  { title: 'Offers & 1:1 Popup Campaign Manager', category: 'Marketing', path: '/admin/offers', icon: Tag, keywords: 'discounts promo codes coupons first order popup' },
+  { title: 'Blog & Garment Care Guides', category: 'Content', path: '/admin/blog', icon: BookOpen, keywords: 'articles silk wool stain removal' },
 ];
 
 export const AdminCommandPalette = ({ isOpen, onClose }) => {

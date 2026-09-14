@@ -62,43 +62,12 @@ export const AdminSidebar = ({ isOpen, onClose, isCollapsed, onToggleCollapse })
       ]
     },
     {
-      title: 'CONTENT & MARKETING CMS',
+      title: 'CATALOG & OFFERS',
       items: [
         { name: 'Services CMS', path: '/admin/services', icon: Sparkles },
-        { name: 'Quality Standards', path: '/admin/quality-services', icon: Award },
-        { name: 'Process Roadmap', path: '/admin/process', icon: Layers },
         { name: 'Pricing Master', path: '/admin/pricing', icon: DollarSign },
-        { name: 'Media Library', path: '/admin/media', icon: ImageIcon },
-        { name: 'Hero Slides', path: '/admin/hero-slides', icon: Film },
-        { name: 'General Banners', path: '/admin/banners', icon: Flag },
-        { name: 'Festival Banners', path: '/admin/festival-banners', icon: PartyPopper },
-        { name: 'Offers & Popup CMS', path: '/admin/offers', icon: Tag, badge: '1:1', badgeColor: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30' },
-        { name: 'Announcements', path: '/admin/announcements', icon: Megaphone },
-        { name: 'Why Choose Us', path: '/admin/why-choose-us', icon: Award },
-        { name: 'Testimonials', path: '/admin/testimonials', icon: MessageSquareQuote },
-        { name: 'Photo Gallery', path: '/admin/gallery', icon: Layers },
+        { name: 'Offers & Campaigns', path: '/admin/offers', icon: Tag, badge: '1:1', badgeColor: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30' },
         { name: 'Blog & Guides', path: '/admin/blog', icon: BookOpen },
-      ]
-    },
-    {
-      title: 'CONCIERGE & CONFIG',
-      items: [
-        { name: 'AI Chatbot', path: '/admin/chatbot', icon: Sparkles, badge: 'AI', badgeColor: 'bg-purple-500/20 text-purple-300 border-purple-500/30' },
-        { name: 'Floating Actions', path: '/admin/floating-actions', icon: Sliders },
-        { name: 'Service Area & Zones', path: '/admin/settings/service-area', icon: MapPin, badge: 'GPS' },
-        { name: 'Contact Details', path: '/admin/contacts', icon: Phone },
-        { name: 'FAQs Management', path: '/admin/faq', icon: HelpCircle },
-        { name: 'SEO & Meta Tags', path: '/admin/seo', icon: Search },
-      ]
-    },
-    {
-      title: 'SYSTEM & SECURITY',
-      items: [
-        { name: 'Invoice & Receipt CMS', path: '/admin/settings/receipt', icon: FileText, badge: 'A4' },
-        { name: 'Global Settings', path: '/admin/settings', icon: Sliders },
-        { name: 'Admin Users & RBAC', path: '/admin/admin-users', icon: ShieldAlert },
-        { name: 'Activity Audit Log', path: '/admin/activity-log', icon: History },
-        { name: 'System Health', path: '/admin/system-health', icon: Activity },
       ]
     }
   ];
