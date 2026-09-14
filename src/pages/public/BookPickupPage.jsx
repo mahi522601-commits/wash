@@ -4,6 +4,8 @@ import confetti from 'canvas-confetti';
 import { INITIAL_PRICING_CONFIG, pricingService } from '../../services/pricingConfig';
 import { orderService } from '../../services/orderService';
 import { paymentService, PAYMENT_METHODS } from '../../services/paymentService';
+import { UpiPaymentCard } from '../../components/payment/UpiPaymentCard';
+import { UpiAppLogosRow } from '../../components/payment/UpiLogos';
 import { analyticsService } from '../../services/analyticsService';
 import { useToast } from '../../context/ToastContext';
 import { useSettings } from '../../context/SettingsContext';
@@ -169,6 +171,15 @@ export const BookPickupPage = () => {
 
     paymentService.getPaymentConfig().then(setPaymentConfig);
 
+    const handlePaymentConfigUpdate = (e) => {
+      if (e.detail) {
+        setPaymentConfig(e.detail);
+      } else {
+        paymentService.getPaymentConfig().then(setPaymentConfig);
+      }
+    };
+    window.addEventListener('techwash-payment-config-updated', handlePaymentConfigUpdate);
+
     const prefillService = searchParams.get('service');
     if (prefillService) {
       const match = INITIAL_PRICING_CONFIG.services.find(s => s.slug === prefillService || s.id === prefillService);
@@ -186,6 +197,10 @@ export const BookPickupPage = () => {
     } catch (e) {}
 
     analyticsService.trackEvent('booking_start');
+
+    return () => {
+      window.removeEventListener('techwash-payment-config-updated', handlePaymentConfigUpdate);
+    };
   }, [searchParams]);
 
   // Current active service definition
@@ -730,6 +745,20 @@ export const BookPickupPage = () => {
                 <span className="font-semibold text-slate-900 text-right line-clamp-1 max-w-[240px]">{confirmedOrder.customer.address}</span>
               </div>
             </div>
+
+            {/* Instant UPI Payment Section if UPI_QR Selected */}
+            {confirmedOrder.paymentMethod === 'UPI_QR' && (
+              <div className="text-left pt-2">
+                <UpiPaymentCard 
+                  upiConfig={paymentConfig?.upi} 
+                  amount={confirmedOrder.priceSnapshot?.finalTotal} 
+                  orderNumber={confirmedOrder.orderNumber}
+                  customerName={confirmedOrder.customer?.name}
+                  title="Pay via UPI QR Code"
+                  description="Scan below with Google Pay, PhonePe, Paytm or BHIM to pay for your scheduled pickup"
+                />
+              </div>
+            )}
 
             {/* Action Buttons */}
             <div className="pt-4 flex flex-col sm:flex-row items-center gap-3">
@@ -1972,21 +2001,33 @@ export const BookPickupPage = () => {
                                 {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
                               </div>
                               <div>
-                                <div className="text-xs sm:text-sm font-bold text-slate-900">
-                                  {pm.name}
+                                <div className="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-2">
+                                  <span>{pm.name}</span>
                                 </div>
                                 <div className="text-[11px] text-slate-500">
                                   {pm.description}
                                 </div>
                               </div>
                             </div>
-                            <Badge variant={isSelected ? 'brand' : 'slate'} size="sm">
+                            <Badge variant={isSelected ? 'brand' : 'slate'} size="sm" className="shrink-0">
                               {pm.badge}
                             </Badge>
                           </div>
                         );
                       })}
                     </div>
+
+                    {/* Visual UPI Payment Card when Direct UPI / QR Code is selected */}
+                    {paymentMethod === 'UPI_QR' && (
+                      <div className="pt-2 animate-fade-in">
+                        <UpiPaymentCard
+                          upiConfig={paymentConfig?.upi}
+                          amount={orderBreakdown.finalTotal}
+                          title="Instant UPI Scan & Pay"
+                          description="Scan with Google Pay, PhonePe, Paytm or BHIM UPI at checkout"
+                        />
+                      </div>
+                    )}
                   </div>
 
                 </div>

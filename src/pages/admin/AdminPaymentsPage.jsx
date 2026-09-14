@@ -8,7 +8,21 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input, Textarea } from '../../components/ui/Input';
 import { Badge } from '../../components/ui/Badge';
-import { CreditCard, QrCode, ShieldCheck, Save } from 'lucide-react';
+import { UpiPaymentCard } from '../../components/payment/UpiPaymentCard';
+import { UpiAppLogosRow } from '../../components/payment/UpiLogos';
+import { CreditCard, QrCode, ShieldCheck, Save, Eye, Sparkles, Check, ExternalLink } from 'lucide-react';
+
+const COMMON_UPI_HANDLES = [
+  '@okaxis',
+  '@okhdfcbank',
+  '@oksbi',
+  '@okicici',
+  '@paytm',
+  '@ybl',
+  '@ibl',
+  '@apl',
+  '@upi'
+];
 
 export const AdminPaymentsPage = () => {
   const { currentUser } = useAuth();
@@ -20,22 +34,34 @@ export const AdminPaymentsPage = () => {
 
   useEffect(() => {
     paymentService.getPaymentConfig()
-      .then(setConfig)
+      .then(cfg => {
+        if (cfg) setConfig(cfg);
+      })
       .finally(() => setLoading(false));
   }, []);
+
+  const handleAppendHandle = (handle) => {
+    const current = config.upi?.upiId || '';
+    const base = current.split('@')[0] || 'techwash';
+    setConfig({
+      ...config,
+      upi: { ...config.upi, upiId: `${base}${handle}` }
+    });
+  };
 
   const handleSave = async (e) => {
     e.preventDefault();
     setIsSaving(true);
     try {
       const saved = await paymentService.savePaymentConfig(config);
+      setConfig(saved);
       await auditService.logAction({
         action: 'UPDATE',
         entity: 'Payments',
         entityName: 'Payment Configuration',
         user: currentUser,
       });
-      success('Payment Settings Saved', 'UPI and Payment Gateway settings updated.');
+      success('Payment Settings Saved!', `UPI ID "${saved.upi?.upiId}" updated and active.`);
     } catch (err) {
       error('Save Error', err.message);
     } finally {
@@ -44,202 +70,191 @@ export const AdminPaymentsPage = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 animate-fade-in">
       <AdminPageHeader
-        title="Payments & Gateway Architecture"
-        subtitle="Manage dynamic UPI QR codes, Merchant UPI IDs, and Razorpay/Gateway test and live keys."
+        title="Payments & UPI Configuration"
+        subtitle="Manage dynamic UPI QR codes, Merchant UPI IDs (GPay, PhonePe, Paytm), and online gateway parameters."
       />
 
-      <form onSubmit={handleSave} className="space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         
-        {/* UPI QR Code Section */}
-        <Card variant="luxury" className="p-6 sm:p-8 bg-white space-y-5">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-            <h3 className="text-base font-bold text-slate-900 font-display flex items-center gap-2">
-              <QrCode className="w-5 h-5 text-brand-600" />
-              <span>Direct UPI & Dynamic QR Configuration</span>
-            </h3>
-            <Badge variant={config.upi?.enabled ? 'emerald' : 'slate'}>
-              {config.upi?.enabled ? 'UPI Enabled' : 'Disabled'}
-            </Badge>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input
-              label="Merchant UPI ID *"
-              required
-              placeholder="e.g. techwash@icici or techwash@upi"
-              value={config.upi?.upiId}
-              onChange={(e) => setConfig({
-                ...config,
-                upi: { ...config.upi, upiId: e.target.value }
-              })}
-            />
-            <Input
-              label="Merchant Display Name"
-              value={config.upi?.merchantName}
-              onChange={(e) => setConfig({
-                ...config,
-                upi: { ...config.upi, merchantName: e.target.value }
-              })}
-            />
-          </div>
-
-          <Input
-            label="Custom Payment QR Code Graphic URL"
-            placeholder="https://... or upload to Media Library"
-            value={config.upi?.qrImageUrl}
-            onChange={(e) => setConfig({
-              ...config,
-              upi: { ...config.upi, qrImageUrl: e.target.value }
-            })}
-          />
-
-          <Textarea
-            label="Customer Payment Instructions"
-            rows={2}
-            value={config.upi?.instructions}
-            onChange={(e) => setConfig({
-              ...config,
-              upi: { ...config.upi, instructions: e.target.value }
-            })}
-          />
-
-          <div className="flex items-center gap-2 pt-2">
-            <input
-              type="checkbox"
-              id="upi-enable"
-              checked={!!config.upi?.enabled}
-              onChange={(e) => setConfig({
-                ...config,
-                upi: { ...config.upi, enabled: e.target.checked }
-              })}
-              className="w-4 h-4 text-brand-600 rounded"
-            />
-            <label htmlFor="upi-enable" className="text-xs font-semibold text-slate-700">
-              Enable Direct UPI & QR Option on Booking Checkout
-            </label>
-          </div>
-        </Card>
-
-        {/* Payment Gateway Section (Razorpay / Online) */}
-        <Card variant="luxury" className="p-6 sm:p-8 bg-white space-y-5">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-            <h3 className="text-base font-bold text-slate-900 font-display flex items-center gap-2">
-              <CreditCard className="w-5 h-5 text-brand-600" />
-              <span>Online Payment Gateway (Cards/NetBanking)</span>
-            </h3>
-            <Badge variant={config.gateway?.enabled ? 'emerald' : 'slate'}>
-              {config.gateway?.enabled ? 'Gateway Active' : 'Disabled'}
-            </Badge>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-                Gateway Provider
-              </label>
-              <select
-                value={config.gateway?.provider || 'Razorpay'}
-                onChange={(e) => setConfig({
-                  ...config,
-                  gateway: { ...config.gateway, provider: e.target.value }
-                })}
-                className="w-full bg-white border border-slate-200 rounded-xl py-2.5 px-3 text-xs text-slate-800"
-              >
-                <option value="Razorpay">Razorpay</option>
-                <option value="Cashfree">Cashfree</option>
-                <option value="Paytm">Paytm PG</option>
-              </select>
+        {/* Left Form Column (7 Cols) */}
+        <form onSubmit={handleSave} className="lg:col-span-7 space-y-6">
+          
+          {/* UPI Configuration Card */}
+          <Card variant="luxury" className="p-6 sm:p-8 bg-white space-y-6 border-brand-200">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center">
+                  <QrCode className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 font-display">
+                    Direct UPI & Dynamic QR Setup
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Saves directly to Firebase for customer checkout and invoices
+                  </p>
+                </div>
+              </div>
+              <Badge variant={config.upi?.enabled ? 'emerald' : 'slate'}>
+                {config.upi?.enabled ? 'UPI Active' : 'Disabled'}
+              </Badge>
             </div>
 
-            <Input
-              label="Public Client Key (Key ID)"
-              placeholder="rzp_test_..."
-              value={config.gateway?.keyId}
-              onChange={(e) => setConfig({
-                ...config,
-                gateway: { ...config.gateway, keyId: e.target.value }
-              })}
-            />
-
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-                Mode
-              </label>
-              <select
-                value={config.gateway?.testMode ? 'test' : 'live'}
+            {/* Merchant UPI ID Input */}
+            <div className="space-y-2">
+              <Input
+                label="Merchant UPI ID (VPA) *"
+                required
+                placeholder="e.g. techwash@icici or 9876543210@paytm"
+                value={config.upi?.upiId}
                 onChange={(e) => setConfig({
                   ...config,
-                  gateway: { ...config.gateway, testMode: e.target.value === 'test' }
+                  upi: { ...config.upi, upiId: e.target.value }
                 })}
-                className="w-full bg-white border border-slate-200 rounded-xl py-2.5 px-3 text-xs text-slate-800"
-              >
-                <option value="test">Sandbox / Test Mode</option>
-                <option value="live">Live Production</option>
-              </select>
+              />
+              
+              {/* Quick Handle Helper Chips */}
+              <div className="space-y-1">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                  Quick Bank Suffixes:
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {COMMON_UPI_HANDLES.map((h) => (
+                    <button
+                      key={h}
+                      type="button"
+                      onClick={() => handleAppendHandle(h)}
+                      className="px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-brand-100 text-slate-700 hover:text-brand-800 text-[11px] font-mono font-medium transition-colors border border-slate-200"
+                    >
+                      {h}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
-          </div>
 
-          <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-900 flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0" />
-            <span>
-              Security Rule #29 & #73: Secret API Keys must remain in secure backend environment variables. Never enter secret credentials here.
-            </span>
-          </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input
+                label="Merchant Business Name *"
+                placeholder="Tech Wash Laundry Services"
+                value={config.upi?.merchantName}
+                onChange={(e) => setConfig({
+                  ...config,
+                  upi: { ...config.upi, merchantName: e.target.value }
+                })}
+              />
 
-          <div className="flex items-center gap-2 pt-2">
-            <input
-              type="checkbox"
-              id="gw-enable"
-              checked={!!config.gateway?.enabled}
+              <Input
+                label="Custom Static QR Image URL (Optional)"
+                placeholder="https://... (Leave blank for auto-generated QR)"
+                value={config.upi?.qrImageUrl}
+                onChange={(e) => setConfig({
+                  ...config,
+                  upi: { ...config.upi, qrImageUrl: e.target.value }
+                })}
+              />
+            </div>
+
+            <Textarea
+              label="Customer Payment Instructions"
+              rows={2}
+              value={config.upi?.instructions}
               onChange={(e) => setConfig({
                 ...config,
-                gateway: { ...config.gateway, enabled: e.target.checked }
+                upi: { ...config.upi, instructions: e.target.value }
               })}
-              className="w-4 h-4 text-brand-600 rounded"
             />
-            <label htmlFor="gw-enable" className="text-xs font-semibold text-slate-700">
-              Enable Online Gateway in Checkout
-            </label>
-          </div>
-        </Card>
 
-        {/* Pay Later / COD Option */}
-        <Card variant="luxury" className="p-6 sm:p-8 bg-white space-y-4">
-          <h3 className="text-base font-bold text-slate-900 font-display">
-            Pay on Delivery / Cash Option
-          </h3>
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="cod-enable"
-              checked={config.payLater?.cashOnDeliveryEnabled !== false}
-              onChange={(e) => setConfig({
-                ...config,
-                payLater: { ...config.payLater, cashOnDeliveryEnabled: e.target.checked }
-              })}
-              className="w-4 h-4 text-brand-600 rounded"
-            />
-            <label htmlFor="cod-enable" className="text-xs font-semibold text-slate-700">
-              Allow "Pay After Delivery" (Zero risk customer conversion driver)
-            </label>
-          </div>
-        </Card>
+            <div className="flex items-center gap-2 pt-2">
+              <input
+                type="checkbox"
+                id="upi-enable"
+                checked={!!config.upi?.enabled}
+                onChange={(e) => setConfig({
+                  ...config,
+                  upi: { ...config.upi, enabled: e.target.checked }
+                })}
+                className="w-4 h-4 text-brand-600 rounded"
+              />
+              <label htmlFor="upi-enable" className="text-xs font-semibold text-slate-700 cursor-pointer">
+                Enable Direct UPI & QR Option on Customer Booking Checkout
+              </label>
+            </div>
+          </Card>
 
-        <div className="flex justify-end">
+          {/* Pay on Delivery Option */}
+          <Card variant="luxury" className="p-6 bg-white space-y-4">
+            <h3 className="text-sm font-bold text-slate-900 font-display">
+              Pay on Delivery / Cash Option
+            </h3>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="cod-enable"
+                checked={config.payLater?.cashOnDeliveryEnabled !== false}
+                onChange={(e) => setConfig({
+                  ...config,
+                  payLater: { ...config.payLater, cashOnDeliveryEnabled: e.target.checked }
+                })}
+                className="w-4 h-4 text-brand-600 rounded"
+              />
+              <label htmlFor="cod-enable" className="text-xs font-semibold text-slate-700 cursor-pointer">
+                Allow "Pay After Delivery / Cash" option
+              </label>
+            </div>
+          </Card>
+
           <Button
             type="submit"
             variant="primary"
             size="lg"
             icon={Save}
             isLoading={isSaving}
+            className="w-full justify-center shadow-lg"
           >
-            Save All Payment Settings
+            Save & Publish Payment Settings to Firebase
           </Button>
+
+        </form>
+
+        {/* Right Live Preview Column (5 Cols) */}
+        <div className="lg:col-span-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+              <Eye className="w-4 h-4 text-brand-600" />
+              <span>Live Customer Checkout Preview</span>
+            </span>
+            <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+              Interactive
+            </span>
+          </div>
+
+          <UpiPaymentCard
+            upiConfig={config.upi}
+            amount={599}
+            orderNumber="TW-SAMPLE"
+            showDirectPayButton={true}
+            title="Scan & Pay (Sample ₹599 Order)"
+          />
+
+          {/* Tips Card */}
+          <div className="p-4 rounded-2xl bg-brand-50/70 border border-brand-200 text-xs text-brand-950 space-y-2">
+            <div className="font-bold flex items-center gap-1.5 text-brand-900">
+              <Sparkles className="w-4 h-4 text-brand-600" />
+              <span>How this works:</span>
+            </div>
+            <ul className="list-disc pl-4 space-y-1 text-slate-700 text-[11px] leading-relaxed">
+              <li>When customers choose "Direct UPI / QR Code" during checkout, they see the exact merchant UPI ID and live QR code shown above.</li>
+              <li>Customers on mobile can tap the green button to open Google Pay, PhonePe, or Paytm directly.</li>
+              <li>The QR code automatically embeds your UPI ID, Business Name, and dynamic invoice amount.</li>
+            </ul>
+          </div>
         </div>
 
-      </form>
+      </div>
     </div>
   );
 };
+

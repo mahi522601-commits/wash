@@ -39,8 +39,10 @@ export const receiptService = {
   async getReceiptConfig() {
     try {
       const settings = await settingsService.getSettings();
+      const upiId = settings?.payments?.upi?.upiId || settings?.paymentConfig?.upi?.upiId || 'techwash@upi';
       return {
         ...DEFAULT_RECEIPT_CONFIG,
+        upiId,
         ...(settings?.receiptConfig || {}),
       };
     } catch (e) {

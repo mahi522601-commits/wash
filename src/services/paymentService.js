@@ -1,7 +1,7 @@
 /**
  * Payment Architecture & Gateway Integration Service for Tech Wash
- * Manages UPI QR Code, Gateway toggles, and payment status lifecycle machine:
- * CREATED -> INITIATED -> PENDING -> SUCCESSFUL -> FAILED -> CANCELLED -> REFUNDED
+ * Single Source of Truth in Firebase Firestore `settings/payments` and `settings/global`
+ * Manages UPI QR Code, Indian App Integrations, Gateway toggles, and payment status lifecycle machine.
  */
 import { db, isFirebaseConfigured } from './firebase.js';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -16,7 +16,7 @@ export const PAYMENT_METHODS = {
   UPI_QR: {
     id: 'UPI_QR',
     name: 'Direct UPI / QR Code',
-    description: 'Instant zero-fee scan & pay via Google Pay, PhonePe, Paytm, or BHIM.',
+    description: 'Instant scan & pay via Google Pay, PhonePe, Paytm, Amazon Pay or BHIM.',
     badge: 'Fast & Direct',
   },
   ONLINE_GATEWAY: {
@@ -45,7 +45,7 @@ export const DEFAULT_PAYMENT_CONFIG = {
     upiId: 'techwash@upi',
     merchantName: 'Tech Wash Laundry Services',
     qrImageUrl: '',
-    instructions: 'Scan this QR code using any UPI app (Google Pay, PhonePe, Paytm, BHIM) and enter the exact order amount.',
+    instructions: 'Scan with any UPI app (Google Pay, PhonePe, Paytm, BHIM) and complete payment.',
   },
   gateway: {
     enabled: true,
@@ -63,41 +63,81 @@ export const DEFAULT_PAYMENT_CONFIG = {
 
 export const paymentService = {
   /**
-   * Get payment configuration
+   * Get payment configuration from Firestore or cache
    */
   async getPaymentConfig() {
+    let result = null;
+
     if (isFirebaseConfigured && db) {
       try {
         const snap = await getDoc(doc(db, 'settings', 'payments'));
-        if (snap.exists()) {
-          return { ...DEFAULT_PAYMENT_CONFIG, ...snap.data() };
+        if (snap.exists() && snap.data()) {
+          result = { ...DEFAULT_PAYMENT_CONFIG, ...snap.data() };
+        } else {
+          // Fallback to check global settings document
+          const globalSnap = await getDoc(doc(db, 'settings', 'global'));
+          if (globalSnap.exists() && globalSnap.data()?.payments) {
+            result = { ...DEFAULT_PAYMENT_CONFIG, ...globalSnap.data().payments };
+          }
         }
       } catch (e) {
-        console.warn("Firestore payment config read error:", e);
+        console.warn("Firestore payment config read warning:", e);
       }
     }
 
-    try {
-      const cached = localStorage.getItem(PAYMENT_SETTINGS_KEY);
-      return cached ? JSON.parse(cached) : DEFAULT_PAYMENT_CONFIG;
-    } catch (e) {
-      return DEFAULT_PAYMENT_CONFIG;
+    if (!result) {
+      try {
+        const cached = localStorage.getItem(PAYMENT_SETTINGS_KEY);
+        result = cached ? { ...DEFAULT_PAYMENT_CONFIG, ...JSON.parse(cached) } : DEFAULT_PAYMENT_CONFIG;
+      } catch (e) {
+        result = DEFAULT_PAYMENT_CONFIG;
+      }
     }
+
+    // Ensure upi object is safely initialized
+    if (!result.upi) result.upi = DEFAULT_PAYMENT_CONFIG.upi;
+    if (!result.upi.upiId) result.upi.upiId = DEFAULT_PAYMENT_CONFIG.upi.upiId;
+    if (!result.upi.merchantName) result.upi.merchantName = DEFAULT_PAYMENT_CONFIG.upi.merchantName;
+
+    return result;
   },
 
   /**
-   * Save payment configuration from Admin
+   * Save payment configuration from Admin & sync across Firestore & local cache
    */
   async savePaymentConfig(config) {
+    const cleanConfig = {
+      ...DEFAULT_PAYMENT_CONFIG,
+      ...config,
+      upi: {
+        ...DEFAULT_PAYMENT_CONFIG.upi,
+        ...(config.upi || {}),
+        upiId: (config.upi?.upiId || 'techwash@upi').trim(),
+        merchantName: (config.upi?.merchantName || 'Tech Wash Laundry Services').trim(),
+      },
+      updatedAt: new Date().toISOString(),
+    };
+
     if (isFirebaseConfigured && db) {
       try {
-        await setDoc(doc(db, 'settings', 'payments'), config, { merge: true });
+        await Promise.all([
+          setDoc(doc(db, 'settings', 'payments'), cleanConfig, { merge: true }),
+          setDoc(doc(db, 'settings', 'global'), { payments: cleanConfig }, { merge: true }),
+          setDoc(doc(db, 'settings', 'business'), { payments: cleanConfig }, { merge: true }),
+        ]);
       } catch (e) {
         console.warn("Firestore save payment config error:", e);
       }
     }
-    localStorage.setItem(PAYMENT_SETTINGS_KEY, JSON.stringify(config));
-    return config;
+
+    localStorage.setItem(PAYMENT_SETTINGS_KEY, JSON.stringify(cleanConfig));
+
+    // Broadcast update event to all active views and listeners
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('techwash-payment-config-updated', { detail: cleanConfig }));
+    }
+
+    return cleanConfig;
   },
 
   /**

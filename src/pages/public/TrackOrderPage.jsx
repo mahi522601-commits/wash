@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { orderService, ORDER_CUSTOMER_STAGES } from '../../services/orderService';
+import { paymentService } from '../../services/paymentService';
 import { formatCurrency, formatDateTime } from '../../utils/formatters';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -8,6 +9,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Input } from '../../components/ui/Input';
 import { OrderMapCard } from '../../components/location/OrderMapCard';
 import { ReceiptModal } from '../../components/receipt/ReceiptModal';
+import { UpiPaymentCard } from '../../components/payment/UpiPaymentCard';
 import { 
   Search, 
   Sparkles, 
@@ -44,7 +46,18 @@ export const TrackOrderPage = () => {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [paymentConfig, setPaymentConfig] = useState(null);
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
+
+  useEffect(() => {
+    paymentService.getPaymentConfig().then(setPaymentConfig);
+    const handleConfigUpdate = (e) => {
+      if (e.detail) setPaymentConfig(e.detail);
+      else paymentService.getPaymentConfig().then(setPaymentConfig);
+    };
+    window.addEventListener('techwash-payment-config-updated', handleConfigUpdate);
+    return () => window.removeEventListener('techwash-payment-config-updated', handleConfigUpdate);
+  }, []);
 
   const searchOrder = async (queryToSearch) => {
     if (!queryToSearch || !queryToSearch.trim()) return;
@@ -320,6 +333,20 @@ export const TrackOrderPage = () => {
                     </div>
                   </div>
                 </Card>
+
+                {/* Instant UPI Scan & Pay Card for Pending Balance */}
+                {order.paymentStatus !== 'PAID' && (
+                  <div className="mt-4 animate-fade-in">
+                    <UpiPaymentCard
+                      upiConfig={paymentConfig?.upi}
+                      amount={order.priceSnapshot?.finalTotal || order.totalAmount}
+                      orderNumber={order.orderNumber}
+                      customerName={order.customer?.name}
+                      title="Settle Bill via UPI QR"
+                      description="Instant scan & pay for this order with Google Pay, PhonePe, Paytm or BHIM"
+                    />
+                  </div>
+                )}
               </div>
 
             </div>
