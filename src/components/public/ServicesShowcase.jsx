@@ -7,8 +7,11 @@ import {
   Sparkles, 
   ShieldCheck, 
   CheckCircle2,
+  Calendar,
+  Layers,
+  ArrowRight,
   Clock,
-  ArrowRight
+  HelpCircle
 } from 'lucide-react';
 
 export const ServicesShowcase = ({ services = [] }) => {
@@ -74,14 +77,16 @@ export const ServicesShowcase = ({ services = [] }) => {
               : '/ item';
 
             return (
-              <Link
+              <div
                 key={service.id || idx}
-                to={`/services/${service.slug}`}
                 className="group flex flex-col justify-between bg-white rounded-3xl overflow-hidden border border-slate-200/90 shadow-sm hover:shadow-xl hover:border-orange-300 transition-all duration-300 transform hover:-translate-y-1.5"
               >
                 <div>
-                  {/* 1. PHOTOGRAPHY BANNER CONTAINER */}
-                  <div className="relative w-full aspect-[16/10] overflow-hidden bg-slate-900">
+                  {/* 1. PHOTOGRAPHY BANNER CONTAINER (Clickable) */}
+                  <Link 
+                    to={`/services/${service.slug}`}
+                    className="block relative w-full aspect-[16/10] overflow-hidden bg-slate-900 cursor-pointer"
+                  >
                     <img
                       src={service.heroImage || service.mobileImage || 'https://images.unsplash.com/photo-1545173168-9f1947eebb7f?auto=format&fit=crop&w=800&q=80'}
                       alt={service.title || service.name}
@@ -119,18 +124,21 @@ export const ServicesShowcase = ({ services = [] }) => {
                         <span className="text-[11px] font-bold text-amber-300">Rates upon request</span>
                       )}
                     </div>
-                  </div>
+                  </Link>
 
                   {/* 2. CARD BODY & CONTENT */}
                   <div className="p-5 sm:p-6 space-y-3">
-                    <div className="flex items-center gap-2">
+                    <Link 
+                      to={`/services/${service.slug}`}
+                      className="flex items-center gap-2 group-hover:text-[#F97316] transition-colors"
+                    >
                       {service.emoji && (
                         <span className="text-lg shrink-0">{service.emoji}</span>
                       )}
                       <h3 className="text-base sm:text-lg font-bold font-display text-slate-900 group-hover:text-[#F97316] transition-colors line-clamp-1">
                         {service.title || service.name}
                       </h3>
-                    </div>
+                    </Link>
 
                     <p className="text-xs sm:text-sm text-slate-600 line-clamp-2 leading-relaxed">
                       {service.shortDescription || 'Gentle eco-friendly care and 3D steam finishing for immaculate freshness.'}
@@ -153,18 +161,34 @@ export const ServicesShowcase = ({ services = [] }) => {
                   </div>
                 </div>
 
-                {/* 3. CARD FOOTER */}
+                {/* 3. CARD FOOTER: 2 ACTION BUTTONS */}
                 <div className="px-5 sm:px-6 pb-5 pt-0">
-                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-[#F97316]">
-                    <span className="text-slate-500 font-medium">48h Doorstep Service</span>
-                    <span className="flex items-center gap-1 group-hover:translate-x-1 transition-transform">
-                      <span>Explore</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </span>
+                  <div className="pt-3 border-t border-slate-100 grid grid-cols-2 gap-2">
+                    
+                    {/* Button 1: What is the Process */}
+                    <Link
+                      to={`/services/${service.slug}`}
+                      className="py-2.5 px-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-[11px] sm:text-xs font-bold border border-slate-200/90 flex items-center justify-center gap-1.5 transition-all text-center active:scale-95"
+                      title={`Learn the ${service.title || service.name} process`}
+                    >
+                      <Layers className="w-3.5 h-3.5 text-slate-600 shrink-0" />
+                      <span className="truncate">What is Process</span>
+                    </Link>
+
+                    {/* Button 2: Book Button */}
+                    <Link
+                      to={`/book-pickup?service=${service.slug}`}
+                      className="py-2.5 px-2.5 rounded-xl bg-gradient-to-r from-[#F97316] to-amber-500 hover:from-[#EA580C] hover:to-orange-500 text-white text-[11px] sm:text-xs font-black shadow-xs flex items-center justify-center gap-1.5 transition-all active:scale-95 text-center"
+                      title={`Book ${service.title || service.name} pickup`}
+                    >
+                      <Calendar className="w-3.5 h-3.5 shrink-0" />
+                      <span>Book Now</span>
+                    </Link>
+
                   </div>
                 </div>
 
-              </Link>
+              </div>
             );
           })}
         </div>
