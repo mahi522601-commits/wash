@@ -3,6 +3,7 @@ import { Routes, Route, useLocation } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
 import { SettingsProvider } from './context/SettingsContext';
+import { WorkerAuthProvider } from './context/WorkerAuthContext';
 
 // Public Layout Components
 import { Navbar } from './components/public/Navbar';
@@ -48,6 +49,11 @@ import { AdminBlogPage } from './pages/admin/AdminBlogPage';
 import { AdminLocationsPage } from './pages/admin/AdminLocationsPage';
 import { AdminPaymentsPage } from './pages/admin/AdminPaymentsPage';
 import { AdminStaffPage } from './pages/admin/AdminStaffPage';
+
+// Worker & Delivery Executive Portal
+import { WorkerLoginPage } from './pages/worker/WorkerLoginPage';
+import { WorkerLayout } from './components/worker/WorkerLayout';
+import { WorkerDashboardPage } from './pages/worker/WorkerDashboardPage';
 
 // Scroll to top helper with instant jump on route change
 const ScrollToTop = () => {
@@ -95,8 +101,9 @@ export function App() {
     <AuthProvider>
       <SettingsProvider>
         <ToastProvider>
-          <ScrollToTop />
-          <Routes>
+          <WorkerAuthProvider>
+            <ScrollToTop />
+            <Routes>
             
             {/* PUBLIC WEBSITE ROUTES */}
             <Route path="/" element={<PublicLayout><HomePage /></PublicLayout>} />
@@ -138,10 +145,18 @@ export function App() {
               <Route path="staff" element={<AdminStaffPage />} />
             </Route>
 
+            {/* WORKER & DELIVERY EXECUTIVE PORTAL */}
+            <Route path="/worker/login" element={<WorkerLoginPage />} />
+            <Route path="/worker" element={<WorkerLayout />}>
+              <Route index element={<WorkerDashboardPage />} />
+              <Route path="dashboard" element={<WorkerDashboardPage />} />
+            </Route>
+
             {/* Catch-all Fallback */}
             <Route path="*" element={<PublicLayout><HomePage /></PublicLayout>} />
 
           </Routes>
+        </WorkerAuthProvider>
         </ToastProvider>
       </SettingsProvider>
     </AuthProvider>

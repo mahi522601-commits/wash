@@ -34,7 +34,8 @@ import {
   LogOut,
   X,
   ExternalLink,
-  ShieldCheck
+  ShieldCheck,
+  Bike
 } from 'lucide-react';
 
 const SIDEBAR_COLLAPSED_KEY = 'techwash_admin_sidebar_collapsed';
@@ -59,6 +60,7 @@ export const AdminSidebar = ({ isOpen, onClose, isCollapsed, onToggleCollapse })
         { name: 'Store Locations', path: '/admin/locations', icon: MapPin },
         { name: 'Payments & QR', path: '/admin/payments', icon: CreditCard },
         { name: 'Operations Staff', path: '/admin/staff', icon: UserCheck },
+        { name: 'Worker / Rider Portal', path: '/worker/login', icon: Bike, badge: 'Fleet', badgeColor: 'bg-purple-500/20 text-purple-300 border-purple-500/30' },
       ]
     },
     {

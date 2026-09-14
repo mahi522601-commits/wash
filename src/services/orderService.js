@@ -450,5 +450,163 @@ export const orderService = {
         } catch (e) {}
       });
     };
+  },
+
+  /**
+   * Assign an order to a worker/delivery executive with real-time event dispatch
+   */
+  async assignWorkerToOrder(orderId, staffMember, note = '') {
+    if (!orderId || !staffMember) throw new Error('Order and staff member required.');
+
+    const assignmentNote = note || `Order dispatched to rider ${staffMember.name} (${staffMember.phone || ''})`;
+    const updated = await this.updateOrderStatus(orderId, {
+      assignedStaff: staffMember.name,
+      note: assignmentNote,
+    });
+
+    // Enrich with worker metadata
+    updated.assignedStaffId = staffMember.id;
+    updated.assignedStaffName = staffMember.name;
+    updated.assignedStaffPhone = staffMember.phone;
+    updated.assignedStaffEmail = staffMember.email;
+    updated.assignedAt = new Date().toISOString();
+
+    if (isFirebaseConfigured && db) {
+      try {
+        await Promise.all([
+          setDoc(doc(db, 'orders', updated.id), updated, { merge: true }),
+          setDoc(doc(db, 'bookings', updated.id), updated, { merge: true })
+        ]);
+      } catch (e) {
+        console.warn('Firestore assignment sync error:', e);
+      }
+    }
+
+    // Cache locally
+    const orders = await this.getOrders({ limitCount: 500 });
+    const idx = orders.findIndex(o => o.id === updated.id);
+    if (idx >= 0) orders[idx] = updated;
+    localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(orders));
+
+    // Broadcast assignment to Worker Portal
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('techwash-worker-order-assigned', { 
+        detail: { order: updated, workerId: staffMember.id } 
+      }));
+
+      try {
+        if ('BroadcastChannel' in window) {
+          const channel = new BroadcastChannel('techwash_orders_channel');
+          channel.postMessage({ 
+            type: 'WORKER_ORDER_ASSIGNED', 
+            order: updated, 
+            workerId: staffMember.id 
+          });
+          setTimeout(() => {
+            try { channel.close(); } catch (e) {}
+          }, 200);
+        }
+      } catch (e) {}
+    }
+
+    return updated;
+  },
+
+  /**
+   * Get all orders assigned to a specific worker
+   */
+  async getOrdersForWorker(workerId, { status = 'ALL', search = '' } = {}) {
+    const allOrders = await this.getOrders({ limitCount: 500 });
+    if (!workerId) return [];
+
+    let workerOrders = allOrders.filter(o => {
+      const matchId = o.assignedStaffId === workerId;
+      const matchName = o.assignedStaff && o.assignedStaff.toLowerCase() === workerId.toLowerCase();
+      const matchEmail = o.assignedStaffEmail && o.assignedStaffEmail.toLowerCase() === workerId.toLowerCase();
+      return matchId || matchName || matchEmail;
+    });
+
+    if (search) {
+      const q = search.toLowerCase();
+      workerOrders = workerOrders.filter(o =>
+        (o.orderNumber && o.orderNumber.toLowerCase().includes(q)) ||
+        (o.customerName && o.customerName.toLowerCase().includes(q)) ||
+        (o.phone && o.phone.includes(q)) ||
+        (o.address && o.address.toLowerCase().includes(q))
+      );
+    }
+
+    if (status && status !== 'ALL') {
+      workerOrders = workerOrders.filter(o => o.customerStage === status || o.status === status);
+    }
+
+    return workerOrders;
+  },
+
+  /**
+   * Subscribe to orders specifically assigned to a given worker
+   */
+  subscribeToWorkerOrders(workerId, callback) {
+    if (!workerId || typeof callback !== 'function') return () => {};
+
+    const unsubscribers = [];
+
+    // Local custom event listener
+    const handleLocalAssignment = (e) => {
+      const { order, workerId: targetWorkerId } = e.detail || {};
+      if (
+        order && 
+        (targetWorkerId === workerId || 
+         order.assignedStaffId === workerId || 
+         order.assignedStaffEmail === workerId)
+      ) {
+        callback(order);
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('techwash-worker-order-assigned', handleLocalAssignment);
+      unsubscribers.push(() => window.removeEventListener('techwash-worker-order-assigned', handleLocalAssignment));
+    }
+
+    // Cross-tab BroadcastChannel listener
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      try {
+        const channel = new BroadcastChannel('techwash_orders_channel');
+        channel.onmessage = (event) => {
+          if (event.data?.type === 'WORKER_ORDER_ASSIGNED' && event.data?.order) {
+            const { order, workerId: targetWorkerId } = event.data;
+            if (
+              targetWorkerId === workerId || 
+              order.assignedStaffId === workerId || 
+              order.assignedStaffEmail === workerId
+            ) {
+              callback(order);
+            }
+          }
+        };
+        unsubscribers.push(() => {
+          try { channel.close(); } catch (e) {}
+        });
+      } catch (e) {}
+    }
+
+    // Also listen to general new order additions in Firestore
+    const generalUnsub = this.subscribeToNewOrders((order) => {
+      if (
+        order.assignedStaffId === workerId || 
+        order.assignedStaffEmail === workerId || 
+        (order.assignedStaff && order.assignedStaff.toLowerCase() === workerId.toLowerCase())
+      ) {
+        callback(order);
+      }
+    });
+    unsubscribers.push(generalUnsub);
+
+    return () => {
+      unsubscribers.forEach(unsub => {
+        try { unsub(); } catch (e) {}
+      });
+    };
   }
 };
