@@ -25,6 +25,14 @@ export const ServicesPage = () => {
     serviceService.getServices({ publishedOnly: true })
       .then((data) => setServices(data))
       .finally(() => setLoading(false));
+
+    const handleServicesUpdate = () => {
+      serviceService.getServices({ publishedOnly: true })
+        .then((data) => setServices(data));
+    };
+
+    window.addEventListener('techwash-services-updated', handleServicesUpdate);
+    return () => window.removeEventListener('techwash-services-updated', handleServicesUpdate);
   }, []);
 
   const categories = ['ALL', ...Array.from(new Set(services.map(s => s.category || 'General Care')))];

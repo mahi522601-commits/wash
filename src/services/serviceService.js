@@ -471,6 +471,11 @@ export const serviceService = {
     if (idx >= 0) cached[idx] = payload;
     else cached.push(payload);
     localStorage.setItem(SERVICES_STORAGE_KEY, JSON.stringify(cached));
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('techwash-services-updated', { detail: payload }));
+    }
+
     return payload;
   },
 
