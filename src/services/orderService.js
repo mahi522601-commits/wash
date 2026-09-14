@@ -160,6 +160,10 @@ export const orderService = {
       console.warn("Local storage order caching error:", e);
     }
 
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('techwash-new-order-placed', { detail: fullOrder }));
+    }
+
     return fullOrder;
   },
 

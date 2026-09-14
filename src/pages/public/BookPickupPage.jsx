@@ -6,6 +6,7 @@ import { orderService } from '../../services/orderService';
 import { paymentService, PAYMENT_METHODS } from '../../services/paymentService';
 import { UpiPaymentCard } from '../../components/payment/UpiPaymentCard';
 import { UpiAppLogosRow } from '../../components/payment/UpiLogos';
+import { playOrderPlacedSound } from '../../utils/audioNotification';
 import { analyticsService } from '../../services/analyticsService';
 import { useToast } from '../../context/ToastContext';
 import { useSettings } from '../../context/SettingsContext';
@@ -667,6 +668,9 @@ export const BookPickupPage = () => {
       };
 
       const created = await orderService.createOrder(orderPayload);
+
+      // Play custom order confirmation chime from /1.mp4
+      playOrderPlacedSound();
 
       try {
         confetti({

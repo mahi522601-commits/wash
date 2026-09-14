@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { authService } from '../../services/authService';
+import { useToast } from '../../context/ToastContext';
+import { playOrderPlacedSound } from '../../utils/audioNotification';
 import { AdminSidebar } from './AdminSidebar';
 import { AdminHeader } from './AdminHeader';
 import { AdminCommandPalette } from './AdminCommandPalette';
@@ -10,6 +12,7 @@ const SIDEBAR_COLLAPSED_KEY = 'techwash_admin_sidebar_collapsed';
 
 export const AdminLayout = () => {
   const { currentUser, loading } = useAuth();
+  const { info } = useToast();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(() => {
     try {
@@ -19,6 +22,21 @@ export const AdminLayout = () => {
     }
   });
   const [searchPaletteOpen, setSearchPaletteOpen] = useState(false);
+
+  // Listen for real-time new customer orders & play notification sound
+  useEffect(() => {
+    const handleNewOrder = (e) => {
+      const order = e.detail;
+      playOrderPlacedSound();
+      info(
+        '🔔 New Order Received!',
+        `${order?.customerName || 'Customer'} scheduled a ${order?.service || 'laundry'} pickup (${order?.orderNumber || 'New Order'}).`
+      );
+    };
+
+    window.addEventListener('techwash-new-order-placed', handleNewOrder);
+    return () => window.removeEventListener('techwash-new-order-placed', handleNewOrder);
+  }, [info]);
 
   // Global Ctrl + K / Cmd + K keyboard shortcut
   useEffect(() => {
