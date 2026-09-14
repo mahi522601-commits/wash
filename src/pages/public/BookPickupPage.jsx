@@ -1744,7 +1744,7 @@ export const BookPickupPage = () => {
                         required
                         type="tel"
                         maxLength={10}
-                        placeholder="e.g. 9876543210"
+                        placeholder="e.g. 8977769866"
                         value={customer.phone}
                         onChange={(e) => handlePhoneChange(e.target.value)}
                       />

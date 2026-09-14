@@ -23,9 +23,9 @@ export const FloatingActionHub = ({ onOpenAssistant }) => {
       .catch(() => {});
   }, []);
 
-  const whatsappNumber = settings?.general?.whatsappNumber || '+91 98765 43210';
+  const whatsappNumber = settings?.general?.whatsappNumber || '+91 89777 69866';
   const whatsappMsg = settings?.general?.whatsappDefaultMessage || 'Hi Tech Wash, I would like to inquire about laundry & dry cleaning pickup!';
-  const primaryPhone = settings?.general?.primaryPhone || '+91 98765 43210';
+  const primaryPhone = settings?.general?.primaryPhone || '+91 89777 69866';
   const googleReviewUrl = settings?.social?.googleBusiness || 'https://maps.google.com';
 
   const cleanWa = whatsappNumber.replace(/[^0-9]/g, '');

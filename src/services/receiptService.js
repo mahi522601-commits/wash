@@ -7,8 +7,8 @@ import { settingsService } from './settingsService.js';
 export const DEFAULT_RECEIPT_CONFIG = {
   businessName: 'Tech Wash Laundry Services',
   tagline: 'Next-Generation Premium Fabric Care & Couture Spa',
-  phone: '+91 98765 43210',
-  whatsapp: '+91 98765 43210',
+  phone: '+91 89777 69866',
+  whatsapp: '+91 89777 69866',
   email: 'care@techwash.in',
   website: 'https://techwash.in',
   address: 'Main Road, Jubilee Hills, Hyderabad, Telangana - 500033',
@@ -16,7 +16,7 @@ export const DEFAULT_RECEIPT_CONFIG = {
   fssaiOrReg: 'REG-TW-2026-HYD',
   prefixPattern: 'TW-{YEAR}-{NUMBER}',
   thankYouMessage: 'Thank you for trusting Tech Wash with your garments. Fresh clothes. Professional care.',
-  footerContactNote: 'For queries, scheduling changes or feedback, contact our concierge at +91 98765 43210.',
+  footerContactNote: 'For queries, scheduling changes or feedback, contact our concierge at +91 89777 69866.',
   termsAndConditions: '1. Garments are inspected and processed according to international textile care standards.\n2. Please report any discrepancy within 24 hours of delivery.\n3. Digital invoices are GST compliant and stored securely.',
   
   // Visibility toggles

@@ -437,7 +437,7 @@ export const PrintReceipt = ({
             </p>
           )}
           <p className="text-[9px] text-slate-400">
-            {config.footerContactNote || 'Customer Concierge: +91 98765 43210 • care@techwash.in'}
+            {config.footerContactNote || 'Customer Concierge: +91 89777 69866 • care@techwash.in'}
           </p>
         </div>
 
