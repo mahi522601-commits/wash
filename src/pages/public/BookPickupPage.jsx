@@ -41,16 +41,43 @@ import {
   Trash2,
   Phone,
   MessageSquare,
-  HelpCircle,
-  Scissors
+  ChevronDown,
+  ChevronUp,
+  X,
+  Search,
+  CheckCircle
 } from 'lucide-react';
 
 const STEPS = [
-  { id: 1, label: 'Select Service', shortLabel: 'Service', icon: Sparkles },
-  { id: 2, label: 'Configure Items', shortLabel: 'Items', icon: ShoppingBag },
-  { id: 3, label: 'Pickup & Slot', shortLabel: 'Address & Slot', icon: MapPin },
-  { id: 4, label: 'Review & Confirm', shortLabel: 'Summary', icon: CreditCard },
+  { id: 1, label: 'SERVICE', shortLabel: 'Service', icon: Sparkles },
+  { id: 2, label: 'ITEMS', shortLabel: 'Items', icon: ShoppingBag },
+  { id: 3, label: 'DETAILS', shortLabel: 'Address & Slot', icon: MapPin },
+  { id: 4, label: 'SUMMARY', shortLabel: 'Summary', icon: CreditCard },
 ];
+
+const SUBCATEGORY_TABS = {
+  dryCleaning: [
+    { id: 'all', label: 'All Items', emoji: '✨' },
+    { id: 'tops', label: 'Tops', emoji: '👕' },
+    { id: 'bottoms', label: 'Pants & Bottoms', emoji: '👖' },
+    { id: 'jackets', label: 'Jackets & Formal', emoji: '🧥' },
+    { id: 'traditional', label: 'Sarees & Traditional', emoji: '🥻' },
+    { id: 'dresses', label: 'Dresses & Couture', emoji: '👗' },
+    { id: 'kids', label: 'Kids & Toys', emoji: '🧸' },
+    { id: 'bags', label: 'Bags & Accessories', emoji: '👜' },
+    { id: 'shoes', label: 'Shoes', emoji: '👟' },
+  ],
+  ironing: [
+    { id: 'all', label: 'All Items', emoji: '✨' },
+    { id: 'tops', label: 'Tops', emoji: '👕' },
+    { id: 'bottoms', label: 'Pants & Bottoms', emoji: '👖' },
+    { id: 'jackets', label: 'Jackets & Formal', emoji: '🧥' },
+    { id: 'traditional', label: 'Sarees & Traditional', emoji: '🥻' },
+    { id: 'dresses', label: 'Dresses & Couture', emoji: '👗' },
+    { id: 'household', label: 'Home & Curtains', emoji: '🏠' },
+    { id: 'kids', label: 'Kids', emoji: '🧸' },
+  ]
+};
 
 export const BookPickupPage = () => {
   const [searchParams] = useSearchParams();
@@ -58,46 +85,46 @@ export const BookPickupPage = () => {
   const { success, error, info } = useToast();
   const { settings } = useSettings();
 
-  // Pricing config state (defaults to authoritative initial pricing)
+  // Pricing config state
   const [pricingConfig, setPricingConfig] = useState(INITIAL_PRICING_CONFIG);
   const [currentStep, setCurrentStep] = useState(1);
 
-  // Selected Service
+  // Step 1: Selected Service
   const [selectedServiceId, setSelectedServiceId] = useState('dry-cleaning');
 
-  // Step 2: Item and Service Configuration States
-  // A. Itemized Services (Dry Cleaning & Ironing)
-  const [itemizedCategory, setItemizedCategory] = useState('men'); // 'men' | 'women' | 'common'
-  const [itemizedQuantities, setItemizedQuantities] = useState({}); // { [itemId]: count }
-  const [itemSearchQuery, setItemSearchQuery] = useState('');
+  // Step 2: Customer Personas & Categories
+  // 'men' | 'women' | 'mixed'
+  const [clothingFor, setClothingFor] = useState('men');
+  const [activeSubCategory, setActiveSubCategory] = useState('all');
+  const [searchFilter, setSearchFilter] = useState('');
 
-  // B. Per-KG Services (Wash & Iron, Wash & Fold)
-  const [perKgGender, setPerKgGender] = useState('men'); // 'men' | 'women'
+  // Quantities for Itemized Services (Dry Cleaning & Ironing)
+  const [itemizedQuantities, setItemizedQuantities] = useState({});
+
+  // Quantities for Per-KG Services (Wash & Iron, Wash & Fold)
   const [perKgCounts, setPerKgCounts] = useState({
     men: { 'wt-m-1': 0, 'wt-m-2': 0, 'wt-m-3': 0, 'wt-m-4': 0, 'wt-m-5': 0, 'wt-m-6': 0 },
     women: { 'wt-w-1': 0, 'wt-w-2': 0, 'wt-w-3': 0, 'wt-w-4': 0, 'wt-w-5': 0, 'wt-w-6': 0 }
   });
-  const [customKgInput, setCustomKgInput] = useState('');
 
-  // C. Saree Rolling
+  // Saree Rolling
   const [sareeCount, setSareeCount] = useState(1);
-  const [sareeNotes, setSareeNotes] = useState('');
 
-  // D. Curtain Washing
+  // Curtain Washing (Dimensional)
   const [curtainItems, setCurtainItems] = useState([
-    { id: 'c-1', width: 4, height: 6, quantity: 2, label: 'Standard Window (4ft × 6ft)' }
+    { id: 'curtain-1', width: 9, height: 6, quantity: 1 }
   ]);
 
-  // E. Shoe Washing
+  // Shoe Washing (Per-Pair)
   const [shoePairs, setShoePairs] = useState(1);
-  const [shoeType, setShoeType] = useState('Sneakers / Sports Shoes');
+  const [shoeType, setShoeType] = useState('Sneakers / Casual');
 
-  // F. Carpet Washing
+  // Carpet Washing (Dimensional)
   const [carpetItems, setCarpetItems] = useState([
-    { id: 'cp-1', length: 6, width: 4, quantity: 1, label: 'Medium Rug (6ft × 4ft)' }
+    { id: 'carpet-1', length: 10, width: 8, quantity: 1 }
   ]);
 
-  // Step 3: Customer Details & Pickup Address & Schedule State
+  // Step 3: Customer Details & Pickup Address & Schedule
   const [customer, setCustomer] = useState({
     name: '',
     phone: '',
@@ -131,6 +158,9 @@ export const BookPickupPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [confirmedOrder, setConfirmedOrder] = useState(null);
 
+  // Mobile Bottom Drawer Open State
+  const [isMobileBagOpen, setIsMobileBagOpen] = useState(false);
+
   // Load config & handle URL prefill
   useEffect(() => {
     pricingService.getPricingConfig().then(cfg => {
@@ -162,23 +192,6 @@ export const BookPickupPage = () => {
   const currentService = useMemo(() => {
     return pricingConfig.services.find(s => s.id === selectedServiceId) || pricingConfig.services[0];
   }, [pricingConfig, selectedServiceId]);
-
-  // Handle WhatsApp sync
-  const handlePhoneChange = (val) => {
-    setCustomer(prev => ({
-      ...prev,
-      phone: val,
-      whatsapp: prev.sameAsPhone ? val : prev.whatsapp,
-    }));
-  };
-
-  const handleToggleSameAsPhone = (checked) => {
-    setCustomer(prev => ({
-      ...prev,
-      sameAsPhone: checked,
-      whatsapp: checked ? prev.phone : prev.whatsapp,
-    }));
-  };
 
   // ----------------------------------------------------
   // ITEM QUANTITY HANDLERS
@@ -215,20 +228,17 @@ export const BookPickupPage = () => {
   const addCurtainItem = () => {
     setCurtainItems(prev => [
       ...prev,
-      { id: `c-${Date.now()}`, width: 4, height: 6, quantity: 1, label: 'Custom Curtain' }
+      { id: `curtain-${Date.now()}`, width: 9, height: 6, quantity: 1 }
     ]);
   };
 
   const updateCurtainItem = (id, field, val) => {
-    setCurtainItems(prev => prev.map(item => {
-      if (item.id === id) {
-        return { ...item, [field]: Number(val) || 0 };
-      }
-      return item;
-    }));
+    const num = Math.max(1, Number(val) || 1);
+    setCurtainItems(prev => prev.map(item => item.id === id ? { ...item, [field]: num } : item));
   };
 
   const removeCurtainItem = (id) => {
+    if (curtainItems.length <= 1) return;
     setCurtainItems(prev => prev.filter(item => item.id !== id));
   };
 
@@ -236,21 +246,36 @@ export const BookPickupPage = () => {
   const addCarpetItem = () => {
     setCarpetItems(prev => [
       ...prev,
-      { id: `cp-${Date.now()}`, length: 6, width: 4, quantity: 1, label: 'Custom Carpet' }
+      { id: `carpet-${Date.now()}`, length: 10, width: 8, quantity: 1 }
     ]);
   };
 
   const updateCarpetItem = (id, field, val) => {
-    setCarpetItems(prev => prev.map(item => {
-      if (item.id === id) {
-        return { ...item, [field]: Number(val) || 0 };
-      }
-      return item;
-    }));
+    const num = Math.max(1, Number(val) || 1);
+    setCarpetItems(prev => prev.map(item => item.id === id ? { ...item, [field]: num } : item));
   };
 
   const removeCarpetItem = (id) => {
+    if (carpetItems.length <= 1) return;
     setCarpetItems(prev => prev.filter(item => item.id !== id));
+  };
+
+  // Phone and WhatsApp sync
+  const handlePhoneChange = (val) => {
+    const cleaned = val.replace(/\D/g, '').slice(0, 10);
+    setCustomer(prev => ({
+      ...prev,
+      phone: cleaned,
+      whatsapp: prev.sameAsPhone ? cleaned : prev.whatsapp,
+    }));
+  };
+
+  const handleToggleSameAsPhone = (checked) => {
+    setCustomer(prev => ({
+      ...prev,
+      sameAsPhone: checked,
+      whatsapp: checked ? prev.phone : prev.whatsapp,
+    }));
   };
 
   // ----------------------------------------------------
@@ -263,6 +288,7 @@ export const BookPickupPage = () => {
     let estimatedWeightGrams = 0;
     let hasUnpricedItems = false;
     let unpricedMessage = '';
+    let totalItemCount = 0;
 
     if (currentService.pricingType === 'ITEMIZED') {
       // Dry Cleaning or Ironing
@@ -282,6 +308,7 @@ export const BookPickupPage = () => {
           if (itemDef) {
             const lineTotal = itemDef.price * qty;
             itemsSubtotal += lineTotal;
+            totalItemCount += qty;
             lineItems.push({
               id: itemDef.id,
               name: itemDef.name,
@@ -298,55 +325,80 @@ export const BookPickupPage = () => {
       });
     } else if (currentService.pricingType === 'PER_KG') {
       // Wash & Iron OR Wash & Fold
-      const ratePerKg = currentService.baseRates[perKgGender] || (perKgGender === 'men' ? 130 : 160);
-      const standards = pricingConfig.weightStandards[perKgGender] || [];
-      const genderCounts = perKgCounts[perKgGender] || {};
+      const menRate = currentService.baseRates.men;
+      const womenRate = currentService.baseRates.women;
 
-      let totalGrams = 0;
-      let totalPieces = 0;
+      const menStandards = pricingConfig.weightStandards.men || [];
+      const womenStandards = pricingConfig.weightStandards.women || [];
 
-      standards.forEach(std => {
-        const qty = genderCounts[std.id] || 0;
-        if (qty > 0) {
-          totalPieces += qty;
-          if (std.weightGrams) {
-            totalGrams += std.weightGrams * qty;
+      let menGrams = 0;
+      let womenGrams = 0;
+
+      // Include Men's items if 'men' or 'mixed'
+      if (clothingFor === 'men' || clothingFor === 'mixed') {
+        menStandards.forEach(std => {
+          const qty = perKgCounts.men?.[std.id] || 0;
+          if (qty > 0) {
+            totalItemCount += qty;
+            if (std.weightGrams) {
+              menGrams += std.weightGrams * qty;
+            }
+            lineItems.push({
+              id: std.id,
+              name: std.name,
+              persona: "Men's",
+              emoji: std.emoji,
+              quantity: qty,
+              weightGramsEach: std.weightGrams,
+              totalGrams: std.weightGrams ? std.weightGrams * qty : null,
+              unconfirmed: std.unconfirmed || false,
+              unit: 'piece',
+            });
           }
-          lineItems.push({
-            id: std.id,
-            name: `${std.name} (${perKgGender === 'men' ? 'Men' : 'Women'})`,
-            emoji: std.emoji,
-            quantity: qty,
-            weightGramsEach: std.weightGrams,
-            unconfirmed: std.unconfirmed || false,
-            unit: 'piece',
-          });
-        }
-      });
-
-      // If user provided manual custom weight override
-      if (customKgInput && Number(customKgInput) > 0) {
-        estimatedWeightKg = Number(customKgInput);
-        estimatedWeightGrams = Math.round(estimatedWeightKg * 1000);
-      } else {
-        estimatedWeightGrams = totalGrams;
-        estimatedWeightKg = Number((totalGrams / 1000).toFixed(2));
+        });
       }
 
-      // If weight > 0, compute subtotal
-      if (estimatedWeightKg > 0) {
-        itemsSubtotal = Math.round(estimatedWeightKg * ratePerKg);
-      } else if (totalPieces > 0) {
-        // Fallback baseline estimation (minimum 1 kg if pieces selected)
-        itemsSubtotal = Math.round(1 * ratePerKg);
+      // Include Women's items if 'women' or 'mixed'
+      if (clothingFor === 'women' || clothingFor === 'mixed') {
+        womenStandards.forEach(std => {
+          const qty = perKgCounts.women?.[std.id] || 0;
+          if (qty > 0) {
+            totalItemCount += qty;
+            if (std.weightGrams) {
+              womenGrams += std.weightGrams * qty;
+            }
+            lineItems.push({
+              id: std.id,
+              name: std.name,
+              persona: "Women's",
+              emoji: std.emoji,
+              quantity: qty,
+              weightGramsEach: std.weightGrams,
+              totalGrams: std.weightGrams ? std.weightGrams * qty : null,
+              unconfirmed: std.unconfirmed || false,
+              unit: 'piece',
+            });
+          }
+        });
       }
+
+      const totalGrams = menGrams + womenGrams;
+      estimatedWeightGrams = totalGrams;
+      estimatedWeightKg = Number((totalGrams / 1000).toFixed(2));
+
+      // Calculate cost per gender segment
+      const menKg = menGrams / 1000;
+      const womenKg = womenGrams / 1000;
+      itemsSubtotal = Math.round((menKg * menRate) + (womenKg * womenRate));
+
     } else if (currentService.pricingType === 'UNPRICED') {
       // Saree Rolling
       hasUnpricedItems = true;
       unpricedMessage = 'Price to be confirmed at pickup';
+      totalItemCount = sareeCount;
       lineItems.push({
         id: 'saree-rolling-item',
-        name: 'Saree Rolling & Polishing',
+        name: 'Saree Rolling',
         emoji: '🥻',
         quantity: sareeCount,
         unit: 'saree',
@@ -359,14 +411,16 @@ export const BookPickupPage = () => {
       if (currentService.id === 'curtain-washing') {
         const ratePerSqFt = pricingConfig.curtains.ratePerSqFt || 30;
         curtainItems.forEach((c, idx) => {
-          const area = Math.max(0, c.width * c.height);
+          const area = Math.max(1, c.width * c.height);
           const lineTotal = Math.round(area * ratePerSqFt * (c.quantity || 1));
           itemsSubtotal += lineTotal;
+          totalItemCount += c.quantity || 1;
           lineItems.push({
             id: c.id,
-            name: `Curtain Set #${idx + 1} (${c.width}ft × ${c.height}ft)`,
+            name: `Curtain (${c.width}ft × ${c.height}ft)`,
             emoji: '🪟',
-            dimensions: `${c.width}ft × ${c.height}ft (${area} sq.ft.)`,
+            dimensions: `${c.width}ft × ${c.height}ft = ${area} sq.ft.`,
+            areaSqFt: area,
             quantity: c.quantity,
             ratePerSqFt,
             lineTotal,
@@ -376,14 +430,16 @@ export const BookPickupPage = () => {
       } else if (currentService.id === 'carpet-washing') {
         const ratePerSqFt = pricingConfig.carpets.ratePerSqFt || 45;
         carpetItems.forEach((c, idx) => {
-          const area = Math.max(0, c.length * c.width);
+          const area = Math.max(1, c.length * c.width);
           const lineTotal = Math.round(area * ratePerSqFt * (c.quantity || 1));
           itemsSubtotal += lineTotal;
+          totalItemCount += c.quantity || 1;
           lineItems.push({
             id: c.id,
-            name: `Carpet #${idx + 1} (${c.length}ft × ${c.width}ft)`,
+            name: `Carpet (${c.length}ft × ${c.width}ft)`,
             emoji: '🧶',
-            dimensions: `${c.length}ft × ${c.width}ft (${area} sq.ft.)`,
+            dimensions: `${c.length}ft × ${c.width}ft = ${area} sq.ft.`,
+            areaSqFt: area,
             quantity: c.quantity,
             ratePerSqFt,
             lineTotal,
@@ -396,9 +452,10 @@ export const BookPickupPage = () => {
       const ratePerPair = pricingConfig.shoes.ratePerPair || 350;
       const lineTotal = shoePairs * ratePerPair;
       itemsSubtotal += lineTotal;
+      totalItemCount = shoePairs;
       lineItems.push({
         id: 'shoe-washing-pair',
-        name: `Shoe Deep Clean (${shoeType})`,
+        name: `Shoe Washing (${shoeType})`,
         emoji: '👟',
         quantity: shoePairs,
         unitPrice: ratePerPair,
@@ -429,6 +486,7 @@ export const BookPickupPage = () => {
 
     return {
       lineItems,
+      totalItemCount,
       itemsSubtotal,
       estimatedWeightKg,
       estimatedWeightGrams,
@@ -443,10 +501,9 @@ export const BookPickupPage = () => {
   }, [
     currentService,
     pricingConfig,
+    clothingFor,
     itemizedQuantities,
-    perKgGender,
     perKgCounts,
-    customKgInput,
     sareeCount,
     curtainItems,
     shoePairs,
@@ -470,21 +527,25 @@ export const BookPickupPage = () => {
     }
   };
 
-  // Step Navigations & Validations
+  // Step Navigation
   const handleNextStep = () => {
     if (currentStep === 1) {
       if (!selectedServiceId) {
-        error('Select Service', 'Please select a laundry service to continue.');
+        error('Select Service', 'Please choose a service to get started.');
         return;
       }
       setCurrentStep(2);
-      window.scrollTo({ top: 120, behavior: 'smooth' });
+      window.scrollTo({ top: 100, behavior: 'smooth' });
       return;
     }
 
     if (currentStep === 2) {
+      if (orderBreakdown.totalItemCount === 0 && currentService.pricingType !== 'UNPRICED') {
+        info('No items selected', 'You can proceed or add estimated clothes. Our executive can also tally at doorstep.');
+      }
       setCurrentStep(3);
-      window.scrollTo({ top: 120, behavior: 'smooth' });
+      setIsMobileBagOpen(false);
+      window.scrollTo({ top: 100, behavior: 'smooth' });
       return;
     }
 
@@ -510,7 +571,8 @@ export const BookPickupPage = () => {
         return;
       }
       setCurrentStep(4);
-      window.scrollTo({ top: 120, behavior: 'smooth' });
+      setIsMobileBagOpen(false);
+      window.scrollTo({ top: 100, behavior: 'smooth' });
       return;
     }
   };
@@ -518,14 +580,14 @@ export const BookPickupPage = () => {
   const handlePrevStep = () => {
     if (currentStep > 1) {
       setCurrentStep(prev => prev - 1);
-      window.scrollTo({ top: 120, behavior: 'smooth' });
+      setIsMobileBagOpen(false);
+      window.scrollTo({ top: 100, behavior: 'smooth' });
     }
   };
 
   // Final Booking Submission
   const handleFinalBooking = async (e) => {
     if (e) e.preventDefault();
-
     setIsSubmitting(true);
 
     try {
@@ -593,8 +655,8 @@ export const BookPickupPage = () => {
 
       try {
         confetti({
-          particleCount: 120,
-          spread: 70,
+          particleCount: 130,
+          spread: 75,
           origin: { y: 0.6 },
           colors: ['#F97316', '#FB923C', '#10B981', '#3B82F6'],
         });
@@ -615,7 +677,7 @@ export const BookPickupPage = () => {
   // ----------------------------------------------------
   if (confirmedOrder) {
     return (
-      <div className="py-16 sm:py-24 bg-slate-50 min-h-screen">
+      <div className="py-14 sm:py-20 bg-slate-50 min-h-screen">
         <div className="max-w-2xl mx-auto px-4 sm:px-6">
           <Card variant="luxury" className="p-8 sm:p-12 text-center bg-white border border-brand-200 shadow-luxury space-y-6">
             
@@ -624,12 +686,12 @@ export const BookPickupPage = () => {
             </div>
 
             <div>
-              <Badge variant="emerald" size="lg">Booking Successfully Scheduled</Badge>
+              <Badge variant="emerald" size="lg">Pickup Successfully Scheduled</Badge>
               <h1 className="text-2xl sm:text-3xl font-black font-display text-slate-900 mt-3">
                 Thank You, {confirmedOrder.customer.name}!
               </h1>
               <p className="text-xs sm:text-sm text-slate-500 mt-2">
-                Your doorstep pickup has been scheduled for{' '}
+                Your doorstep pickup has been booked for{' '}
                 <strong className="text-slate-800">{confirmedOrder.schedule.pickupDate} ({confirmedOrder.schedule.pickupSlot})</strong>.
               </p>
             </div>
@@ -639,8 +701,8 @@ export const BookPickupPage = () => {
               <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
               <div>
                 <strong>WhatsApp Order Confirmation & Actual Weight:</strong>
-                <p className="mt-0.5 text-amber-800 text-[11px]">
-                  Our pickup executive will inspect the actual garment weight & count at your doorstep and immediately confirm the final details to your WhatsApp at <span className="font-bold text-amber-950">{confirmedOrder.customer.whatsapp || confirmedOrder.customer.phone}</span>.
+                <p className="mt-0.5 text-amber-800 text-[11px] leading-relaxed">
+                  Our pickup executive will inspect your clothes & weight at doorstep and immediately update the final details to your WhatsApp at <span className="font-bold text-amber-950">{confirmedOrder.customer.whatsapp || confirmedOrder.customer.phone}</span>.
                 </p>
               </div>
             </div>
@@ -648,7 +710,7 @@ export const BookPickupPage = () => {
             {/* Order Card Summary */}
             <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200/80 text-left space-y-3 text-xs">
               <div className="flex justify-between items-center pb-2 border-b border-slate-200">
-                <span className="text-slate-500">Order Tracking ID:</span>
+                <span className="text-slate-500">Tracking ID:</span>
                 <span className="font-mono font-bold text-sm text-brand-700">{confirmedOrder.orderNumber}</span>
               </div>
               <div className="flex justify-between">
@@ -666,10 +728,6 @@ export const BookPickupPage = () => {
               <div className="flex justify-between">
                 <span className="text-slate-500">Pickup Address:</span>
                 <span className="font-semibold text-slate-900 text-right line-clamp-1 max-w-[240px]">{confirmedOrder.customer.address}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Payment Option:</span>
-                <span className="font-semibold text-slate-900">{confirmedOrder.paymentMethod.replace(/_/g, ' ')}</span>
               </div>
             </div>
 
@@ -698,26 +756,12 @@ export const BookPickupPage = () => {
   // MAIN BOOKING WIZARD INTERFACE
   // ----------------------------------------------------
   return (
-    <div className="py-10 sm:py-16 bg-slate-50 min-h-screen">
+    <div className="py-8 sm:py-14 bg-slate-50 min-h-screen">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         
-        {/* Header */}
-        <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-10">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-brand-50 border border-brand-200/80 text-brand-700 text-xs font-semibold uppercase tracking-wider mb-2">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Official Tech Wash Doorstep Care</span>
-          </div>
-          <h1 className="text-2xl sm:text-4xl font-black text-slate-900 font-display tracking-tight">
-            Schedule Doorstep Pickup
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1.5">
-            Transparent pricing • Demineralized RO wash • European steam press
-          </p>
-        </div>
-
         {/* Step Indicator Progress Bar */}
-        <div className="mb-8 bg-white p-3 sm:p-4 rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
-          <div className="flex items-center justify-between min-w-[500px]">
+        <div className="mb-8 bg-white p-3 sm:p-4 rounded-2xl border border-slate-200 shadow-xs overflow-x-auto">
+          <div className="flex items-center justify-between min-w-[480px]">
             {STEPS.map((step) => {
               const isPast = currentStep > step.id;
               const isCurrent = currentStep === step.id;
@@ -725,23 +769,25 @@ export const BookPickupPage = () => {
 
               return (
                 <div key={step.id} className="flex items-center gap-2">
-                  <div
+                  <button
+                    type="button"
                     onClick={() => isPast && setCurrentStep(step.id)}
-                    className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold transition-all cursor-pointer ${
+                    disabled={!isPast && !isCurrent}
+                    className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold transition-all ${
                       isPast
-                        ? 'bg-emerald-500 text-white shadow-sm'
+                        ? 'bg-emerald-500 text-white shadow-xs cursor-pointer'
                         : isCurrent
                         ? 'bg-brand-600 text-white shadow-md shadow-brand-500/25 ring-4 ring-brand-100'
-                        : 'bg-slate-100 text-slate-400'
+                        : 'bg-slate-100 text-slate-400 cursor-not-allowed'
                     }`}
                   >
                     {isPast ? <Check className="w-4 h-4" /> : step.id}
-                  </div>
-                  <span className={`text-xs font-bold ${isCurrent ? 'text-slate-900 font-bold' : isPast ? 'text-slate-700' : 'text-slate-400'}`}>
-                    {step.shortLabel}
+                  </button>
+                  <span className={`text-xs font-bold tracking-wide ${isCurrent ? 'text-slate-900 font-bold' : isPast ? 'text-slate-700 cursor-pointer' : 'text-slate-400'}`}>
+                    {step.label}
                   </span>
                   {step.id < STEPS.length && (
-                    <div className={`w-8 sm:w-12 h-0.5 mx-1 ${isPast ? 'bg-emerald-400' : 'bg-slate-200'}`} />
+                    <div className={`w-8 sm:w-16 h-0.5 mx-1 ${isPast ? 'bg-emerald-400' : 'bg-slate-200'}`} />
                   )}
                 </div>
               );
@@ -749,23 +795,23 @@ export const BookPickupPage = () => {
           </div>
         </div>
 
-        {/* Main Grid: Form Steps on Left (8 cols), Sticky Summary on Right (4 cols) */}
+        {/* Main Grid: Form Steps on Left (8 cols), Sticky Laundry Bag on Right (4 cols) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
           <div className="lg:col-span-8">
-            <Card variant="luxury" className="p-6 sm:p-8 bg-white border border-slate-200 shadow-sm">
+            <Card variant="luxury" className="p-5 sm:p-8 bg-white border border-slate-200 shadow-sm">
               
               {/* ============================================================ */}
-              {/* STEP 1: SELECT PRIMARY SERVICE (8 OFFICIAL SERVICES)         */}
+              {/* STEP 1: "WHAT DO YOU NEED?" (8 SERVICE CARDS)               */}
               {/* ============================================================ */}
               {currentStep === 1 && (
                 <div className="space-y-6">
-                  <div className="border-b border-slate-100 pb-4">
-                    <h2 className="text-xl font-bold text-slate-900 font-display flex items-center gap-2">
-                      <span>Select Laundry Service</span>
-                    </h2>
-                    <p className="text-xs text-slate-500 mt-1">
-                      Choose from our 8 specialized garment care categories below.
+                  <div>
+                    <h1 className="text-2xl sm:text-3xl font-black text-slate-900 font-display tracking-tight">
+                      How can we help you today?
+                    </h1>
+                    <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                      Choose a service to get started
                     </p>
                   </div>
 
@@ -775,43 +821,45 @@ export const BookPickupPage = () => {
                       return (
                         <div
                           key={service.id}
-                          onClick={() => setSelectedServiceId(service.id)}
-                          className={`p-5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between relative ${
+                          onClick={() => {
+                            setSelectedServiceId(service.id);
+                            setCurrentStep(2);
+                            window.scrollTo({ top: 100, behavior: 'smooth' });
+                          }}
+                          className={`p-5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between relative group ${
                             isSelected
                               ? 'border-brand-600 bg-brand-50/40 shadow-luxury ring-2 ring-brand-400/20'
-                              : 'border-slate-200 hover:border-brand-300 hover:bg-slate-50/60 bg-white'
+                              : 'border-slate-200 hover:border-brand-400 hover:bg-slate-50/80 bg-white'
                           }`}
                         >
                           <div>
                             <div className="flex items-center justify-between mb-3">
-                              <span className="text-3xl p-2 rounded-2xl bg-white border border-slate-100 shadow-xs">
+                              <span className="text-3xl p-2.5 rounded-2xl bg-white border border-slate-100 shadow-xs group-hover:scale-105 transition-transform">
                                 {service.emoji}
                               </span>
-                              <Badge variant={isSelected ? 'brand' : 'slate'} size="sm">
-                                {service.startingPriceDisplay}
-                              </Badge>
+                              {service.startingPriceDisplay && (
+                                <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 group-hover:bg-brand-100 group-hover:text-brand-800 transition-colors">
+                                  {service.startingPriceDisplay}
+                                </span>
+                              )}
                             </div>
 
-                            <h3 className="text-base font-bold text-slate-900 font-display">
+                            <h3 className="text-base font-bold text-slate-900 font-display group-hover:text-brand-700 transition-colors">
                               {service.name}
                             </h3>
-                            <p className="text-[11px] font-semibold text-brand-700 mt-0.5">
+                            <p className="text-xs text-slate-500 mt-1 leading-relaxed">
                               {service.tagline}
-                            </p>
-                            <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
-                              {service.description}
                             </p>
                           </div>
 
                           <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-                            <span className="text-slate-400 font-medium">Rate:</span>
-                            <span className="font-bold text-slate-900">
-                              {service.startingPriceDisplay}
+                            <span className="text-brand-600 font-bold group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
+                              Select & customize ➔
                             </span>
                           </div>
 
                           {isSelected && (
-                            <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-brand-600 text-white flex items-center justify-center shadow-sm">
+                            <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-brand-600 text-white flex items-center justify-center shadow-xs">
                               <Check className="w-3.5 h-3.5 stroke-[3]" />
                             </div>
                           )}
@@ -823,87 +871,143 @@ export const BookPickupPage = () => {
               )}
 
               {/* ============================================================ */}
-              {/* STEP 2: CONFIGURE ITEMS / WEIGHT / DIMENSIONS DYNAMICALLY    */}
+              {/* STEP 2: SERVICE-SPECIFIC SELECTION JOURNEY                   */}
               {/* ============================================================ */}
               {currentStep === 2 && (
                 <div className="space-y-6">
-                  <div className="border-b border-slate-100 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-2xl">{currentService.emoji}</span>
-                        <h2 className="text-xl font-bold text-slate-900 font-display">
-                          {currentService.name} Configuration
+                  
+                  {/* Service Header with Back to Services button */}
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                    <div className="flex items-center gap-3">
+                      <span className="text-3xl p-2 bg-brand-50 rounded-2xl border border-brand-100">
+                        {currentService.emoji}
+                      </span>
+                      <div>
+                        <h2 className="text-lg sm:text-xl font-bold text-slate-900 font-display">
+                          {currentService.name}
                         </h2>
+                        <p className="text-xs text-slate-500">
+                          {currentService.tagline} • {currentService.startingPriceDisplay}
+                        </p>
                       </div>
-                      <p className="text-xs text-slate-500 mt-0.5">
-                        {currentService.tagline} • {currentService.startingPriceDisplay}
-                      </p>
                     </div>
 
                     <button
                       type="button"
                       onClick={() => setCurrentStep(1)}
-                      className="text-xs font-bold text-brand-600 hover:text-brand-700 underline self-start sm:self-auto"
+                      className="text-xs font-bold text-brand-600 hover:text-brand-700 hover:underline shrink-0"
                     >
-                      Change Service
+                      ← Change Service
                     </button>
                   </div>
 
                   {/* -------------------------------------------------------- */}
-                  {/* CASE A: ITEMIZED SERVICES (Dry Cleaning & Ironing)       */}
+                  {/* DRY CLEANING & IRONING FLOW                              */}
                   {/* -------------------------------------------------------- */}
-                  {currentService.pricingType === 'ITEMIZED' && (
-                    <div className="space-y-5">
-                      {/* Gender / Category Tabs */}
-                      <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
-                        {[
-                          { id: 'men', label: '👨 Men\'s Wear' },
-                          { id: 'women', label: '👩 Women\'s & Kids' },
-                          ...(currentService.id === 'dry-cleaning' ? [{ id: 'common', label: '🧸 Common & Bags' }] : []),
-                        ].map(tab => (
-                          <button
-                            key={tab.id}
-                            type="button"
-                            onClick={() => setItemizedCategory(tab.id)}
-                            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                              itemizedCategory === tab.id
-                                ? 'bg-brand-600 text-white shadow-sm'
-                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                            }`}
-                          >
-                            {tab.label}
-                          </button>
-                        ))}
+                  {(currentService.id === 'dry-cleaning' || currentService.id === 'ironing') && (
+                    <div className="space-y-6">
+                      
+                      {/* Persona Filter: Who are these clothes for? */}
+                      <div>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-2">
+                          Who are these clothes for?
+                        </label>
+                        <div className="grid grid-cols-3 gap-2.5">
+                          {[
+                            { id: 'men', label: "👨 Men's", desc: 'Shirts, Pants, Suits' },
+                            { id: 'women', label: "👩 Women's", desc: 'Tops, Sarees, Dresses' },
+                            { id: 'mixed', label: "👨👩👧 Mixed / Both", desc: 'All family clothes' },
+                          ].map(tab => (
+                            <button
+                              key={tab.id}
+                              type="button"
+                              onClick={() => {
+                                setClothingFor(tab.id);
+                                setActiveSubCategory('all');
+                              }}
+                              className={`p-3 rounded-2xl border-2 text-left transition-all ${
+                                clothingFor === tab.id
+                                  ? 'border-brand-600 bg-brand-50/50 shadow-xs ring-1 ring-brand-500/30'
+                                  : 'border-slate-200 hover:border-slate-300 bg-white'
+                              }`}
+                            >
+                              <div className="text-xs sm:text-sm font-bold text-slate-900 truncate">
+                                {tab.label}
+                              </div>
+                              <div className="text-[10px] text-slate-400 truncate hidden sm:block">
+                                {tab.desc}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
                       </div>
 
-                      {/* Item Search Bar */}
+                      {/* Category Chips Bar */}
+                      <div>
+                        <div className="flex items-center gap-1.5 overflow-x-auto pb-2 scrollbar-thin">
+                          {(SUBCATEGORY_TABS[currentService.id === 'dry-cleaning' ? 'dryCleaning' : 'ironing'] || []).map(cat => {
+                            const isActive = activeSubCategory === cat.id;
+                            return (
+                              <button
+                                key={cat.id}
+                                type="button"
+                                onClick={() => setActiveSubCategory(cat.id)}
+                                className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 shrink-0 ${
+                                  isActive
+                                    ? 'bg-brand-600 text-white shadow-xs'
+                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                }`}
+                              >
+                                <span>{cat.emoji}</span>
+                                <span>{cat.label}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Search Bar Filter */}
                       <div className="relative">
                         <input
                           type="text"
-                          placeholder="Search garment item (e.g. Shirt, Kurta, Saree, Blazer)..."
-                          value={itemSearchQuery}
-                          onChange={(e) => setItemSearchQuery(e.target.value)}
+                          placeholder="Search items (e.g. Shirt, Kurta, Saree, Blazer)..."
+                          value={searchFilter}
+                          onChange={(e) => setSearchFilter(e.target.value)}
                           className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium focus:bg-white focus:ring-2 focus:ring-brand-500"
                         />
-                        <ShoppingBag className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                        <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                       </div>
 
-                      {/* Items Grid */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[480px] overflow-y-auto pr-1">
+                      {/* Visual Item Cards Grid */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[460px] overflow-y-auto pr-1">
                         {(() => {
-                          const catalog = currentService.id === 'dry-cleaning'
-                            ? pricingConfig.dryCleaning
+                          const catalog = currentService.id === 'dry-cleaning' 
+                            ? pricingConfig.dryCleaning 
                             : pricingConfig.ironing;
 
-                          const list = catalog[itemizedCategory] || [];
-                          const filtered = list.filter(item => 
-                            !itemSearchQuery || item.name.toLowerCase().includes(itemSearchQuery.toLowerCase())
-                          );
+                          let list = [];
+                          if (clothingFor === 'men') {
+                            list = [...(catalog.men || []), ...(catalog.common || [])];
+                          } else if (clothingFor === 'women') {
+                            list = [...(catalog.women || []), ...(catalog.common || [])];
+                          } else {
+                            // mixed
+                            list = [...(catalog.men || []), ...(catalog.women || []), ...(catalog.common || [])];
+                          }
+
+                          // Remove duplicate IDs if any
+                          const uniqueList = Array.from(new Map(list.map(item => [item.id, item])).values());
+
+                          const filtered = uniqueList.filter(item => {
+                            const matchesSub = activeSubCategory === 'all' || item.subCategory === activeSubCategory;
+                            const matchesSearch = !searchFilter || item.name.toLowerCase().includes(searchFilter.toLowerCase());
+                            return matchesSub && matchesSearch;
+                          });
 
                           if (filtered.length === 0) {
                             return (
-                              <div className="col-span-2 py-8 text-center text-xs text-slate-400">
-                                No items found matching "{itemSearchQuery}".
+                              <div className="col-span-2 py-10 text-center text-xs text-slate-400">
+                                No items found in this category. Try selecting "All Items" or searching.
                               </div>
                             );
                           }
@@ -915,12 +1019,14 @@ export const BookPickupPage = () => {
                                 key={item.id}
                                 className={`p-3.5 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
                                   count > 0
-                                    ? 'border-brand-500 bg-brand-50/50 shadow-xs'
+                                    ? 'border-brand-500 bg-brand-50/40 shadow-xs ring-1 ring-brand-400/30'
                                     : 'border-slate-200 hover:border-slate-300 bg-white'
                                 }`}
                               >
-                                <div className="flex items-center gap-2.5 min-w-0">
-                                  <span className="text-xl shrink-0">{item.emoji || '👔'}</span>
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <span className="text-2xl shrink-0 p-1.5 bg-slate-50 rounded-xl border border-slate-100">
+                                    {item.emoji || '👔'}
+                                  </span>
                                   <div className="min-w-0">
                                     <h4 className="text-xs font-bold text-slate-900 truncate">
                                       {item.name}
@@ -956,179 +1062,256 @@ export const BookPickupPage = () => {
                           });
                         })()}
                       </div>
+
                     </div>
                   )}
 
                   {/* -------------------------------------------------------- */}
-                  {/* CASE B: PER-KG SERVICES (Wash & Iron, Wash & Fold)       */}
+                  {/* WASH & IRON & WASH & FOLD (PER-KG SERVICES)              */}
                   {/* -------------------------------------------------------- */}
-                  {currentService.pricingType === 'PER_KG' && (
+                  {(currentService.id === 'wash-and-iron' || currentService.id === 'wash-and-fold') && (
                     <div className="space-y-6">
                       
-                      {/* Gender Selector */}
+                      {/* Charged by weight badge */}
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-800 text-xs font-bold">
+                        <Scale className="w-3.5 h-3.5 text-blue-600" />
+                        <span>Charged by weight (Per Kg)</span>
+                      </div>
+
+                      {/* Who are the clothes for? */}
                       <div>
                         <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-2">
-                          Select Laundry Type / Gender Rate
+                          Who are the clothes for?
                         </label>
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-3 gap-2.5">
                           <button
                             type="button"
-                            onClick={() => setPerKgGender('men')}
-                            className={`p-4 rounded-2xl border-2 text-left transition-all ${
-                              perKgGender === 'men'
-                                ? 'border-brand-600 bg-brand-50/50 shadow-sm'
+                            onClick={() => setClothingFor('men')}
+                            className={`p-3.5 rounded-2xl border-2 text-left transition-all ${
+                              clothingFor === 'men'
+                                ? 'border-brand-600 bg-brand-50/50 shadow-xs'
                                 : 'border-slate-200 bg-white hover:border-slate-300'
                             }`}
                           >
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm font-bold text-slate-900">👨 Men's Apparel</span>
-                              <Badge variant={perKgGender === 'men' ? 'brand' : 'slate'} size="sm">
-                                {formatCurrency(currentService.baseRates.men)} / Kg
-                              </Badge>
-                            </div>
-                            <p className="text-[11px] text-slate-500 mt-1">
-                              Shirts, Trousers, Jeans, T-Shirts & Kurtas
-                            </p>
+                            <span className="text-xs sm:text-sm font-bold text-slate-900 block truncate">👨 Men</span>
+                            <span className="text-[11px] font-bold text-brand-700 block mt-0.5">
+                              {formatCurrency(currentService.baseRates.men)} / Kg
+                            </span>
                           </button>
 
                           <button
                             type="button"
-                            onClick={() => setPerKgGender('women')}
-                            className={`p-4 rounded-2xl border-2 text-left transition-all ${
-                              perKgGender === 'women'
-                                ? 'border-brand-600 bg-brand-50/50 shadow-sm'
+                            onClick={() => setClothingFor('women')}
+                            className={`p-3.5 rounded-2xl border-2 text-left transition-all ${
+                              clothingFor === 'women'
+                                ? 'border-brand-600 bg-brand-50/50 shadow-xs'
                                 : 'border-slate-200 bg-white hover:border-slate-300'
                             }`}
                           >
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm font-bold text-slate-900">👩 Women's Apparel</span>
-                              <Badge variant={perKgGender === 'women' ? 'brand' : 'slate'} size="sm">
-                                {formatCurrency(currentService.baseRates.women)} / Kg
-                              </Badge>
-                            </div>
-                            <p className="text-[11px] text-slate-500 mt-1">
-                              Tops, Leggings, T-Shirts, Dresses & Sarees
-                            </p>
+                            <span className="text-xs sm:text-sm font-bold text-slate-900 block truncate">👩 Women</span>
+                            <span className="text-[11px] font-bold text-brand-700 block mt-0.5">
+                              {formatCurrency(currentService.baseRates.women)} / Kg
+                            </span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setClothingFor('mixed')}
+                            className={`p-3.5 rounded-2xl border-2 text-left transition-all ${
+                              clothingFor === 'mixed'
+                                ? 'border-brand-600 bg-brand-50/50 shadow-xs'
+                                : 'border-slate-200 bg-white hover:border-slate-300'
+                            }`}
+                          >
+                            <span className="text-xs sm:text-sm font-bold text-slate-900 block truncate">👨👩👧 Mixed / Both</span>
+                            <span className="text-[10px] text-slate-500 block mt-0.5">
+                              Men {formatCurrency(currentService.baseRates.men)} • Women {formatCurrency(currentService.baseRates.women)}
+                            </span>
                           </button>
                         </div>
                       </div>
 
-                      {/* Interactive Weight Estimator with Exact Supplied Standards */}
-                      <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-4">
+                      {/* Select the clothes you're sending */}
+                      <div className="space-y-4">
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Scale className="w-4 h-4 text-brand-600" />
-                            <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                              Select Clothes to Estimate Weight
-                            </h4>
-                          </div>
-                          <span className="text-[11px] text-slate-500 font-medium">
-                            Standard supplied garment weights
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                            Select the clothes you're sending
+                          </h4>
+                          <span className="text-[11px] text-slate-400">
+                            Tap + / - to calculate weight
                           </span>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          {(pricingConfig.weightStandards[perKgGender] || []).map(std => {
-                            const count = perKgCounts[perKgGender]?.[std.id] || 0;
-                            return (
-                              <div
-                                key={std.id}
-                                className={`p-3 rounded-xl bg-white border transition-all flex items-center justify-between gap-3 ${
-                                  count > 0 ? 'border-brand-500 shadow-xs' : 'border-slate-200'
-                                }`}
-                              >
-                                <div className="flex items-center gap-2.5">
-                                  <span className="text-xl">{std.emoji}</span>
-                                  <div>
-                                    <div className="text-xs font-bold text-slate-800">
-                                      {std.name}
+                        {/* Men's clothes section */}
+                        {(clothingFor === 'men' || clothingFor === 'mixed') && (
+                          <div className="space-y-2">
+                            {clothingFor === 'mixed' && (
+                              <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5 pt-1">
+                                <span>👨 Men's Clothes ({formatCurrency(currentService.baseRates.men)} / Kg)</span>
+                              </div>
+                            )}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                              {(pricingConfig.weightStandards.men || []).map(std => {
+                                const count = perKgCounts.men?.[std.id] || 0;
+                                return (
+                                  <div
+                                    key={std.id}
+                                    className={`p-3 rounded-2xl border transition-all flex items-center justify-between gap-2.5 ${
+                                      count > 0 ? 'border-brand-500 bg-brand-50/40 shadow-xs' : 'border-slate-200 bg-white'
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                      <span className="text-2xl shrink-0">{std.emoji}</span>
+                                      <div className="min-w-0">
+                                        <div className="text-xs font-bold text-slate-900 truncate">{std.name}</div>
+                                        <div className="text-[10px] text-slate-500 font-medium">
+                                          {std.weightGrams ? `Approx. ${std.weightGrams} g` : 'Weight confirmed at pickup'}
+                                        </div>
+                                      </div>
                                     </div>
-                                    <div className="text-[11px] text-slate-400">
-                                      {std.weightGrams ? `${std.weightGrams}g (${std.weightKg} Kg)` : 'Weight confirmed at pickup'}
+
+                                    <div className="flex items-center gap-1.5 shrink-0 bg-slate-50 rounded-xl p-1 border border-slate-200">
+                                      <button
+                                        type="button"
+                                        onClick={() => updatePerKgCount('men', std.id, -1)}
+                                        disabled={count === 0}
+                                        className="w-6 h-6 flex items-center justify-center rounded text-slate-600 hover:bg-slate-200 disabled:opacity-30"
+                                      >
+                                        <Minus className="w-3 h-3" />
+                                      </button>
+                                      <span className="w-5 text-center font-bold text-xs">
+                                        {count}
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => updatePerKgCount('men', std.id, 1)}
+                                        className="w-6 h-6 flex items-center justify-center rounded bg-brand-100 text-brand-800 hover:bg-brand-200"
+                                      >
+                                        <Plus className="w-3 h-3" />
+                                      </button>
                                     </div>
                                   </div>
-                                </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
 
-                                <div className="flex items-center gap-2 shrink-0 bg-slate-50 rounded-lg p-1 border border-slate-200">
-                                  <button
-                                    type="button"
-                                    onClick={() => updatePerKgCount(perKgGender, std.id, -1)}
-                                    disabled={count === 0}
-                                    className="w-6 h-6 flex items-center justify-center rounded text-slate-600 hover:bg-slate-200 disabled:opacity-30"
-                                  >
-                                    <Minus className="w-3 h-3" />
-                                  </button>
-                                  <span className="w-5 text-center font-bold text-xs">
-                                    {count}
-                                  </span>
-                                  <button
-                                    type="button"
-                                    onClick={() => updatePerKgCount(perKgGender, std.id, 1)}
-                                    className="w-6 h-6 flex items-center justify-center rounded bg-brand-100 text-brand-800 hover:bg-brand-200"
-                                  >
-                                    <Plus className="w-3 h-3" />
-                                  </button>
-                                </div>
+                        {/* Women's clothes section */}
+                        {(clothingFor === 'women' || clothingFor === 'mixed') && (
+                          <div className="space-y-2 pt-2">
+                            {clothingFor === 'mixed' && (
+                              <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5 pt-1">
+                                <span>👩 Women's Clothes ({formatCurrency(currentService.baseRates.women)} / Kg)</span>
                               </div>
-                            );
-                          })}
-                        </div>
+                            )}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                              {(pricingConfig.weightStandards.women || []).map(std => {
+                                const count = perKgCounts.women?.[std.id] || 0;
+                                return (
+                                  <div
+                                    key={std.id}
+                                    className={`p-3 rounded-2xl border transition-all flex items-center justify-between gap-2.5 ${
+                                      count > 0 ? 'border-brand-500 bg-brand-50/40 shadow-xs' : 'border-slate-200 bg-white'
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                      <span className="text-2xl shrink-0">{std.emoji}</span>
+                                      <div className="min-w-0">
+                                        <div className="text-xs font-bold text-slate-900 truncate">{std.name}</div>
+                                        <div className="text-[10px] text-slate-500 font-medium">
+                                          {std.weightGrams ? `Approx. ${std.weightGrams} g` : 'Weight confirmed at pickup'}
+                                        </div>
+                                      </div>
+                                    </div>
 
-                        {/* Weight Summary Box */}
-                        <div className="p-4 rounded-xl bg-white border border-brand-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                          <div>
-                            <span className="text-slate-400">Estimated Total Weight:</span>
-                            <div className="text-base font-black text-slate-900 font-display">
-                              {orderBreakdown.estimatedWeightKg} Kg{' '}
-                              <span className="text-xs font-normal text-slate-500">
-                                ({orderBreakdown.estimatedWeightGrams.toLocaleString()} grams)
-                              </span>
+                                    <div className="flex items-center gap-1.5 shrink-0 bg-slate-50 rounded-xl p-1 border border-slate-200">
+                                      <button
+                                        type="button"
+                                        onClick={() => updatePerKgCount('women', std.id, -1)}
+                                        disabled={count === 0}
+                                        className="w-6 h-6 flex items-center justify-center rounded text-slate-600 hover:bg-slate-200 disabled:opacity-30"
+                                      >
+                                        <Minus className="w-3 h-3" />
+                                      </button>
+                                      <span className="w-5 text-center font-bold text-xs">
+                                        {count}
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => updatePerKgCount('women', std.id, 1)}
+                                        className="w-6 h-6 flex items-center justify-center rounded bg-brand-100 text-brand-800 hover:bg-brand-200"
+                                      >
+                                        <Plus className="w-3 h-3" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
                             </div>
                           </div>
+                        )}
 
-                          <div className="text-right">
-                            <span className="text-slate-400">Estimated Subtotal:</span>
-                            <div className="text-base font-black text-brand-600 font-display">
+                        {/* Live Calculation Display Box */}
+                        <div className="p-4 rounded-2xl bg-brand-50/60 border border-brand-200 space-y-2 text-xs">
+                          <div className="flex justify-between items-center text-slate-700">
+                            <span>Approximate weight:</span>
+                            <span className="font-bold text-slate-900 text-sm">
+                              {orderBreakdown.estimatedWeightKg} Kg ({orderBreakdown.estimatedWeightGrams.toLocaleString()} g)
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center text-slate-700">
+                            <span>Rate:</span>
+                            <span className="font-semibold text-slate-900">
+                              {clothingFor === 'mixed' 
+                                ? `Men ${formatCurrency(currentService.baseRates.men)}/Kg • Women ${formatCurrency(currentService.baseRates.women)}/Kg`
+                                : `${formatCurrency(currentService.baseRates[clothingFor])} / Kg`}
+                            </span>
+                          </div>
+                          <div className="pt-2 border-t border-brand-200/80 flex justify-between items-baseline font-bold text-slate-900">
+                            <span className="font-display">Estimated subtotal:</span>
+                            <span className="text-lg font-black text-brand-700 font-display">
                               {formatCurrency(orderBreakdown.itemsSubtotal)}
-                            </div>
+                            </span>
                           </div>
                         </div>
-                      </div>
 
-                      {/* Prominent Mandatory Warning Banner */}
-                      <div className="p-4 rounded-2xl bg-amber-50/90 border-2 border-amber-300 text-amber-950 text-xs space-y-1.5 shadow-sm">
-                        <div className="flex items-center gap-2 font-black text-amber-900 text-sm">
-                          <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-                          <span>⚠️ APPROXIMATE WEIGHT & PRICE NOTICE</span>
+                        {/* Prominent Approximate Estimate Warning Banner */}
+                        <div className="p-4 rounded-2xl bg-amber-50/90 border border-amber-300 text-amber-950 text-xs space-y-1">
+                          <div className="flex items-center gap-1.5 font-bold text-amber-900 text-xs">
+                            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                            <span>⚠️ APPROXIMATE ESTIMATE</span>
+                          </div>
+                          <p className="leading-relaxed text-[11px] text-amber-900">
+                            Weight and price are estimated from the clothes you selected. Our pickup executive will check the actual items and weight during pickup and update the final details to you on WhatsApp.
+                          </p>
                         </div>
-                        <p className="leading-relaxed text-[11px] text-amber-900 font-medium">
-                          The weight and price shown are estimated based on the selected clothes. Our pickup executive will check the actual weight/items during pickup and update the final details to you on WhatsApp.
-                        </p>
+
                       </div>
 
                     </div>
                   )}
 
                   {/* -------------------------------------------------------- */}
-                  {/* CASE C: SAREE ROLLING (Unpriced - "To be confirmed")     */}
+                  {/* SAREE ROLLING FLOW (UNPRICED)                            */}
                   {/* -------------------------------------------------------- */}
-                  {currentService.pricingType === 'UNPRICED' && (
+                  {currentService.id === 'saree-rolling' && (
                     <div className="space-y-6">
-                      <div className="p-6 rounded-2xl bg-amber-50/60 border border-amber-200 space-y-4">
+                      <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200 space-y-5">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             <span className="text-3xl">🥻</span>
                             <div>
                               <h3 className="text-sm font-bold text-slate-900">
-                                Saree Rolling & Wooden Cylinder Finishing
+                                How many sarees?
                               </h3>
-                              <span className="text-xs font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full inline-block mt-0.5">
-                                Price to be confirmed at pickup
+                              <span className="text-xs font-bold text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full inline-block mt-1">
+                                Price to be confirmed
                               </span>
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-2 bg-white rounded-xl p-1.5 border border-slate-200">
+                          <div className="flex items-center gap-2 bg-white rounded-xl p-1.5 border border-slate-200 shadow-xs">
                             <button
                               type="button"
                               onClick={() => setSareeCount(Math.max(1, sareeCount - 1))}
@@ -1149,26 +1332,26 @@ export const BookPickupPage = () => {
                           </div>
                         </div>
 
-                        <p className="text-xs text-slate-600 leading-relaxed">
-                          Saree rolling and delicate polishing rates depend on the specific silk zari, fabric density, and embellishments. Our pickup executive will inspect the saree at your doorstep and update the exact quote with zero obligation.
-                        </p>
+                        <div className="p-4 rounded-xl bg-white border border-slate-200 text-xs text-slate-600 leading-relaxed">
+                          Saree rolling and polishing rates are determined based on specific silk zari, embroidery, and fabric type. Our executive will check your sarees at your doorstep and confirm the final price with zero advance payment needed.
+                        </div>
                       </div>
                     </div>
                   )}
 
                   {/* -------------------------------------------------------- */}
-                  {/* CASE D: CURTAIN WASHING (Dimensional: ₹30/sq.ft.)        */}
+                  {/* CURTAIN WASHING FLOW (DIMENSIONAL)                       */}
                   {/* -------------------------------------------------------- */}
                   {currentService.id === 'curtain-washing' && (
                     <div className="space-y-6">
                       <div className="flex items-center justify-between">
                         <div>
-                          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600">
-                            Curtain Dimensions (Width × Height in Feet)
+                          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-800 text-xs font-bold">
+                            <span>₹30 / sq. ft.</span>
+                          </div>
+                          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600 mt-2">
+                            Enter Curtain Dimensions
                           </h3>
-                          <span className="text-[11px] text-brand-700 font-bold">
-                            Rate: ₹30 / sq. ft.
-                          </span>
                         </div>
 
                         <Button variant="outline" size="sm" icon={Plus} onClick={addCurtainItem}>
@@ -1177,19 +1360,19 @@ export const BookPickupPage = () => {
                       </div>
 
                       <div className="space-y-3">
-                        {curtainItems.map((cItem, index) => {
-                          const area = cItem.width * cItem.height;
-                          const linePrice = area * 30 * cItem.quantity;
+                        {curtainItems.map((c, idx) => {
+                          const area = Math.max(1, c.width * c.height);
+                          const linePrice = area * 30 * (c.quantity || 1);
                           return (
-                            <div key={cItem.id} className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                            <div key={c.id} className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
                               <div className="flex items-center justify-between">
                                 <span className="text-xs font-bold text-slate-900">
-                                  🪟 Curtain Set #{index + 1}
+                                  🪟 Curtain Panel #{idx + 1}
                                 </span>
                                 {curtainItems.length > 1 && (
                                   <button
                                     type="button"
-                                    onClick={() => removeCurtainItem(cItem.id)}
+                                    onClick={() => removeCurtainItem(c.id)}
                                     className="text-red-500 hover:text-red-700 text-xs font-semibold flex items-center gap-1"
                                   >
                                     <Trash2 className="w-3.5 h-3.5" /> Remove
@@ -1206,9 +1389,9 @@ export const BookPickupPage = () => {
                                     type="number"
                                     min="1"
                                     max="30"
-                                    value={cItem.width}
-                                    onChange={(e) => updateCurtainItem(cItem.id, 'width', e.target.value)}
-                                    className="w-full p-2 rounded-xl bg-white border border-slate-200 text-xs font-bold text-center"
+                                    value={c.width}
+                                    onChange={(e) => updateCurtainItem(c.id, 'width', e.target.value)}
+                                    className="w-full p-2.5 rounded-xl bg-white border border-slate-200 text-xs font-bold text-center"
                                   />
                                 </div>
                                 <div>
@@ -1219,9 +1402,9 @@ export const BookPickupPage = () => {
                                     type="number"
                                     min="1"
                                     max="30"
-                                    value={cItem.height}
-                                    onChange={(e) => updateCurtainItem(cItem.id, 'height', e.target.value)}
-                                    className="w-full p-2 rounded-xl bg-white border border-slate-200 text-xs font-bold text-center"
+                                    value={c.height}
+                                    onChange={(e) => updateCurtainItem(c.id, 'height', e.target.value)}
+                                    className="w-full p-2.5 rounded-xl bg-white border border-slate-200 text-xs font-bold text-center"
                                   />
                                 </div>
                                 <div>
@@ -1232,20 +1415,25 @@ export const BookPickupPage = () => {
                                     type="number"
                                     min="1"
                                     max="20"
-                                    value={cItem.quantity}
-                                    onChange={(e) => updateCurtainItem(cItem.id, 'quantity', e.target.value)}
-                                    className="w-full p-2 rounded-xl bg-white border border-slate-200 text-xs font-bold text-center"
+                                    value={c.quantity}
+                                    onChange={(e) => updateCurtainItem(c.id, 'quantity', e.target.value)}
+                                    className="w-full p-2.5 rounded-xl bg-white border border-slate-200 text-xs font-bold text-center"
                                   />
                                 </div>
                               </div>
 
-                              <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-200">
-                                <span className="text-slate-500">
-                                  Area: <strong className="text-slate-800">{area} sq.ft.</strong> × {cItem.quantity} curtain(s)
-                                </span>
-                                <span className="font-bold text-brand-700">
-                                  Subtotal: {formatCurrency(linePrice)}
-                                </span>
+                              {/* Understandable calculation step */}
+                              <div className="p-3 rounded-xl bg-white border border-slate-200/80 text-xs space-y-1">
+                                <div className="flex justify-between text-slate-600">
+                                  <span>{c.width} × {c.height} = <strong>{area} sq. ft.</strong></span>
+                                  <span>{area} × ₹30 {c.quantity > 1 ? `× ${c.quantity}` : ''}</span>
+                                </div>
+                                <div className="flex justify-between items-baseline pt-1 border-t border-slate-100 font-bold text-slate-900">
+                                  <span>Estimated price:</span>
+                                  <span className="text-sm text-brand-700 font-black font-display">
+                                    {formatCurrency(linePrice)}
+                                  </span>
+                                </div>
                               </div>
                             </div>
                           );
@@ -1255,22 +1443,21 @@ export const BookPickupPage = () => {
                   )}
 
                   {/* -------------------------------------------------------- */}
-                  {/* CASE E: SHOE WASHING (Per-Pair: ₹350/pair)               */}
+                  {/* SHOE WASHING FLOW (PER-PAIR)                             */}
                   {/* -------------------------------------------------------- */}
                   {currentService.id === 'shoe-washing' && (
                     <div className="space-y-6">
-                      <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200 space-y-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h3 className="text-sm font-bold text-slate-900">
-                              Shoe Deep Cleaning & Disinfection
-                            </h3>
-                            <span className="text-xs font-bold text-brand-700">
-                              ₹350 / pair (All sneaker & leather types)
-                            </span>
-                          </div>
+                      <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200 space-y-5">
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-800 text-xs font-bold">
+                          <span>₹350 / pair</span>
+                        </div>
 
-                          <div className="flex items-center gap-2 bg-white rounded-xl p-1.5 border border-slate-200">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-sm font-bold text-slate-900">
+                            How many pairs?
+                          </h3>
+
+                          <div className="flex items-center gap-2 bg-white rounded-xl p-1.5 border border-slate-200 shadow-xs">
                             <button
                               type="button"
                               onClick={() => setShoePairs(Math.max(1, shoePairs - 1))}
@@ -1293,28 +1480,30 @@ export const BookPickupPage = () => {
 
                         <div>
                           <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">
-                            Select Footwear Style:
+                            Footwear Type:
                           </label>
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                            {['Sneakers / Casual', 'Sports / Running', 'Formal Leather', 'Suede / Boots'].map(type => (
+                            {['Sneakers / Casual', 'Sports / Running', 'Formal Leather', 'Suede / Boots'].map(t => (
                               <button
-                                key={type}
+                                key={t}
                                 type="button"
-                                onClick={() => setShoeType(type)}
+                                onClick={() => setShoeType(t)}
                                 className={`p-2.5 rounded-xl text-xs font-bold border transition-all ${
-                                  shoeType === type
-                                    ? 'bg-brand-600 text-white border-brand-600 shadow-sm'
+                                  shoeType === t
+                                    ? 'bg-brand-600 text-white border-brand-600 shadow-xs'
                                     : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
                                 }`}
                               >
-                                {type}
+                                {t}
                               </button>
                             ))}
                           </div>
                         </div>
 
-                        <div className="pt-2 border-t border-slate-200 flex justify-between items-center text-xs">
-                          <span className="text-slate-500">{shoePairs} pair(s) × ₹350</span>
+                        <div className="p-3.5 rounded-xl bg-white border border-slate-200 flex justify-between items-center text-xs">
+                          <span className="text-slate-600">
+                            {shoePairs} {shoePairs === 1 ? 'pair' : 'pairs'} × ₹350
+                          </span>
                           <span className="text-base font-black text-brand-700 font-display">
                             {formatCurrency(shoePairs * 350)}
                           </span>
@@ -1324,18 +1513,18 @@ export const BookPickupPage = () => {
                   )}
 
                   {/* -------------------------------------------------------- */}
-                  {/* CASE F: CARPET WASHING (Dimensional: ₹45/sq.ft.)         */}
+                  {/* CARPET WASHING FLOW (DIMENSIONAL)                        */}
                   {/* -------------------------------------------------------- */}
                   {currentService.id === 'carpet-washing' && (
                     <div className="space-y-6">
                       <div className="flex items-center justify-between">
                         <div>
-                          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600">
-                            Carpet Dimensions (Length × Width in Feet)
+                          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-800 text-xs font-bold">
+                            <span>₹45 / sq. ft.</span>
+                          </div>
+                          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600 mt-2">
+                            Enter Carpet Dimensions
                           </h3>
-                          <span className="text-[11px] text-brand-700 font-bold">
-                            Rate: ₹45 / sq. ft.
-                          </span>
                         </div>
 
                         <Button variant="outline" size="sm" icon={Plus} onClick={addCarpetItem}>
@@ -1344,19 +1533,19 @@ export const BookPickupPage = () => {
                       </div>
 
                       <div className="space-y-3">
-                        {carpetItems.map((cpItem, index) => {
-                          const area = cpItem.length * cpItem.width;
-                          const linePrice = area * 45 * cpItem.quantity;
+                        {carpetItems.map((c, idx) => {
+                          const area = Math.max(1, c.length * c.width);
+                          const linePrice = area * 45 * (c.quantity || 1);
                           return (
-                            <div key={cpItem.id} className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                            <div key={c.id} className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
                               <div className="flex items-center justify-between">
                                 <span className="text-xs font-bold text-slate-900">
-                                  🧶 Carpet / Rug #{index + 1}
+                                  🧶 Carpet / Rug #{idx + 1}
                                 </span>
                                 {carpetItems.length > 1 && (
                                   <button
                                     type="button"
-                                    onClick={() => removeCarpetItem(cpItem.id)}
+                                    onClick={() => removeCarpetItem(c.id)}
                                     className="text-red-500 hover:text-red-700 text-xs font-semibold flex items-center gap-1"
                                   >
                                     <Trash2 className="w-3.5 h-3.5" /> Remove
@@ -1373,9 +1562,9 @@ export const BookPickupPage = () => {
                                     type="number"
                                     min="1"
                                     max="40"
-                                    value={cpItem.length}
-                                    onChange={(e) => updateCarpetItem(cpItem.id, 'length', e.target.value)}
-                                    className="w-full p-2 rounded-xl bg-white border border-slate-200 text-xs font-bold text-center"
+                                    value={c.length}
+                                    onChange={(e) => updateCarpetItem(c.id, 'length', e.target.value)}
+                                    className="w-full p-2.5 rounded-xl bg-white border border-slate-200 text-xs font-bold text-center"
                                   />
                                 </div>
                                 <div>
@@ -1386,9 +1575,9 @@ export const BookPickupPage = () => {
                                     type="number"
                                     min="1"
                                     max="40"
-                                    value={cpItem.width}
-                                    onChange={(e) => updateCarpetItem(cpItem.id, 'width', e.target.value)}
-                                    className="w-full p-2 rounded-xl bg-white border border-slate-200 text-xs font-bold text-center"
+                                    value={c.width}
+                                    onChange={(e) => updateCarpetItem(c.id, 'width', e.target.value)}
+                                    className="w-full p-2.5 rounded-xl bg-white border border-slate-200 text-xs font-bold text-center"
                                   />
                                 </div>
                                 <div>
@@ -1399,20 +1588,25 @@ export const BookPickupPage = () => {
                                     type="number"
                                     min="1"
                                     max="10"
-                                    value={cpItem.quantity}
-                                    onChange={(e) => updateCarpetItem(cpItem.id, 'quantity', e.target.value)}
-                                    className="w-full p-2 rounded-xl bg-white border border-slate-200 text-xs font-bold text-center"
+                                    value={c.quantity}
+                                    onChange={(e) => updateCarpetItem(c.id, 'quantity', e.target.value)}
+                                    className="w-full p-2.5 rounded-xl bg-white border border-slate-200 text-xs font-bold text-center"
                                   />
                                 </div>
                               </div>
 
-                              <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-200">
-                                <span className="text-slate-500">
-                                  Area: <strong className="text-slate-800">{area} sq.ft.</strong> × {cpItem.quantity} rug(s)
-                                </span>
-                                <span className="font-bold text-brand-700">
-                                  Subtotal: {formatCurrency(linePrice)}
-                                </span>
+                              {/* Understandable calculation step */}
+                              <div className="p-3 rounded-xl bg-white border border-slate-200/80 text-xs space-y-1">
+                                <div className="flex justify-between text-slate-600">
+                                  <span>{c.length} × {c.width} = <strong>{area} sq. ft.</strong></span>
+                                  <span>{area} × ₹45 {c.quantity > 1 ? `× ${c.quantity}` : ''}</span>
+                                </div>
+                                <div className="flex justify-between items-baseline pt-1 border-t border-slate-100 font-bold text-slate-900">
+                                  <span>Estimated price:</span>
+                                  <span className="text-sm text-brand-700 font-black font-display">
+                                    {formatCurrency(linePrice)}
+                                  </span>
+                                </div>
                               </div>
                             </div>
                           );
@@ -1425,42 +1619,42 @@ export const BookPickupPage = () => {
               )}
 
               {/* ============================================================ */}
-              {/* STEP 3: CUSTOMER CONTACT, PICKUP ADDRESS & SCHEDULE SLOT     */}
+              {/* STEP 3: "WHERE SHOULD WE PICK UP YOUR LAUNDRY?"             */}
               {/* ============================================================ */}
               {currentStep === 3 && (
                 <div className="space-y-6">
                   <div className="border-b border-slate-100 pb-4">
                     <h2 className="text-xl font-bold text-slate-900 font-display">
-                      Doorstep Pickup Details
+                      Where should we pick up your laundry?
                     </h2>
                     <p className="text-xs text-slate-500 mt-0.5">
-                      Provide contact number for live tracking & WhatsApp pickup alerts.
+                      Enter contact number for doorstep arrival & live WhatsApp updates.
                     </p>
                   </div>
 
-                  {/* Contact Inputs */}
+                  {/* Contact Details */}
                   <div className="space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <Input
-                        label="Full Name *"
+                        label="Name *"
                         required
-                        placeholder="e.g. Mahesh Velchuri"
+                        placeholder="e.g. Ramesh Chandra"
                         value={customer.name}
                         onChange={(e) => setCustomer({ ...customer, name: e.target.value })}
                       />
                       <Input
-                        label="Mobile Number (10 Digits) *"
+                        label="Mobile Number *"
                         required
                         type="tel"
                         maxLength={10}
                         placeholder="e.g. 9876543210"
                         value={customer.phone}
-                        onChange={(e) => handlePhoneChange(e.target.value.replace(/\D/g, ''))}
+                        onChange={(e) => handlePhoneChange(e.target.value)}
                       />
                     </div>
 
                     {/* WhatsApp Checkbox */}
-                    <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                    <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
                           type="checkbox"
@@ -1469,7 +1663,7 @@ export const BookPickupPage = () => {
                           className="w-4 h-4 rounded text-brand-600 focus:ring-brand-500"
                         />
                         <span className="text-xs font-bold text-slate-800">
-                          Use same number for WhatsApp Order Updates & Invoices
+                          Use same number for WhatsApp updates & receipts
                         </span>
                       </label>
 
@@ -1481,35 +1675,33 @@ export const BookPickupPage = () => {
                             maxLength={10}
                             placeholder="Enter 10-digit WhatsApp number"
                             value={customer.whatsapp}
-                            onChange={(e) => setCustomer({ ...customer, whatsapp: e.target.value.replace(/\D/g, '') })}
+                            onChange={(e) => setCustomer({ ...customer, whatsapp: e.target.value.replace(/\D/g, '').slice(0, 10) })}
                           />
                         </div>
                       )}
                     </div>
 
                     <Input
-                      label="Email Address (Optional, for tax invoices)"
+                      label="Email (Optional, for tax invoices)"
                       type="email"
-                      placeholder="e.g. mahesh@example.com"
+                      placeholder="e.g. ramesh@example.com"
                       value={customer.email}
                       onChange={(e) => setCustomer({ ...customer, email: e.target.value })}
                     />
                   </div>
 
-                  {/* Doorstep Location Selection (LocationPicker with GPS) */}
-                  <div className="pt-4 border-t border-slate-100">
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
-                      Doorstep Pickup Address *
+                  {/* Pickup Address & LocationPicker */}
+                  <div className="pt-4 border-t border-slate-100 space-y-3">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                      Pickup Address & Landmark *
                     </label>
 
                     {pickupLocation ? (
-                      <div className="p-5 rounded-2xl bg-brand-50/70 border border-brand-200 space-y-3 text-xs">
+                      <div className="p-4 rounded-2xl bg-brand-50/70 border border-brand-200 space-y-2.5 text-xs">
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 font-bold text-slate-900">
                             <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                            <span className="font-bold text-slate-900">
-                              {pickupLocation.locationSource === 'GPS' ? '🛰️ Satellite GPS Confirmed' : '📍 ' + pickupLocation.locationSource}
-                            </span>
+                            <span>{pickupLocation.locationSource === 'GPS' ? '🛰️ Live Satellite GPS Locked' : '📍 ' + pickupLocation.locationSource}</span>
                           </div>
                           <button
                             type="button"
@@ -1532,7 +1724,7 @@ export const BookPickupPage = () => {
 
                         <div className="pt-2 flex items-center justify-between">
                           <span className="text-[10px] text-slate-400 font-mono">
-                            Lat: {pickupLocation.latitude?.toFixed(4)}, Lon: {pickupLocation.longitude?.toFixed(4)}
+                            GPS: {pickupLocation.latitude?.toFixed(4)}, {pickupLocation.longitude?.toFixed(4)}
                           </span>
 
                           <a
@@ -1559,18 +1751,18 @@ export const BookPickupPage = () => {
                             pincode: loc.postalCode || '',
                             landmark: loc.landmark || '',
                           });
-                          success('Location Locked', 'Pickup address coordinates confirmed.');
+                          success('Location Confirmed', 'Pickup coordinates locked.');
                         }}
                       />
                     )}
                   </div>
 
-                  {/* Schedule Date & 2-Hour Slot */}
+                  {/* Schedule Date & Slot */}
                   <div className="pt-4 border-t border-slate-100 space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
-                          Pickup Date *
+                          Preferred Pickup Date *
                         </label>
                         <input
                           type="date"
@@ -1583,7 +1775,7 @@ export const BookPickupPage = () => {
 
                       <div>
                         <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
-                          2-Hour Pickup Window *
+                          Time Slot *
                         </label>
                         <select
                           value={schedule.pickupSlot}
@@ -1601,41 +1793,133 @@ export const BookPickupPage = () => {
                     </div>
 
                     <Textarea
-                      label="Pickup Instructions / Gate Codes (Optional)"
+                      label="Additional Notes / Gate Instructions (Optional)"
                       rows={2}
-                      placeholder="e.g. Ring flat bell 402, call before arrival, handle pattu saree with caution."
+                      placeholder="e.g. Ring flat 301 bell, call 5 mins before arrival, handle pattu saree with care"
                       value={schedule.instructions}
                       onChange={(e) => setSchedule({ ...schedule, instructions: e.target.value })}
                     />
                   </div>
+
                 </div>
               )}
 
               {/* ============================================================ */}
-              {/* STEP 4: ORDER REVIEW, SPEED & PAYMENT CHOICE                 */}
+              {/* STEP 4: "🎉 ALMOST DONE!" (REVIEW & CONFIRM PICKUP)          */}
               {/* ============================================================ */}
               {currentStep === 4 && (
                 <div className="space-y-6">
                   <div className="border-b border-slate-100 pb-4">
-                    <h2 className="text-xl font-bold text-slate-900 font-display">
-                      Review & Confirm Booking
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold mb-2">
+                      <CheckCircle className="w-3.5 h-3.5" />
+                      <span>Ready to book</span>
+                    </div>
+                    <h2 className="text-2xl font-black text-slate-900 font-display">
+                      🎉 Almost Done!
                     </h2>
                     <p className="text-xs text-slate-500 mt-0.5">
-                      Verify your selected services and pick your preferred payment mode.
+                      Your pickup summary
                     </p>
+                  </div>
+
+                  {/* Summary Card */}
+                  <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-4 text-xs">
+                    
+                    <div className="flex justify-between items-center pb-3 border-b border-slate-200">
+                      <span className="text-slate-500">Service:</span>
+                      <span className="font-bold text-slate-900 text-sm">
+                        {currentService.emoji} {currentService.name}
+                      </span>
+                    </div>
+
+                    {/* Items List */}
+                    <div className="space-y-2">
+                      <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+                        Items:
+                      </span>
+                      {orderBreakdown.lineItems.length > 0 ? (
+                        <div className="space-y-1.5">
+                          {orderBreakdown.lineItems.map((item, idx) => (
+                            <div key={idx} className="flex justify-between items-center text-slate-700">
+                              <span>{item.emoji} {item.name} × {item.quantity}</span>
+                              <span className="font-semibold text-slate-900">
+                                {item.lineTotal ? formatCurrency(item.lineTotal) : (item.unconfirmed ? 'To be weighed' : 'Quote at pickup')}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-slate-500 italic">
+                          Executive will tally items at doorstep
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Weight & Rate if Per-KG */}
+                    {currentService.pricingType === 'PER_KG' && (
+                      <div className="pt-3 border-t border-slate-200 space-y-1.5">
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">Approx. Weight:</span>
+                          <span className="font-bold text-slate-900">{orderBreakdown.estimatedWeightKg} Kg</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">Rate:</span>
+                          <span className="font-semibold text-slate-900">
+                            {clothingFor === 'mixed' 
+                              ? `Men ${formatCurrency(currentService.baseRates.men)}/Kg • Women ${formatCurrency(currentService.baseRates.women)}/Kg`
+                              : `${formatCurrency(currentService.baseRates[clothingFor])} / Kg`}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Estimated Price */}
+                    <div className="pt-3 border-t border-slate-200 flex justify-between items-baseline font-bold text-slate-900">
+                      <span className="text-sm font-display">Estimated Price:</span>
+                      <span className="text-xl font-black text-brand-700 font-display">
+                        {orderBreakdown.hasUnpricedItems && orderBreakdown.itemsSubtotal === 0 
+                          ? 'To be confirmed'
+                          : formatCurrency(orderBreakdown.finalTotal)}
+                      </span>
+                    </div>
+
+                    {/* Remember Notice */}
+                    <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs space-y-1">
+                      <strong className="block font-bold">⚠️ Remember:</strong>
+                      <p className="text-[11px] text-amber-800 leading-relaxed">
+                        This is an approximate estimate. Our pickup executive will check the actual clothes/weight and update the final amount to you on WhatsApp.
+                      </p>
+                    </div>
+
+                    {/* Address & Phone */}
+                    <div className="pt-3 border-t border-slate-200 space-y-2 text-slate-600">
+                      <div>
+                        <strong className="text-slate-800">Pickup Address:</strong>
+                        <div className="text-slate-700 mt-0.5">{pickupLocation?.formattedAddress || address.street}</div>
+                      </div>
+                      <div>
+                        <strong className="text-slate-800">Phone:</strong>
+                        <span className="text-slate-700 ml-2 font-semibold">{customer.phone}</span>
+                      </div>
+                      <div>
+                        <strong className="text-slate-800">Date & Slot:</strong>
+                        <span className="text-slate-700 ml-2 font-semibold">{schedule.pickupDate} ({schedule.pickupSlot})</span>
+                      </div>
+                    </div>
+
                   </div>
 
                   {/* Delivery Speed Selector */}
                   <div className="space-y-3">
                     <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
-                      Select Turnaround Speed
+                      Turnaround Speed
                     </label>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div
                         onClick={() => setIsExpress(false)}
-                        className={`p-4 rounded-2xl border-2 cursor-pointer transition-all ${
+                        className={`p-3.5 rounded-2xl border-2 cursor-pointer transition-all ${
                           !isExpress
-                            ? 'border-brand-600 bg-brand-50/40 shadow-sm'
+                            ? 'border-brand-600 bg-brand-50/40 shadow-xs'
                             : 'border-slate-200 bg-white'
                         }`}
                       >
@@ -1643,47 +1927,41 @@ export const BookPickupPage = () => {
                           <span className="text-xs font-bold text-slate-900">48-Hour Standard Care</span>
                           <Badge variant={!isExpress ? 'brand' : 'slate'} size="sm">Standard</Badge>
                         </div>
-                        <p className="text-[11px] text-slate-500">
-                          Complete RO soft wash, slow-drum dry, and 3D steam press.
-                        </p>
-                        <span className="text-xs font-bold text-emerald-700 block mt-2">FREE with order</span>
+                        <span className="text-xs font-bold text-emerald-700">FREE delivery on ₹499+</span>
                       </div>
 
                       <div
                         onClick={() => setIsExpress(true)}
-                        className={`p-4 rounded-2xl border-2 cursor-pointer transition-all ${
+                        className={`p-3.5 rounded-2xl border-2 cursor-pointer transition-all ${
                           isExpress
-                            ? 'border-brand-600 bg-brand-50/40 shadow-sm'
+                            ? 'border-brand-600 bg-brand-50/40 shadow-xs'
                             : 'border-slate-200 bg-white'
                         }`}
                       >
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs font-bold text-slate-900">24-Hour Express Turnaround</span>
+                          <span className="text-xs font-bold text-slate-900">24-Hour Express Speed</span>
                           <Badge variant="emerald" size="sm">Express 24H</Badge>
                         </div>
-                        <p className="text-[11px] text-slate-500">
-                          Prioritized wash cycle & dedicated dispatch within 24 hours.
-                        </p>
-                        <span className="text-xs font-bold text-brand-700 block mt-2">+₹99 Priority Fee</span>
+                        <span className="text-xs font-bold text-brand-700">+₹99 Priority Fee</span>
                       </div>
                     </div>
                   </div>
 
                   {/* Payment Method Selector */}
-                  <div className="space-y-3 pt-4 border-t border-slate-100">
+                  <div className="space-y-3 pt-3 border-t border-slate-100">
                     <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
-                      Choose Payment Option
+                      Payment Option
                     </label>
-                    <div className="space-y-2.5">
+                    <div className="space-y-2">
                       {Object.values(PAYMENT_METHODS).map((pm) => {
                         const isSelected = paymentMethod === pm.id;
                         return (
                           <div
                             key={pm.id}
                             onClick={() => setPaymentMethod(pm.id)}
-                            className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                            className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-between gap-3 ${
                               isSelected
-                                ? 'border-brand-600 bg-brand-50/40 shadow-sm'
+                                ? 'border-brand-600 bg-brand-50/40 shadow-xs'
                                 : 'border-slate-200 bg-white hover:border-slate-300'
                             }`}
                           >
@@ -1711,17 +1989,6 @@ export const BookPickupPage = () => {
                     </div>
                   </div>
 
-                  {/* Approximate Weight Confirmation Notice */}
-                  <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2.5">
-                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                    <div>
-                      <strong className="block font-bold">Doorstep Weight & Item Verification</strong>
-                      <p className="text-[11px] text-amber-800 mt-0.5">
-                        Our executive will weigh items on digital scale at your doorstep and WhatsApp you the final confirmed receipt. Pay only after delivery.
-                      </p>
-                    </div>
-                  </div>
-
                 </div>
               )}
 
@@ -1746,20 +2013,29 @@ export const BookPickupPage = () => {
                     iconPosition="right"
                     onClick={handleNextStep}
                   >
-                    Continue to {STEPS[currentStep].shortLabel}
+                    Continue →
                   </Button>
                 ) : (
-                  <Button
-                    variant="primary"
-                    size="lg"
-                    isLoading={isSubmitting}
-                    onClick={handleFinalBooking}
-                    icon={CheckCircle2}
-                  >
-                    {orderBreakdown.hasUnpricedItems && orderBreakdown.itemsSubtotal === 0
-                      ? 'Confirm Doorstep Booking (Quote at Pickup)'
-                      : `Confirm Doorstep Booking (${formatCurrency(orderBreakdown.finalTotal)})`}
-                  </Button>
+                  <div className="flex items-center gap-3 w-full sm:w-auto">
+                    <Button
+                      variant="ghost"
+                      size="md"
+                      onClick={() => setCurrentStep(2)}
+                      className="text-xs"
+                    >
+                      ← Edit Booking
+                    </Button>
+                    <Button
+                      variant="primary"
+                      size="lg"
+                      isLoading={isSubmitting}
+                      onClick={handleFinalBooking}
+                      icon={CheckCircle2}
+                      className="flex-1 sm:flex-none"
+                    >
+                      📦 CONFIRM PICKUP
+                    </Button>
+                  </div>
                 )}
               </div>
 
@@ -1767,72 +2043,61 @@ export const BookPickupPage = () => {
           </div>
 
           {/* ============================================================ */}
-          {/* RIGHT LIVE ORDER SNAPSHOT SIDEBAR (STICKY DESKTOP)           */}
+          {/* RIGHT STICKY "YOUR LAUNDRY BAG" SUMMARY (DESKTOP)            */}
           {/* ============================================================ */}
-          <div className="lg:col-span-4 sticky top-24 space-y-4">
+          <div className="hidden lg:block lg:col-span-4 sticky top-24 space-y-4">
             <Card variant="luxury" className="p-6 bg-white border border-brand-200 shadow-luxury space-y-4">
               
               <div className="pb-3 border-b border-slate-100 flex items-center justify-between">
                 <div>
-                  <Badge variant="brand" size="sm">Live Estimate</Badge>
-                  <h3 className="text-base font-bold text-slate-900 font-display mt-1">
-                    Order Summary
+                  <Badge variant="brand" size="sm">Live Cart</Badge>
+                  <h3 className="text-base font-black text-slate-900 font-display mt-1 tracking-tight">
+                    🧺 YOUR LAUNDRY BAG
                   </h3>
                 </div>
                 <span className="text-2xl">{currentService.emoji}</span>
               </div>
 
-              {/* Service & Schedule Details */}
-              <div className="space-y-2 text-xs text-slate-600">
+              {/* Selected Service & Persona */}
+              <div className="space-y-1.5 text-xs text-slate-600">
                 <div className="flex justify-between">
-                  <span>Selected Service:</span>
+                  <span>Service:</span>
                   <span className="font-bold text-slate-900">{currentService.name}</span>
                 </div>
-                {schedule.pickupDate && (
+                {schedule.pickupDate && currentStep >= 3 && (
                   <div className="flex justify-between">
-                    <span>Pickup Date:</span>
+                    <span>Pickup:</span>
                     <span className="font-semibold text-slate-900">{schedule.pickupDate}</span>
                   </div>
                 )}
-                {schedule.pickupSlot && (
-                  <div className="flex justify-between">
-                    <span>Time Slot:</span>
-                    <span className="font-semibold text-slate-900">{schedule.pickupSlot}</span>
-                  </div>
-                )}
-                <div className="flex justify-between">
-                  <span>Turnaround:</span>
-                  <span className={isExpress ? 'font-bold text-brand-600' : 'font-semibold text-slate-900'}>
-                    {isExpress ? '24-Hour Express' : '48-Hour Standard'}
-                  </span>
-                </div>
               </div>
 
               {/* Line Items List */}
-              {orderBreakdown.lineItems.length > 0 && (
+              {orderBreakdown.lineItems.length > 0 ? (
                 <div className="pt-3 border-t border-slate-100 space-y-2 text-xs max-h-48 overflow-y-auto pr-1">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                    Selected Items ({orderBreakdown.lineItems.length}):
-                  </span>
                   {orderBreakdown.lineItems.map((item, idx) => (
-                    <div key={idx} className="flex justify-between text-slate-700 text-[11px]">
-                      <span className="truncate max-w-[180px]">
+                    <div key={idx} className="flex justify-between items-center text-slate-700 text-xs">
+                      <span className="truncate max-w-[190px]">
                         {item.emoji} {item.name} × {item.quantity}
                       </span>
-                      <span className="font-semibold text-slate-900 shrink-0">
+                      <span className="font-bold text-slate-900 shrink-0">
                         {item.lineTotal ? formatCurrency(item.lineTotal) : (item.unconfirmed ? 'To be weighed' : 'Quote at pickup')}
                       </span>
                     </div>
                   ))}
                 </div>
+              ) : (
+                <div className="pt-3 border-t border-slate-100 py-3 text-center text-xs text-slate-400 italic">
+                  No items selected yet. Tap + on clothes to calculate live.
+                </div>
               )}
 
-              {/* Weight Indicator if Per-KG */}
+              {/* Approx Weight indicator */}
               {currentService.pricingType === 'PER_KG' && orderBreakdown.estimatedWeightKg > 0 && (
                 <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs flex justify-between items-center">
-                  <span className="text-slate-500">Estimated Weight:</span>
+                  <span className="text-slate-500">Approx. Weight:</span>
                   <span className="font-bold text-slate-900">
-                    {orderBreakdown.estimatedWeightKg} Kg ({orderBreakdown.estimatedWeightGrams}g)
+                    {orderBreakdown.estimatedWeightKg} Kg
                   </span>
                 </div>
               )}
@@ -1858,7 +2123,7 @@ export const BookPickupPage = () => {
                 )}
               </div>
 
-              {/* Financial Snapshot */}
+              {/* Financial Breakdown */}
               <div className="pt-3 border-t border-slate-100 space-y-1.5 text-xs text-slate-600">
                 <div className="flex justify-between">
                   <span>Subtotal:</span>
@@ -1866,7 +2131,7 @@ export const BookPickupPage = () => {
                 </div>
                 {isExpress && (
                   <div className="flex justify-between text-brand-600">
-                    <span>Express Priority (24H):</span>
+                    <span>Express Speed:</span>
                     <span>+{formatCurrency(orderBreakdown.expressFee)}</span>
                   </div>
                 )}
@@ -1895,18 +2160,26 @@ export const BookPickupPage = () => {
                         ? 'To be confirmed' 
                         : formatCurrency(orderBreakdown.finalTotal)}
                     </span>
-                    {orderBreakdown.hasUnpricedItems && orderBreakdown.itemsSubtotal > 0 && (
-                      <span className="block text-[10px] text-amber-700 font-normal">
-                        + Saree rolling quote at pickup
-                      </span>
-                    )}
                   </div>
                 </div>
               </div>
 
-              <div className="pt-2 text-center text-[11px] text-slate-400 flex items-center justify-center gap-1">
+              {/* Step action button */}
+              <Button
+                variant="primary"
+                size="lg"
+                className="w-full"
+                onClick={currentStep === 4 ? handleFinalBooking : handleNextStep}
+                isLoading={isSubmitting}
+                icon={currentStep === 4 ? CheckCircle2 : ArrowRight}
+                iconPosition="right"
+              >
+                {currentStep === 4 ? '📦 CONFIRM PICKUP' : 'Continue →'}
+              </Button>
+
+              <div className="pt-1 text-center text-[11px] text-slate-400 flex items-center justify-center gap-1">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-                <span>Zero Advance Needed • Pay After Delivery</span>
+                <span>Zero advance • Pay after delivery</span>
               </div>
 
             </Card>
@@ -1914,30 +2187,132 @@ export const BookPickupPage = () => {
 
         </div>
 
-        {/* Mobile Sticky Bottom Bar */}
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 p-3.5 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-2xl z-40 flex items-center justify-between gap-3">
-          <div>
-            <span className="text-[10px] text-slate-400 font-bold uppercase block">
-              Estimated Total:
-            </span>
-            <span className="text-lg font-black text-brand-600 font-display">
-              {orderBreakdown.hasUnpricedItems && orderBreakdown.itemsSubtotal === 0 
-                ? 'To be confirmed' 
-                : formatCurrency(orderBreakdown.finalTotal)}
-            </span>
-          </div>
+        {/* ============================================================ */}
+        {/* MOBILE STICKY BOTTOM SUMMARY BAR                             */}
+        {/* ============================================================ */}
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-2xl z-40">
+          <div className="p-3.5 flex items-center justify-between gap-3">
+            <div 
+              onClick={() => setIsMobileBagOpen(true)}
+              className="cursor-pointer flex items-center gap-2.5"
+            >
+              <div className="w-9 h-9 rounded-xl bg-brand-50 text-brand-700 flex items-center justify-center text-base">
+                🧺
+              </div>
+              <div>
+                <div className="text-[11px] font-bold text-slate-900 flex items-center gap-1">
+                  <span>{orderBreakdown.totalItemCount} {orderBreakdown.totalItemCount === 1 ? 'item' : 'items'}</span>
+                  <ChevronUp className="w-3.5 h-3.5 text-slate-400" />
+                </div>
+                <div className="text-base font-black text-brand-600 font-display">
+                  {orderBreakdown.hasUnpricedItems && orderBreakdown.itemsSubtotal === 0 
+                    ? 'To be confirmed' 
+                    : `${formatCurrency(orderBreakdown.finalTotal)} estimated`}
+                </div>
+              </div>
+            </div>
 
-          <Button
-            variant="primary"
-            size="md"
-            onClick={currentStep === 4 ? handleFinalBooking : handleNextStep}
-            isLoading={isSubmitting}
-            icon={currentStep === 4 ? CheckCircle2 : ArrowRight}
-            iconPosition="right"
-          >
-            {currentStep === 4 ? 'Confirm Booking' : `Step ${currentStep + 1} ➔`}
-          </Button>
+            <Button
+              variant="primary"
+              size="md"
+              onClick={currentStep === 4 ? handleFinalBooking : handleNextStep}
+              isLoading={isSubmitting}
+              icon={currentStep === 4 ? CheckCircle2 : ArrowRight}
+              iconPosition="right"
+            >
+              {currentStep === 4 ? 'Confirm' : 'Continue →'}
+            </Button>
+          </div>
         </div>
+
+        {/* ============================================================ */}
+        {/* MOBILE EXPANDABLE LAUNDRY BAG MODAL / DRAWER                 */}
+        {/* ============================================================ */}
+        {isMobileBagOpen && (
+          <div className="lg:hidden fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex flex-col justify-end animate-fade-in">
+            <div className="bg-white rounded-t-3xl p-5 max-h-[80vh] overflow-y-auto space-y-4 shadow-2xl animate-slide-up">
+              
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl">🧺</span>
+                  <h3 className="text-base font-black text-slate-900 font-display">
+                    YOUR LAUNDRY BAG
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsMobileBagOpen(false)}
+                  className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Items List */}
+              {orderBreakdown.lineItems.length > 0 ? (
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                  {orderBreakdown.lineItems.map((item, idx) => (
+                    <div key={idx} className="flex justify-between items-center text-xs text-slate-700">
+                      <span>{item.emoji} {item.name} × {item.quantity}</span>
+                      <span className="font-bold text-slate-900">
+                        {item.lineTotal ? formatCurrency(item.lineTotal) : (item.unconfirmed ? 'To be weighed' : 'Quote at pickup')}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="py-4 text-center text-xs text-slate-400">
+                  No items selected yet.
+                </div>
+              )}
+
+              {/* Breakdown */}
+              <div className="pt-3 border-t border-slate-100 space-y-1.5 text-xs text-slate-600">
+                <div className="flex justify-between">
+                  <span>Subtotal:</span>
+                  <span>{formatCurrency(orderBreakdown.itemsSubtotal)}</span>
+                </div>
+                {orderBreakdown.estimatedWeightKg > 0 && (
+                  <div className="flex justify-between">
+                    <span>Approx. Weight:</span>
+                    <span className="font-semibold text-slate-900">{orderBreakdown.estimatedWeightKg} Kg</span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span>Doorstep Pickup:</span>
+                  <span className="text-emerald-600 font-bold">
+                    {orderBreakdown.deliveryFee === 0 ? 'FREE' : formatCurrency(orderBreakdown.deliveryFee)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>GST (5%):</span>
+                  <span>{formatCurrency(orderBreakdown.taxAmount)}</span>
+                </div>
+                <div className="pt-2 border-t border-slate-200 flex justify-between items-baseline font-bold text-slate-900 text-sm">
+                  <span>Estimated Total:</span>
+                  <span className="text-xl font-black text-brand-600 font-display">
+                    {orderBreakdown.hasUnpricedItems && orderBreakdown.itemsSubtotal === 0 
+                      ? 'To be confirmed' 
+                      : formatCurrency(orderBreakdown.finalTotal)}
+                  </span>
+                </div>
+              </div>
+
+              <Button
+                variant="primary"
+                size="lg"
+                className="w-full mt-2"
+                onClick={() => {
+                  setIsMobileBagOpen(false);
+                  if (currentStep < 4) handleNextStep();
+                  else handleFinalBooking();
+                }}
+              >
+                {currentStep === 4 ? '📦 CONFIRM PICKUP' : 'Continue to next step →'}
+              </Button>
+            </div>
+          </div>
+        )}
 
       </div>
     </div>
