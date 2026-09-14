@@ -321,41 +321,89 @@ export const DEFAULT_SERVICES = [
 export const serviceService = {
   /**
    * Fetch all services from Firestore `services` collection
-   * (Optionally filter only active/published for customer portal)
+   * Guarantees all 8 official services are present and merges any missing default services into Firestore.
    */
   async getServices({ publishedOnly = false } = {}) {
+    let list = [];
+    let fetchedFromFirestore = false;
+
     if (isFirebaseConfigured && db) {
       try {
-        let q = collection(db, 'services');
+        const q = collection(db, 'services');
         const snap = await getDocs(q);
         if (!snap.empty) {
-          let list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-          if (publishedOnly) {
-            list = list.filter(s => s.active !== false && s.status !== 'archived' && s.status !== 'draft');
-          }
-          return list.sort((a, b) => (a.displayOrder || a.order || 0) - (b.displayOrder || b.order || 0));
-        } else {
-          // Initialize/Seed default services into Firestore if collection is empty
-          for (const srv of DEFAULT_SERVICES) {
-            await setDoc(doc(db, 'services', srv.id), srv);
-          }
-          const seeded = publishedOnly ? DEFAULT_SERVICES.filter(s => s.active !== false) : DEFAULT_SERVICES;
-          return seeded.sort((a, b) => (a.displayOrder || a.order || 0) - (b.displayOrder || b.order || 0));
+          list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          fetchedFromFirestore = true;
         }
       } catch (e) {
-        console.warn("Firestore services read error, reading local cache:", e?.message || e);
+        console.warn("Firestore services read error, checking defaults & cache:", e?.message || e);
       }
     }
 
-    try {
-      const cached = JSON.parse(localStorage.getItem(SERVICES_STORAGE_KEY) || '[]');
-      const source = (cached && cached.length >= 8) ? cached : DEFAULT_SERVICES;
-      localStorage.setItem(SERVICES_STORAGE_KEY, JSON.stringify(source));
-      const filtered = publishedOnly ? source.filter(s => s.active !== false && s.status !== 'archived' && s.status !== 'draft') : source;
-      return filtered.sort((a, b) => (a.displayOrder || a.order || 0) - (b.displayOrder || b.order || 0));
-    } catch (e) {
-      return DEFAULT_SERVICES;
+    // Merge missing default services so all 8 official services ALWAYS exist
+    const existingIdsAndSlugs = new Set([
+      ...list.map(s => s.id),
+      ...list.map(s => s.slug),
+    ].filter(Boolean));
+
+    const missingDefaults = DEFAULT_SERVICES.filter(
+      def => !existingIdsAndSlugs.has(def.id) && !existingIdsAndSlugs.has(def.slug)
+    );
+
+    if (missingDefaults.length > 0) {
+      list = [...list, ...missingDefaults];
+      // Seed missing services to Firestore in background
+      if (isFirebaseConfigured && db) {
+        Promise.all(
+          missingDefaults.map(srv => setDoc(doc(db, 'services', srv.id), srv, { merge: true }))
+        ).catch(err => console.warn("Background service seed error:", err));
+      }
     }
+
+    // Fallback if list is empty
+    if (list.length === 0) {
+      try {
+        const cached = JSON.parse(localStorage.getItem(SERVICES_STORAGE_KEY) || '[]');
+        list = (cached && Array.isArray(cached) && cached.length >= 8) ? cached : DEFAULT_SERVICES;
+      } catch (e) {
+        list = DEFAULT_SERVICES;
+      }
+    }
+
+    // Always update localStorage cache with full catalog
+    try {
+      localStorage.setItem(SERVICES_STORAGE_KEY, JSON.stringify(list));
+    } catch (e) {}
+
+    // Filter published only if requested
+    let result = list;
+    if (publishedOnly) {
+      result = list.filter(s => s.active !== false && s.status !== 'archived' && s.status !== 'draft');
+      if (result.length === 0) {
+        result = DEFAULT_SERVICES.filter(s => s.active !== false);
+      }
+    }
+
+    return result.sort((a, b) => (Number(a.displayOrder || a.order || 0) - Number(b.displayOrder || b.order || 0)));
+  },
+
+  /**
+   * Reset / Seed all 8 standard services into Firestore & cache
+   */
+  async seedAllDefaultServices() {
+    if (isFirebaseConfigured && db) {
+      try {
+        await Promise.all(
+          DEFAULT_SERVICES.map(srv => setDoc(doc(db, 'services', srv.id), srv, { merge: true }))
+        );
+      } catch (e) {
+        console.warn("Error seeding services to Firestore:", e);
+      }
+    }
+    try {
+      localStorage.setItem(SERVICES_STORAGE_KEY, JSON.stringify(DEFAULT_SERVICES));
+    } catch (e) {}
+    return DEFAULT_SERVICES;
   },
 
   /**

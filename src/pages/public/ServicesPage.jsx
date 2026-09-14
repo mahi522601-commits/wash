@@ -137,12 +137,22 @@ export const ServicesPage = () => {
                   </div>
 
                   {/* Price Tag */}
-                  <div className="absolute bottom-4 left-4 glass-card-dark px-3.5 py-1.5 rounded-2xl flex items-center gap-1.5 text-white">
-                    <span className="text-[10px] uppercase font-bold text-cyan-300">From</span>
-                    <span className="text-base font-black font-display text-white">
-                      {service.startingPrice ? formatCurrency(service.startingPrice) : 'Custom'}
-                    </span>
-                    <span className="text-[10px] text-brand-200">{service.pricingType || 'per piece'}</span>
+                  <div className="absolute bottom-4 left-4 glass-card-dark px-3.5 py-1.5 rounded-2xl flex items-center gap-1.5 text-white shadow-lg">
+                    {service.startingPrice ? (
+                      <>
+                        <span className="text-[10px] uppercase font-bold text-amber-300">Starts at</span>
+                        <span className="text-base font-black font-display text-white">
+                          {formatCurrency(service.startingPrice)}
+                        </span>
+                        {service.pricingType && (
+                          <span className="text-[10px] text-brand-200">
+                            {service.pricingType === 'per_kg' ? '/ kg' : service.pricingType === 'per_sqft' ? '/ sq.ft' : service.pricingType === 'per_pair' ? '/ pair' : ''}
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      <span className="text-xs font-bold text-amber-300">Price to be confirmed</span>
+                    )}
                   </div>
                 </div>
 

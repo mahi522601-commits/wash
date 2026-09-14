@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { DEFAULT_SERVICES } from '../../services/serviceService';
 import { formatCurrency } from '../../utils/formatters';
 import { Badge } from '../ui/Badge';
 import { 
@@ -14,57 +15,13 @@ import {
 export const ServicesShowcase = ({ services = [] }) => {
   const [selectedCategory, setSelectedCategory] = useState('All');
 
-  // Fallback initial services if CMS is fresh
-  const sampleServices = services.length > 0 ? services : [
-    {
-      id: 'srv-laundry',
-      title: 'Laundry',
-      slug: 'laundry',
-      category: 'Laundry',
-      startingPrice: 79,
-      pricingType: 'per kg',
-      shortDescription: '100% demineralized RO soft water washing with hypoallergenic bio-enzymes, zero fabric fade, and crisp fold packaging.',
-      heroImage: 'https://images.unsplash.com/photo-1517677208171-0bc6725a3e60?auto=format&fit=crop&w=800&q=80',
-      featured: true,
-    },
-    {
-      id: 'srv-steam-iron',
-      title: 'Steam Iron',
-      slug: 'steam-iron',
-      category: 'Steam Iron',
-      startingPrice: 29,
-      pricingType: 'per piece',
-      shortDescription: '3D ergonomic tension form steam finishing preventing fabric scorch and maintaining pristine crease retention.',
-      heroImage: 'https://images.unsplash.com/photo-1489274495757-95c7c837b101?auto=format&fit=crop&w=800&q=80',
-    },
-    {
-      id: 'srv-stains-remover',
-      title: 'Stains Remover',
-      slug: 'stains-remover',
-      category: 'Stains Remover',
-      startingPrice: 99,
-      pricingType: 'per piece',
-      shortDescription: 'Targeted ultrasonic bio-enzyme spot lifting for stubborn oil, ink, grease, wine, turmeric, and protein stains.',
-      heroImage: 'https://images.unsplash.com/photo-1582735689369-4fe89db7114c?auto=format&fit=crop&w=800&q=80',
-    },
-    {
-      id: 'srv-dry-cleaning',
-      title: 'Dry Cleaning',
-      slug: 'dry-cleaning',
-      category: 'Dry Cleaning',
-      startingPrice: 149,
-      pricingType: 'per piece',
-      shortDescription: 'Pure non-toxic hydrocarbon solvent cleansing for suits, silks, designer wear, and delicate couture fabrics.',
-      heroImage: 'https://images.unsplash.com/photo-1545173168-9f1947eebb7f?auto=format&fit=crop&w=800&q=80',
-      featured: true,
-    }
-  ];
+  const displayServices = services && services.length > 0 ? services : DEFAULT_SERVICES;
 
-  const categories = ['All', 'Laundry', 'Steam Iron', 'Stains Remover', 'Dry Cleaning'];
+  const categories = ['All', ...Array.from(new Set(displayServices.map(s => s.category || 'General Care').filter(Boolean)))];
 
   const filtered = selectedCategory === 'All' 
-    ? sampleServices 
-    : sampleServices.filter(s => s.category === selectedCategory);
+    ? displayServices 
+    : displayServices.filter(s => (s.category || 'General Care') === selectedCategory);
 
   return (
     <section className="py-20 lg:py-28 bg-brand-50 relative overflow-hidden">
@@ -146,11 +103,21 @@ export const ServicesShowcase = ({ services = [] }) => {
 
                   {/* Starting Rate Badge */}
                   <div className="absolute bottom-4 left-4 glass-card-dark px-3.5 py-1.5 rounded-2xl flex items-center gap-1.5 text-white">
-                    <span className="text-[10px] uppercase font-bold text-brand-300">From</span>
-                    <span className="text-sm font-black font-display">
-                      {formatCurrency(service.startingPrice)}
-                    </span>
-                    <span className="text-[10px] text-brand-200">{service.pricingType}</span>
+                    {service.startingPrice ? (
+                      <>
+                        <span className="text-[10px] uppercase font-bold text-brand-300">From</span>
+                        <span className="text-sm font-black font-display text-white">
+                          {formatCurrency(service.startingPrice)}
+                        </span>
+                        {service.pricingType && (
+                          <span className="text-[10px] text-brand-200">
+                            {service.pricingType === 'per_kg' ? '/ kg' : service.pricingType === 'per_sqft' ? '/ sq.ft' : service.pricingType === 'per_pair' ? '/ pair' : ''}
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      <span className="text-xs font-bold text-amber-300">Price to be confirmed</span>
+                    )}
                   </div>
                 </div>
 

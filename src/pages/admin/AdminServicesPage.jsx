@@ -137,6 +137,19 @@ export const AdminServicesPage = () => {
     setEditorOpen(true);
   };
 
+  const handleSeedServices = async () => {
+    try {
+      setLoading(true);
+      const seeded = await serviceService.seedAllDefaultServices();
+      setServices(seeded);
+      success('Services Synced!', 'All 8 standard services synchronized to Firebase.');
+    } catch (err) {
+      error('Sync Error', err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleDuplicate = async (srv) => {
     const duplicated = {
       ...srv,
@@ -349,6 +362,29 @@ export const AdminServicesPage = () => {
         actionIcon={Plus}
         onAction={handleOpenCreate}
       />
+
+      {/* Sync & Stats Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-2xl bg-white border border-slate-200 shadow-xs">
+        <div className="flex items-center gap-2">
+          <Badge variant="emerald" size="md">
+            {services.length} Services Configured
+          </Badge>
+          <span className="text-xs text-slate-500 hidden sm:inline">
+            • All 8 official garment care offerings synchronized with Firebase
+          </span>
+        </div>
+
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          icon={Sparkles}
+          onClick={handleSeedServices}
+          className="text-xs"
+        >
+          Sync / Restore 8 Default Services
+        </Button>
+      </div>
 
       {/* Services Table */}
       <Table
