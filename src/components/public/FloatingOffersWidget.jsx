@@ -108,7 +108,13 @@ export const FloatingOffersWidget = () => {
             onClick={() => setIsOpen(true)}
             className="mr-2 p-2.5 rounded-2xl bg-[#1F2937] text-white border border-[#F97316]/50 shadow-2xl animate-fade-in flex items-center gap-2 cursor-pointer hover:scale-105 transition-transform"
           >
-            <Sparkles className="w-4 h-4 text-[#F97316] animate-pulse" />
+            <div className="w-5 h-5 rounded-md bg-white p-0.5 flex items-center justify-center shrink-0">
+              <img
+                src="https://img.icons8.com/?size=100&id=5Mj6waj5vNA7&format=png&color=000000"
+                alt="Offer"
+                className="w-full h-full object-contain"
+              />
+            </div>
             <div className="text-[11px] leading-tight">
               <span className="font-black text-[#F97316] block">{currentOffer.discountValue}</span>
               <span className="text-slate-300 text-[10px]">{currentOffer.title}</span>
@@ -131,8 +137,12 @@ export const FloatingOffersWidget = () => {
           <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-[#F97316] border-2 border-[#1F2937] rounded-full shadow-sm animate-ping" />
           <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-[#F97316] border-2 border-[#1F2937] rounded-full shadow-sm" />
 
-          <div className="w-7 h-7 rounded-xl bg-[#F97316] flex items-center justify-center text-white shrink-0 shadow-sm group-hover:rotate-12 transition-transform">
-            <Tag className="w-4 h-4 text-white fill-current" />
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-white flex items-center justify-center shrink-0 shadow-sm p-1 group-hover:rotate-12 transition-transform overflow-hidden border border-orange-200">
+            <img
+              src="https://img.icons8.com/?size=100&id=5Mj6waj5vNA7&format=png&color=000000"
+              alt="Offers"
+              className="w-full h-full object-contain"
+            />
           </div>
 
           <div className="hidden sm:block text-left pr-1">
