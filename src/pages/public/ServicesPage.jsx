@@ -129,7 +129,7 @@ export const ServicesPage = () => {
                 className="bg-white rounded-[36px] overflow-hidden border border-brand-200/80 shadow-luxury hover:shadow-luxury-hover hover:-translate-y-1.5 transition-all duration-500 flex flex-col group justify-between"
               >
                 {/* Visual Image Header */}
-                <div className="relative aspect-[16/10] overflow-hidden bg-navy-950">
+                <Link to={`/book-pickup?service=${service.slug}`} className="block relative aspect-[16/10] overflow-hidden bg-navy-950 cursor-pointer">
                   <img
                     src={service.heroImage || 'https://images.unsplash.com/photo-1545173168-9f1947eebb7f?auto=format&fit=crop&w=800&q=80'}
                     alt={service.title}
@@ -162,14 +162,16 @@ export const ServicesPage = () => {
                       <span className="text-xs font-bold text-amber-300">Price to be confirmed</span>
                     )}
                   </div>
-                </div>
+                </Link>
 
                 {/* Card Body */}
                 <div className="p-6 sm:p-7 flex-1 flex flex-col justify-between space-y-4">
                   <div className="space-y-2">
-                    <h3 className="text-xl font-bold font-display text-navy-800 group-hover:text-brand-600 transition-colors">
-                      {service.title}
-                    </h3>
+                    <Link to={`/book-pickup?service=${service.slug}`} className="block">
+                      <h3 className="text-xl font-bold font-display text-navy-800 group-hover:text-brand-600 transition-colors">
+                        {service.title}
+                      </h3>
+                    </Link>
                     <p className="text-xs sm:text-sm text-slate-600 leading-relaxed line-clamp-2">
                       {service.shortDescription}
                     </p>

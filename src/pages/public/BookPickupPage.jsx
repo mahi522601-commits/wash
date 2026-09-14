@@ -82,6 +82,56 @@ const SUBCATEGORY_TABS = {
   ]
 };
 
+export const findMatchingService = (serviceParam, servicesList = []) => {
+  if (!serviceParam) return null;
+  const raw = String(serviceParam).toLowerCase().trim();
+  const clean = raw.replace(/^srv-/, '');
+  
+  // 1. Direct match on id or slug
+  const direct = servicesList.find(s => s.id === raw || s.slug === raw || s.id === clean || s.slug === clean);
+  if (direct) return direct;
+
+  // 2. Synonyms and fuzzy aliases
+  const aliasMap = {
+    'steam-ironing': 'ironing',
+    'iron': 'ironing',
+    'ironing': 'ironing',
+    'wash-iron': 'wash-and-iron',
+    'wash-and-iron': 'wash-and-iron',
+    'wash-fold': 'wash-and-fold',
+    'wash-and-fold': 'wash-and-fold',
+    'wash-and-fold-laundry': 'wash-and-fold',
+    'curtain-cleaning': 'curtain-washing',
+    'curtain-washing': 'curtain-washing',
+    'curtains': 'curtain-washing',
+    'shoe-cleaning': 'shoe-washing',
+    'shoe-washing': 'shoe-washing',
+    'shoes': 'shoe-washing',
+    'carpet-cleaning': 'carpet-washing',
+    'carpet-washing': 'carpet-washing',
+    'carpets': 'carpet-washing',
+    'saree': 'saree-rolling',
+    'saree-rolling': 'saree-rolling',
+    'dryclean': 'dry-cleaning',
+    'dry-cleaning': 'dry-cleaning',
+    'dry-clean': 'dry-cleaning',
+  };
+
+  const targetId = aliasMap[clean] || aliasMap[raw];
+  if (targetId) {
+    const aliasMatch = servicesList.find(s => s.id === targetId || s.slug === targetId);
+    if (aliasMatch) return aliasMatch;
+  }
+
+  // 3. Fallback partial match
+  return servicesList.find(s => {
+    const sId = (s.id || '').toLowerCase();
+    const sSlug = (s.slug || '').toLowerCase();
+    const sName = (s.name || s.title || '').toLowerCase();
+    return sId.includes(clean) || clean.includes(sId) || sSlug.includes(clean) || clean.includes(sSlug) || sName.includes(clean);
+  }) || null;
+};
+
 export const BookPickupPage = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -90,10 +140,19 @@ export const BookPickupPage = () => {
 
   // Pricing config state
   const [pricingConfig, setPricingConfig] = useState(INITIAL_PRICING_CONFIG);
-  const [currentStep, setCurrentStep] = useState(1);
 
-  // Step 1: Selected Service
-  const [selectedServiceId, setSelectedServiceId] = useState('dry-cleaning');
+  // Step 1: Selected Service & Step Initialization
+  const [selectedServiceId, setSelectedServiceId] = useState(() => {
+    const prefill = searchParams.get('service');
+    const match = findMatchingService(prefill, INITIAL_PRICING_CONFIG.services);
+    return match ? match.id : 'dry-cleaning';
+  });
+
+  // When a service is provided in URL, jump STRAIGHT to Step 2 (Items & Quantities)
+  const [currentStep, setCurrentStep] = useState(() => {
+    const prefill = searchParams.get('service');
+    return prefill ? 2 : 1;
+  });
 
   // Step 2: Customer Personas & Categories
   // 'men' | 'women' | 'mixed'
@@ -183,8 +242,11 @@ export const BookPickupPage = () => {
 
     const prefillService = searchParams.get('service');
     if (prefillService) {
-      const match = INITIAL_PRICING_CONFIG.services.find(s => s.slug === prefillService || s.id === prefillService);
-      if (match) setSelectedServiceId(match.id);
+      const match = findMatchingService(prefillService, pricingConfig.services || INITIAL_PRICING_CONFIG.services);
+      if (match) {
+        setSelectedServiceId(match.id);
+        setCurrentStep(2); // Jump straight to Step 2
+      }
     }
 
     try {
