@@ -15,6 +15,7 @@ import { Badge } from '../../components/ui/Badge';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { StatusBadge } from '../../components/admin/StatusBadge';
 import { ServicePreviewModal } from '../../components/public/ServicePreviewModal';
+import { ImageUpload } from '../../components/ui/ImageUpload';
 import { 
   Sparkles, 
   Plus, 
@@ -526,31 +527,25 @@ export const AdminServicesPage = () => {
 
             {/* TAB 3: MEDIA & COVERS */}
             {activeTab === 'media' && (
-              <div className="space-y-4">
-                <Input
-                  label="Hero Desktop Banner Image URL"
-                  placeholder="https://... or choose from Media Library"
+              <div className="space-y-6">
+                <ImageUpload
+                  label="Service Hero Cover Image (Desktop & Cards) *"
                   value={currentService.heroImage}
-                  onChange={(e) => setCurrentService({ ...currentService, heroImage: e.target.value })}
+                  onChange={(newUrl) => setCurrentService({ ...currentService, heroImage: newUrl })}
+                  serviceSlug={currentService.slug || 'service'}
+                  helperText="Upload an image from your computer / local storage, pick a curated care preset photo, or paste an external URL."
                 />
 
-                <Input
-                  label="Mobile Optimized Image URL (Optional)"
-                  placeholder="https://..."
-                  value={currentService.mobileImage}
-                  onChange={(e) => setCurrentService({ ...currentService, mobileImage: e.target.value })}
-                />
-
-                {currentService.heroImage && (
-                  <div className="mt-4">
-                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2">Image Preview</span>
-                    <img
-                      src={currentService.heroImage}
-                      alt="Hero preview"
-                      className="w-full h-48 rounded-2xl object-cover border border-slate-200"
-                    />
-                  </div>
-                )}
+                <div className="pt-4 border-t border-slate-200">
+                  <ImageUpload
+                    label="Mobile Optimized Cover Image (Optional)"
+                    value={currentService.mobileImage}
+                    onChange={(newUrl) => setCurrentService({ ...currentService, mobileImage: newUrl })}
+                    serviceSlug={`${currentService.slug || 'service'}-mobile`}
+                    helperText="Optional vertical / compact image for smartphone views."
+                    aspectRatio="aspect-[4/3]"
+                  />
+                </div>
               </div>
             )}
 
