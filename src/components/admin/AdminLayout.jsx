@@ -3,7 +3,8 @@ import { Outlet, Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { authService } from '../../services/authService';
 import { useToast } from '../../context/ToastContext';
-import { playOrderPlacedSound } from '../../utils/audioNotification';
+import { orderService } from '../../services/orderService';
+import { playOrderPlacedSound, unlockAudioNotification } from '../../utils/audioNotification';
 import { AdminSidebar } from './AdminSidebar';
 import { AdminHeader } from './AdminHeader';
 import { AdminCommandPalette } from './AdminCommandPalette';
@@ -23,19 +24,32 @@ export const AdminLayout = () => {
   });
   const [searchPaletteOpen, setSearchPaletteOpen] = useState(false);
 
-  // Listen for real-time new customer orders & play notification sound
+  // Pre-unlock audio on mount
   useEffect(() => {
-    const handleNewOrder = (e) => {
-      const order = e.detail;
+    unlockAudioNotification();
+  }, []);
+
+  // Listen for real-time new customer orders across all channels & play notification sound (/1.mp4)
+  useEffect(() => {
+    const handleNewOrder = (order) => {
+      // Play custom notification chime from /1.mp4
       playOrderPlacedSound();
+
+      const customer = order?.customerName || order?.customer?.name || 'Customer';
+      const serviceName = order?.serviceName || order?.service || 'Laundry Service';
+      const orderNum = order?.orderNumber || order?.id || 'New Order';
+      const amount = order?.totalAmount || order?.priceSnapshot?.finalTotal;
+
       info(
         '🔔 New Order Received!',
-        `${order?.customerName || 'Customer'} scheduled a ${order?.service || 'laundry'} pickup (${order?.orderNumber || 'New Order'}).`
+        `${customer} scheduled ${serviceName} (${orderNum})${amount ? ` • ₹${amount}` : ''}.`
       );
     };
 
-    window.addEventListener('techwash-new-order-placed', handleNewOrder);
-    return () => window.removeEventListener('techwash-new-order-placed', handleNewOrder);
+    const unsubscribe = orderService.subscribeToNewOrders(handleNewOrder);
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
   }, [info]);
 
   // Global Ctrl + K / Cmd + K keyboard shortcut

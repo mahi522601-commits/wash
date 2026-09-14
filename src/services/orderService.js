@@ -14,7 +14,8 @@ import {
   query, 
   orderBy, 
   where,
-  limit
+  limit,
+  onSnapshot
 } from 'firebase/firestore';
 
 export const ORDER_CUSTOMER_STAGES = [
@@ -162,6 +163,15 @@ export const orderService = {
 
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('techwash-new-order-placed', { detail: fullOrder }));
+      try {
+        if ('BroadcastChannel' in window) {
+          const channel = new BroadcastChannel('techwash_orders_channel');
+          channel.postMessage({ type: 'NEW_ORDER', order: fullOrder });
+          setTimeout(() => {
+            try { channel.close(); } catch (e) {}
+          }, 200);
+        }
+      } catch (e) {}
     }
 
     return fullOrder;
@@ -340,5 +350,105 @@ export const orderService = {
       adminNotes,
       note,
     });
+  },
+
+  /**
+   * Subscribe to real-time newly placed orders across Firestore, BroadcastChannel, and CustomEvents.
+   * Callback receives the new order object when any order is placed or received.
+   */
+  subscribeToNewOrders(callback) {
+    if (typeof callback !== 'function') return () => {};
+
+    const unsubscribers = [];
+    const processedOrderIds = new Set();
+
+    // 1. Same-window CustomEvent listener
+    const handleLocalEvent = (e) => {
+      const order = e.detail;
+      const key = order?.id || order?.orderNumber;
+      if (order && key && !processedOrderIds.has(key)) {
+        processedOrderIds.add(key);
+        if (order.id) processedOrderIds.add(order.id);
+        if (order.orderNumber) processedOrderIds.add(order.orderNumber);
+        callback(order);
+      }
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('techwash-new-order-placed', handleLocalEvent);
+      unsubscribers.push(() => window.removeEventListener('techwash-new-order-placed', handleLocalEvent));
+    }
+
+    // 2. Cross-Tab BroadcastChannel listener
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      try {
+        const channel = new BroadcastChannel('techwash_orders_channel');
+        channel.onmessage = (event) => {
+          if (event.data?.type === 'NEW_ORDER' && event.data?.order) {
+            const order = event.data.order;
+            const key = order?.id || order?.orderNumber;
+            if (order && key && !processedOrderIds.has(key)) {
+              processedOrderIds.add(key);
+              if (order.id) processedOrderIds.add(order.id);
+              if (order.orderNumber) processedOrderIds.add(order.orderNumber);
+              callback(order);
+            }
+          }
+        };
+        unsubscribers.push(() => {
+          try {
+            channel.close();
+          } catch (e) {}
+        });
+      } catch (e) {
+        console.warn('BroadcastChannel not available:', e);
+      }
+    }
+
+    // 3. Firestore Real-time Snapshot Listener
+    if (isFirebaseConfigured && db) {
+      try {
+        let isInitialLoad = true;
+        const q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'), limit(25));
+        const firestoreUnsub = onSnapshot(q, (snapshot) => {
+          if (isInitialLoad) {
+            // Populate initial existing order IDs so we only alert on newly added orders
+            snapshot.docs.forEach((doc) => {
+              processedOrderIds.add(doc.id);
+              const data = doc.data();
+              if (data?.orderNumber) processedOrderIds.add(data.orderNumber);
+            });
+            isInitialLoad = false;
+            return;
+          }
+
+          snapshot.docChanges().forEach((change) => {
+            if (change.type === 'added') {
+              const orderData = { id: change.doc.id, ...change.doc.data() };
+              const orderKey = orderData.id || orderData.orderNumber;
+              if (orderKey && !processedOrderIds.has(orderKey)) {
+                processedOrderIds.add(orderKey);
+                if (orderData.id) processedOrderIds.add(orderData.id);
+                if (orderData.orderNumber) processedOrderIds.add(orderData.orderNumber);
+                callback(orderData);
+              }
+            }
+          });
+        }, (err) => {
+          console.warn('Firestore orders onSnapshot error:', err);
+        });
+
+        unsubscribers.push(firestoreUnsub);
+      } catch (err) {
+        console.warn('Failed to attach Firestore orders listener:', err);
+      }
+    }
+
+    return () => {
+      unsubscribers.forEach((unsub) => {
+        try {
+          unsub();
+        } catch (e) {}
+      });
+    };
   }
 };

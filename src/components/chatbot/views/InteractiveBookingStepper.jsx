@@ -3,6 +3,7 @@ import { formatCurrency } from '../../../utils/formatters';
 import { QUICK_ITEMS_CATALOG } from '../../../services/chatbotService';
 import { locationService } from '../../../services/locationService';
 import { orderService } from '../../../services/orderService';
+import { playOrderPlacedSound } from '../../../utils/audioNotification';
 import confetti from 'canvas-confetti';
 import { 
   Calendar, 
@@ -176,6 +177,9 @@ export const InteractiveBookingStepper = ({
       };
 
       const created = await orderService.createOrder(orderPayload);
+
+      // Play custom order received sound from /1.mp4
+      playOrderPlacedSound();
 
       try {
         confetti({

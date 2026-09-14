@@ -77,6 +77,16 @@ export const AdminOrdersPage = () => {
     loadOrders();
   }, [selectedStatus, searchQuery]);
 
+  // Real-time listener for incoming orders to update table instantly
+  useEffect(() => {
+    const unsubscribe = orderService.subscribeToNewOrders(() => {
+      loadOrders();
+    });
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
+  }, [selectedStatus, searchQuery]);
+
   const openOrderModal = (ord) => {
     setActiveOrder(ord);
     setNewCustomerStage(ord.customerStage || ord.status || 'CONFIRMED');

@@ -19,8 +19,15 @@ import {
   ChevronDown,
   ShieldCheck,
   MapPin,
-  Clock
+  Clock,
+  Volume2,
+  VolumeX
 } from 'lucide-react';
+import { 
+  testOrderPlacedSound, 
+  isAudioNotificationEnabled, 
+  setAudioNotificationEnabled 
+} from '../../utils/audioNotification';
 
 export const AdminHeader = ({ onMenuToggle, onOpenSearch }) => {
   const { currentUser, logout } = useAuth();
@@ -61,8 +68,18 @@ export const AdminHeader = ({ onMenuToggle, onOpenSearch }) => {
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
-  const markAllAsRead = () => {
-    setNotifications(notifications.map(n => ({ ...n, read: true })));
+  // Sound notification state
+  const [soundEnabled, setSoundEnabled] = useState(() => isAudioNotificationEnabled());
+
+  const handleToggleSound = () => {
+    const next = !soundEnabled;
+    setSoundEnabled(next);
+    setAudioNotificationEnabled(next);
+  };
+
+  const handleTestChime = (e) => {
+    e.stopPropagation();
+    testOrderPlacedSound();
   };
 
   const handleLogout = async () => {
@@ -232,6 +249,33 @@ export const AdminHeader = ({ onMenuToggle, onOpenSearch }) => {
                     Mark all read
                   </button>
                 )}
+              </div>
+
+              {/* Order Chime Sound Settings Bar */}
+              <div className="my-2.5 p-2 rounded-2xl bg-purple-950/40 border border-purple-500/20 flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={handleToggleSound}
+                  className="flex items-center gap-2 text-[11px] text-slate-300 hover:text-white transition-colors"
+                >
+                  {soundEnabled ? (
+                    <Volume2 className="w-4 h-4 text-emerald-400" />
+                  ) : (
+                    <VolumeX className="w-4 h-4 text-rose-400" />
+                  )}
+                  <span className="font-medium">
+                    {soundEnabled ? 'Chime Sound On' : 'Chime Muted'}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleTestChime}
+                  className="px-2.5 py-1 rounded-xl bg-purple-600/30 hover:bg-purple-600/50 text-[10px] font-bold text-cyan-300 border border-purple-400/30 transition-all active:scale-95 flex items-center gap-1"
+                  title="Test notification chime (/1.mp4)"
+                >
+                  <span>🔊 Test Chime</span>
+                </button>
               </div>
 
               <div className="divide-y divide-white/5 max-h-72 overflow-y-auto py-1">
