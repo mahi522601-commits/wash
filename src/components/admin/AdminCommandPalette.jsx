@@ -39,6 +39,7 @@ const SEARCHABLE_ITEMS = [
   { title: 'Services Catalog CMS', category: 'Catalog', path: '/admin/services', icon: Sparkles, keywords: 'dry cleaning laundry shoe care steam press' },
   { title: 'Pricing Master Engine', category: 'Catalog', path: '/admin/pricing', icon: DollarSign, keywords: 'rates apparel rates items' },
   { title: 'Offers & 1:1 Popup Campaign Manager', category: 'Marketing', path: '/admin/offers', icon: Tag, keywords: 'discounts promo codes coupons first order popup' },
+  { title: 'Before & After Transformations Gallery', category: 'Catalog', path: '/admin/gallery', icon: ImageIcon, keywords: 'photos before after transformations gallery upload images portfolio' },
   { title: 'Blog & Garment Care Guides', category: 'Content', path: '/admin/blog', icon: BookOpen, keywords: 'articles silk wool stain removal' },
 ];
 

@@ -202,5 +202,19 @@ export const storageService = {
       height,
       isRemote: false
     };
+  },
+
+  /**
+   * Process and compress Before/After gallery transformation image to HD under 100 KB
+   */
+  async uploadGalleryImage(file, prefix = 'transformation') {
+    return this.uploadServiceImage(file, `gallery_${prefix}`);
+  },
+
+  /**
+   * Generic image uploader with HD compression strictly under 100 KB
+   */
+  async uploadImage(file, folder = 'general') {
+    return this.uploadServiceImage(file, folder);
   }
 };

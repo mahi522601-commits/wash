@@ -43,6 +43,7 @@ import { AdminCustomersPage } from './pages/admin/AdminCustomersPage';
 import { AdminServicesPage } from './pages/admin/AdminServicesPage';
 import { AdminPricingPage } from './pages/admin/AdminPricingPage';
 import { AdminOffersPage } from './pages/admin/AdminOffersPage';
+import { AdminGalleryPage } from './pages/admin/AdminGalleryPage';
 import { AdminBlogPage } from './pages/admin/AdminBlogPage';
 import { AdminLocationsPage } from './pages/admin/AdminLocationsPage';
 import { AdminPaymentsPage } from './pages/admin/AdminPaymentsPage';
@@ -130,6 +131,7 @@ export function App() {
               <Route path="services" element={<AdminServicesPage />} />
               <Route path="pricing" element={<AdminPricingPage />} />
               <Route path="offers" element={<AdminOffersPage />} />
+              <Route path="gallery" element={<AdminGalleryPage />} />
               <Route path="blog" element={<AdminBlogPage />} />
               <Route path="locations" element={<AdminLocationsPage />} />
               <Route path="payments" element={<AdminPaymentsPage />} />

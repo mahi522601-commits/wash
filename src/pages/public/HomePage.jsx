@@ -8,7 +8,6 @@ import { useSettings } from '../../context/SettingsContext';
 import { HeroSlider } from '../../components/public/HeroSlider';
 import { StatsSection } from '../../components/public/StatsSection';
 import { ServicesShowcase } from '../../components/public/ServicesShowcase';
-import { QualityServicesSection } from '../../components/public/QualityServicesSection';
 import { HowItWorksSection } from '../../components/public/HowItWorksSection';
 import { VideoShowcase } from '../../components/public/VideoShowcase';
 import { LocationsSection } from '../../components/public/LocationsSection';
@@ -80,10 +79,7 @@ export const HomePage = () => {
         </div>
       </section>
 
-      {/* 5. QUALITY OF SERVICE SECTION — "Impeccable Care. Every Time." */}
-      <QualityServicesSection />
-
-      {/* 6. 6-STAGE ILLUMINATED PROCESS TIMELINE */}
+      {/* 5. 6-STAGE ILLUMINATED PROCESS TIMELINE */}
       <HowItWorksSection />
 
       {/* 7. YOUTUBE VIDEO SHOWCASE */}

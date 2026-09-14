@@ -95,35 +95,45 @@ export const GalleryPage = () => {
 
         {/* Gallery Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-          {filtered.map((item) => (
-            <div
-              key={item.id}
-              onClick={() => setActiveItem(item)}
-              className="group relative rounded-3xl overflow-hidden aspect-[4/3] bg-slate-900 shadow-luxury hover:shadow-luxury-hover hover:-translate-y-1.5 transition-all duration-300 cursor-pointer"
-            >
-              <img
-                src={item.imageUrl || item.url}
-                alt={item.title || 'Tech Wash Gallery item'}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/25 to-transparent opacity-85 group-hover:opacity-95 transition-opacity" />
+          {filtered.map((item) => {
+            const mainImg = item.imageUrl || item.afterImageUrl || item.url;
+            const hasBefore = Boolean(item.beforeImageUrl);
 
-              <div className="absolute top-4 left-4">
-                <Badge variant="brand" size="md">{item.category || 'Showcase'}</Badge>
-              </div>
+            return (
+              <div
+                key={item.id}
+                onClick={() => setActiveItem(item)}
+                className="group relative rounded-3xl overflow-hidden aspect-[4/3] bg-slate-900 shadow-luxury hover:shadow-luxury-hover hover:-translate-y-1.5 transition-all duration-300 cursor-pointer"
+              >
+                <img
+                  src={mainImg}
+                  alt={item.title || 'Tech Wash Gallery item'}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/25 to-transparent opacity-85 group-hover:opacity-95 transition-opacity" />
 
-              <div className="absolute bottom-0 inset-x-0 p-6 text-white">
-                <h3 className="text-base font-bold font-display line-clamp-2">
-                  {item.title}
-                </h3>
-                {item.description && (
-                  <p className="text-xs text-slate-300 line-clamp-2 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {item.description}
-                  </p>
-                )}
+                <div className="absolute top-4 left-4 flex items-center gap-2">
+                  <Badge variant="brand" size="md">{item.category || 'Showcase'}</Badge>
+                  {hasBefore && (
+                    <span className="px-2.5 py-1 rounded-full bg-[#F97316] text-white text-[10px] font-extrabold uppercase tracking-wider shadow">
+                      Before & After
+                    </span>
+                  )}
+                </div>
+
+                <div className="absolute bottom-0 inset-x-0 p-6 text-white">
+                  <h3 className="text-base font-bold font-display line-clamp-2">
+                    {item.title}
+                  </h3>
+                  {item.description && (
+                    <p className="text-xs text-slate-300 line-clamp-2 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {item.description}
+                    </p>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
       </div>
@@ -137,9 +147,9 @@ export const GalleryPage = () => {
       >
         {activeItem && (
           <div>
-            <div className="relative aspect-[16/10] bg-slate-900">
+            <div className="relative aspect-[16/10] bg-slate-900 flex items-center justify-center">
               <img
-                src={activeItem.imageUrl || activeItem.url}
+                src={activeItem.imageUrl || activeItem.afterImageUrl || activeItem.url}
                 alt={activeItem.title}
                 className="w-full h-full object-contain"
               />
@@ -147,6 +157,11 @@ export const GalleryPage = () => {
             <div className="p-6 bg-slate-900">
               <div className="flex items-center gap-2 mb-2">
                 <Badge variant="brand" size="sm">{activeItem.category || 'Showcase'}</Badge>
+                {activeItem.beforeImageUrl && (
+                  <span className="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold uppercase">
+                    Before & After
+                  </span>
+                )}
               </div>
               <h3 className="text-xl font-bold font-display text-white">{activeItem.title}</h3>
               {activeItem.description && (

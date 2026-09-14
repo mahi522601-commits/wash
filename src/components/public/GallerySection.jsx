@@ -98,6 +98,9 @@ export const GallerySection = ({ gallery = [] }) => {
             // Asymmetric col spanning: items 0 and 3 are 7-wide, others are 5-wide
             const colSpan = idx % 3 === 0 ? 'lg:col-span-7' : 'lg:col-span-5';
 
+            const mainImg = item.imageUrl || item.afterImageUrl;
+            const hasBefore = Boolean(item.beforeImageUrl);
+
             return (
               <div
                 key={item.id || idx}
@@ -106,7 +109,7 @@ export const GallerySection = ({ gallery = [] }) => {
               >
                 <div className="aspect-[16/11] sm:aspect-[16/10] overflow-hidden relative">
                   <img
-                    src={item.imageUrl}
+                    src={mainImg}
                     alt={item.title}
                     className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-700 ease-out"
                   />
@@ -115,10 +118,15 @@ export const GallerySection = ({ gallery = [] }) => {
                   <div className="absolute inset-0 bg-gradient-to-t from-navy-950/80 via-navy-950/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
 
                   {/* Category Pill Tag */}
-                  <div className="absolute top-4 left-4">
+                  <div className="absolute top-4 left-4 flex items-center gap-2">
                     <span className="px-3.5 py-1 rounded-full bg-white/90 backdrop-blur-md text-[11px] font-bold text-navy-800 shadow">
                       {item.category}
                     </span>
+                    {hasBefore && (
+                      <span className="px-2.5 py-1 rounded-full bg-[#F97316] text-white text-[10px] font-extrabold uppercase tracking-wider shadow">
+                        Before & After
+                      </span>
+                    )}
                   </div>
 
                   {/* Zoom Action Icon */}
@@ -141,38 +149,132 @@ export const GallerySection = ({ gallery = [] }) => {
 
       {/* LIGHTBOX MODAL */}
       {lightboxItem && (
-        <div
-          className="fixed inset-0 z-50 bg-navy-950/90 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in"
-          onClick={() => setLightboxItem(null)}
-        >
-          <div
-            className="relative max-w-4xl w-full bg-navy-900 rounded-[36px] overflow-hidden border border-brand-500/40 shadow-2xl space-y-4 p-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between px-4 pt-2">
-              <span className="text-sm font-bold text-white font-display">{lightboxItem.title}</span>
-              <button
-                onClick={() => setLightboxItem(null)}
-                className="p-2 rounded-full bg-white/10 text-white hover:bg-white/20"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="rounded-2xl overflow-hidden max-h-[70vh] flex items-center justify-center bg-black">
-              <img
-                src={lightboxItem.imageUrl}
-                alt={lightboxItem.title}
-                className="max-h-[70vh] w-auto object-contain"
-              />
-            </div>
-
-            <p className="text-xs text-brand-100 px-4 pb-2">
-              {lightboxItem.description}
-            </p>
-          </div>
-        </div>
+        <LightboxModal
+          item={lightboxItem}
+          onClose={() => setLightboxItem(null)}
+        />
       )}
     </section>
+  );
+};
+
+const LightboxModal = ({ item, onClose }) => {
+  const [viewMode, setViewMode] = useState('after'); // 'before' | 'after' | 'split'
+  const hasBefore = Boolean(item.beforeImageUrl);
+  const mainImg = item.imageUrl || item.afterImageUrl;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-navy-950/90 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in"
+      onClick={onClose}
+    >
+      <div
+        className="relative max-w-4xl w-full bg-navy-900 rounded-[36px] overflow-hidden border border-brand-500/40 shadow-2xl space-y-4 p-4 sm:p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-2 pt-1 border-b border-white/10 pb-3">
+          <div>
+            <span className="text-xs font-bold text-[#F97316] uppercase tracking-wider block">
+              {item.category}
+            </span>
+            <h3 className="text-base sm:text-lg font-bold text-white font-display">
+              {item.title}
+            </h3>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {hasBefore && (
+              <div className="flex items-center gap-1 p-1 rounded-xl bg-white/10 border border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('before')}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                    viewMode === 'before'
+                      ? 'bg-[#F97316] text-white shadow'
+                      : 'text-slate-300 hover:text-white'
+                  }`}
+                >
+                  Before
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('after')}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                    viewMode === 'after'
+                      ? 'bg-emerald-500 text-white shadow'
+                      : 'text-slate-300 hover:text-white'
+                  }`}
+                >
+                  After Care
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('split')}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                    viewMode === 'split'
+                      ? 'bg-white text-navy-950 shadow'
+                      : 'text-slate-300 hover:text-white'
+                  }`}
+                >
+                  Side-by-Side
+                </button>
+              </div>
+            )}
+
+            <button
+              onClick={onClose}
+              className="p-2 rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Image Display */}
+        {hasBefore && viewMode === 'split' ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[65vh] overflow-hidden">
+            <div className="relative rounded-2xl overflow-hidden bg-black flex flex-col items-center justify-center">
+              <span className="absolute top-3 left-3 px-2.5 py-1 rounded-md bg-black/80 text-white text-[11px] font-bold z-10">
+                BEFORE TREATMENT
+              </span>
+              <img
+                src={item.beforeImageUrl}
+                alt="Before"
+                className="max-h-[60vh] w-full object-contain"
+              />
+            </div>
+            <div className="relative rounded-2xl overflow-hidden bg-black flex flex-col items-center justify-center">
+              <span className="absolute top-3 left-3 px-2.5 py-1 rounded-md bg-emerald-600 text-white text-[11px] font-bold z-10">
+                AFTER RESTORATION
+              </span>
+              <img
+                src={mainImg}
+                alt="After"
+                className="max-h-[60vh] w-full object-contain"
+              />
+            </div>
+          </div>
+        ) : (
+          <div className="relative rounded-2xl overflow-hidden max-h-[65vh] flex items-center justify-center bg-black">
+            {hasBefore && (
+              <span className={`absolute top-3 left-3 px-3 py-1 rounded-md text-xs font-extrabold z-10 ${
+                viewMode === 'before' ? 'bg-amber-600 text-white' : 'bg-emerald-600 text-white'
+              }`}>
+                {viewMode === 'before' ? 'BEFORE CONDITION' : 'AFTER RESTORATION'}
+              </span>
+            )}
+            <img
+              src={viewMode === 'before' ? item.beforeImageUrl : mainImg}
+              alt={item.title}
+              className="max-h-[65vh] w-auto object-contain transition-all duration-300"
+            />
+          </div>
+        )}
+
+        <p className="text-xs text-slate-300 px-2 leading-relaxed">
+          {item.description}
+        </p>
+      </div>
+    </div>
   );
 };

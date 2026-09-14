@@ -67,6 +67,7 @@ export const AdminSidebar = ({ isOpen, onClose, isCollapsed, onToggleCollapse })
         { name: 'Services CMS', path: '/admin/services', icon: Sparkles },
         { name: 'Pricing Master', path: '/admin/pricing', icon: DollarSign },
         { name: 'Offers & Campaigns', path: '/admin/offers', icon: Tag, badge: '1:1', badgeColor: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30' },
+        { name: 'Before & After Gallery', path: '/admin/gallery', icon: ImageIcon, badge: 'HD', badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-500/30' },
         { name: 'Blog & Guides', path: '/admin/blog', icon: BookOpen },
       ]
     }
