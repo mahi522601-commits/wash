@@ -318,10 +318,39 @@ export const DEFAULT_SERVICES = [
   }
 ];
 
+const CANONICAL_SERVICE_KEYS = {
+  'dry-cleaning': 'srv-dry-cleaning',
+  'dry-clean': 'srv-dry-cleaning',
+  'drycleaning': 'srv-dry-cleaning',
+  'dry clean': 'srv-dry-cleaning',
+  'dry cleaning': 'srv-dry-cleaning',
+  'premium-dry-cleaning': 'srv-dry-cleaning',
+  'ironing': 'srv-ironing',
+  'steam-ironing': 'srv-ironing',
+  'iron': 'srv-ironing',
+  'wash-and-iron': 'srv-wash-and-iron',
+  'wash-iron': 'srv-wash-and-iron',
+  'ro-soft-water-laundry': 'srv-wash-and-iron',
+  'wash-and-fold': 'srv-wash-and-fold',
+  'wash-fold': 'srv-wash-and-fold',
+  'saree-rolling': 'srv-saree-rolling',
+  'saree': 'srv-saree-rolling',
+  'curtain-washing': 'srv-curtain-washing',
+  'curtain-cleaning': 'srv-curtain-washing',
+  'curtains': 'srv-curtain-washing',
+  'shoe-washing': 'srv-shoe-washing',
+  'shoe-cleaning': 'srv-shoe-washing',
+  'shoes': 'srv-shoe-washing',
+  'carpet-washing': 'srv-carpet-washing',
+  'carpet-cleaning': 'srv-carpet-washing',
+  'carpets': 'srv-carpet-washing',
+};
+
 export const serviceService = {
   /**
    * Fetch all services from Firestore `services` collection
    * Guarantees all 8 official services are present and merges any missing default services into Firestore.
+   * Strictly deduplicates so each service (e.g. Dry Cleaning) appears exactly once.
    */
   async getServices({ publishedOnly = false } = {}) {
     let list = [];
@@ -344,10 +373,13 @@ export const serviceService = {
     const existingIdsAndSlugs = new Set([
       ...list.map(s => s.id),
       ...list.map(s => s.slug),
+      ...list.map(s => (s.title || s.name || '').toLowerCase().trim()),
     ].filter(Boolean));
 
     const missingDefaults = DEFAULT_SERVICES.filter(
-      def => !existingIdsAndSlugs.has(def.id) && !existingIdsAndSlugs.has(def.slug)
+      def => !existingIdsAndSlugs.has(def.id) && 
+             !existingIdsAndSlugs.has(def.slug) &&
+             !existingIdsAndSlugs.has(def.title.toLowerCase().trim())
     );
 
     if (missingDefaults.length > 0) {
@@ -370,7 +402,49 @@ export const serviceService = {
       }
     }
 
-    // Always update localStorage cache with full catalog
+    // Strict Canonical Deduplication (Eliminates duplicate Dry Cleaning, etc.)
+    const deduplicatedMap = new Map();
+    const duplicateDocIdsToDelete = [];
+
+    for (const item of list) {
+      const normalizedTitle = (item.title || item.name || '').toLowerCase().trim();
+      const normalizedSlug = (item.slug || '').toLowerCase().trim();
+      const cleanId = (item.id || '').toLowerCase().trim().replace(/^srv-/, '');
+
+      const canonicalKey = 
+        CANONICAL_SERVICE_KEYS[normalizedSlug] ||
+        CANONICAL_SERVICE_KEYS[cleanId] ||
+        CANONICAL_SERVICE_KEYS[normalizedTitle] ||
+        normalizedSlug ||
+        item.id;
+
+      if (!deduplicatedMap.has(canonicalKey)) {
+        deduplicatedMap.set(canonicalKey, item);
+      } else {
+        const existing = deduplicatedMap.get(canonicalKey);
+        // Prefer the canonical srv-* ID or official ₹40 Dry Cleaning item
+        const isCurrentCanonical = item.id.startsWith('srv-') || (item.startingPrice === 40 && canonicalKey === 'srv-dry-cleaning');
+        const isExistingCanonical = existing.id.startsWith('srv-');
+
+        if (isCurrentCanonical && !isExistingCanonical) {
+          if (existing.id) duplicateDocIdsToDelete.push(existing.id);
+          deduplicatedMap.set(canonicalKey, item);
+        } else {
+          if (item.id) duplicateDocIdsToDelete.push(item.id);
+        }
+      }
+    }
+
+    // Purge duplicate legacy documents from Firestore in background
+    if (isFirebaseConfigured && db && duplicateDocIdsToDelete.length > 0) {
+      Promise.all(
+        duplicateDocIdsToDelete.map(dupId => deleteDoc(doc(db, 'services', dupId)))
+      ).catch(err => console.warn("Background delete duplicate services error:", err));
+    }
+
+    list = Array.from(deduplicatedMap.values());
+
+    // Always update localStorage cache with clean deduplicated catalog
     try {
       localStorage.setItem(SERVICES_STORAGE_KEY, JSON.stringify(list));
     } catch (e) {}
