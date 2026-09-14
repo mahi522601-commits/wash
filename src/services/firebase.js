@@ -1,6 +1,7 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 import { getAnalytics, isSupported } from 'firebase/analytics';
 
 const env = (typeof import.meta !== 'undefined' && import.meta?.env) ? import.meta.env : (typeof process !== 'undefined' ? process.env : {});
@@ -26,6 +27,7 @@ export const firebaseConfig = {
 let app;
 let auth;
 let db;
+let storage;
 let analytics = null;
 let isFirebaseConfigured = Boolean(firebaseConfig.apiKey && firebaseConfig.projectId);
 
@@ -38,6 +40,7 @@ try {
 
   auth = getAuth(app);
   db = getFirestore(app);
+  storage = getStorage(app);
 
   // Initialize Analytics in browser if supported
   if (typeof window !== 'undefined') {
@@ -53,4 +56,4 @@ try {
   console.warn("Firebase initialization notice:", error?.message || error);
 }
 
-export { app, auth, db, analytics, isFirebaseConfigured };
+export { app, auth, db, storage, analytics, isFirebaseConfigured };

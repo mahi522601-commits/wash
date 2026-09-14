@@ -161,6 +161,24 @@ export const offerService = {
   },
 
   /**
+   * Delete single offer from Firestore & local cache
+   */
+  async deleteOffer(offerId) {
+    if (isFirebaseConfigured && db) {
+      try {
+        const { deleteDoc } = await import('firebase/firestore');
+        await deleteDoc(doc(db, 'offers', offerId));
+      } catch (e) {
+        console.warn("Firestore delete offer error:", e);
+      }
+    }
+    const current = await this.getActiveOffers();
+    const updated = current.filter(o => o.id !== offerId);
+    localStorage.setItem(OFFERS_STORAGE_KEY, JSON.stringify(updated));
+    return updated;
+  },
+
+  /**
    * Analytics event tracking for offer popup
    */
   trackImpression(offerCode) {

@@ -71,10 +71,10 @@ export const AdminOffersPage = () => {
 
   const handleDeleteOffer = async (id) => {
     if (!window.confirm('Are you sure you want to delete this offer?')) return;
+    await offerService.deleteOffer(id);
     const updatedList = offers.filter(o => o.id !== id);
     setOffers(updatedList);
-    await offerService.saveOffers(updatedList);
-    success('Offer Deleted', 'Campaign removed from active list.');
+    success('Offer Deleted', 'Campaign removed from active list and Firestore.');
   };
 
   const featuredOffer = offers.find(o => o.featured) || offers[0] || DEFAULT_OFFERS[0];

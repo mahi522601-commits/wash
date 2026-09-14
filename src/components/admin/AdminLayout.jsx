@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { authService } from '../../services/authService';
 import { AdminSidebar } from './AdminSidebar';
 import { AdminHeader } from './AdminHeader';
 import { AdminCommandPalette } from './AdminCommandPalette';
@@ -47,8 +48,8 @@ export const AdminLayout = () => {
     );
   }
 
-  // Protected Admin Routes check: must be authenticated and have role: admin
-  if (!currentUser || (currentUser.role || '').toLowerCase().trim() !== 'admin') {
+  // Protected Admin Routes check: must be authenticated and have valid admin role (superadmin, admin, manager, staff)
+  if (!currentUser || !authService.isAuthorizedAdminRole(currentUser.role)) {
     return <Navigate to="/admin/login" replace />;
   }
 

@@ -1,44 +1,50 @@
 import React, { useState, useEffect } from 'react';
-import { cmsService } from '../../services/cmsService';
+import { pricingService, INITIAL_PRICING_CONFIG } from '../../services/pricingConfig';
 import { auditService } from '../../services/auditService';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { formatCurrency } from '../../utils/formatters';
 import { AdminPageHeader } from '../../components/admin/AdminPageHeader';
-import { Table } from '../../components/ui/Table';
 import { Button } from '../../components/ui/Button';
-import { Input } from '../../components/ui/Input';
-import { Modal } from '../../components/ui/Modal';
+import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
-import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
-import { DollarSign, Plus, Edit3, Trash2, Search } from 'lucide-react';
-
-const INITIAL_ITEM = {
-  name: '',
-  category: 'Men',
-  washAndIron: 49,
-  dryClean: 129,
-  steamIron: 29,
-  unit: 'piece',
-};
+import { 
+  DollarSign, 
+  Plus, 
+  Edit3, 
+  Trash2, 
+  Search, 
+  Save, 
+  Sparkles, 
+  Scale, 
+  Maximize2, 
+  Check, 
+  RotateCcw,
+  AlertCircle,
+  HelpCircle,
+  Layers
+} from 'lucide-react';
 
 export const AdminPricingPage = () => {
   const { currentUser } = useAuth();
   const { success, error } = useToast();
 
-  const [items, setItems] = useState([]);
+  const [pricingConfig, setPricingConfig] = useState(INITIAL_PRICING_CONFIG);
+  const [activeTab, setActiveTab] = useState('dryCleaning'); // 'dryCleaning' | 'ironing' | 'perKg' | 'weights' | 'special'
+  const [activeCategory, setActiveCategory] = useState('men'); // 'men' | 'women' | 'common'
+  const [searchFilter, setSearchFilter] = useState('');
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [modalOpen, setModalOpen] = useState(false);
-  const [currentItem, setCurrentItem] = useState(INITIAL_ITEM);
   const [isSaving, setIsSaving] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState(null);
-  const [isDeleting, setIsDeleting] = useState(false);
+
+  // New item draft state
+  const [newItem, setNewItem] = useState({ name: '', price: '', emoji: '👔', category: 'Men', subCategory: 'tops' });
+  const [showAddModal, setShowAddModal] = useState(false);
 
   const loadPricing = async () => {
+    setLoading(true);
     try {
-      const data = await cmsService.getItems('pricingItems');
-      setItems(data);
+      const config = await pricingService.getPricingConfig();
+      if (config) setPricingConfig(config);
     } catch (e) {
       console.warn("Pricing load error:", e);
     } finally {
@@ -50,237 +56,650 @@ export const AdminPricingPage = () => {
     loadPricing();
   }, []);
 
-  const handleOpenCreate = () => {
-    setCurrentItem({ ...INITIAL_ITEM, id: null });
-    setModalOpen(true);
+  // Update Itemized Price
+  const handleItemPriceChange = (serviceType, category, itemId, newPrice) => {
+    setPricingConfig(prev => {
+      const currentList = prev[serviceType]?.[category] || [];
+      const updatedList = currentList.map(item => {
+        if (item.id === itemId) {
+          return { ...item, price: Math.max(0, Number(newPrice) || 0) };
+        }
+        return item;
+      });
+      return {
+        ...prev,
+        [serviceType]: {
+          ...prev[serviceType],
+          [category]: updatedList
+        }
+      };
+    });
   };
 
-  const handleOpenEdit = (item) => {
-    setCurrentItem({ ...item });
-    setModalOpen(true);
+  // Delete Itemized Price item
+  const handleDeleteItem = (serviceType, category, itemId) => {
+    setPricingConfig(prev => {
+      const currentList = prev[serviceType]?.[category] || [];
+      const updatedList = currentList.filter(item => item.id !== itemId);
+      return {
+        ...prev,
+        [serviceType]: {
+          ...prev[serviceType],
+          [category]: updatedList
+        }
+      };
+    });
   };
 
-  const handleSave = async (e) => {
+  // Add Itemized Price item
+  const handleAddNewItem = (e) => {
     e.preventDefault();
-    if (!currentItem.name.trim()) {
-      error('Name Required', 'Please enter a garment item name.');
+    if (!newItem.name.trim() || !newItem.price) {
+      error('Name & Price Required', 'Please enter both item name and valid price.');
       return;
     }
+
+    const itemObj = {
+      id: `${activeTab === 'dryCleaning' ? 'dc' : 'ir'}-${activeCategory[0]}-${Date.now()}`,
+      name: newItem.name.trim(),
+      price: Number(newItem.price),
+      emoji: newItem.emoji || '👔',
+      category: activeCategory === 'men' ? 'Men' : activeCategory === 'women' ? 'Women' : 'Common',
+      subCategory: newItem.subCategory || 'tops',
+      gender: activeCategory,
+    };
+
+    setPricingConfig(prev => ({
+      ...prev,
+      [activeTab]: {
+        ...prev[activeTab],
+        [activeCategory]: [...(prev[activeTab]?.[activeCategory] || []), itemObj]
+      }
+    }));
+
+    setNewItem({ name: '', price: '', emoji: '👔', category: 'Men', subCategory: 'tops' });
+    setShowAddModal(false);
+    success('Item Added', `${itemObj.name} added to ${activeTab} (${activeCategory}). Remember to Save Changes.`);
+  };
+
+  // Update KG Base Rates
+  const handleKgRateChange = (serviceId, gender, newRate) => {
+    setPricingConfig(prev => {
+      const services = (prev.services || []).map(s => {
+        if (s.id === serviceId) {
+          return {
+            ...s,
+            baseRates: {
+              ...s.baseRates,
+              [gender]: Math.max(1, Number(newRate) || 1)
+            }
+          };
+        }
+        return s;
+      });
+      return { ...prev, services };
+    });
+  };
+
+  // Update Standard Weight
+  const handleWeightChange = (gender, itemId, newGrams) => {
+    setPricingConfig(prev => {
+      const list = (prev.weightStandards?.[gender] || []).map(w => {
+        if (w.id === itemId) {
+          const grams = Math.max(0, Number(newGrams) || 0);
+          return {
+            ...w,
+            weightGrams: grams,
+            weightKg: Number((grams / 1000).toFixed(3))
+          };
+        }
+        return w;
+      });
+      return {
+        ...prev,
+        weightStandards: {
+          ...prev.weightStandards,
+          [gender]: list
+        }
+      };
+    });
+  };
+
+  // Update Special Services
+  const handleSpecialRateChange = (serviceKey, field, val) => {
+    setPricingConfig(prev => ({
+      ...prev,
+      [serviceKey]: {
+        ...prev[serviceKey],
+        [field]: Number(val) || 0
+      }
+    }));
+  };
+
+  // Save All Changes to Firestore
+  const handleSaveToFirestore = async () => {
     setIsSaving(true);
     try {
-      const isNew = !currentItem.id;
-      const saved = await cmsService.saveItem('pricingItems', currentItem);
+      await pricingService.updatePricingConfig(pricingConfig);
+      
+      // Log audit
+      try {
+        await auditService.logAction({
+          action: 'UPDATE_PRICING',
+          entity: 'SettingsPricing',
+          entityName: 'Master Rate Card',
+          user: currentUser,
+        });
+      } catch (e) {}
 
-      await auditService.logAction({
-        action: isNew ? 'CREATE' : 'UPDATE',
-        entity: 'Pricing',
-        entityId: saved.id,
-        entityName: saved.name,
-        user: currentUser,
-      });
-
-      success('Price Updated', `${saved.name} saved to rate card.`);
-      setModalOpen(false);
-      loadPricing();
+      success('Pricing Saved!', 'All prices, rates, and weights synchronized to Firebase.');
     } catch (err) {
-      error('Save Error', err.message);
+      error('Save Failed', err.message || 'Unable to update pricing in Firestore.');
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleDelete = async () => {
-    if (!deleteTarget) return;
-    setIsDeleting(true);
-    try {
-      await cmsService.deleteItem('pricingItems', deleteTarget.id);
-      await auditService.logAction({
-        action: 'DELETE',
-        entity: 'Pricing',
-        entityId: deleteTarget.id,
-        entityName: deleteTarget.name,
-        user: currentUser,
-      });
-      success('Item Removed', `${deleteTarget.name} removed from rate card.`);
-      setDeleteTarget(null);
-      loadPricing();
-    } catch (err) {
-      error('Delete Error', err.message);
-    } finally {
-      setIsDeleting(false);
+  // Reset to default
+  const handleResetDefaults = () => {
+    if (window.confirm('Reset all prices to official initial defaults? This will overwrite changes.')) {
+      setPricingConfig(INITIAL_PRICING_CONFIG);
+      success('Reset Applied', 'Click "Save Changes to Firebase" to commit.');
     }
   };
 
-  const filtered = items.filter(
-    (i) =>
-      !searchQuery ||
-      i.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      i.category.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  if (loading) {
+    return (
+      <div className="py-12 text-center text-slate-500">
+        <div className="w-8 h-8 border-3 border-brand-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+        <p className="text-xs font-bold uppercase tracking-wider">Loading Rates from Firebase...</p>
+      </div>
+    );
+  }
 
-  const columns = [
-    {
-      title: 'Garment Item',
-      key: 'name',
-      render: (val, row) => (
-        <div>
-          <div className="font-bold text-slate-900 text-xs sm:text-sm">{val}</div>
-          <div className="text-[11px] text-slate-400">Category: {row.category}</div>
-        </div>
-      ),
-    },
-    {
-      title: 'Wash & Iron Rate',
-      key: 'washAndIron',
-      render: (val) => (
-        <span className="font-semibold text-xs text-brand-700">
-          {val ? formatCurrency(val) : '—'}
-        </span>
-      ),
-    },
-    {
-      title: 'Dry Clean Rate',
-      key: 'dryClean',
-      render: (val) => (
-        <span className="font-semibold text-xs text-royal-700">
-          {val ? formatCurrency(val) : '—'}
-        </span>
-      ),
-    },
-    {
-      title: 'Steam Iron Rate',
-      key: 'steamIron',
-      render: (val) => (
-        <span className="font-semibold text-xs text-purple-700">
-          {val ? formatCurrency(val) : '—'}
-        </span>
-      ),
-    },
-    {
-      title: 'Actions',
-      key: 'id',
-      render: (id, row) => (
-        <div className="flex items-center gap-1.5">
-          <button
-            onClick={() => handleOpenEdit(row)}
-            className="p-1.5 rounded-lg text-slate-600 hover:text-brand-600 hover:bg-slate-100"
-          >
-            <Edit3 className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => setDeleteTarget(row)}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-        </div>
-      ),
-    },
-  ];
+  const currentItemList = (pricingConfig[activeTab]?.[activeCategory] || []).filter(i =>
+    !searchFilter || i.name.toLowerCase().includes(searchFilter.toLowerCase())
+  );
 
   return (
     <div className="space-y-6">
-      <AdminPageHeader
-        title="Pricing & Rate Card CMS"
-        subtitle="Manage live garment prices, per piece/kg models, and interactive calculator items."
-        actionLabel="Add Garment Item"
-        actionIcon={Plus}
-        onAction={handleOpenCreate}
-      />
+      
+      {/* Header with Save Button */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-slate-200 shadow-xs">
+        <div>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-50 text-brand-700 text-xs font-bold mb-1">
+            <DollarSign className="w-3.5 h-3.5" />
+            <span>Single Source of Truth</span>
+          </div>
+          <h1 className="text-2xl font-black text-slate-900 font-display">
+            Master Pricing & Rate Card
+          </h1>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Manage live prices across Dry Cleaning, Ironing, Per-KG rates, Curtain/Carpet sq.ft. rates, and weights.
+          </p>
+        </div>
 
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between gap-4">
-        <div className="relative w-full sm:w-72">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            placeholder="Search garment item..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs focus:ring-brand-500"
-          />
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="md"
+            icon={RotateCcw}
+            onClick={handleResetDefaults}
+          >
+            Reset Defaults
+          </Button>
+
+          <Button
+            variant="primary"
+            size="md"
+            icon={Save}
+            isLoading={isSaving}
+            onClick={handleSaveToFirestore}
+          >
+            Save Changes to Firebase
+          </Button>
         </div>
       </div>
 
-      <Table
-        columns={columns}
-        data={filtered}
-        isLoading={loading}
-        emptyMessage="No pricing items found."
-      />
+      {/* Main Category Tabs */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+        {[
+          { id: 'dryCleaning', label: '🧺 Dry Cleaning (Per-Piece)', desc: 'Men, Women & Common' },
+          { id: 'ironing', label: '👔 Ironing (Per-Piece)', desc: 'Steam pressing rates' },
+          { id: 'perKg', label: '🫧 Per-KG Rates', desc: 'Wash & Iron / Fold' },
+          { id: 'weights', label: '⚖️ Garment Weights', desc: 'Weight standards (g)' },
+          { id: 'special', label: '🪟 Special Services', desc: 'Curtains, Shoes, Carpets' },
+        ].map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => {
+              setActiveTab(tab.id);
+              setActiveCategory('men');
+              setSearchFilter('');
+            }}
+            className={`px-4 py-3 rounded-2xl text-xs font-bold transition-all whitespace-nowrap text-left border ${
+              activeTab === tab.id
+                ? 'bg-brand-600 text-white border-brand-600 shadow-sm'
+                : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+            }`}
+          >
+            <div>{tab.label}</div>
+            <div className={`text-[10px] font-normal mt-0.5 ${activeTab === tab.id ? 'text-brand-100' : 'text-slate-400'}`}>
+              {tab.desc}
+            </div>
+          </button>
+        ))}
+      </div>
 
-      {/* Add / Edit Modal */}
-      <Modal
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
-        maxWidth="max-w-md"
-        title={currentItem.id ? `Edit ${currentItem.name}` : 'Add Garment Item'}
-      >
-        <form onSubmit={handleSave} className="space-y-4">
-          <Input
-            label="Garment Name *"
-            required
-            placeholder="e.g. Silk Saree / Blazer"
-            value={currentItem.name}
-            onChange={(e) => setCurrentItem({ ...currentItem, name: e.target.value })}
-          />
+      {/* ============================================================ */}
+      {/* 1. DRY CLEANING & IRONING ITEMIZED RATES                      */}
+      {/* ============================================================ */}
+      {(activeTab === 'dryCleaning' || activeTab === 'ironing') && (
+        <Card className="p-6 bg-white border border-slate-200 rounded-3xl space-y-5">
+          
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+            {/* Category Segment (Men / Women / Common) */}
+            <div className="flex items-center gap-2">
+              {[
+                { id: 'men', label: '👨 Men\'s Wear' },
+                { id: 'women', label: '👩 Women\'s & Kids' },
+                ...(activeTab === 'dryCleaning' ? [{ id: 'common', label: '🧸 Common & Accessories' }] : []),
+              ].map(cat => (
+                <button
+                  key={cat.id}
+                  onClick={() => setActiveCategory(cat.id)}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                    activeCategory === cat.id
+                      ? 'bg-slate-900 text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  {cat.label}
+                </button>
+              ))}
+            </div>
 
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-              Category
-            </label>
-            <select
-              value={currentItem.category}
-              onChange={(e) => setCurrentItem({ ...currentItem, category: e.target.value })}
-              className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 text-xs"
-            >
-              <option value="Men">Men</option>
-              <option value="Women">Women</option>
-              <option value="Household">Household & Bedding</option>
-              <option value="Footwear">Footwear & Bags</option>
-              <option value="Kids">Kids</option>
-            </select>
+            {/* Search & Add button */}
+            <div className="flex items-center gap-2">
+              <div className="relative w-48 sm:w-60">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
+                <input
+                  type="text"
+                  placeholder="Filter garments..."
+                  value={searchFilter}
+                  onChange={(e) => setSearchFilter(e.target.value)}
+                  className="w-full pl-8 pr-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium"
+                />
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                icon={Plus}
+                onClick={() => setShowAddModal(true)}
+              >
+                Add Item
+              </Button>
+            </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
-            <Input
-              label="Wash & Iron (₹)"
-              type="number"
-              value={currentItem.washAndIron || ''}
-              onChange={(e) => setCurrentItem({ ...currentItem, washAndIron: Number(e.target.value) || null })}
-            />
-            <Input
-              label="Dry Clean (₹)"
-              type="number"
-              value={currentItem.dryClean || ''}
-              onChange={(e) => setCurrentItem({ ...currentItem, dryClean: Number(e.target.value) || null })}
-            />
-            <Input
-              label="Steam Iron (₹)"
-              type="number"
-              value={currentItem.steamIron || ''}
-              onChange={(e) => setCurrentItem({ ...currentItem, steamIron: Number(e.target.value) || null })}
-            />
+          {/* Item Price Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {currentItemList.map(item => (
+              <div
+                key={item.id}
+                className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center justify-between gap-3"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className="text-xl shrink-0">{item.emoji || '👔'}</span>
+                  <div className="min-w-0">
+                    <div className="text-xs font-bold text-slate-900 truncate">{item.name}</div>
+                    <span className="text-[10px] text-slate-400 font-medium">{item.category || activeCategory}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center bg-white rounded-xl border border-slate-200 px-2 py-1">
+                    <span className="text-xs font-bold text-slate-400 mr-1">₹</span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={item.price}
+                      onChange={(e) => handleItemPriceChange(activeTab, activeCategory, item.id, e.target.value)}
+                      className="w-16 text-xs font-bold text-slate-900 text-right focus:outline-none"
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteItem(activeTab, activeCategory, item.id)}
+                    className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
 
-          <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-100">
-            <Button variant="ghost" size="sm" onClick={() => setModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" variant="primary" size="sm" isLoading={isSaving}>
-              Save Item
-            </Button>
-          </div>
-        </form>
-      </Modal>
+        </Card>
+      )}
 
-      <ConfirmDialog
-        isOpen={!!deleteTarget}
-        onClose={() => setDeleteTarget(null)}
-        onConfirm={handleDelete}
-        title={`Remove "${deleteTarget?.name}"?`}
-        message="This item will be deleted from the live rate card."
-        isLoading={isDeleting}
-      />
+      {/* ============================================================ */}
+      {/* 2. PER-KG BASE RATES                                         */}
+      {/* ============================================================ */}
+      {activeTab === 'perKg' && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          
+          {/* Wash & Iron */}
+          <Card className="p-6 bg-white border border-slate-200 rounded-3xl space-y-4">
+            <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
+              <span className="text-2xl">🫧</span>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 font-display">Wash & Iron Rates</h3>
+                <p className="text-xs text-slate-500">Demineralized RO wash + steam press</p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+                <div>
+                  <span className="text-xs font-bold text-slate-900 block">👨 Men's Base Rate</span>
+                  <span className="text-[11px] text-slate-400">Per Kilogram (Kg)</span>
+                </div>
+                <div className="flex items-center bg-white rounded-xl border border-slate-200 px-3 py-1.5">
+                  <span className="text-xs font-bold text-slate-400 mr-1">₹</span>
+                  <input
+                    type="number"
+                    min="1"
+                    value={pricingConfig.services?.find(s => s.id === 'wash-and-iron')?.baseRates?.men || 130}
+                    onChange={(e) => handleKgRateChange('wash-and-iron', 'men', e.target.value)}
+                    className="w-16 text-xs font-black text-slate-900 text-right focus:outline-none"
+                  />
+                  <span className="text-xs text-slate-400 ml-1">/ Kg</span>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+                <div>
+                  <span className="text-xs font-bold text-slate-900 block">👩 Women's Base Rate</span>
+                  <span className="text-[11px] text-slate-400">Per Kilogram (Kg)</span>
+                </div>
+                <div className="flex items-center bg-white rounded-xl border border-slate-200 px-3 py-1.5">
+                  <span className="text-xs font-bold text-slate-400 mr-1">₹</span>
+                  <input
+                    type="number"
+                    min="1"
+                    value={pricingConfig.services?.find(s => s.id === 'wash-and-iron')?.baseRates?.women || 160}
+                    onChange={(e) => handleKgRateChange('wash-and-iron', 'women', e.target.value)}
+                    className="w-16 text-xs font-black text-slate-900 text-right focus:outline-none"
+                  />
+                  <span className="text-xs text-slate-400 ml-1">/ Kg</span>
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          {/* Wash & Fold */}
+          <Card className="p-6 bg-white border border-slate-200 rounded-3xl space-y-4">
+            <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
+              <span className="text-2xl">👕</span>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 font-display">Wash & Fold Rates</h3>
+                <p className="text-xs text-slate-500">Hygienic wash + dry + hand fold</p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+                <div>
+                  <span className="text-xs font-bold text-slate-900 block">👨 Men's Base Rate</span>
+                  <span className="text-[11px] text-slate-400">Per Kilogram (Kg)</span>
+                </div>
+                <div className="flex items-center bg-white rounded-xl border border-slate-200 px-3 py-1.5">
+                  <span className="text-xs font-bold text-slate-400 mr-1">₹</span>
+                  <input
+                    type="number"
+                    min="1"
+                    value={pricingConfig.services?.find(s => s.id === 'wash-and-fold')?.baseRates?.men || 100}
+                    onChange={(e) => handleKgRateChange('wash-and-fold', 'men', e.target.value)}
+                    className="w-16 text-xs font-black text-slate-900 text-right focus:outline-none"
+                  />
+                  <span className="text-xs text-slate-400 ml-1">/ Kg</span>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+                <div>
+                  <span className="text-xs font-bold text-slate-900 block">👩 Women's Base Rate</span>
+                  <span className="text-[11px] text-slate-400">Per Kilogram (Kg)</span>
+                </div>
+                <div className="flex items-center bg-white rounded-xl border border-slate-200 px-3 py-1.5">
+                  <span className="text-xs font-bold text-slate-400 mr-1">₹</span>
+                  <input
+                    type="number"
+                    min="1"
+                    value={pricingConfig.services?.find(s => s.id === 'wash-and-fold')?.baseRates?.women || 130}
+                    onChange={(e) => handleKgRateChange('wash-and-fold', 'women', e.target.value)}
+                    className="w-16 text-xs font-black text-slate-900 text-right focus:outline-none"
+                  />
+                  <span className="text-xs text-slate-400 ml-1">/ Kg</span>
+                </div>
+              </div>
+            </div>
+          </Card>
+
+        </div>
+      )}
+
+      {/* ============================================================ */}
+      {/* 3. CLOTHING WEIGHT STANDARDS (GRAMS)                         */}
+      {/* ============================================================ */}
+      {activeTab === 'weights' && (
+        <Card className="p-6 bg-white border border-slate-200 rounded-3xl space-y-6">
+          <div className="border-b border-slate-100 pb-3">
+            <h3 className="text-sm font-bold text-slate-900 font-display">Approximate Garment Weights (in Grams)</h3>
+            <p className="text-xs text-slate-500">Configured weights used to dynamically estimate KG load during customer booking.</p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            
+            {/* Men Weights */}
+            <div className="space-y-3">
+              <span className="text-xs font-bold text-slate-900 uppercase tracking-wider block">👨 Men's Clothing Weights</span>
+              {(pricingConfig.weightStandards?.men || []).map(w => (
+                <div key={w.id} className="p-3 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">{w.emoji}</span>
+                    <span className="text-xs font-bold text-slate-900">{w.name}</span>
+                  </div>
+                  <div className="flex items-center bg-white rounded-xl border border-slate-200 px-2 py-1">
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="unconfirmed"
+                      value={w.weightGrams || ''}
+                      onChange={(e) => handleWeightChange('men', w.id, e.target.value)}
+                      className="w-16 text-xs font-bold text-slate-900 text-right focus:outline-none"
+                    />
+                    <span className="text-xs text-slate-400 ml-1">g</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Women Weights */}
+            <div className="space-y-3">
+              <span className="text-xs font-bold text-slate-900 uppercase tracking-wider block">👩 Women's Clothing Weights</span>
+              {(pricingConfig.weightStandards?.women || []).map(w => (
+                <div key={w.id} className="p-3 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">{w.emoji}</span>
+                    <span className="text-xs font-bold text-slate-900">{w.name}</span>
+                  </div>
+                  <div className="flex items-center bg-white rounded-xl border border-slate-200 px-2 py-1">
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="unconfirmed"
+                      value={w.weightGrams || ''}
+                      onChange={(e) => handleWeightChange('women', w.id, e.target.value)}
+                      className="w-16 text-xs font-bold text-slate-900 text-right focus:outline-none"
+                    />
+                    <span className="text-xs text-slate-400 ml-1">g</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+          </div>
+        </Card>
+      )}
+
+      {/* ============================================================ */}
+      {/* 4. SPECIAL SERVICES (CURTAINS, SHOES, CARPETS, SAREES)        */}
+      {/* ============================================================ */}
+      {activeTab === 'special' && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          
+          {/* Curtains */}
+          <Card className="p-6 bg-white border border-slate-200 rounded-3xl space-y-4">
+            <div className="flex items-center gap-2.5 pb-2 border-b border-slate-100">
+              <span className="text-2xl">🪟</span>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Curtain Washing</h3>
+                <p className="text-[11px] text-slate-400">Per Square Foot</p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-200">
+              <span className="text-xs font-bold text-slate-700">Rate / Sq. Ft:</span>
+              <div className="flex items-center bg-white rounded-xl border border-slate-200 px-3 py-1">
+                <span className="text-xs font-bold text-slate-400 mr-1">₹</span>
+                <input
+                  type="number"
+                  min="1"
+                  value={pricingConfig.curtains?.ratePerSqFt || 30}
+                  onChange={(e) => handleSpecialRateChange('curtains', 'ratePerSqFt', e.target.value)}
+                  className="w-14 text-xs font-bold text-slate-900 text-right focus:outline-none"
+                />
+              </div>
+            </div>
+          </Card>
+
+          {/* Shoes */}
+          <Card className="p-6 bg-white border border-slate-200 rounded-3xl space-y-4">
+            <div className="flex items-center gap-2.5 pb-2 border-b border-slate-100">
+              <span className="text-2xl">👟</span>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Shoe Washing</h3>
+                <p className="text-[11px] text-slate-400">Per Pair Rate</p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-200">
+              <span className="text-xs font-bold text-slate-700">Rate / Pair:</span>
+              <div className="flex items-center bg-white rounded-xl border border-slate-200 px-3 py-1">
+                <span className="text-xs font-bold text-slate-400 mr-1">₹</span>
+                <input
+                  type="number"
+                  min="1"
+                  value={pricingConfig.shoes?.ratePerPair || 350}
+                  onChange={(e) => handleSpecialRateChange('shoes', 'ratePerPair', e.target.value)}
+                  className="w-14 text-xs font-bold text-slate-900 text-right focus:outline-none"
+                />
+              </div>
+            </div>
+          </Card>
+
+          {/* Carpets */}
+          <Card className="p-6 bg-white border border-slate-200 rounded-3xl space-y-4">
+            <div className="flex items-center gap-2.5 pb-2 border-b border-slate-100">
+              <span className="text-2xl">🧶</span>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Carpet Washing</h3>
+                <p className="text-[11px] text-slate-400">Per Square Foot</p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-200">
+              <span className="text-xs font-bold text-slate-700">Rate / Sq. Ft:</span>
+              <div className="flex items-center bg-white rounded-xl border border-slate-200 px-3 py-1">
+                <span className="text-xs font-bold text-slate-400 mr-1">₹</span>
+                <input
+                  type="number"
+                  min="1"
+                  value={pricingConfig.carpets?.ratePerSqFt || 45}
+                  onChange={(e) => handleSpecialRateChange('carpets', 'ratePerSqFt', e.target.value)}
+                  className="w-14 text-xs font-bold text-slate-900 text-right focus:outline-none"
+                />
+              </div>
+            </div>
+          </Card>
+
+        </div>
+      )}
+
+      {/* Add New Item Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl">
+            <h3 className="text-base font-bold text-slate-900 font-display">
+              Add New Item to {activeTab === 'dryCleaning' ? 'Dry Cleaning' : 'Ironing'} ({activeCategory})
+            </h3>
+
+            <form onSubmit={handleAddNewItem} className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Item Name *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Silk Dupatta, Trench Coat"
+                  value={newItem.name}
+                  onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
+                  className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Price (₹) *</label>
+                  <input
+                    type="number"
+                    required
+                    min="0"
+                    placeholder="90"
+                    value={newItem.price}
+                    onChange={(e) => setNewItem({ ...newItem, price: e.target.value })}
+                    className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Emoji Icon</label>
+                  <input
+                    type="text"
+                    placeholder="👔"
+                    value={newItem.emoji}
+                    onChange={(e) => setNewItem({ ...newItem, emoji: e.target.value })}
+                    className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-center font-bold"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2">
+                <Button variant="ghost" size="sm" onClick={() => setShowAddModal(false)}>
+                  Cancel
+                </Button>
+                <Button variant="primary" size="sm" type="submit">
+                  Add Item
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

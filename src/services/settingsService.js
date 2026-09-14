@@ -116,7 +116,10 @@ export const settingsService = {
     let settings = DEFAULT_SETTINGS;
     if (isFirebaseConfigured && db) {
       try {
-        const snap = await getDoc(doc(db, 'settings', 'global'));
+        let snap = await getDoc(doc(db, 'settings', 'global'));
+        if (!snap.exists()) {
+          snap = await getDoc(doc(db, 'settings', 'business'));
+        }
         if (snap.exists()) {
           settings = { ...DEFAULT_SETTINGS, ...snap.data() };
         }
@@ -147,7 +150,10 @@ export const settingsService = {
   async saveSettings(updatedSettings) {
     if (isFirebaseConfigured && db) {
       try {
-        await setDoc(doc(db, 'settings', 'global'), updatedSettings, { merge: true });
+        await Promise.all([
+          setDoc(doc(db, 'settings', 'global'), updatedSettings, { merge: true }),
+          setDoc(doc(db, 'settings', 'business'), updatedSettings, { merge: true })
+        ]);
       } catch (e) {
         console.warn("Firestore settings write failed, saving locally:", e);
       }

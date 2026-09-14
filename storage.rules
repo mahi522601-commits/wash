@@ -1,0 +1,16 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper function to check if request is authenticated admin
+    function isAdmin() {
+      return request.auth != null;
+    }
+
+    // Public readable assets, admin writable
+    match /{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}

@@ -1,154 +1,28 @@
 /**
- * Dynamic Services & Process Engine for Tech Wash
- * Fully CMS-driven with tabbed editor capabilities:
- * - Basic Info & SEO slug
- * - Dynamic Pricing & Units (per piece, per kg, starting at)
- * - Structured 6-Stage Process Steps (individual step title + dynamic bullet points)
- * - YouTube Video Player embed & validation
- * - Dynamic Features & Benefits
- * - Service Specific FAQs
- * - Draft / Published status
+ * Tech Wash Centralized Dynamic Services Engine (Firebase Firestore Single Source of Truth)
+ * Maps all 8 specialized services directly with Firestore collection `services`
  */
 import { db, isFirebaseConfigured } from './firebase.js';
-import { collection, doc, getDocs, getDoc, setDoc, deleteDoc, query, where, orderBy } from 'firebase/firestore';
+import { collection, doc, getDocs, getDoc, setDoc, deleteDoc, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 import { slugify } from '../utils/formatters.js';
 
-const SERVICES_STORAGE_KEY = 'techwash_services_catalog';
-const CATEGORIES_STORAGE_KEY = 'techwash_service_categories';
+const SERVICES_STORAGE_KEY = 'techwash_services_catalog_v3';
+const CATEGORIES_STORAGE_KEY = 'techwash_service_categories_v3';
 
 export const DEFAULT_SERVICES = [
   {
-    id: 'srv-laundry',
-    title: 'Laundry',
-    slug: 'laundry',
-    category: 'Laundry',
-    pricingType: 'per kg',
-    startingPrice: 79,
-    shortDescription: '100% demineralized RO soft water washing with hypoallergenic bio-enzymes, zero fabric fade, and crisp fold packaging.',
-    detailedDescription: 'Our signature Laundry service uses 100% demineralized Reverse Osmosis (RO) soft water combined with hypoallergenic, eco-certified bio-enzymes. Every batch is washed in dedicated, single-customer machines to guarantee absolute hygiene, color preservation, and fabric softness.',
-    heroImage: 'https://images.unsplash.com/photo-1517677208171-0bc6725a3e60?auto=format&fit=crop&w=1200&q=80',
-    mobileImage: 'https://images.unsplash.com/photo-1517677208171-0bc6725a3e60?auto=format&fit=crop&w=600&q=80',
-    youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-    youtubeTitle: 'Inside Our RO Soft Water Laundry Facility',
-    youtubeDescription: 'See how demineralized soft water and single-client batch washing keep your garments fresh and vibrant.',
-    features: [
-      '100% Demineralized RO soft water washing',
-      'Single-customer batch washing (never mixed)',
-      'Hypoallergenic eco bio-enzymes',
-      'Low-heat tumble drying with anti-static conditioning',
-      'Neatly folded & moisture-sealed delivery'
-    ],
-    benefits: [
-      'Preserves fabric elasticity and natural softness',
-      'Prevents graying, yellowing, and color bleed',
-      'Gentle and safe for baby clothing and sensitive skin',
-      'Extends the lifespan of daily essentials'
-    ],
-    processSteps: [
-      { stepNumber: '01', title: 'Batch Weighing & Tagging', bullets: ['Individual client barcode bag', 'Zero mix protocol'] },
-      { stepNumber: '02', title: 'Demineralized RO Soft Wash', bullets: ['Filtered pure soft water', 'Eco bio-enzyme formulation'] },
-      { stepNumber: '03', title: 'Low-Heat Anti-Static Tumble', bullets: ['Fabric relaxing cycle', 'Lint & dust extraction'] },
-      { stepNumber: '04', title: 'Precision Fold & Seal', bullets: ['Store-ready packaging', 'Moisture-shield wrap'] }
-    ],
-    faqs: [
-      { question: 'Do you mix my clothes with other customers?', answer: 'Never. Every single laundry load is processed individually in dedicated washers and dryers.' },
-      { question: 'What detergents do you use?', answer: 'We use gentle, hypoallergenic, dermatologically-tested European bio-enzymes that are safe for both sensitive skin and delicate fabrics.' }
-    ],
-    status: 'published',
-    featured: true,
-    order: 1,
-  },
-  {
-    id: 'srv-steam-iron',
-    title: 'Steam Iron',
-    slug: 'steam-iron',
-    category: 'Steam Iron',
-    pricingType: 'per piece',
-    startingPrice: 29,
-    shortDescription: '3D ergonomic tension form steam finishing preventing fabric scorch and maintaining pristine crease retention.',
-    detailedDescription: 'Say goodbye to shiny scorch marks and pressed-in wrinkles. Our 3D tension steam pressing systems utilize vacuum suction tables and ergonomic form presses to reshape collars, lapels, pleats, and cuffs to pristine perfection.',
-    heroImage: 'https://images.unsplash.com/photo-1489274495757-95c7c837b101?auto=format&fit=crop&w=1200&q=80',
-    mobileImage: 'https://images.unsplash.com/photo-1489274495757-95c7c837b101?auto=format&fit=crop&w=600&q=80',
-    youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-    youtubeTitle: '3D Tension Steam Finishing Demonstration',
-    youtubeDescription: 'Watch how Italian vacuum form presses deliver crisp collar alignment without heat damage.',
-    features: [
-      '3D Tension form steam pressing',
-      'Zero heat scorch or shiny fabric marks',
-      'Crisp collar & cuff shape retention',
-      'Specialized pleat setting for formals & ethnics',
-      'Custom hanger delivery with protective drape'
-    ],
-    benefits: [
-      'Preserves textile elasticity and natural bounce',
-      'Ensures sharp, crease-free professional look all day',
-      'Protects buttons and delicate embellishments',
-      'Fast doorstep turnaround'
-    ],
-    processSteps: [
-      { stepNumber: '01', title: 'Fabric Tension Grading', bullets: ['Temperature calibration', 'Fiber sensitivity check'] },
-      { stepNumber: '02', title: '3D Form Steam Application', bullets: ['High-pressure micro steam', 'Vacuum suction cooling'] },
-      { stepNumber: '03', title: 'Collar & Crease Alignment', bullets: ['Hand touch-up inspection', 'Wrinkle release check'] },
-      { stepNumber: '04', title: 'Hanger Packing', bullets: ['Luxury garment hanger', 'Dust-shield cover'] }
-    ],
-    faqs: [
-      { question: 'Will steam ironing damage delicate buttons or embroidery?', answer: 'No. Our equipment uses specialized Teflon shoes and steam diffusers to protect all buttons, sequins, and metallic embroidery.' },
-      { question: 'How do you prevent shiny patches on dark formal wear?', answer: 'Our vacuum suction and diffused high-pressure steam reshape fibers without direct harsh plate heat, preventing any gloss or shine.' }
-    ],
-    status: 'published',
-    featured: false,
-    order: 2,
-  },
-  {
-    id: 'srv-stains-remover',
-    title: 'Stains Remover',
-    slug: 'stains-remover',
-    category: 'Stains Remover',
-    pricingType: 'per piece',
-    startingPrice: 99,
-    shortDescription: 'Targeted ultrasonic bio-enzyme spot lifting for stubborn oil, ink, grease, wine, turmeric, and protein stains.',
-    detailedDescription: 'Stubborn stains require scientific treatment, not harsh bleach. Our master spotters analyze fabric fiber composition and apply specialized bio-enzyme agents with ultrasonic cold-mist guns to dissolve ink, grease, turmeric, coffee, and wine stains without color loss.',
-    heroImage: 'https://images.unsplash.com/photo-1582735689369-4fe89db7114c?auto=format&fit=crop&w=1200&q=80',
-    mobileImage: 'https://images.unsplash.com/photo-1582735689369-4fe89db7114c?auto=format&fit=crop&w=600&q=80',
-    youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-    youtubeTitle: 'Ultrasonic Precision Stain Removal Lab',
-    youtubeDescription: 'Watch our fabric chemistry experts eliminate deep-set stains using cold bio-enzymes.',
-    features: [
-      'Targeted ultrasonic cold-mist stain guns',
-      'Custom bio-enzyme spotting formulations',
-      'Zero chlorine bleach or color-stripping agents',
-      'Safe for silks, woolens, linens, and blended synthetics',
-      'Pre & post optical inspection under spectrum light'
-    ],
-    benefits: [
-      'Rescues your favorite stained clothes from being discarded',
-      'Preserves fabric color vibrancy and fiber strength',
-      'Removes tough Indian curry, grease, oil, and sweat stains',
-      'Gentle and residue-free finish'
-    ],
-    processSteps: [
-      { stepNumber: '01', title: 'Spectrum Light Stain Mapping', bullets: ['Stain chemical origin test', 'Fiber safety check'] },
-      { stepNumber: '02', title: 'Bio-Enzyme Application', bullets: ['Targeted micro-reagents', 'Cold emulsion dwell time'] },
-      { stepNumber: '03', title: 'Ultrasonic Micro-Spotting', bullets: ['Vibrational stain breakdown', 'Zero friction or abrasive rubbing'] },
-      { stepNumber: '04', title: 'Neutralizing Rinse & Dry', bullets: ['Pure demineralized rinse', 'Air-flow fiber conditioning'] }
-    ],
-    faqs: [
-      { question: 'Can you remove old, set-in oil or turmeric stains?', answer: 'Yes. Our bio-enzymes are specifically calibrated for oil, grease, curry, and organic compounds, achieving high success rates even on aged stains.' },
-      { question: 'Will stain removal cause color fading on colored shirts?', answer: 'No. We perform a color-fastness test prior to application and use zero chlorine bleach.' }
-    ],
-    status: 'published',
-    featured: false,
-    order: 3,
-  },
-  {
     id: 'srv-dry-cleaning',
     title: 'Dry Cleaning',
+    name: 'Dry Cleaning',
     slug: 'dry-cleaning',
-    category: 'Dry Cleaning',
-    pricingType: 'per piece',
-    startingPrice: 149,
+    category: 'Apparel Care',
+    pricingType: 'per_item',
+    startingPrice: 40,
+    startingPriceDisplay: 'Starts at ₹40',
+    emoji: '🧺',
+    icon: '🧺',
     shortDescription: 'Pure non-toxic hydrocarbon solvent cleansing for suits, silks, designer wear, and delicate couture fabrics.',
-    detailedDescription: 'Our Dry Cleaning service utilizes European non-toxic hydrocarbon solvents instead of harsh standard PERC chemicals. Each weave is inspected for fiber integrity, pre-treated with ultrasonic micro-spotters, and finished on tension steam forms for unmatched drape, odorless cleanliness, and fabric longevity.',
+    detailedDescription: 'Our Dry Cleaning service utilizes European non-toxic hydrocarbon solvents instead of harsh PERC chemicals. Each weave is inspected for fiber integrity, pre-treated with ultrasonic micro-spotters, and finished on tension steam forms for unmatched drape, odorless cleanliness, and fabric longevity.',
     heroImage: 'https://images.unsplash.com/photo-1545173168-9f1947eebb7f?auto=format&fit=crop&w=1200&q=80',
     mobileImage: 'https://images.unsplash.com/photo-1545173168-9f1947eebb7f?auto=format&fit=crop&w=600&q=80',
     youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
@@ -171,51 +45,314 @@ export const DEFAULT_SERVICES = [
       { stepNumber: '01', title: 'Optical Fiber Inspection', bullets: ['Stain mapping', 'Care label decoding', 'Hardware protection'] },
       { stepNumber: '02', title: 'Ultrasonic Pre-Spotting', bullets: ['Bio-enzyme spot removal', 'No mechanical scrubbing'] },
       { stepNumber: '03', title: 'Hydrocarbon Bath', bullets: ['Controlled solvent cycle', 'Gentle drum agitation'] },
-      { stepNumber: '04', title: '3D Form Finishing', bullets: ['Tension steam press', 'Zero lapel shine'] },
-      { stepNumber: '05', title: 'Dual QC Sign-off', bullets: ['Master inspector check', 'Barcode tracking tag'] },
-      { stepNumber: '06', title: 'Sealed Express Delivery', bullets: ['Custom luxury hanger', 'Breathable sealed packaging'] }
+      { stepNumber: '04', title: '3D Form Finishing', bullets: ['Tension steam press', 'Zero lapel shine'] }
     ],
     faqs: [
       { question: 'What makes hydrocarbon dry cleaning different from regular dry cleaning?', answer: 'Traditional dry cleaners use PERC (Perchloroethylene), which is harsh and degrades fibers over time. We use pure European hydrocarbon solvents that are gentle on fabrics, safe for the skin, and completely odorless.' },
       { question: 'What is the standard turnaround time for dry cleaning?', answer: 'Standard turnaround is 48 hours. Express 24-hour delivery is also available on request.' }
     ],
     status: 'published',
+    active: true,
     featured: true,
+    displayOrder: 1,
+    order: 1,
+  },
+  {
+    id: 'srv-ironing',
+    title: 'Ironing',
+    name: 'Ironing',
+    slug: 'ironing',
+    category: 'Finishing',
+    pricingType: 'per_item',
+    startingPrice: 12,
+    startingPriceDisplay: 'Starts at ₹12',
+    emoji: '👔',
+    icon: '👔',
+    shortDescription: '3D mannequin form pressing and vacuum table crease retention with zero shine or heat scorch.',
+    detailedDescription: 'Say goodbye to shiny scorch marks and pressed-in wrinkles. Our 3D tension steam pressing systems utilize vacuum suction tables and ergonomic form presses to reshape collars, lapels, pleats, and cuffs to pristine perfection.',
+    heroImage: 'https://images.unsplash.com/photo-1489274495757-95c7c837b101?auto=format&fit=crop&w=1200&q=80',
+    mobileImage: 'https://images.unsplash.com/photo-1489274495757-95c7c837b101?auto=format&fit=crop&w=600&q=80',
+    features: [
+      '3D Tension form steam pressing',
+      'Zero heat scorch or shiny fabric marks',
+      'Crisp collar & cuff shape retention',
+      'Specialized pleat setting for formals & ethnics'
+    ],
+    benefits: [
+      'Preserves textile elasticity and natural bounce',
+      'Ensures sharp, crease-free professional look all day',
+      'Protects buttons and delicate embellishments'
+    ],
+    processSteps: [
+      { stepNumber: '01', title: 'Fabric Tension Grading', bullets: ['Temperature calibration', 'Fiber sensitivity check'] },
+      { stepNumber: '02', title: '3D Form Steam Application', bullets: ['High-pressure micro steam', 'Vacuum suction cooling'] },
+      { stepNumber: '03', title: 'Collar & Crease Alignment', bullets: ['Hand touch-up inspection', 'Wrinkle release check'] }
+    ],
+    status: 'published',
+    active: true,
+    featured: true,
+    displayOrder: 2,
+    order: 2,
+  },
+  {
+    id: 'srv-wash-and-iron',
+    title: 'Wash & Iron',
+    name: 'Wash & Iron',
+    slug: 'wash-and-iron',
+    category: 'Weight Based',
+    pricingType: 'per_kg',
+    startingPrice: 130,
+    startingPriceDisplay: 'Starts at ₹130 / Kg',
+    emoji: '🫧',
+    icon: '🫧',
+    shortDescription: '100% demineralized RO softened water wash with bio-detergents followed by crisp steam iron pressing.',
+    detailedDescription: 'Our signature Wash & Iron service combines 100% demineralized Reverse Osmosis softened water and bio-detergents with single-customer batch washing, followed by 3D tension steam pressing.',
+    heroImage: 'https://images.unsplash.com/photo-1517677208171-0bc6725a3e60?auto=format&fit=crop&w=1200&q=80',
+    mobileImage: 'https://images.unsplash.com/photo-1517677208171-0bc6725a3e60?auto=format&fit=crop&w=600&q=80',
+    features: [
+      '100% Demineralized RO soft water washing',
+      'Single-customer isolated wash drums',
+      'Bio-enzyme hypoallergenic formula',
+      '3D tension form steam pressing finish'
+    ],
+    benefits: [
+      'Preserves fabric color and softness',
+      'Hygienic and safe for baby clothing',
+      'Ready to wear directly from the pack'
+    ],
+    processSteps: [
+      { stepNumber: '01', title: 'Batch Weighing & Tagging', bullets: ['Single customer drum isolation', 'Weight verification'] },
+      { stepNumber: '02', title: 'RO Soft Water Wash', bullets: ['Filtered demineralized water', 'Bio-enzyme agents'] },
+      { stepNumber: '03', title: 'Steam Form Press', bullets: ['Crisp collar pressing', 'Crease retention'] }
+    ],
+    status: 'published',
+    active: true,
+    featured: true,
+    displayOrder: 3,
+    order: 3,
+  },
+  {
+    id: 'srv-wash-and-fold',
+    title: 'Wash & Fold',
+    name: 'Wash & Fold',
+    slug: 'wash-and-fold',
+    category: 'Weight Based',
+    pricingType: 'per_kg',
+    startingPrice: 100,
+    startingPriceDisplay: 'Starts at ₹100 / Kg',
+    emoji: '👕',
+    icon: '👕',
+    shortDescription: 'Freshly washed with RO soft water, moisture-controlled drying, and neat hand-folding.',
+    detailedDescription: 'Daily laundry made effortless. Isolated drum wash in pure RO soft water, low-heat tumble drying, and store-style precision folding sealed in moisture-barrier packs.',
+    heroImage: 'https://images.unsplash.com/photo-1582735689369-4fe89db7114c?auto=format&fit=crop&w=1200&q=80',
+    mobileImage: 'https://images.unsplash.com/photo-1582735689369-4fe89db7114c?auto=format&fit=crop&w=600&q=80',
+    features: [
+      'RO soft water batch washing',
+      'Low-heat anti-static drying',
+      'Precision store-ready folding',
+      'Moisture-shield delivery wrap'
+    ],
+    benefits: [
+      'Fast, reliable daily laundry solution',
+      'Gentle on daily cottons, casuals, and linens',
+      'Saves hours of weekend laundry effort'
+    ],
+    processSteps: [
+      { stepNumber: '01', title: 'Weighing & Sorting', bullets: ['Color classification', 'Dedicated drum batch'] },
+      { stepNumber: '02', title: 'Hygienic Soft Wash', bullets: ['Eco bio-detergent', 'Fabric relaxing rinse'] },
+      { stepNumber: '03', title: 'Precision Hand Fold', bullets: ['Store-style folding', 'Moisture-barrier seal'] }
+    ],
+    status: 'published',
+    active: true,
+    featured: true,
+    displayOrder: 4,
     order: 4,
+  },
+  {
+    id: 'srv-saree-rolling',
+    title: 'Saree Rolling',
+    name: 'Saree Rolling',
+    slug: 'saree-rolling',
+    category: 'Traditional',
+    pricingType: 'custom',
+    startingPrice: null,
+    startingPriceDisplay: 'Price to be confirmed',
+    emoji: '🥻',
+    icon: '🥻',
+    shortDescription: 'Careful traditional starching, gentle polishing, and wooden roller finishing for silk and pattu sarees.',
+    detailedDescription: 'Preserve the rich sheen and crisp drape of your heirloom pattu, banarasi, and silk sarees with our specialized wooden roller polishing and starching techniques.',
+    heroImage: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=1200&q=80',
+    mobileImage: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=600&q=80',
+    features: [
+      'Traditional wooden cylinder rolling',
+      'Natural starching & fiber polishing',
+      'Zari & gold border protection',
+      'Wrinkle-free drape retention'
+    ],
+    benefits: [
+      'Protects expensive bridal & festival silk sarees',
+      'Restores authentic handloom luster',
+      'Zero heat damage or fabric weakening'
+    ],
+    processSteps: [
+      { stepNumber: '01', title: 'Zari & Fabric Inspection', bullets: ['Weave integrity check', 'Starch balance planning'] },
+      { stepNumber: '02', title: 'Gentle Starch & Steam', bullets: ['Even starch misting', 'Controlled tension'] },
+      { stepNumber: '03', title: 'Wooden Roller Finishing', bullets: ['Polishing cylinder pass', 'Wrinkle elimination'] }
+    ],
+    status: 'published',
+    active: true,
+    featured: false,
+    displayOrder: 5,
+    order: 5,
+  },
+  {
+    id: 'srv-curtain-washing',
+    title: 'Curtain Washing',
+    name: 'Curtain Washing',
+    slug: 'curtain-washing',
+    category: 'Household',
+    pricingType: 'per_sqft',
+    startingPrice: 30,
+    startingPriceDisplay: '₹30 / sq. ft.',
+    emoji: '🪟',
+    icon: '🪟',
+    shortDescription: 'Deep dust extraction, gentle washing, and wrinkle-free steam hanging for all curtain sizes.',
+    detailedDescription: 'Curtains trap dust mites, allergens, and airborne pollutants. Our ultrasonic extraction and demineralized soft wash restore fresh air and vibrancy to blackout drapes, sheers, and heavy jacquard curtains.',
+    heroImage: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=1200&q=80',
+    mobileImage: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=600&q=80',
+    features: [
+      'Deep dust-mite ultrasonic extraction',
+      'Gentle wash for sheers & blackouts',
+      'Wrinkle-free steam hanging finish',
+      'Dimensional area based transparent pricing'
+    ],
+    benefits: [
+      'Improves indoor home air quality',
+      'Removes deep fabric odors and grime',
+      'Ready to hang without wrinkling'
+    ],
+    processSteps: [
+      { stepNumber: '01', title: 'Dimension Verification', bullets: ['Sq. ft. measurement', 'Fabric classification'] },
+      { stepNumber: '02', title: 'Dust Extraction & Wash', bullets: ['High-vacuum dust lift', 'Demineralized soft wash'] },
+      { stepNumber: '03', title: 'Vertical Steam Press', bullets: ['Crease-free steaming', 'Sealed drape packaging'] }
+    ],
+    status: 'published',
+    active: true,
+    featured: false,
+    displayOrder: 6,
+    order: 6,
+  },
+  {
+    id: 'srv-shoe-washing',
+    title: 'Shoe Washing',
+    name: 'Shoe Washing',
+    slug: 'shoe-washing',
+    category: 'Footwear',
+    pricingType: 'per_pair',
+    startingPrice: 350,
+    startingPriceDisplay: '₹350 / pair',
+    emoji: '👟',
+    icon: '👟',
+    shortDescription: 'Hand-scrubbed midsole whitening, antiseptic deodorization, and suede/leather restoration.',
+    detailedDescription: 'Give your favorite sneakers, running shoes, and formal leathers a brand-new revival. Multi-step hand scrubbing, ultrasonic sole whitening, and anti-microbial UV sterilization.',
+    heroImage: 'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?auto=format&fit=crop&w=1200&q=80',
+    mobileImage: 'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?auto=format&fit=crop&w=600&q=80',
+    features: [
+      'Hand-crafted midsole whitening',
+      'Upper mesh, suede & leather deep scrub',
+      'Antiseptic & anti-fungal deodorization',
+      'Lace cleaning & reshaping'
+    ],
+    benefits: [
+      'Restores sneaker and formal shoe look',
+      'Eliminates bacterial odors permanently',
+      'Maintains leather texture and longevity'
+    ],
+    processSteps: [
+      { stepNumber: '01', title: 'Inspection & Dry Dusting', bullets: ['Material grading', 'Deep sole dirt lift'] },
+      { stepNumber: '02', title: 'Hand Shampooing', bullets: ['Soft-bristle brush scrub', 'Foam stain lift'] },
+      { stepNumber: '03', title: 'UV Sterilization & Pack', bullets: ['Bacterial neutralization', 'Shape retaining pack'] }
+    ],
+    status: 'published',
+    active: true,
+    featured: false,
+    displayOrder: 7,
+    order: 7,
+  },
+  {
+    id: 'srv-carpet-washing',
+    title: 'Carpet Washing',
+    name: 'Carpet Washing',
+    slug: 'carpet-washing',
+    category: 'Household',
+    pricingType: 'per_sqft',
+    startingPrice: 45,
+    startingPriceDisplay: '₹45 / sq. ft.',
+    emoji: '🧶',
+    icon: '🧶',
+    shortDescription: 'Deep foam & dust-mite extraction, rotary shampoo cleaning, and anti-microbial drying for rugs.',
+    detailedDescription: 'Commercial-grade deep extraction rotary shampoo washing for living room carpets, wool rugs, and entry mats to remove deep-seated stains, allergens, and pet odors.',
+    heroImage: 'https://images.unsplash.com/photo-1600121848594-d8644e57abab?auto=format&fit=crop&w=1200&q=80',
+    mobileImage: 'https://images.unsplash.com/photo-1600121848594-d8644e57abab?auto=format&fit=crop&w=600&q=80',
+    features: [
+      'High-power rotary shampoo extraction',
+      'Deep dust-mite & allergen removal',
+      'Anti-microbial quick-drying room cycle',
+      'Stain protection fiber conditioning'
+    ],
+    benefits: [
+      'Rejuvenates carpet fiber texture & colors',
+      'Removes tough stains and trapped allergens',
+      'Fresh and completely odor-free home'
+    ],
+    processSteps: [
+      { stepNumber: '01', title: 'Vacuum & Area Sizing', bullets: ['Length × Width measurement', 'Pre-inspection'] },
+      { stepNumber: '02', title: 'Rotary Shampoo Clean', bullets: ['Deep fiber agitation', 'Water extraction'] },
+      { stepNumber: '03', title: 'Thermal Dehumidification', bullets: ['Moisture extraction', 'Anti-static conditioning'] }
+    ],
+    status: 'published',
+    active: true,
+    featured: false,
+    displayOrder: 8,
+    order: 8,
   }
 ];
 
 export const serviceService = {
   /**
-   * Fetch all services (Optionally filter only published for public portal)
+   * Fetch all services from Firestore `services` collection
+   * (Optionally filter only active/published for customer portal)
    */
   async getServices({ publishedOnly = false } = {}) {
     if (isFirebaseConfigured && db) {
       try {
         let q = collection(db, 'services');
-        if (publishedOnly) {
-          q = query(collection(db, 'services'), where('status', '==', 'published'));
-        }
         const snap = await getDocs(q);
         if (!snap.empty) {
-          const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-          return list.sort((a, b) => (a.order || 0) - (b.order || 0));
+          let list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          if (publishedOnly) {
+            list = list.filter(s => s.active !== false && s.status !== 'archived' && s.status !== 'draft');
+          }
+          return list.sort((a, b) => (a.displayOrder || a.order || 0) - (b.displayOrder || b.order || 0));
+        } else {
+          // Initialize/Seed default services into Firestore if collection is empty
+          for (const srv of DEFAULT_SERVICES) {
+            await setDoc(doc(db, 'services', srv.id), srv);
+          }
+          const seeded = publishedOnly ? DEFAULT_SERVICES.filter(s => s.active !== false) : DEFAULT_SERVICES;
+          return seeded.sort((a, b) => (a.displayOrder || a.order || 0) - (b.displayOrder || b.order || 0));
         }
       } catch (e) {
-        console.warn("Firestore services read error, reading local cache:", e);
+        console.warn("Firestore services read error, reading local cache:", e?.message || e);
       }
     }
 
     try {
       const cached = JSON.parse(localStorage.getItem(SERVICES_STORAGE_KEY) || '[]');
-      const validSlugs = ['laundry', 'steam-iron', 'stains-remover', 'dry-cleaning'];
-      const isValid = cached.length === 4 && cached.every(s => validSlugs.includes(s.slug));
-      const source = isValid ? cached : DEFAULT_SERVICES;
-      if (!isValid && cached.length > 0) {
-        localStorage.setItem(SERVICES_STORAGE_KEY, JSON.stringify(DEFAULT_SERVICES));
-      }
-      const filtered = publishedOnly ? source.filter(s => s.status === 'published') : source;
-      return filtered.sort((a, b) => (a.order || 0) - (b.order || 0));
+      const source = (cached && cached.length >= 8) ? cached : DEFAULT_SERVICES;
+      localStorage.setItem(SERVICES_STORAGE_KEY, JSON.stringify(source));
+      const filtered = publishedOnly ? source.filter(s => s.active !== false && s.status !== 'archived' && s.status !== 'draft') : source;
+      return filtered.sort((a, b) => (a.displayOrder || a.order || 0) - (b.displayOrder || b.order || 0));
     } catch (e) {
       return DEFAULT_SERVICES;
     }
@@ -227,46 +364,49 @@ export const serviceService = {
   async getServiceBySlug(slug) {
     const services = await this.getServices({ publishedOnly: false });
     const slugAliases = {
-      'ro-soft-water-laundry': 'laundry',
-      'steam-ironing-and-form-press': 'steam-iron',
+      'ro-soft-water-laundry': 'wash-and-iron',
+      'steam-ironing-and-form-press': 'ironing',
       'premium-dry-cleaning': 'dry-cleaning',
+      'laundry': 'wash-and-iron',
+      'steam-iron': 'ironing',
+      'stains-remover': 'dry-cleaning'
     };
     const normalizedSlug = slugAliases[slug] || slug;
     return services.find(s => s.slug === normalizedSlug || s.slug === slug || s.id === slug) || services[0] || null;
   },
 
   /**
-   * Create or Update Service
+   * Create or Update Service in Firestore `services/{serviceId}`
    */
   async saveService(serviceData) {
     const serviceId = serviceData.id || `srv-${Date.now()}`;
-    const slug = serviceData.slug || slugify(serviceData.title);
+    const slug = serviceData.slug || slugify(serviceData.title || serviceData.name || 'service');
     
     const payload = {
       ...serviceData,
       id: serviceId,
       slug,
-      title: serviceData.title || 'Untitled Service',
+      title: serviceData.title || serviceData.name || 'Untitled Service',
+      name: serviceData.name || serviceData.title || 'Untitled Service',
       shortDescription: serviceData.shortDescription || '',
       detailedDescription: serviceData.detailedDescription || '',
-      category: serviceData.category || 'General Care',
-      pricingType: serviceData.pricingType || 'per piece',
-      startingPrice: Number(serviceData.startingPrice || 0),
+      category: serviceData.category || 'Garment Care',
+      pricingType: serviceData.pricingType || 'per_item',
+      startingPrice: serviceData.startingPrice !== null ? Number(serviceData.startingPrice || 0) : null,
+      startingPriceDisplay: serviceData.startingPriceDisplay || (serviceData.startingPrice ? `Starts at ₹${serviceData.startingPrice}` : 'Price to be confirmed'),
+      emoji: serviceData.emoji || serviceData.icon || '🧺',
+      icon: serviceData.icon || serviceData.emoji || '🧺',
       heroImage: serviceData.heroImage || '',
       mobileImage: serviceData.mobileImage || serviceData.heroImage || '',
-      galleryImages: serviceData.galleryImages || [],
-      youtubeUrl: serviceData.youtubeUrl || '',
-      youtubeTitle: serviceData.youtubeTitle || '',
-      youtubeDescription: serviceData.youtubeDescription || '',
       features: serviceData.features || [],
       benefits: serviceData.benefits || [],
       processSteps: serviceData.processSteps || [],
       faqs: serviceData.faqs || [],
-      status: serviceData.status || 'published', // 'draft' | 'published' | 'archived'
+      active: serviceData.active !== undefined ? !!serviceData.active : true,
+      status: serviceData.status || 'published',
       featured: !!serviceData.featured,
-      order: Number(serviceData.order || 0),
-      seoTitle: serviceData.seoTitle || `${serviceData.title} | Tech Wash`,
-      seoDescription: serviceData.seoDescription || serviceData.shortDescription || '',
+      displayOrder: Number(serviceData.displayOrder || serviceData.order || 1),
+      order: Number(serviceData.displayOrder || serviceData.order || 1),
       updatedAt: new Date().toISOString(),
     };
 
@@ -280,13 +420,36 @@ export const serviceService = {
 
     const cached = await this.getServices({ publishedOnly: false });
     const idx = cached.findIndex(s => s.id === serviceId);
-    if (idx >= 0) {
-      cached[idx] = payload;
-    } else {
-      cached.push(payload);
-    }
+    if (idx >= 0) cached[idx] = payload;
+    else cached.push(payload);
     localStorage.setItem(SERVICES_STORAGE_KEY, JSON.stringify(cached));
     return payload;
+  },
+
+  /**
+   * Toggle Active / Inactive Status of a Service
+   */
+  async toggleServiceActive(serviceId, active) {
+    if (isFirebaseConfigured && db) {
+      try {
+        await setDoc(doc(db, 'services', serviceId), { 
+          active, 
+          status: active ? 'published' : 'draft',
+          updatedAt: new Date().toISOString() 
+        }, { merge: true });
+      } catch (e) {
+        console.warn("Firestore toggle service error:", e);
+      }
+    }
+
+    const cached = await this.getServices({ publishedOnly: false });
+    const item = cached.find(s => s.id === serviceId);
+    if (item) {
+      item.active = active;
+      item.status = active ? 'published' : 'draft';
+      localStorage.setItem(SERVICES_STORAGE_KEY, JSON.stringify(cached));
+    }
+    return true;
   },
 
   /**
@@ -307,14 +470,16 @@ export const serviceService = {
   },
 
   /**
-   * Fetch categories
+   * Fetch categories from Firestore `serviceCategories`
    */
   async getCategories() {
     const defaultCats = [
-      { id: 'cat-1', name: 'Laundry', slug: 'laundry' },
-      { id: 'cat-2', name: 'Steam Iron', slug: 'steam-iron' },
-      { id: 'cat-3', name: 'Stains Remover', slug: 'stains-remover' },
-      { id: 'cat-4', name: 'Dry Cleaning', slug: 'dry-cleaning' },
+      { id: 'cat-1', name: 'Apparel Care', slug: 'apparel-care' },
+      { id: 'cat-2', name: 'Finishing', slug: 'finishing' },
+      { id: 'cat-3', name: 'Weight Based', slug: 'weight-based' },
+      { id: 'cat-4', name: 'Traditional', slug: 'traditional' },
+      { id: 'cat-5', name: 'Household', slug: 'household' },
+      { id: 'cat-6', name: 'Footwear', slug: 'footwear' },
     ];
 
     if (isFirebaseConfigured && db) {
@@ -330,35 +495,11 @@ export const serviceService = {
 
     try {
       const cached = JSON.parse(localStorage.getItem(CATEGORIES_STORAGE_KEY) || '[]');
-      const isValid = cached.length === 4 && cached.every(c => defaultCats.some(dc => dc.name === c.name));
-      if (isValid) return cached;
+      if (cached && cached.length > 0) return cached;
       localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(defaultCats));
       return defaultCats;
     } catch (e) {
       return defaultCats;
     }
-  },
-
-  /**
-   * Save Categories
-   */
-  async saveCategory(catData) {
-    const catId = catData.id || `cat-${Date.now()}`;
-    const payload = { ...catData, id: catId, slug: slugify(catData.name) };
-
-    if (isFirebaseConfigured && db) {
-      try {
-        await setDoc(doc(db, 'serviceCategories', catId), payload, { merge: true });
-      } catch (e) {
-        console.warn("Firestore save category error:", e);
-      }
-    }
-
-    const list = await this.getCategories();
-    const idx = list.findIndex(c => c.id === catId);
-    if (idx >= 0) list[idx] = payload;
-    else list.push(payload);
-    localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(list));
-    return payload;
   }
 };

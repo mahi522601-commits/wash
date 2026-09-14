@@ -1,7 +1,7 @@
 /**
- * Real Firebase Authentication & Firestore Admin Authorization Service for Tech Wash
+ * Tech Wash Centralized Firebase Authentication & Firestore Admin RBAC Service
+ * Single source of truth for admin authentication & role-based access control.
  * Connects directly to project: laundry-37abc
- * Enforces admin authorization via: users/{uid} document verification (role: admin)
  */
 import { 
   signInWithEmailAndPassword, 
@@ -10,39 +10,47 @@ import {
   onAuthStateChanged
 } from 'firebase/auth';
 import { auth, db } from './firebase.js';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 export const USER_ROLES = {
   SUPERADMIN: 'superadmin',
   ADMIN: 'admin',
   MANAGER: 'manager',
   STAFF: 'staff',
-  DELIVERY_EXECUTIVE: 'delivery_executive',
 };
 
 export const AUTHORIZED_ADMIN_ROLES = [
   'superadmin',
   'super_admin',
   'admin',
-  'manager'
+  'manager',
+  'staff'
 ];
 
 export const ROLE_PERMISSIONS = {
   [USER_ROLES.SUPERADMIN]: ['all'],
   'super_admin': ['all'],
-  [USER_ROLES.ADMIN]: ['cms', 'orders', 'services', 'pricing', 'media', 'customers', 'locations', 'banners', 'seo', 'offers'],
-  [USER_ROLES.MANAGER]: ['orders', 'customers', 'services', 'pricing', 'locations'],
-  [USER_ROLES.STAFF]: ['orders_stage_update', 'qc_check'],
-  [USER_ROLES.DELIVERY_EXECUTIVE]: ['pickup_delivery_only'],
+  [USER_ROLES.ADMIN]: ['cms', 'orders', 'bookings', 'services', 'pricing', 'media', 'customers', 'locations', 'banners', 'seo', 'offers', 'settings'],
+  [USER_ROLES.MANAGER]: ['orders', 'bookings', 'customers', 'services', 'pricing', 'locations', 'offers'],
+  [USER_ROLES.STAFF]: ['orders', 'bookings', 'orders_stage_update', 'weight_entry'],
 };
 
 export const authService = {
   /**
-   * Log in user with Firebase Auth and verify Firestore admin document: users/{uid}
+   * Check if a role string is an authorized admin role
+   */
+  isAuthorizedAdminRole(role) {
+    if (!role) return false;
+    const normalized = String(role).toLowerCase().trim();
+    return AUTHORIZED_ADMIN_ROLES.includes(normalized);
+  },
+
+  /**
+   * Log in user with Firebase Auth and verify Firestore admin document in: admins/{uid} (or users/{uid})
    */
   async login(email, password) {
     if (!auth || !db) {
-      throw new Error('Unable to connect to the authentication service. Please check Firebase configuration.');
+      throw new Error('Unable to connect to Firebase Authentication. Please check your network and configuration.');
     }
 
     try {
@@ -50,61 +58,42 @@ export const authService = {
       const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
       const user = userCredential.user;
 
-      // 2. Verify admin document in Firestore: users/{currentUser.uid}
-      let userDocSnap;
-      try {
-        userDocSnap = await getDoc(doc(db, 'users', user.uid));
-      } catch (firestoreErr) {
-        console.error("Firestore read error for UID:", user.uid, firestoreErr);
+      // 2. Verify admin document in Firestore (admins/{uid} first, then users/{uid})
+      let adminData = await this.verifyAdminDocument(user.uid);
+
+      // 3. Document must exist and have active == true + valid admin role
+      if (!adminData) {
         await signOut(auth);
-        const code = firestoreErr?.code || '';
-        if (code === 'permission-denied') {
-          throw new Error('Firestore Permission Denied: Your Firebase Firestore Security Rules are blocking reads. Please publish the Firestore Security Rules in Firebase Console.');
-        }
-        if (code === 'unavailable' || code === 'deadline-exceeded') {
-          throw new Error('Firestore Database is currently unreachable. Please check your network or Firestore region status.');
-        }
-        throw new Error(`Firestore Error (${code || 'read-failed'}): Unable to read users/${user.uid}. Please check Firestore rules in Firebase Console.`);
+        throw new Error('Access denied. Administrator privileges required.');
       }
 
-      // 3. Document must exist in 'users' collection
-      if (!userDocSnap.exists()) {
-        await signOut(auth);
-        throw new Error('Access denied. Admin privileges required.');
-      }
-
-      const userData = userDocSnap.data() || {};
-
-      // 4. Must be active (if active flag is set)
-      if (userData.active === false) {
+      if (adminData.active === false) {
         await signOut(auth);
         throw new Error('Your admin account is currently disabled.');
       }
 
-      // 5. Must have role === 'admin'
-      const userRole = (userData.role || '').toLowerCase().trim();
-      if (userRole !== 'admin') {
+      const userRole = (adminData.role || '').toLowerCase().trim();
+      if (!this.isAuthorizedAdminRole(userRole)) {
         await signOut(auth);
-        throw new Error('Access denied. Admin privileges required.');
+        throw new Error('Access denied. Insufficient administrative permissions.');
       }
 
-      // 6. Return verified admin profile
+      // 4. Return verified admin profile
       const adminProfile = {
         uid: user.uid,
         email: user.email,
-        displayName: userData.name || user.displayName || (user.email ? user.email.split('@')[0] : 'Admin'),
-        name: userData.name || 'Tech Wash Admin',
-        role: userData.role || 'admin',
+        displayName: adminData.name || user.displayName || (user.email ? user.email.split('@')[0] : 'Admin'),
+        name: adminData.name || 'Tech Wash Administrator',
+        role: adminData.role || 'superadmin',
         active: true,
         token: await user.getIdToken(),
       };
 
       return adminProfile;
     } catch (err) {
-      // Log raw error to development console for precise diagnostics
-      console.error("Firebase Login Error:", err);
+      console.error("Firebase Admin Login Error:", err);
 
-      // If error was already our custom authorization error, rethrow it
+      // If already custom authorization error, rethrow
       if (
         err.message?.startsWith('Access denied') ||
         err.message?.startsWith('Firestore') ||
@@ -127,13 +116,13 @@ export const authService = {
       } else if (errorCode === 'auth/user-disabled') {
         throw new Error('Your account has been disabled in Firebase Authentication.');
       } else if (errorCode === 'auth/operation-not-allowed') {
-        throw new Error('Email/Password provider is disabled in Firebase Console. Please enable Email/Password under Authentication > Sign-in method.');
+        throw new Error('Email/Password sign-in is disabled in Firebase Console.');
       } else if (errorCode === 'auth/network-request-failed') {
         throw new Error('Network connection error. Unable to reach Firebase authentication servers.');
       } else if (errorCode === 'auth/too-many-requests') {
         throw new Error('Too many failed login attempts. Please try again later.');
       } else if (errorCode === 'auth/api-key-not-valid' || errorCode === 'auth/invalid-api-key') {
-        throw new Error('Firebase API Key is invalid. Please update VITE_FIREBASE_API_KEY in your .env file with the valid Web API Key from Firebase Console (Project Settings > General).');
+        throw new Error('Firebase API Key is invalid. Please verify VITE_FIREBASE_API_KEY in your .env file.');
       }
 
       throw new Error(err.message || 'Incorrect email or password.');
@@ -141,24 +130,34 @@ export const authService = {
   },
 
   /**
-   * Verify Firestore admin document for an existing Firebase User: users/{uid}
+   * Verify Firestore admin document for a Firebase User UID
+   * Checks `admins/{uid}` first, and falls back to `users/{uid}`
    */
   async verifyAdminDocument(uid) {
     if (!db || !uid) return null;
 
     try {
+      // 1. Check admins/{uid} (Primary admin collection)
+      const adminSnap = await getDoc(doc(db, 'admins', uid));
+      if (adminSnap.exists()) {
+        const data = adminSnap.data() || {};
+        if (data.active !== false && this.isAuthorizedAdminRole(data.role)) {
+          return { id: adminSnap.id, ...data };
+        }
+      }
+
+      // 2. Check users/{uid} (Secondary fallback)
       const userSnap = await getDoc(doc(db, 'users', uid));
-      if (!userSnap.exists()) return null;
+      if (userSnap.exists()) {
+        const data = userSnap.data() || {};
+        if (data.active !== false && this.isAuthorizedAdminRole(data.role)) {
+          return { id: userSnap.id, ...data };
+        }
+      }
 
-      const userData = userSnap.data() || {};
-      if (userData.active === false) return null;
-
-      const userRole = (userData.role || '').toLowerCase().trim();
-      if (userRole !== 'admin') return null;
-
-      return userData;
+      return null;
     } catch (e) {
-      console.warn("Firestore user admin authorization check failed:", e);
+      console.warn("Firestore admin authorization check notice:", e?.message || e);
       return null;
     }
   },
@@ -191,7 +190,7 @@ export const authService = {
    */
   hasPermission(userRole, requiredScope) {
     if (!userRole) return false;
-    const normalizedRole = userRole.toLowerCase();
+    const normalizedRole = userRole.toLowerCase().trim();
     if (normalizedRole === 'superadmin' || normalizedRole === 'super_admin') return true;
     const permissions = ROLE_PERMISSIONS[normalizedRole] || [];
     return permissions.includes(requiredScope) || permissions.includes('all');
