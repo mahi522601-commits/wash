@@ -40,7 +40,7 @@ export const FloatingActionHub = ({ onOpenAssistant }) => {
           2. WhatsApp Button
           3. Phone Call Button
       ───────────────────────────────────────────────────────── */}
-      <div className="fixed right-4 sm:right-6 bottom-6 sm:bottom-8 z-40 flex flex-col items-end gap-3 pointer-events-auto no-print">
+      <div className="fixed right-3 sm:right-6 bottom-20 sm:bottom-24 md:bottom-8 z-40 flex flex-col items-end gap-2.5 sm:gap-3 pointer-events-auto no-print">
         
         {/* Direct Call Button (Top of Stack: Phone Dialer Green) */}
         <a

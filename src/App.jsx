@@ -66,7 +66,7 @@ const PublicLayout = ({ children }) => {
   return (
     <div className="flex flex-col min-h-screen">
       <Navbar />
-      <main className={`flex-1 ${!isHomePage ? 'pt-24 sm:pt-28' : ''}`}>
+      <main className={`flex-1 ${!isHomePage ? 'pt-24 sm:pt-28' : ''} pb-20 sm:pb-24 md:pb-0`}>
         {children}
       </main>
       <Footer />

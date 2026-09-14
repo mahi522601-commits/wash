@@ -855,36 +855,38 @@ export const BookPickupPage = () => {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Step Indicator Progress Bar */}
-        <div className="mb-8 bg-white p-3 sm:p-4 rounded-2xl border border-slate-200 shadow-xs overflow-x-auto">
-          <div className="flex items-center justify-between min-w-[480px]">
+        <div className="mb-6 sm:mb-8 bg-white p-2.5 sm:p-4 rounded-2xl border border-slate-200 shadow-xs">
+          <div className="flex items-center justify-between w-full">
             {STEPS.map((step) => {
               const isPast = currentStep > step.id;
               const isCurrent = currentStep === step.id;
-              const Icon = step.icon;
 
               return (
-                <div key={step.id} className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => isPast && setCurrentStep(step.id)}
-                    disabled={!isPast && !isCurrent}
-                    className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold transition-all ${
-                      isPast
-                        ? 'bg-emerald-500 text-white shadow-xs cursor-pointer'
-                        : isCurrent
-                        ? 'bg-brand-600 text-white shadow-md shadow-brand-500/25 ring-4 ring-brand-100'
-                        : 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                    }`}
-                  >
-                    {isPast ? <Check className="w-4 h-4" /> : step.id}
-                  </button>
-                  <span className={`text-xs font-bold tracking-wide ${isCurrent ? 'text-slate-900 font-bold' : isPast ? 'text-slate-700 cursor-pointer' : 'text-slate-400'}`}>
-                    {step.label}
-                  </span>
+                <React.Fragment key={step.id}>
+                  <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => isPast && setCurrentStep(step.id)}
+                      disabled={!isPast && !isCurrent}
+                      className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center text-[11px] sm:text-xs font-bold transition-all ${
+                        isPast
+                          ? 'bg-emerald-500 text-white shadow-xs cursor-pointer'
+                          : isCurrent
+                          ? 'bg-brand-600 text-white shadow-md shadow-brand-500/25 ring-2 sm:ring-4 ring-brand-100'
+                          : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                      }`}
+                    >
+                      {isPast ? <Check className="w-3.5 h-3.5" /> : step.id}
+                    </button>
+                    <span className={`text-[10px] sm:text-xs font-bold tracking-wide ${isCurrent ? 'text-slate-900 font-bold' : isPast ? 'text-slate-700 cursor-pointer' : 'text-slate-400'}`}>
+                      <span className="hidden sm:inline">{step.label}</span>
+                      <span className="sm:hidden">{step.shortLabel}</span>
+                    </span>
+                  </div>
                   {step.id < STEPS.length && (
-                    <div className={`w-8 sm:w-16 h-0.5 mx-1 ${isPast ? 'bg-emerald-400' : 'bg-slate-200'}`} />
+                    <div className={`flex-1 h-0.5 mx-1 sm:mx-2 min-w-[8px] ${isPast ? 'bg-emerald-400' : 'bg-slate-200'}`} />
                   )}
-                </div>
+                </React.Fragment>
               );
             })}
           </div>

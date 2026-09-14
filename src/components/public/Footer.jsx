@@ -33,10 +33,13 @@ export const Footer = () => {
   ];
 
   const serviceCategories = [
-    { label: 'Laundry', path: '/services/laundry' },
-    { label: 'Steam Iron', path: '/services/steam-iron' },
-    { label: 'Stains Remover', path: '/services/stains-remover' },
     { label: 'Dry Cleaning', path: '/services/dry-cleaning' },
+    { label: 'Steam Ironing', path: '/services/ironing' },
+    { label: 'Wash & Iron (Per-Kg)', path: '/services/wash-and-iron' },
+    { label: 'Wash & Fold (Per-Kg)', path: '/services/wash-and-fold' },
+    { label: 'Saree Rolling & Polishing', path: '/services/saree-rolling' },
+    { label: 'Sneaker & Shoe Care', path: '/services/shoe-washing' },
+    { label: 'Curtain & Carpet Care', path: '/services/curtain-washing' },
   ];
 
   return (

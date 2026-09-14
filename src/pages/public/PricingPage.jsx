@@ -885,8 +885,8 @@ export const PricingPage = () => {
           </div>
 
           {/* Right: Sticky Live Price Calculator / Estimate Basket */}
-          <div className="lg:col-span-4 sticky top-24 space-y-4">
-            <Card variant="luxury" className="p-6 bg-white border border-brand-200 shadow-luxury space-y-5">
+          <div id="pricing-calculator-card" className="lg:col-span-4 sticky top-24 space-y-4">
+            <Card variant="luxury" className="p-5 sm:p-6 bg-white border border-brand-200 shadow-luxury space-y-5">
               
               <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                 <div className="flex items-center gap-2">
@@ -901,7 +901,7 @@ export const PricingPage = () => {
                   </div>
                 </div>
                 <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-mono">
-                  {basket.length} {basket.length === 1 ? 'item' : 'items'}
+                  {basket.reduce((acc, i) => acc + i.quantity, 0)} {basket.length === 1 ? 'item' : 'items'}
                 </span>
               </div>
 
@@ -1011,6 +1011,40 @@ export const PricingPage = () => {
           </div>
 
         </div>
+
+        {/* Floating Mobile Estimate Quick Bar (Visible only on mobile/tablet when items in basket) */}
+        {basket.length > 0 && (
+          <div className="lg:hidden fixed bottom-16 sm:bottom-20 inset-x-3 sm:inset-x-6 z-30 animate-fade-in no-print">
+            <div className="p-3 rounded-2xl bg-[#1F2937] text-white border-2 border-[#FED7AA] shadow-[0_15px_40px_rgba(0,0,0,0.3)] flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => document.getElementById('pricing-calculator-card')?.scrollIntoView({ behavior: 'smooth' })}
+                className="flex items-center gap-2 text-left"
+              >
+                <div className="w-9 h-9 rounded-xl bg-[#F97316] flex items-center justify-center font-bold text-white shadow-xs">
+                  <ShoppingCart className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-white">
+                    {basket.reduce((acc, i) => acc + i.quantity, 0)} Items Added
+                  </div>
+                  <div className="text-[11px] font-mono font-black text-[#FED7AA]">
+                    Est. {formatCurrency(finalTotal)}
+                  </div>
+                </div>
+              </button>
+
+              <Button
+                variant="primary"
+                size="sm"
+                className="rounded-xl text-xs font-bold shrink-0"
+                onClick={handleProceedToBooking}
+              >
+                Book Now →
+              </Button>
+            </div>
+          </div>
+        )}
 
       </div>
     </div>
