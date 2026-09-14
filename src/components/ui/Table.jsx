@@ -26,9 +26,9 @@ export const Table = ({
   }
 
   return (
-    <div className={`w-full overflow-hidden bg-white rounded-2xl border border-slate-200/80 shadow-sm ${className}`}>
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm text-slate-700">
+    <div className={`w-full overflow-hidden bg-white rounded-3xl border border-slate-200/80 shadow-xs ${className}`}>
+      <div className="overflow-x-auto scrollbar-none">
+        <table className="w-full min-w-[900px] text-left text-sm text-slate-700">
           <thead className="bg-slate-50 text-xs uppercase font-semibold text-slate-500 border-b border-slate-200/80 tracking-wider">
             <tr>
               {columns.map((col, idx) => (
