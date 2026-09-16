@@ -7,6 +7,8 @@ import { paymentService, PAYMENT_METHODS } from '../../services/paymentService';
 import { UpiPaymentCard } from '../../components/payment/UpiPaymentCard';
 import { UpiAppLogosRow } from '../../components/payment/UpiLogos';
 import { playOrderPlacedSound } from '../../utils/audioNotification';
+import { whatsappNotificationService } from '../../services/whatsappNotificationService';
+import { WhatsAppLogo } from '../../components/ui/BrandIcons';
 import { analyticsService } from '../../services/analyticsService';
 import { useToast } from '../../context/ToastContext';
 import { useSettings } from '../../context/SettingsContext';
@@ -734,6 +736,9 @@ export const BookPickupPage = () => {
       // Play custom order confirmation chime from /1.mp4
       playOrderPlacedSound();
 
+      // Automatically dispatch rich WhatsApp order confirmation to customer's WhatsApp number
+      whatsappNotificationService.sendCustomerWhatsAppOrderConfirmation(created, { autoOpen: true });
+
       try {
         confetti({
           particleCount: 130,
@@ -745,7 +750,7 @@ export const BookPickupPage = () => {
 
       setConfirmedOrder(created);
       analyticsService.trackEvent('booking_submit', { orderId: created.id, value: orderBreakdown.finalTotal });
-      success('Booking Confirmed!', `Order ${created.orderNumber} placed successfully.`);
+      success('Booking Confirmed!', `Order ${created.orderNumber} placed & details sent to your WhatsApp.`);
     } catch (err) {
       error('Booking Error', err.message || 'Failed to place booking.');
     } finally {
@@ -777,13 +782,59 @@ export const BookPickupPage = () => {
               </p>
             </div>
 
+            {/* 1. WHATSAPP AUTO-DISPATCH CONFIRMATION CARD */}
+            <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 border-2 border-emerald-300 text-left space-y-3 shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-[#25D366] text-white flex items-center justify-center shrink-0 shadow-md">
+                    <WhatsAppLogo className="w-6 h-6 fill-current text-white" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-black text-emerald-950 uppercase tracking-wide">
+                        WhatsApp Details Sent
+                      </span>
+                      <span className="flex h-2 w-2 relative">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-emerald-800 mt-0.5">
+                      Sent to <strong className="text-emerald-950">+91 {confirmedOrder.customer.whatsapp || confirmedOrder.customer.phone}</strong>
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => whatsappNotificationService.sendCustomerWhatsAppOrderConfirmation(confirmedOrder, { autoOpen: true })}
+                  className="py-2 px-4 rounded-xl bg-[#25D366] hover:bg-[#1EBE5D] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-transform active:scale-95 shrink-0"
+                >
+                  <WhatsAppLogo className="w-4 h-4 fill-current text-white" />
+                  <span>Open WhatsApp</span>
+                </button>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-white/90 border border-emerald-200 text-[11px] text-slate-700 space-y-1 font-mono leading-relaxed">
+                <div className="flex justify-between font-bold text-emerald-900 border-b border-emerald-100 pb-1">
+                  <span>Tracking ID: #{confirmedOrder.orderNumber}</span>
+                  <span>{confirmedOrder.serviceEmoji} {confirmedOrder.serviceName}</span>
+                </div>
+                <div className="text-[10px] text-slate-500 pt-0.5">
+                  ✓ Schedule: {confirmedOrder.schedule.pickupDate} ({confirmedOrder.schedule.pickupSlot})<br />
+                  ✓ Doorstep Address: {confirmedOrder.customer.address}<br />
+                  ✓ Total Tariff: {confirmedOrder.priceSnapshot.hasUnpricedItems && confirmedOrder.priceSnapshot.itemsSubtotal === 0 ? 'To be verified at doorstep' : formatCurrency(confirmedOrder.priceSnapshot.finalTotal)}
+                </div>
+              </div>
+            </div>
+
             {/* Approximate Weight & Confirmation Notice */}
             <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-left text-xs text-amber-900 flex items-start gap-3">
               <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
               <div>
-                <strong>WhatsApp Order Confirmation & Actual Weight:</strong>
+                <strong>Doorstep Inspection & Live Tracking:</strong>
                 <p className="mt-0.5 text-amber-800 text-[11px] leading-relaxed">
-                  Our pickup executive will inspect your clothes & weight at doorstep and immediately update the final details to your WhatsApp at <span className="font-bold text-amber-950">{confirmedOrder.customer.whatsapp || confirmedOrder.customer.phone}</span>.
+                  Our pickup executive will verify garment count & weight at your doorstep. You will continue to receive live status alerts on your WhatsApp!
                 </p>
               </div>
             </div>
@@ -840,6 +891,7 @@ export const BookPickupPage = () => {
                 </Button>
               </Link>
             </div>
+
 
           </Card>
         </div>

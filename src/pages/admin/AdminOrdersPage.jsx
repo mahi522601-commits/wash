@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { orderService, ORDER_CUSTOMER_STAGES, INTERNAL_OPERATIONAL_STAGES } from '../../services/orderService';
 import { staffService } from '../../services/staffService';
 import { auditService } from '../../services/auditService';
+import { whatsappNotificationService } from '../../services/whatsappNotificationService';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { formatCurrency, formatDate, formatDateTime } from '../../utils/formatters';
@@ -216,19 +217,20 @@ export const AdminOrdersPage = () => {
       error('No Phone', 'No customer phone number available.');
       return;
     }
-    const cleanPhone = phone.replace(/\D/g, '').slice(-10);
-    const stageLabel = ORDER_CUSTOMER_STAGES.find(s => s.key === (ord.customerStage || ord.status))?.label || ord.customerStage || 'Updated';
-    const amount = ord.finalPrice || ord.priceSnapshot?.finalTotal || ord.totalAmount || 0;
-    
-    const message = `Hello ${ord.customerName || ord.customer?.name || 'Customer'},\n\n` +
-      `Your Tech Wash Laundry order *#${ord.orderNumber}* for *${ord.service || ord.serviceName}* is currently: *${stageLabel}*.\n` +
-      (ord.actualWeight ? `⚖️ Actual Weight: ${ord.actualWeight} Kg\n` : '') +
-      `💰 Amount: ₹${amount}\n\n` +
-      `You can track your order live anytime on our portal.\n\nThank you for choosing Tech Wash Laundry Services!`;
 
-    const waUrl = `https://wa.me/91${cleanPhone}?text=${encodeURIComponent(message)}`;
-    window.open(waUrl, '_blank');
+    const stageLabel = ORDER_CUSTOMER_STAGES.find(s => s.key === (ord.customerStage || ord.status))?.label || ord.customerStage || 'Updated';
+    const isInitialConfirmation = (ord.customerStage || ord.status) === 'CONFIRMED';
+
+    whatsappNotificationService.sendCustomerWhatsAppOrderConfirmation(ord, {
+      autoOpen: true,
+      isStatusUpdate: !isInitialConfirmation,
+      stageLabel,
+      note: ord.statusTimeline?.[ord.statusTimeline.length - 1]?.note || ''
+    });
+
+    success('WhatsApp Notification Dispatched', `Sent order details to +91 ${phone}`);
   };
+
 
   const handleOpenGoogleMaps = (ord) => {
     const lat = ord.pickupLocation?.latitude || 17.385044;
