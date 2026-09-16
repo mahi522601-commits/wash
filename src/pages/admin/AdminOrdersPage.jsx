@@ -222,7 +222,7 @@ export const AdminOrdersPage = () => {
     });
   }, []);
 
-  const handleSendWhatsAppUpdate = async (ord) => {
+  const handleSendWhatsAppUpdate = (ord) => {
     const phone = ord.whatsapp || ord.phone || ord.customer?.whatsapp || ord.customer?.phone;
     if (!phone) {
       error('No Phone', 'No customer phone number available.');
@@ -231,16 +231,22 @@ export const AdminOrdersPage = () => {
 
     const stageLabel = ORDER_CUSTOMER_STAGES.find(s => s.key === (ord.customerStage || ord.status))?.label || ord.customerStage || 'Updated';
     const isInitialConfirmation = (ord.customerStage || ord.status) === 'CONFIRMED';
+    const msg = isInitialConfirmation
+      ? whatsappNotificationService.buildOrderConfirmationMessage(ord)
+      : whatsappNotificationService.buildStatusUpdateMessage(ord, stageLabel, ord.statusTimeline?.[ord.statusTimeline.length - 1]?.note || '');
 
-    whatsappNotificationService.sendCustomerWhatsAppOrderConfirmation(ord, {
-      autoOpen: false,
-      isStatusUpdate: !isInitialConfirmation,
-      stageLabel,
-      note: ord.statusTimeline?.[ord.statusTimeline.length - 1]?.note || ''
-    });
+    whatsappNotificationService.openWhatsAppManual(phone, msg);
+    success('WhatsApp Opened', `Opening WhatsApp for +91 ${phone}`);
+  };
 
-    success('WhatsApp Notification Dispatched', `Automated details sent in background to +91 ${phone}`);
-    loadOrders();
+  const handleWhatsAppToWorker = (ord, staffMember) => {
+    if (!staffMember?.phone) {
+      error('No Rider Phone', 'This delivery worker does not have a phone number on file.');
+      return;
+    }
+    const msg = whatsappNotificationService.buildWorkerAssignmentMessage(ord, staffMember);
+    whatsappNotificationService.openWhatsAppManual(staffMember.phone, msg);
+    success('WhatsApp Opened for Rider', `Sending dispatch order details to ${staffMember.name} (+91 ${staffMember.phone})`);
   };
 
   const handleSaveGateway = async (e) => {
@@ -919,16 +925,27 @@ export const AdminOrdersPage = () => {
                           </div>
                         </div>
 
-                        <Button
-                          type="button"
-                          variant={isCurrentAssigned ? 'outline' : 'primary'}
-                          size="sm"
-                          isLoading={isDispatching}
-                          onClick={() => handleAssignWorker(assignModalOrder, st)}
-                          className="shrink-0 text-xs"
-                        >
-                          {isCurrentAssigned ? 'Re-Dispatch' : '⚡ Dispatch'}
-                        </Button>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => handleWhatsAppToWorker(assignModalOrder, st)}
+                            title={`Send WhatsApp task alert to ${st.name}`}
+                            className="w-8 h-8 rounded-xl bg-[#25D366] hover:bg-[#20bd5a] text-white flex items-center justify-center shadow-xs active:scale-95 transition-all"
+                          >
+                            <MessageSquare className="w-4 h-4" />
+                          </button>
+
+                          <Button
+                            type="button"
+                            variant={isCurrentAssigned ? 'outline' : 'primary'}
+                            size="sm"
+                            isLoading={isDispatching}
+                            onClick={() => handleAssignWorker(assignModalOrder, st)}
+                            className="text-xs"
+                          >
+                            {isCurrentAssigned ? 'Re-Dispatch' : '⚡ Dispatch'}
+                          </Button>
+                        </div>
                       </div>
                     );
                   })}

@@ -782,24 +782,56 @@ export const BookPickupPage = () => {
               </p>
             </div>
 
-            {/* 1. AUTOMATIC WHATSAPP DISPATCH CONFIRMATION CARD */}
-            <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 border-2 border-emerald-300 text-left space-y-3 shadow-sm">
-              <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-2xl bg-[#25D366] text-white flex items-center justify-center shrink-0 shadow-md">
-                  <WhatsAppLogo className="w-6 h-6 fill-current text-white" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-black text-emerald-950 uppercase tracking-wide">
-                      Automated WhatsApp Confirmation Dispatched
-                    </span>
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                      ✓ Sent Live
-                    </span>
+            {/* 1. WHATSAPP CONFIRMATION CARD (1-CLICK MANUAL SEND & RECEIPT) */}
+            <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 border-2 border-emerald-300 text-left space-y-4 shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-2xl bg-[#25D366] text-white flex items-center justify-center shrink-0 shadow-md">
+                    <WhatsAppLogo className="w-6 h-6 fill-current text-white" />
                   </div>
-                  <p className="text-xs text-emerald-800 mt-0.5">
-                    Order receipt & live tracker delivered automatically to <strong className="text-emerald-950">+91 {confirmedOrder.customer.whatsapp || confirmedOrder.customer.phone}</strong>
-                  </p>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-black text-emerald-950 uppercase tracking-wide">
+                        WhatsApp Order Summary
+                      </span>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                        📱 +91 {confirmedOrder.customer.whatsapp || confirmedOrder.customer.phone}
+                      </span>
+                    </div>
+                    <p className="text-xs text-emerald-800 mt-0.5">
+                      Click below to send or save your complete booking details directly on WhatsApp:
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const msg = whatsappNotificationService.buildOrderConfirmationMessage(confirmedOrder);
+                      whatsappNotificationService.openWhatsAppManual(
+                        confirmedOrder.customer.whatsapp || confirmedOrder.customer.phone,
+                        msg
+                      );
+                    }}
+                    className="flex-1 sm:flex-none py-2.5 px-4 rounded-xl bg-[#25D366] hover:bg-[#1EBE5D] text-white font-black text-xs flex items-center justify-center gap-2 shadow-sm transition-transform active:scale-95 cursor-pointer"
+                  >
+                    <WhatsAppLogo className="w-4 h-4 fill-current text-white" />
+                    <span>Send to WhatsApp</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const msg = whatsappNotificationService.buildOrderConfirmationMessage(confirmedOrder);
+                      await whatsappNotificationService.copyMessageToClipboard(msg);
+                      success('Copied!', 'Order summary copied to clipboard.');
+                    }}
+                    className="py-2.5 px-3 rounded-xl bg-white hover:bg-emerald-100 text-emerald-900 border border-emerald-300 font-bold text-xs flex items-center justify-center gap-1.5 shadow-2xs transition-transform active:scale-95 cursor-pointer"
+                    title="Copy full order receipt text"
+                  >
+                    <span>📋 Copy</span>
+                  </button>
                 </div>
               </div>
 

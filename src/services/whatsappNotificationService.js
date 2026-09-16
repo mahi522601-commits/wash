@@ -170,7 +170,7 @@ export const whatsappNotificationService = {
     const message = 
 `✨ *TECH WASH LAUNDRY SERVICES* ✨
 _Next-Generation Premium Fabric Care & Couture Spa_
-────────────────────────────
+----------------------------------------
 👋 Hello *${customerName}*,
 
 🎉 *Your Doorstep Pickup is Scheduled Successfully!*
@@ -193,7 +193,7 @@ ${deliveryFee > 0 ? `• *Doorstep Logistics:* ₹${deliveryFee}\n` : '• *Door
 • *Payment Mode:* ${paymentMethodLabel}
 • *Payment Status:* ${paymentStatusBadge}
 
-────────────────────────────
+----------------------------------------
 🚚 *WHAT TO EXPECT NEXT?*
 1. Our verified pickup executive will arrive during your scheduled time window.
 2. Clothes will be weighed & inspected at your doorstep with sealed protective bags.
@@ -230,7 +230,7 @@ _Fresh clothes. Professional care. Thank you for choosing Tech Wash!_`;
 
     const message = 
 `✨ *TECH WASH LAUNDRY SERVICES* ✨
-────────────────────────────
+----------------------------------------
 👋 Hello *${customerName}*,
 
 🔔 *Status Update for Order #${orderNumber}*
@@ -245,6 +245,74 @@ ${customNote ? `📝 *Update Note:* ${customNote}\n` : ''}${actualWeight ? `⚖�
 📞 *Questions?* Reply to this WhatsApp or call +91 89777 69866.`;
 
     return message;
+  },
+
+  /**
+   * Build Worker Task Assignment WhatsApp message for dispatching to delivery riders
+   */
+  buildWorkerAssignmentMessage(order, staffMember) {
+    if (!order) return '';
+    const orderNumber = order.orderNumber || order.id;
+    const customerName = order.customerName || order.customer?.name || 'Customer';
+    const phone = order.whatsapp || order.phone || order.customer?.whatsapp || order.customer?.phone || 'N/A';
+    const address = order.address || order.customer?.address || 'On file';
+    const pickupDate = order.pickupDate || order.schedule?.pickupDate || 'Today';
+    const pickupSlot = order.pickupSlot || order.schedule?.pickupSlot || 'Immediate';
+    const service = order.service || order.serviceName || 'Laundry';
+
+    const lat = order.pickupLocation?.latitude;
+    const lng = order.pickupLocation?.longitude;
+    const mapsLink = (lat && lng) 
+      ? `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`
+      : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`;
+
+    return `🛵 *TECH WASH FIELD DISPATCH ALERT* 🛵
+----------------------------------------
+Hey *${staffMember?.name || 'Rider'}*, you have a new assigned task!
+
+📋 *ORDER DETAILS:*
+• *Order ID:* #${orderNumber}
+• *Service:* ${service}
+• *Pickup Time:* ${pickupDate} (${pickupSlot})
+
+👤 *CUSTOMER CONTACT:*
+• *Name:* ${customerName}
+• *Phone:* +91 ${phone}
+• *Pickup Address:* ${address}
+
+🗺️ *GPS NAVIGATION:*
+👉 ${mapsLink}
+
+📱 *WORKER PORTAL:*
+https://techwash.in/worker
+
+_Please arrive on time, inspect & weigh garments at customer doorstep._`;
+  },
+
+  /**
+   * 1-Click Manual WhatsApp Sender (Directly opens WhatsApp Web / Mobile app with clean text)
+   */
+  openWhatsAppManual(phone, message) {
+    if (typeof window === 'undefined') return;
+    const cleanPhone = this.formatWhatsAppNumber(phone);
+    const encoded = encodeURIComponent(message || '');
+    const url = cleanPhone ? `https://wa.me/${cleanPhone}?text=${encoded}` : `https://wa.me/?text=${encoded}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  },
+
+  /**
+   * Helper to copy message to clipboard
+   */
+  async copyMessageToClipboard(text) {
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch (e) {
+        return false;
+      }
+    }
+    return false;
   },
 
   /**

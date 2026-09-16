@@ -224,16 +224,15 @@ export const InteractiveBookingStepper = ({
           </p>
         </div>
 
-        {/* WhatsApp Notification Auto-Sent Strip */}
+        {/* WhatsApp Notification Manual Action Strip */}
         <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-300 text-left flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
             <div className="w-7 h-7 rounded-lg bg-[#25D366] text-white flex items-center justify-center shrink-0 shadow-sm">
               <WhatsAppLogo className="w-4 h-4 fill-current text-white" />
             </div>
             <div className="min-w-0">
-              <div className="text-[11px] font-bold text-emerald-950 truncate flex items-center gap-1">
-                <span>Details Sent to WhatsApp</span>
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+              <div className="text-[11px] font-bold text-emerald-950 truncate">
+                WhatsApp Order Details
               </div>
               <div className="text-[9px] text-emerald-800 font-mono truncate">
                 +91 {confirmedOrder.customer?.phone || customer.phone}
@@ -241,9 +240,20 @@ export const InteractiveBookingStepper = ({
             </div>
           </div>
 
-          <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0">
-            ✓ Auto-Sent
-          </span>
+          <button
+            type="button"
+            onClick={() => {
+              const msg = whatsappNotificationService.buildOrderConfirmationMessage(confirmedOrder);
+              whatsappNotificationService.openWhatsAppManual(
+                confirmedOrder.customer?.phone || customer.phone,
+                msg
+              );
+            }}
+            className="py-1 px-2.5 rounded-lg bg-[#25D366] hover:bg-[#1EBE5D] text-white font-black text-[10px] flex items-center gap-1 shrink-0 transition-transform active:scale-95 shadow-xs cursor-pointer"
+          >
+            <WhatsAppLogo className="w-3 h-3 fill-current text-white" />
+            <span>Send WhatsApp</span>
+          </button>
         </div>
 
         <div className="p-3 rounded-xl bg-white border border-[#FED7AA] text-left space-y-1 text-[11px]">
