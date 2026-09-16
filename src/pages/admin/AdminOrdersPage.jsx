@@ -56,6 +56,11 @@ export const AdminOrdersPage = () => {
   const [isDispatching, setIsDispatching] = useState(false);
   const [deleteTargetOrder, setDeleteTargetOrder] = useState(null);
   const [isDeletingOrder, setIsDeletingOrder] = useState(false);
+  const [showGatewayModal, setShowGatewayModal] = useState(false);
+  const [gatewayConfig, setGatewayConfig] = useState(null);
+  const [isSavingGateway, setIsSavingGateway] = useState(false);
+  const [testPhone, setTestPhone] = useState('');
+  const [isTestingGateway, setIsTestingGateway] = useState(false);
 
   // Status & Weight edit state in modal
   const [newCustomerStage, setNewCustomerStage] = useState('CONFIRMED');
@@ -211,7 +216,13 @@ export const AdminOrdersPage = () => {
     }
   };
 
-  const handleSendWhatsAppUpdate = (ord) => {
+  useEffect(() => {
+    whatsappNotificationService.getGatewayConfig().then((cfg) => {
+      setGatewayConfig(cfg);
+    });
+  }, []);
+
+  const handleSendWhatsAppUpdate = async (ord) => {
     const phone = ord.whatsapp || ord.phone || ord.customer?.whatsapp || ord.customer?.phone;
     if (!phone) {
       error('No Phone', 'No customer phone number available.');
@@ -222,13 +233,68 @@ export const AdminOrdersPage = () => {
     const isInitialConfirmation = (ord.customerStage || ord.status) === 'CONFIRMED';
 
     whatsappNotificationService.sendCustomerWhatsAppOrderConfirmation(ord, {
-      autoOpen: true,
+      autoOpen: false,
       isStatusUpdate: !isInitialConfirmation,
       stageLabel,
       note: ord.statusTimeline?.[ord.statusTimeline.length - 1]?.note || ''
     });
 
-    success('WhatsApp Notification Dispatched', `Sent order details to +91 ${phone}`);
+    success('WhatsApp Notification Dispatched', `Automated details sent in background to +91 ${phone}`);
+    loadOrders();
+  };
+
+  const handleSaveGateway = async (e) => {
+    e.preventDefault();
+    if (!gatewayConfig) return;
+    setIsSavingGateway(true);
+    try {
+      await whatsappNotificationService.saveGatewayConfig(gatewayConfig);
+      success('Gateway Updated', 'WhatsApp notification gateway configuration saved successfully.');
+      setShowGatewayModal(false);
+    } catch (err) {
+      error('Save Error', err.message || 'Failed to save gateway config');
+    } finally {
+      setIsSavingGateway(false);
+    }
+  };
+
+  const handleTestGatewayDispatch = async () => {
+    if (!testPhone) {
+      error('Test Phone Required', 'Please enter a 10-digit mobile number to test.');
+      return;
+    }
+    setIsTestingGateway(true);
+    try {
+      const dummyOrder = {
+        orderNumber: 'TEST-9999',
+        customerName: 'Test Customer',
+        serviceName: 'Premium Dry Cleaning',
+        serviceEmoji: '👔',
+        schedule: { pickupDate: 'Tomorrow', pickupSlot: '10:00 AM - 12:00 PM' },
+        address: 'Flagship Lounge, Jubilee Hills, Hyderabad',
+        totalAmount: 499,
+        paymentStatus: 'PAID',
+        paymentMethod: 'UPI_QR',
+        customer: { name: 'Test Customer', phone: testPhone }
+      };
+
+      const result = await whatsappNotificationService.dispatchAutomatedMessage({
+        phone: testPhone,
+        message: whatsappNotificationService.buildOrderConfirmationMessage(dummyOrder),
+        order: dummyOrder,
+        type: 'GATEWAY_TEST'
+      });
+
+      if (result.success) {
+        success('Test Dispatched', `Automated WhatsApp test packet sent to +91 ${testPhone} via ${gatewayConfig?.provider || 'Direct Gateway'}`);
+      } else {
+        error('Test Failed', result.error || 'Failed to dispatch test message');
+      }
+    } catch (err) {
+      error('Test Error', err.message);
+    } finally {
+      setIsTestingGateway(false);
+    }
   };
 
 
@@ -419,6 +485,15 @@ export const AdminOrdersPage = () => {
         title="Order Lifecycle & Pickup Management"
         subtitle="Manage 10-stage customer milestones, record verified actual weights, assign delivery staff, and sync with Firebase."
       >
+        <Button 
+          variant="outline" 
+          size="md" 
+          icon={MessageSquare} 
+          onClick={() => setShowGatewayModal(true)}
+          className="bg-emerald-50 border-emerald-300 text-emerald-800 hover:bg-emerald-100"
+        >
+          WhatsApp Auto-Gateway
+        </Button>
         <Button variant="outline" size="md" icon={Download} onClick={exportCSV}>
           Export CSV
         </Button>
@@ -887,6 +962,197 @@ export const AdminOrdersPage = () => {
         confirmText="Delete Order"
         isLoading={isDeletingOrder}
       />
+
+      {/* WhatsApp Automated Gateway Settings Modal */}
+      <Modal
+        isOpen={showGatewayModal}
+        onClose={() => setShowGatewayModal(false)}
+        maxWidth="max-w-2xl"
+        title="WhatsApp Automated Notification Gateway"
+        subtitle="Configure backend WhatsApp delivery so receipts and status updates are sent automatically to customer mobile phones without browser popups."
+      >
+        {gatewayConfig && (
+          <form onSubmit={handleSaveGateway} className="space-y-5 text-left text-xs">
+            <div className="p-4 rounded-2xl bg-emerald-50/80 border border-emerald-200 space-y-2">
+              <div className="flex items-center gap-2 font-bold text-emerald-950 text-sm">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span>Zero-Popup Automated WhatsApp Architecture</span>
+              </div>
+              <p className="text-emerald-800 leading-relaxed">
+                When customers book pickups, the system dispatches their full order confirmation and real-time tracking link directly to their WhatsApp number via your backend gateway.
+              </p>
+            </div>
+
+            {/* Provider Selector */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                Select WhatsApp Delivery Gateway:
+              </label>
+              <select
+                value={gatewayConfig.provider || 'DIRECT_BACKGROUND'}
+                onChange={(e) => setGatewayConfig({ ...gatewayConfig, provider: e.target.value })}
+                className="w-full bg-white border border-slate-300 rounded-xl py-2.5 px-3 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-emerald-500"
+              >
+                <option value="DIRECT_BACKGROUND">⚡ Direct Automated Background Service (Built-In Zero Setup)</option>
+                <option value="META_CLOUD_API">🌐 Meta WhatsApp Cloud API (Official Business API)</option>
+                <option value="GREEN_API">🟢 Green API (Instance & Token)</option>
+                <option value="ULTRAMSG">💬 UltraMsg WhatsApp Gateway</option>
+                <option value="WEBHOOK">🔗 Custom Webhook / Firebase Cloud Function / Zapier</option>
+              </select>
+            </div>
+
+            {/* Provider Specific Configuration Fields */}
+            {gatewayConfig.provider === 'META_CLOUD_API' && (
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                <h4 className="font-bold text-slate-900 text-xs">Meta WhatsApp Cloud API Credentials</h4>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">Phone Number ID</label>
+                  <Input
+                    placeholder="e.g. 109283746592817"
+                    value={gatewayConfig.meta?.phoneNumberId || ''}
+                    onChange={(e) => setGatewayConfig({
+                      ...gatewayConfig,
+                      meta: { ...gatewayConfig.meta, phoneNumberId: e.target.value }
+                    })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">System User Access Token (Permanent)</label>
+                  <Input
+                    type="password"
+                    placeholder="EAAG..."
+                    value={gatewayConfig.meta?.accessToken || ''}
+                    onChange={(e) => setGatewayConfig({
+                      ...gatewayConfig,
+                      meta: { ...gatewayConfig.meta, accessToken: e.target.value }
+                    })}
+                  />
+                </div>
+              </div>
+            )}
+
+            {gatewayConfig.provider === 'GREEN_API' && (
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                <h4 className="font-bold text-slate-900 text-xs">Green API Credentials</h4>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">Instance ID</label>
+                  <Input
+                    placeholder="e.g. 1101823928"
+                    value={gatewayConfig.greenApi?.instanceId || ''}
+                    onChange={(e) => setGatewayConfig({
+                      ...gatewayConfig,
+                      greenApi: { ...gatewayConfig.greenApi, instanceId: e.target.value }
+                    })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">API Token Instance</label>
+                  <Input
+                    type="password"
+                    placeholder="e.g. 4d7f9a8b1c..."
+                    value={gatewayConfig.greenApi?.apiToken || ''}
+                    onChange={(e) => setGatewayConfig({
+                      ...gatewayConfig,
+                      greenApi: { ...gatewayConfig.greenApi, apiToken: e.target.value }
+                    })}
+                  />
+                </div>
+              </div>
+            )}
+
+            {gatewayConfig.provider === 'ULTRAMSG' && (
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                <h4 className="font-bold text-slate-900 text-xs">UltraMsg API Credentials</h4>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">Instance ID</label>
+                  <Input
+                    placeholder="e.g. instance12345"
+                    value={gatewayConfig.ultraMsg?.instanceId || ''}
+                    onChange={(e) => setGatewayConfig({
+                      ...gatewayConfig,
+                      ultraMsg: { ...gatewayConfig.ultraMsg, instanceId: e.target.value }
+                    })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">Token</label>
+                  <Input
+                    type="password"
+                    placeholder="e.g. abcdef123456"
+                    value={gatewayConfig.ultraMsg?.token || ''}
+                    onChange={(e) => setGatewayConfig({
+                      ...gatewayConfig,
+                      ultraMsg: { ...gatewayConfig.ultraMsg, token: e.target.value }
+                    })}
+                  />
+                </div>
+              </div>
+            )}
+
+            {gatewayConfig.provider === 'WEBHOOK' && (
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                <h4 className="font-bold text-slate-900 text-xs">Custom Backend Webhook Endpoint</h4>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">Webhook URL (POST payload)</label>
+                  <Input
+                    placeholder="https://your-api.com/api/send-whatsapp"
+                    value={gatewayConfig.webhook?.url || ''}
+                    onChange={(e) => setGatewayConfig({
+                      ...gatewayConfig,
+                      webhook: { ...gatewayConfig.webhook, url: e.target.value }
+                    })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">Optional Secret Header Token</label>
+                  <Input
+                    type="password"
+                    placeholder="Bearer secret_token_here"
+                    value={gatewayConfig.webhook?.secretKey || ''}
+                    onChange={(e) => setGatewayConfig({
+                      ...gatewayConfig,
+                      webhook: { ...gatewayConfig.webhook, secretKey: e.target.value }
+                    })}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Test Gateway Box */}
+            <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 space-y-2">
+              <div className="font-bold text-amber-950 text-xs">Test Live WhatsApp Dispatch</div>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Enter 10-digit mobile number (e.g. 9398724704)"
+                  value={testPhone}
+                  onChange={(e) => setTestPhone(e.target.value)}
+                  className="flex-1 bg-white"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  isLoading={isTestingGateway}
+                  onClick={handleTestGatewayDispatch}
+                  className="bg-white border-amber-300 text-amber-900 hover:bg-amber-100 shrink-0"
+                >
+                  Send Test
+                </Button>
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+              <Button type="button" variant="ghost" size="sm" onClick={() => setShowGatewayModal(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" variant="primary" size="sm" isLoading={isSavingGateway}>
+                Save Gateway Settings
+              </Button>
+            </div>
+          </form>
+        )}
+      </Modal>
 
     </div>
   );

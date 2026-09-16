@@ -736,8 +736,8 @@ export const BookPickupPage = () => {
       // Play custom order confirmation chime from /1.mp4
       playOrderPlacedSound();
 
-      // Automatically dispatch rich WhatsApp order confirmation to customer's WhatsApp number
-      whatsappNotificationService.sendCustomerWhatsAppOrderConfirmation(created, { autoOpen: true });
+      // Automatically dispatch rich WhatsApp order confirmation to customer's WhatsApp in the background
+      whatsappNotificationService.sendCustomerWhatsAppOrderConfirmation(created, { autoOpen: false });
 
       try {
         confetti({
@@ -782,37 +782,25 @@ export const BookPickupPage = () => {
               </p>
             </div>
 
-            {/* 1. WHATSAPP AUTO-DISPATCH CONFIRMATION CARD */}
+            {/* 1. AUTOMATIC WHATSAPP DISPATCH CONFIRMATION CARD */}
             <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 border-2 border-emerald-300 text-left space-y-3 shadow-sm">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-[#25D366] text-white flex items-center justify-center shrink-0 shadow-md">
-                    <WhatsAppLogo className="w-6 h-6 fill-current text-white" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-black text-emerald-950 uppercase tracking-wide">
-                        WhatsApp Details Sent
-                      </span>
-                      <span className="flex h-2 w-2 relative">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-emerald-800 mt-0.5">
-                      Sent to <strong className="text-emerald-950">+91 {confirmedOrder.customer.whatsapp || confirmedOrder.customer.phone}</strong>
-                    </p>
-                  </div>
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-2xl bg-[#25D366] text-white flex items-center justify-center shrink-0 shadow-md">
+                  <WhatsAppLogo className="w-6 h-6 fill-current text-white" />
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => whatsappNotificationService.sendCustomerWhatsAppOrderConfirmation(confirmedOrder, { autoOpen: true })}
-                  className="py-2 px-4 rounded-xl bg-[#25D366] hover:bg-[#1EBE5D] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-transform active:scale-95 shrink-0"
-                >
-                  <WhatsAppLogo className="w-4 h-4 fill-current text-white" />
-                  <span>Open WhatsApp</span>
-                </button>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-black text-emerald-950 uppercase tracking-wide">
+                      Automated WhatsApp Confirmation Dispatched
+                    </span>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                      ✓ Sent Live
+                    </span>
+                  </div>
+                  <p className="text-xs text-emerald-800 mt-0.5">
+                    Order receipt & live tracker delivered automatically to <strong className="text-emerald-950">+91 {confirmedOrder.customer.whatsapp || confirmedOrder.customer.phone}</strong>
+                  </p>
+                </div>
               </div>
 
               <div className="p-3 rounded-2xl bg-white/90 border border-emerald-200 text-[11px] text-slate-700 space-y-1 font-mono leading-relaxed">

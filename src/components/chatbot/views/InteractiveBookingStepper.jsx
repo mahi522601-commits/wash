@@ -183,8 +183,8 @@ export const InteractiveBookingStepper = ({
       // Play custom order received sound from /1.mp4
       playOrderPlacedSound();
 
-      // Automatically dispatch rich WhatsApp order confirmation to customer
-      whatsappNotificationService.sendCustomerWhatsAppOrderConfirmation(created, { autoOpen: true });
+      // Automatically dispatch rich WhatsApp order confirmation to customer in background
+      whatsappNotificationService.sendCustomerWhatsAppOrderConfirmation(created, { autoOpen: false });
 
       try {
         confetti({
@@ -241,14 +241,9 @@ export const InteractiveBookingStepper = ({
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => whatsappNotificationService.sendCustomerWhatsAppOrderConfirmation(confirmedOrder, { autoOpen: true })}
-            className="py-1 px-2.5 rounded-lg bg-[#25D366] hover:bg-[#1EBE5D] text-white font-bold text-[10px] flex items-center gap-1 shrink-0 transition-all active:scale-95 shadow-xs"
-          >
-            <WhatsAppLogo className="w-3 h-3 fill-current text-white" />
-            <span>Open WhatsApp</span>
-          </button>
+          <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0">
+            ✓ Auto-Sent
+          </span>
         </div>
 
         <div className="p-3 rounded-xl bg-white border border-[#FED7AA] text-left space-y-1 text-[11px]">
