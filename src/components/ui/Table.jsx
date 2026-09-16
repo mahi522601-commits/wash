@@ -1,4 +1,5 @@
 import React from 'react';
+import { AdvancedLogoLoader } from '../common/AdvancedLogoLoader';
 
 export const Table = ({
   columns = [],
@@ -10,9 +11,8 @@ export const Table = ({
 }) => {
   if (isLoading) {
     return (
-      <div className="w-full bg-white rounded-2xl border border-slate-200 p-8 flex flex-col items-center justify-center gap-3">
-        <div className="w-8 h-8 border-3 border-brand-600 border-t-transparent rounded-full animate-spin" />
-        <span className="text-xs text-slate-500 font-medium">Loading data...</span>
+      <div className="w-full bg-white rounded-2xl border border-slate-200 p-12 flex flex-col items-center justify-center">
+        <AdvancedLogoLoader size="sm" text="Loading records..." />
       </div>
     );
   }

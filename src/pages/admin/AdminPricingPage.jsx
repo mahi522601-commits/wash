@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { formatCurrency } from '../../utils/formatters';
 import { AdminPageHeader } from '../../components/admin/AdminPageHeader';
+import { AdvancedLogoLoader } from '../../components/common/AdvancedLogoLoader';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
@@ -210,9 +211,8 @@ export const AdminPricingPage = () => {
 
   if (loading) {
     return (
-      <div className="py-12 text-center text-slate-500">
-        <div className="w-8 h-8 border-3 border-brand-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-        <p className="text-xs font-bold uppercase tracking-wider">Loading Rates from Firebase...</p>
+      <div className="py-20 flex justify-center items-center">
+        <AdvancedLogoLoader size="md" text="Loading Rates from Firebase..." subtext="Syncing current wash, dry cleaning & express tariffs" />
       </div>
     );
   }

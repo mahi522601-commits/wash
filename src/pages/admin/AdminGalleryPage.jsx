@@ -4,6 +4,7 @@ import { auditService } from '../../services/auditService';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { AdminPageHeader } from '../../components/admin/AdminPageHeader';
+import { AdvancedLogoLoader } from '../../components/common/AdvancedLogoLoader';
 import { Button } from '../../components/ui/Button';
 import { Input, Textarea } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
@@ -329,9 +330,8 @@ export const AdminGalleryPage = () => {
 
       {/* 4. TRANSFORMATIONS TABLE / GRID */}
       {loading ? (
-        <div className="p-12 text-center bg-white rounded-2xl border border-slate-200">
-          <div className="w-8 h-8 border-3 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-xs text-slate-500 font-medium">Loading gallery items...</p>
+        <div className="p-16 flex justify-center items-center bg-white rounded-2xl border border-slate-200">
+          <AdvancedLogoLoader size="md" text="Loading gallery items..." subtext="Fetching before & after transformations from Firebase" />
         </div>
       ) : filteredItems.length === 0 ? (
         <div className="p-12 text-center bg-white rounded-2xl border border-slate-200 space-y-3">

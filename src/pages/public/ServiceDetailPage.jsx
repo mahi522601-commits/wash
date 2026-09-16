@@ -6,6 +6,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Card } from '../../components/ui/Card';
 import { YouTubeEmbed } from '../../components/ui/YouTubeEmbed';
 import { formatCurrency } from '../../utils/formatters';
+import { AdvancedLogoLoader } from '../../components/common/AdvancedLogoLoader';
 import { 
   Sparkles, 
   Calendar, 
@@ -141,12 +142,13 @@ export const ServiceDetailPage = () => {
 
   if (loading) {
     return (
-      <div className="py-32 text-center min-h-[70vh] flex flex-col items-center justify-center bg-slate-50">
-        <div className="relative w-14 h-14">
-          <div className="w-14 h-14 rounded-full border-4 border-orange-200 border-t-[#F97316] animate-spin" />
-          <Sparkles className="w-6 h-6 text-[#F97316] absolute inset-0 m-auto animate-pulse" />
-        </div>
-        <p className="text-sm text-slate-600 font-bold mt-4">Calibrating garment care process...</p>
+      <div className="py-24 text-center min-h-[70vh] flex flex-col items-center justify-center bg-slate-50 p-4">
+        <AdvancedLogoLoader
+          size="lg"
+          text="Calibrating Garment Care Process..."
+          subtext="Loading European Eco-Solvent & 3D Steam Specifications"
+          showDynamicStages={true}
+        />
       </div>
     );
   }

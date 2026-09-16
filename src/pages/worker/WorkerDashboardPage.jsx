@@ -4,6 +4,7 @@ import { useToast } from '../../context/ToastContext';
 import { orderService, ORDER_CUSTOMER_STAGES } from '../../services/orderService';
 import { formatCurrency, formatDate, formatDateTime } from '../../utils/formatters';
 import { testOrderPlacedSound } from '../../utils/audioNotification';
+import { AdvancedLogoLoader } from '../../components/common/AdvancedLogoLoader';
 import confetti from 'canvas-confetti';
 import { 
   Bike, 
@@ -514,11 +515,8 @@ export const WorkerDashboardPage = () => {
 
         {/* 5. TASK CARDS LIST */}
         {loading ? (
-          <div className="py-20 text-center space-y-3">
-            <div className="w-10 h-10 border-3 border-purple-500 border-t-cyan-400 rounded-full animate-spin mx-auto" />
-            <div className="text-xs text-slate-400 font-bold uppercase tracking-wider">
-              Loading your field dispatch queue...
-            </div>
+          <div className="py-20 flex justify-center items-center">
+            <AdvancedLogoLoader size="md" isDark={true} text="Syncing Dispatch Queue..." subtext="Connecting live to rider dispatch & GPS coordinates" />
           </div>
         ) : filteredOrders.length === 0 ? (
           <div className="py-16 text-center bg-[#14122E]/60 border border-purple-500/20 rounded-[32px] p-8 space-y-3">

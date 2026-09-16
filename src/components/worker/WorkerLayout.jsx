@@ -4,6 +4,7 @@ import { useWorkerAuth } from '../../context/WorkerAuthContext';
 import { useToast } from '../../context/ToastContext';
 import { orderService } from '../../services/orderService';
 import { playOrderPlacedSound, unlockAudioNotification } from '../../utils/audioNotification';
+import { AdvancedLogoLoader } from '../common/AdvancedLogoLoader';
 
 export const WorkerLayout = () => {
   const { currentWorker, isAuthenticated, loading } = useWorkerAuth();
@@ -50,8 +51,14 @@ export const WorkerLayout = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0A091A] flex items-center justify-center text-white">
-        <div className="w-10 h-10 border-3 border-purple-500 border-t-cyan-400 rounded-full animate-spin" />
+      <div className="min-h-screen bg-[#0A091A] flex items-center justify-center text-white p-4">
+        <AdvancedLogoLoader
+          size="lg"
+          text="Connecting Delivery Dispatch..."
+          subtext="Rider GPS & Task Queue Synchronization"
+          dark={true}
+          showDynamicStages={true}
+        />
       </div>
     );
   }

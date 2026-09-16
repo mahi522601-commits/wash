@@ -8,6 +8,7 @@ import { playOrderPlacedSound, unlockAudioNotification } from '../../utils/audio
 import { AdminSidebar } from './AdminSidebar';
 import { AdminHeader } from './AdminHeader';
 import { AdminCommandPalette } from './AdminCommandPalette';
+import { AdvancedLogoLoader } from '../common/AdvancedLogoLoader';
 
 const SIDEBAR_COLLAPSED_KEY = 'techwash_admin_sidebar_collapsed';
 
@@ -77,8 +78,14 @@ export const AdminLayout = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0B0A1C] flex items-center justify-center text-white">
-        <div className="w-10 h-10 border-3 border-purple-500 border-t-cyan-400 rounded-full animate-spin" />
+      <div className="min-h-screen bg-[#0B0A1C] flex items-center justify-center text-white p-4">
+        <AdvancedLogoLoader
+          size="lg"
+          text="Initializing Command Center..."
+          subtext="Authenticating Admin SaaS Workspace"
+          dark={true}
+          showDynamicStages={true}
+        />
       </div>
     );
   }

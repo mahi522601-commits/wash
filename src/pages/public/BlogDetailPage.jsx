@@ -5,6 +5,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { formatDate } from '../../utils/formatters';
 import { ArrowLeft, Clock, User, Calendar, Share2, Sparkles } from 'lucide-react';
+import { AdvancedLogoLoader } from '../../components/common/AdvancedLogoLoader';
 
 export const BlogDetailPage = () => {
   const { slug } = useParams();
@@ -19,9 +20,12 @@ export const BlogDetailPage = () => {
 
   if (loading) {
     return (
-      <div className="py-24 text-center">
-        <div className="w-10 h-10 border-3 border-brand-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-        <p className="text-xs text-slate-500 font-medium">Loading article...</p>
+      <div className="py-24 text-center min-h-[50vh] flex items-center justify-center">
+        <AdvancedLogoLoader
+          size="md"
+          text="Loading Article & Garment Care Guide..."
+          subtext="Tech Wash Knowledge Base"
+        />
       </div>
     );
   }
