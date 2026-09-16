@@ -67,9 +67,20 @@ export const AdminHeader = ({ onMenuToggle, onOpenSearch }) => {
   ]);
 
   const unreadCount = notifications.filter(n => !n.read).length;
+  const markAllAsRead = () => setNotifications(prev => prev.map(n => ({ ...n, read: true })));
 
-  // Sound notification state
+  // Sound notification state & live chime pulse
   const [soundEnabled, setSoundEnabled] = useState(() => isAudioNotificationEnabled());
+  const [isChiming, setIsChiming] = useState(false);
+
+  useEffect(() => {
+    const handleSoundPlayed = () => {
+      setIsChiming(true);
+      setTimeout(() => setIsChiming(false), 3500);
+    };
+    window.addEventListener('techwash-sound-played', handleSoundPlayed);
+    return () => window.removeEventListener('techwash-sound-played', handleSoundPlayed);
+  }, []);
 
   const handleToggleSound = () => {
     const next = !soundEnabled;
@@ -219,10 +230,20 @@ export const AdminHeader = ({ onMenuToggle, onOpenSearch }) => {
           <button
             type="button"
             onClick={() => setNotificationsOpen(!notificationsOpen)}
-            className="relative p-2 sm:p-2.5 rounded-2xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 transition-colors"
-            title="Notifications"
+            className={`relative p-2 sm:p-2.5 rounded-2xl border transition-all ${
+              isChiming 
+                ? 'bg-purple-600 text-white border-cyan-400 shadow-[0_0_20px_rgba(0,240,255,0.6)] animate-pulse' 
+                : 'bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border-white/10'
+            }`}
+            title="Notifications & Sound Chime"
           >
-            <Bell className="w-4 h-4" />
+            <Bell className={`w-4 h-4 ${isChiming ? 'animate-bounce text-cyan-300' : ''}`} />
+            {isChiming && (
+              <span className="absolute -top-1 -left-1 flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-cyan-500" />
+              </span>
+            )}
             {unreadCount > 0 && (
               <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#00F0FF] text-[#0F0D24] text-[9px] font-black flex items-center justify-center shadow-sm">
                 {unreadCount}

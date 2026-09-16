@@ -1,0 +1,57 @@
+{
+  "name": "Tech Wash Laundry Services",
+  "short_name": "Tech Wash",
+  "start_url": "/",
+  "id": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0A091A",
+  "theme_color": "#F97316",
+  "description": "Next-Gen Premium Laundry, Dry Cleaning, Steam Ironing & Shoe Care with 24/48h Doorstep Pickup & Delivery.",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["lifestyle", "shopping", "utilities"],
+  "icons": [
+    {
+      "src": "/techwashlogo.webp",
+      "sizes": "192x192",
+      "type": "image/webp",
+      "purpose": "any"
+    },
+    {
+      "src": "/techwashlogo.webp",
+      "sizes": "512x512",
+      "type": "image/webp",
+      "purpose": "any"
+    },
+    {
+      "src": "/techwashlogo.webp",
+      "sizes": "512x512",
+      "type": "image/webp",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Book Doorstep Pickup",
+      "short_name": "Book Pickup",
+      "description": "Schedule a hygienic garment pickup at your doorstep",
+      "url": "/book-pickup",
+      "icons": [{ "src": "/techwashlogo.webp", "sizes": "192x192" }]
+    },
+    {
+      "name": "Track Live Order",
+      "short_name": "Track Order",
+      "description": "Check real-time status of your laundry order",
+      "url": "/track-order",
+      "icons": [{ "src": "/techwashlogo.webp", "sizes": "192x192" }]
+    },
+    {
+      "name": "Worker & Rider Portal",
+      "short_name": "Worker Portal",
+      "description": "Field operations and delivery GPS hub",
+      "url": "/worker/login",
+      "icons": [{ "src": "/techwashlogo.webp", "sizes": "192x192" }]
+    }
+  ]
+}

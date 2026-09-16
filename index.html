@@ -2,11 +2,25 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/webp" href="/techwashlogo.webp" />
-    <link rel="apple-touch-icon" href="/techwashlogo.webp" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Tech Wash Laundry Services — Next-Gen Premium Garment Care</title>
     <meta name="description" content="Experience technology-driven premium laundry, dry cleaning, steam ironing & shoe care with hygienic doorstep pickup and express delivery." />
+    
+    <!-- PWA & Mobile App Manifest Configuration -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#F97316" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Tech Wash" />
+    <meta name="application-name" content="Tech Wash" />
+    <meta name="format-detection" content="telephone=no" />
+
+    <!-- Favicons & App Launcher Icons -->
+    <link rel="icon" type="image/webp" href="/techwashlogo.webp" />
+    <link rel="apple-touch-icon" href="/techwashlogo.webp" />
+    <link rel="apple-touch-icon" sizes="192x192" href="/techwashlogo.webp" />
+    <link rel="apple-touch-icon" sizes="512x512" href="/techwashlogo.webp" />
     
     <!-- Google Fonts for Luxury Typography -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -16,5 +30,15 @@
   <body class="bg-slate-50/60 text-slate-900 font-sans antialiased selection:bg-brand-500 selection:text-white min-h-screen">
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+    <script>
+      // Register PWA Service Worker
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch((err) => {
+            console.warn('[PWA] ServiceWorker registration notice:', err);
+          });
+        });
+      }
+    </script>
   </body>
 </html>

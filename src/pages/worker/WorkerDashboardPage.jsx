@@ -63,6 +63,16 @@ export const WorkerDashboardPage = () => {
   // Delete / Unassign task modal state
   const [deleteModalAction, setDeleteModalAction] = useState(null);
   const [isActionLoading, setIsActionLoading] = useState(false);
+  const [isChiming, setIsChiming] = useState(false);
+
+  useEffect(() => {
+    const handleSoundPlayed = () => {
+      setIsChiming(true);
+      setTimeout(() => setIsChiming(false), 3500);
+    };
+    window.addEventListener('techwash-sound-played', handleSoundPlayed);
+    return () => window.removeEventListener('techwash-sound-played', handleSoundPlayed);
+  }, []);
 
   const handleExecuteAction = async () => {
     if (!deleteModalAction) return;
@@ -342,10 +352,20 @@ export const WorkerDashboardPage = () => {
             <button
               type="button"
               onClick={() => testOrderPlacedSound()}
-              className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-cyan-300 border border-white/10 transition-colors"
+              className={`p-2 rounded-xl transition-all relative ${
+                isChiming 
+                  ? 'bg-purple-600 text-white border-cyan-400 shadow-[0_0_20px_rgba(0,240,255,0.7)] animate-pulse' 
+                  : 'bg-white/5 hover:bg-white/10 text-cyan-300 border border-white/10'
+              }`}
               title="Test Chime Sound (/1.mp4)"
             >
-              <Volume2 className="w-4 h-4" />
+              <Volume2 className={`w-4 h-4 ${isChiming ? 'animate-bounce text-cyan-200' : ''}`} />
+              {isChiming && (
+                <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-cyan-500" />
+                </span>
+              )}
             </button>
 
             <button

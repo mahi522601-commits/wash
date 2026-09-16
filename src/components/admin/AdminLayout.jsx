@@ -32,13 +32,16 @@ export const AdminLayout = () => {
   // Listen for real-time new customer orders across all channels & play notification sound (/1.mp4)
   useEffect(() => {
     const handleNewOrder = (order) => {
-      // Play custom notification chime from /1.mp4
-      playOrderPlacedSound();
-
       const customer = order?.customerName || order?.customer?.name || 'Customer';
       const serviceName = order?.serviceName || order?.service || 'Laundry Service';
       const orderNum = order?.orderNumber || order?.id || 'New Order';
       const amount = order?.totalAmount || order?.priceSnapshot?.finalTotal;
+
+      // Play enhanced notification chime (/1.mp4) with gain booster & system notification
+      playOrderPlacedSound(false, {
+        title: `🚨 New Order #${orderNum} Received!`,
+        message: `${customer} placed an order for ${serviceName}${amount ? ` (₹${amount})` : ''}.`
+      });
 
       info(
         '🔔 New Order Received!',

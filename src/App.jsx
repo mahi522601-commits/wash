@@ -13,6 +13,7 @@ import { FloatingActionHub } from './components/public/FloatingActionHub';
 import { FloatingOffersWidget } from './components/public/FloatingOffersWidget';
 import { FirstVisitOfferModal } from './components/public/FirstVisitOfferModal';
 import { ChatbotDrawer } from './components/public/ChatbotDrawer';
+import { FloatingAppInstallBar } from './components/common/FloatingAppInstallBar';
 
 // Public Pages
 import { HomePage } from './pages/public/HomePage';
@@ -89,6 +90,9 @@ const PublicLayout = ({ children }) => {
 
       {/* Premium First-Visit 1:1 Square Campaign Offer Modal */}
       <FirstVisitOfferModal />
+
+      {/* Floating PWA / .APK Mobile App Install Bar */}
+      <FloatingAppInstallBar />
 
       {/* Conversational AI Assistant Concierge */}
       <ChatbotDrawer isOpen={assistantOpen} onClose={() => setAssistantOpen(false)} />

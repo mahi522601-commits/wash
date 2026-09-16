@@ -19,28 +19,24 @@ export const WorkerLayout = () => {
     if (!currentWorker?.id) return;
 
     const handleNewTaskAssigned = (order) => {
-      // 1. Play order received chime sound (/1.mp4)
-      playOrderPlacedSound();
-
-      // 2. Mobile vibration alert if supported
-      try {
-        if (typeof window !== 'undefined' && 'vibrate' in navigator) {
-          navigator.vibrate([250, 100, 250, 100, 350]);
-        }
-      } catch (e) {}
-
-      // 3. Display luxury toast notification
       const customer = order?.customerName || order?.customer?.name || 'Customer';
       const orderNum = order?.orderNumber || order?.id || 'New Task';
       const service = order?.service || order?.serviceName || 'Laundry Pickup';
       const address = order?.address || order?.customer?.address || 'Doorstep Pickup';
 
+      // 1. Play enhanced order received chime sound (/1.mp4) with gain booster & system notification
+      playOrderPlacedSound(true, {
+        title: `🛵 New Task #${orderNum} Dispatched!`,
+        message: `${customer} scheduled ${service}. Location: ${address}.`
+      });
+
+      // 2. Display luxury toast notification
       info(
         '🚀 New Task Dispatched to You!',
         `${customer} scheduled ${service} (${orderNum}). Location: ${address}.`
       );
 
-      // 4. Notify active worker dashboard to refresh list
+      // 3. Notify active worker dashboard to refresh list
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('techwash-worker-refresh-tasks', { detail: order }));
       }
