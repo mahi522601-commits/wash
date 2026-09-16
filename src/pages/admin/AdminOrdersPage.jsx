@@ -14,6 +14,7 @@ import { Badge } from '../../components/ui/Badge';
 import { StatusBadge } from '../../components/admin/StatusBadge';
 import { OrderMapCard } from '../../components/location/OrderMapCard';
 import { ReceiptModal } from '../../components/receipt/ReceiptModal';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { 
   ShoppingBag, 
   Search, 
@@ -35,7 +36,8 @@ import {
   Navigation,
   Bike,
   UserCheck,
-  Sparkles
+  Sparkles,
+  Trash2
 } from 'lucide-react';
 
 export const AdminOrdersPage = () => {
@@ -43,15 +45,16 @@ export const AdminOrdersPage = () => {
   const { success, error } = useToast();
 
   const [orders, setOrders] = useState([]);
-  const [staffList, setStaffList] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [selectedStatus, setSelectedStatus] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
-  const [loading, setLoading] = useState(true);
   const [activeOrder, setActiveOrder] = useState(null);
-  const [assignModalOrder, setAssignModalOrder] = useState(null);
   const [receiptModalOrder, setReceiptModalOrder] = useState(null);
-  const [isUpdating, setIsUpdating] = useState(false);
+  const [assignModalOrder, setAssignModalOrder] = useState(null);
+  const [staffList, setStaffList] = useState([]);
   const [isDispatching, setIsDispatching] = useState(false);
+  const [deleteTargetOrder, setDeleteTargetOrder] = useState(null);
+  const [isDeletingOrder, setIsDeletingOrder] = useState(false);
 
   // Status & Weight edit state in modal
   const [newCustomerStage, setNewCustomerStage] = useState('CONFIRMED');
@@ -83,6 +86,35 @@ export const AdminOrdersPage = () => {
       error('Dispatch Error', err.message || 'Failed to assign worker');
     } finally {
       setIsDispatching(false);
+    }
+  };
+
+  const handleDeleteOrder = async () => {
+    if (!deleteTargetOrder) return;
+    setIsDeletingOrder(true);
+    try {
+      await orderService.deleteOrder(deleteTargetOrder.id);
+      
+      try {
+        await auditService.logAction({
+          action: 'DELETE',
+          entity: 'Order',
+          entityId: deleteTargetOrder.id,
+          entityName: `Order #${deleteTargetOrder.orderNumber || deleteTargetOrder.id}`,
+          user: currentUser,
+        });
+      } catch (e) {}
+
+      success('Order Deleted', `Order #${deleteTargetOrder.orderNumber || deleteTargetOrder.id} permanently removed.`);
+      setDeleteTargetOrder(null);
+      if (activeOrder && (activeOrder.id === deleteTargetOrder.id || activeOrder.orderNumber === deleteTargetOrder.orderNumber)) {
+        setActiveOrder(null);
+      }
+      loadOrders();
+    } catch (err) {
+      error('Delete Error', err.message || 'Failed to delete order.');
+    } finally {
+      setIsDeletingOrder(false);
     }
   };
 
@@ -364,6 +396,15 @@ export const AdminOrdersPage = () => {
             className="w-8 h-8 rounded-xl bg-purple-600 hover:bg-purple-700 text-white flex items-center justify-center shadow-xs active:scale-95 transition-all"
           >
             <Printer className="w-4 h-4" />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setDeleteTargetOrder(row)}
+            title="Delete Order Permanently"
+            className="w-8 h-8 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200/80 flex items-center justify-center shadow-2xs active:scale-95 transition-all"
+          >
+            <Trash2 className="w-4 h-4" />
           </button>
         </div>
       ),
@@ -648,15 +689,26 @@ export const AdminOrdersPage = () => {
                 />
               </div>
 
-              <Button
-                type="submit"
-                variant="primary"
-                size="md"
-                className="w-full"
-                isLoading={isUpdating}
-              >
-                Save Changes to Firebase Single Source of Truth
-              </Button>
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setDeleteTargetOrder(activeOrder)}
+                  className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors active:scale-95"
+                >
+                  <Trash2 className="w-4 h-4 text-rose-600" />
+                  <span>Delete Order</span>
+                </button>
+
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="md"
+                  className="w-full sm:flex-1 justify-center"
+                  isLoading={isUpdating}
+                >
+                  Save Changes to Firebase
+                </Button>
+              </div>
             </form>
 
             {/* Selected Clothes / Items List */}
@@ -823,7 +875,19 @@ export const AdminOrdersPage = () => {
         onClose={() => setReceiptModalOrder(null)}
       />
 
+      {/* Delete Order Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={!!deleteTargetOrder}
+        onClose={() => setDeleteTargetOrder(null)}
+        onConfirm={handleDeleteOrder}
+        title={`Delete Order #${deleteTargetOrder?.orderNumber || deleteTargetOrder?.id || ''}?`}
+        message="This order will be permanently deleted from Firebase Firestore and removed from all dispatch queues. This action cannot be undone."
+        confirmText="Delete Order"
+        isLoading={isDeletingOrder}
+      />
+
     </div>
   );
 };
+
 

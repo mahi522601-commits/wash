@@ -11,6 +11,7 @@ import {
   getDoc, 
   setDoc, 
   updateDoc, 
+  deleteDoc,
   query, 
   orderBy, 
   where,
@@ -608,5 +609,114 @@ export const orderService = {
         try { unsub(); } catch (e) {}
       });
     };
+  },
+
+  /**
+   * Delete order completely from Firebase Firestore and local cache
+   */
+  async deleteOrder(orderId) {
+    if (!orderId) throw new Error('Order ID required for deletion.');
+    const targetId = String(orderId).trim();
+
+    if (isFirebaseConfigured && db) {
+      try {
+        await Promise.all([
+          deleteDoc(doc(db, 'orders', targetId)),
+          deleteDoc(doc(db, 'bookings', targetId)),
+        ]);
+      } catch (e) {
+        console.warn('Firestore order deletion notice:', e);
+      }
+    }
+
+    try {
+      const orders = await this.getOrders({ limitCount: 1000 });
+      const filtered = orders.filter(o => 
+        o.id !== targetId && 
+        o.orderNumber !== targetId && 
+        o.bookingId !== targetId
+      );
+      localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(filtered));
+    } catch (e) {
+      console.warn('Local storage delete order error:', e);
+    }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('techwash-order-deleted', { detail: { orderId: targetId } }));
+      window.dispatchEvent(new CustomEvent('techwash-worker-refresh-tasks', { detail: { orderId: targetId } }));
+      try {
+        if ('BroadcastChannel' in window) {
+          const channel = new BroadcastChannel('techwash_orders_channel');
+          channel.postMessage({ type: 'ORDER_DELETED', orderId: targetId });
+          setTimeout(() => {
+            try { channel.close(); } catch (e) {}
+          }, 200);
+        }
+      } catch (e) {}
+    }
+
+    return true;
+  },
+
+  /**
+   * Unassign worker from an order (return task to unassigned dispatch queue)
+   */
+  async unassignWorkerFromOrder(orderId, note = 'Worker unassigned from task') {
+    if (!orderId) throw new Error('Order ID required.');
+
+    const orders = await this.getOrders({ limitCount: 500 });
+    const order = orders.find(o => o.id === orderId || o.orderNumber === orderId || o.bookingId === orderId);
+    if (!order) throw new Error(`Order ${orderId} not found`);
+
+    const updatedOrder = {
+      ...order,
+      assignedStaff: null,
+      assignedStaffId: null,
+      assignedStaffName: null,
+      assignedStaffPhone: null,
+      assignedStaffEmail: null,
+      assignedAt: null,
+      updatedAt: new Date().toISOString(),
+      statusTimeline: [
+        ...(order.statusTimeline || []),
+        {
+          stage: order.customerStage || 'CONFIRMED',
+          label: 'Rider Unassigned',
+          timestamp: new Date().toISOString(),
+          note: note || 'Task returned to unassigned dispatch queue.',
+        }
+      ]
+    };
+
+    if (isFirebaseConfigured && db) {
+      try {
+        await Promise.all([
+          setDoc(doc(db, 'orders', order.id), updatedOrder, { merge: true }),
+          setDoc(doc(db, 'bookings', order.id), updatedOrder, { merge: true })
+        ]);
+      } catch (e) {
+        console.warn('Firestore unassign worker error:', e);
+      }
+    }
+
+    const idx = orders.findIndex(o => o.id === order.id);
+    if (idx >= 0) orders[idx] = updatedOrder;
+    localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(orders));
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('techwash-worker-refresh-tasks', { detail: { orderId } }));
+      try {
+        if ('BroadcastChannel' in window) {
+          const channel = new BroadcastChannel('techwash_orders_channel');
+          channel.postMessage({ type: 'WORKER_TASK_UNASSIGNED', orderId });
+          setTimeout(() => {
+            try { channel.close(); } catch (e) {}
+          }, 200);
+        }
+      } catch (e) {}
+    }
+
+    return updatedOrder;
   }
 };
+

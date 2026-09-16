@@ -29,7 +29,10 @@ import {
   Truck,
   Check,
   X,
-  FileText
+  FileText,
+  Trash2,
+  RotateCcw,
+  AlertTriangle
 } from 'lucide-react';
 
 export const WorkerDashboardPage = () => {
@@ -56,6 +59,36 @@ export const WorkerDashboardPage = () => {
   const [noteModalOrder, setNoteModalOrder] = useState(null);
   const [quickNoteText, setQuickNoteText] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
+
+  // Delete / Unassign task modal state
+  const [deleteModalAction, setDeleteModalAction] = useState(null);
+  const [isActionLoading, setIsActionLoading] = useState(false);
+
+  const handleExecuteAction = async () => {
+    if (!deleteModalAction) return;
+    setIsActionLoading(true);
+    try {
+      if (deleteModalAction.type === 'UNASSIGN') {
+        await orderService.unassignWorkerFromOrder(deleteModalAction.order.id, `Unassigned by ${currentWorker.name}`);
+        success('Task Unassigned', `Order #${deleteModalAction.order.orderNumber} returned to dispatch pool.`);
+      } else if (deleteModalAction.type === 'REMOVE' || deleteModalAction.type === 'DELETE') {
+        await orderService.unassignWorkerFromOrder(deleteModalAction.order.id, `Dismissed by rider ${currentWorker.name}`);
+        success('Task Removed', `Order #${deleteModalAction.order.orderNumber} removed from your task list.`);
+      } else if (deleteModalAction.type === 'CLEAR_COMPLETED') {
+        const completed = orders.filter(o => o.customerStage === 'DELIVERED' || o.customerStage === 'RECEIVED_AT_HUB');
+        await Promise.all(
+          completed.map(o => orderService.unassignWorkerFromOrder(o.id, `Cleared from queue by ${currentWorker.name}`))
+        );
+        success('History Cleared', `Cleared ${completed.length} completed task(s) from your queue.`);
+      }
+      setDeleteModalAction(null);
+      loadWorkerOrders(true);
+    } catch (err) {
+      error('Action Failed', err.message || 'Failed to complete action');
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
 
   const loadWorkerOrders = useCallback(async (quiet = false) => {
     if (!currentWorker?.id) return;
@@ -431,6 +464,18 @@ export const WorkerDashboardPage = () => {
                 {tab.label}
               </button>
             ))}
+
+            {completedHistory.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setDeleteModalAction({ type: 'CLEAR_COMPLETED' })}
+                className="px-3 py-1.5 rounded-2xl text-[11px] font-bold bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 flex items-center gap-1.5 transition-all whitespace-nowrap active:scale-95"
+                title="Clear all completed tasks from queue"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                <span>Clear Completed</span>
+              </button>
+            )}
           </div>
 
           {/* Search Input */}
@@ -625,17 +670,41 @@ export const WorkerDashboardPage = () => {
                   {/* Dynamic Workflow Action Buttons */}
                   <div className="pt-2 flex flex-wrap items-center justify-between gap-2 border-t border-white/10">
                     
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setNoteModalOrder(ord);
-                        setQuickNoteText('');
-                      }}
-                      className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-bold flex items-center gap-1.5 transition-colors"
-                    >
-                      <FileText className="w-3.5 h-3.5 text-purple-400" />
-                      <span>Rider Note</span>
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setNoteModalOrder(ord);
+                          setQuickNoteText('');
+                        }}
+                        className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-bold flex items-center gap-1.5 transition-colors"
+                      >
+                        <FileText className="w-3.5 h-3.5 text-purple-400" />
+                        <span>Rider Note</span>
+                      </button>
+
+                      {isDelivered ? (
+                        <button
+                          type="button"
+                          onClick={() => setDeleteModalAction({ order: ord, type: 'REMOVE' })}
+                          title="Remove from your completed list"
+                          className="px-2.5 py-2 rounded-xl bg-white/5 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 border border-white/5 hover:border-rose-500/30 text-xs font-bold flex items-center gap-1 transition-all active:scale-95"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Remove</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setDeleteModalAction({ order: ord, type: 'UNASSIGN' })}
+                          title="Unassign / Return task to Dispatch Pool"
+                          className="px-2.5 py-2 rounded-xl bg-white/5 hover:bg-amber-500/20 text-slate-400 hover:text-amber-300 border border-white/5 hover:border-amber-500/30 text-xs font-bold flex items-center gap-1 transition-all active:scale-95"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          <span>Unassign</span>
+                        </button>
+                      )}
+                    </div>
 
                     <div className="flex items-center gap-2 ml-auto">
                       {/* 1. PICKUP FLOW BUTTONS */}
@@ -988,6 +1057,62 @@ export const WorkerDashboardPage = () => {
         </div>
       )}
 
+      {/* 9. MODAL: DELETE / UNASSIGN TASK CONFIRMATION */}
+      {deleteModalAction && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-[#161333] border border-purple-500/30 rounded-[32px] max-w-md w-full p-6 shadow-2xl space-y-4 animate-scale-up">
+            <div className="flex items-start gap-3.5">
+              <div className="w-10 h-10 rounded-2xl bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-base font-bold text-white font-display">
+                  {deleteModalAction.type === 'CLEAR_COMPLETED'
+                    ? 'Clear All Completed Tasks?'
+                    : deleteModalAction.type === 'UNASSIGN'
+                    ? `Unassign Order #${deleteModalAction.order?.orderNumber}?`
+                    : `Remove Order #${deleteModalAction.order?.orderNumber}?`}
+                </h3>
+                <p className="text-xs text-slate-300 mt-1.5 leading-relaxed">
+                  {deleteModalAction.type === 'CLEAR_COMPLETED'
+                    ? 'This will clear all delivered and completed orders from your field queue.'
+                    : deleteModalAction.type === 'UNASSIGN'
+                    ? 'This task will be returned to the Admin dispatch queue so another rider can be assigned.'
+                    : 'This order will be removed from your active queue.'}
+                </p>
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-white/10 flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setDeleteModalAction(null)}
+                disabled={isActionLoading}
+                className="px-4 py-2 rounded-xl text-xs text-slate-400 hover:text-white transition-colors"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={handleExecuteAction}
+                disabled={isActionLoading}
+                className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-bold text-xs shadow-lg transition-all active:scale-95 disabled:opacity-50"
+              >
+                {isActionLoading
+                  ? 'Processing...'
+                  : deleteModalAction.type === 'CLEAR_COMPLETED'
+                  ? 'Yes, Clear History'
+                  : deleteModalAction.type === 'UNASSIGN'
+                  ? 'Yes, Unassign Task'
+                  : 'Yes, Remove Task'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
+
