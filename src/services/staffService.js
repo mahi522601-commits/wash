@@ -1,58 +1,25 @@
 /**
  * Staff Directory & Admin Users Management Service
  * Manages operational personnel, delivery executives, and role authorizations
+ * All staff credentials and passwords are saved and retrieved securely via Firebase Firestore
  */
 import { db, isFirebaseConfigured } from './firebase.js';
-import { collection, doc, getDocs, setDoc, deleteDoc, getDoc } from 'firebase/firestore';
+import { 
+  collection, 
+  doc, 
+  getDocs, 
+  setDoc, 
+  deleteDoc, 
+  query, 
+  where 
+} from 'firebase/firestore';
 
 const STAFF_STORAGE_KEY = 'techwash_staff_directory';
 const ADMIN_USERS_STORAGE_KEY = 'techwash_admin_users_list';
 
-// Default initial staff if empty
-const INITIAL_DEFAULT_STAFF = [
-  {
-    id: 'staff-rider-1',
-    name: 'Ramesh Kumar',
-    phone: '8977769866',
-    email: 'rider@techwash.in',
-    password: 'Rider@123',
-    role: 'Delivery Executive',
-    hub: 'Banjara Hills Hub',
-    active: true,
-    dutyStatus: 'ON_DUTY',
-    vehicleNumber: 'TS 09 AB 4421',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'staff-rider-2',
-    name: 'Suresh Varma',
-    phone: '9848022338',
-    email: 'suresh@techwash.in',
-    password: 'Suresh@123',
-    role: 'Delivery Executive',
-    hub: 'Jubilee Hills Hub',
-    active: true,
-    dutyStatus: 'ON_DUTY',
-    vehicleNumber: 'TS 10 CD 8812',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'staff-qc-1',
-    name: 'Priya Sharma',
-    phone: '9849011223',
-    email: 'priya@techwash.in',
-    password: 'Priya@123',
-    role: 'Hub QC Specialist',
-    hub: 'Central Hub',
-    active: true,
-    dutyStatus: 'ON_DUTY',
-    createdAt: new Date().toISOString(),
-  }
-];
-
 export const staffService = {
   /**
-   * Generate a secure random password
+   * Generate a secure random password for worker onboarding
    */
   generateSecurePassword(length = 8) {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$';
@@ -64,7 +31,7 @@ export const staffService = {
   },
 
   /**
-   * Get staff members (Operations, Delivery Riders, QC Inspectors)
+   * Get staff members from Firebase Firestore (Operations, Delivery Riders, QC Inspectors)
    */
   async getStaff() {
     let list = [];
@@ -74,31 +41,32 @@ export const staffService = {
         const snap = await getDocs(collection(db, 'staff'));
         if (!snap.empty) {
           list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          // Cache in local storage for offline resiliency
+          try {
+            localStorage.setItem(STAFF_STORAGE_KEY, JSON.stringify(list));
+          } catch (e) {}
+          return list;
         }
       } catch (e) {
         console.warn("Firestore staff read error:", e);
       }
     }
 
-    if (list.length === 0) {
-      try {
-        const stored = localStorage.getItem(STAFF_STORAGE_KEY);
-        if (stored) {
-          list = JSON.parse(stored);
-        } else {
-          list = [...INITIAL_DEFAULT_STAFF];
-          localStorage.setItem(STAFF_STORAGE_KEY, JSON.stringify(list));
-        }
-      } catch (e) {
-        list = [...INITIAL_DEFAULT_STAFF];
+    // Fallback to locally cached records if offline
+    try {
+      const stored = localStorage.getItem(STAFF_STORAGE_KEY);
+      if (stored) {
+        list = JSON.parse(stored);
       }
+    } catch (e) {
+      list = [];
     }
 
     return list;
   },
 
   /**
-   * Save / Update staff member with email & password
+   * Save / Update staff member with email & password directly into Firebase Firestore
    */
   async saveStaff(staffMember) {
     const id = staffMember.id || `staff-${Date.now()}`;
@@ -109,75 +77,121 @@ export const staffService = {
       id,
       email: normalizedEmail,
       dutyStatus: staffMember.dutyStatus || 'ON_DUTY',
-      updatedAt: new Date().toISOString()
+      active: staffMember.active !== false,
+      updatedAt: new Date().toISOString(),
+      createdAt: staffMember.createdAt || new Date().toISOString()
     };
 
+    // 1. Save directly to Firebase Firestore
     if (isFirebaseConfigured && db) {
       try {
         await setDoc(doc(db, 'staff', id), payload, { merge: true });
       } catch (e) {
-        console.warn("Firestore save staff error:", e);
+        console.error("Firebase Firestore staff save error:", e);
+        throw new Error(`Failed to save worker in Firebase: ${e.message}`);
       }
     }
 
-    const list = await this.getStaff();
-    const idx = list.findIndex(s => s.id === id);
-    if (idx >= 0) list[idx] = payload;
-    else list.push(payload);
-    localStorage.setItem(STAFF_STORAGE_KEY, JSON.stringify(list));
+    // 2. Update local storage cache
+    try {
+      const list = await this.getStaff();
+      const idx = list.findIndex(s => s.id === id);
+      if (idx >= 0) list[idx] = payload;
+      else list.push(payload);
+      localStorage.setItem(STAFF_STORAGE_KEY, JSON.stringify(list));
+    } catch (e) {}
+
     return payload;
   },
 
   /**
-   * Verify worker login credentials
+   * Verify worker login credentials directly against Firebase Firestore
    */
   async verifyWorkerCredentials(email, password) {
-    if (!email || !password) throw new Error('Please provide email and password.');
+    if (!email || !password) {
+      throw new Error('Please provide both worker email and password.');
+    }
     const targetEmail = email.trim().toLowerCase();
-    const staffList = await this.getStaff();
+    const inputPassword = password.trim();
 
-    const staff = staffList.find(
-      s => s.email && s.email.trim().toLowerCase() === targetEmail
-    );
+    let staff = null;
+
+    // 1. Query Firebase Firestore for real-time validation
+    if (isFirebaseConfigured && db) {
+      try {
+        const q = query(collection(db, 'staff'), where('email', '==', targetEmail));
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          const docItem = snap.docs[0];
+          staff = { id: docItem.id, ...docItem.data() };
+        }
+      } catch (e) {
+        console.warn("Firestore worker query error, falling back to local list:", e);
+      }
+    }
+
+    // Fallback: search fetched / cached staff list
+    if (!staff) {
+      const staffList = await this.getStaff();
+      staff = staffList.find(
+        s => s.email && s.email.trim().toLowerCase() === targetEmail
+      );
+    }
 
     if (!staff) {
-      throw new Error('Worker account not found with this email.');
+      throw new Error('Worker account not found with this email. Please ask your Admin to create your account.');
     }
 
-    if (!staff.active) {
-      throw new Error('This worker account is currently deactivated. Please contact admin.');
+    if (staff.active === false) {
+      throw new Error('This worker account is currently deactivated. Please contact your administrator.');
     }
 
-    if (staff.password && staff.password !== password) {
-      throw new Error('Incorrect password. Please verify credentials.');
+    // Compare password stored in Firebase
+    if (staff.password !== inputPassword) {
+      throw new Error('Incorrect password. Please verify your credentials with your administrator.');
     }
 
     return staff;
   },
 
   /**
-   * Update duty status for a staff member (ON_DUTY / OFF_DUTY)
+   * Update duty status for a staff member (ON_DUTY / OFF_DUTY) in Firebase Firestore
    */
   async updateDutyStatus(staffId, dutyStatus) {
-    const staffList = await this.getStaff();
-    const staff = staffList.find(s => s.id === staffId);
-    if (!staff) return null;
+    const nextStatus = dutyStatus === 'ON_DUTY' ? 'ON_DUTY' : 'OFF_DUTY';
+    const updateData = {
+      dutyStatus: nextStatus,
+      updatedAt: new Date().toISOString()
+    };
 
-    return this.saveStaff({
-      ...staff,
-      dutyStatus: dutyStatus === 'ON_DUTY' ? 'ON_DUTY' : 'OFF_DUTY'
-    });
+    if (isFirebaseConfigured && db) {
+      try {
+        await setDoc(doc(db, 'staff', staffId), updateData, { merge: true });
+      } catch (e) {
+        console.warn("Firestore update duty status error:", e);
+      }
+    }
+
+    const staffList = await this.getStaff();
+    const idx = staffList.findIndex(s => s.id === staffId);
+    if (idx >= 0) {
+      staffList[idx] = { ...staffList[idx], ...updateData };
+      localStorage.setItem(STAFF_STORAGE_KEY, JSON.stringify(staffList));
+      return staffList[idx];
+    }
+    return null;
   },
 
   /**
-   * Delete staff member
+   * Delete staff member from Firebase Firestore
    */
   async deleteStaff(staffId) {
     if (isFirebaseConfigured && db) {
       try {
         await deleteDoc(doc(db, 'staff', staffId));
       } catch (e) {
-        console.warn("Firestore delete staff error:", e);
+        console.error("Firestore delete staff error:", e);
+        throw new Error(`Failed to delete worker from Firebase: ${e.message}`);
       }
     }
 
@@ -187,7 +201,7 @@ export const staffService = {
   },
 
   /**
-   * Get Admin portal user accounts
+   * Get Admin portal user accounts from Firebase Firestore
    */
   async getAdminUsers() {
     let list = [];
@@ -214,7 +228,7 @@ export const staffService = {
   },
 
   /**
-   * Save Admin user
+   * Save Admin user to Firebase Firestore
    */
   async saveAdminUser(adminUser) {
     const id = adminUser.id || `user-${Date.now()}`;
@@ -237,7 +251,7 @@ export const staffService = {
   },
 
   /**
-   * Delete Admin user
+   * Delete Admin user from Firebase Firestore
    */
   async deleteAdminUser(userId) {
     if (isFirebaseConfigured && db) {

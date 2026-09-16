@@ -12,8 +12,7 @@ import {
   ShieldCheck, 
   Sparkles, 
   ArrowRight,
-  MapPin,
-  Clock
+  UserCheck
 } from 'lucide-react';
 
 export const WorkerLoginPage = () => {
@@ -42,26 +41,11 @@ export const WorkerLoginPage = () => {
 
     setIsSubmitting(true);
     try {
-      const worker = await login(email, password);
+      const worker = await login(email.trim(), password.trim());
       success('Welcome back!', `Logged in as ${worker.name}.`);
       navigate('/worker', { replace: true });
     } catch (err) {
       error('Login Failed', err.message || 'Invalid worker email or password.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleDemoRiderLogin = async () => {
-    setEmail('rider@techwash.in');
-    setPassword('Rider@123');
-    setIsSubmitting(true);
-    try {
-      const worker = await login('rider@techwash.in', 'Rider@123');
-      success('Demo Worker Active!', `Signed in as ${worker.name} (Banjara Hills Hub).`);
-      navigate('/worker', { replace: true });
-    } catch (err) {
-      error('Demo Login Notice', err.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -115,7 +99,7 @@ export const WorkerLoginPage = () => {
                 <input
                   type="email"
                   required
-                  placeholder="e.g. rider@techwash.in"
+                  placeholder="name@techwash.in"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-10 pr-4 text-xs font-medium text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
@@ -170,20 +154,14 @@ export const WorkerLoginPage = () => {
             </button>
           </form>
 
-          {/* 1-Tap Demo Rider Login */}
-          <div className="pt-4 border-t border-white/10 text-center space-y-2.5">
-            <span className="text-[11px] text-slate-400 block">
-              Testing or onboarding new staff?
-            </span>
-            <button
-              type="button"
-              onClick={handleDemoRiderLogin}
-              disabled={isSubmitting}
-              className="w-full py-2.5 px-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-cyan-300 flex items-center justify-center gap-2 transition-colors active:scale-95"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              <span>1-Tap Demo Rider Sign In (Ramesh Kumar)</span>
-            </button>
+          {/* Secure Information Box */}
+          <div className="pt-4 border-t border-white/10 space-y-2">
+            <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-white/5 border border-white/10 text-left">
+              <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+              <div className="text-[11px] text-slate-300 leading-relaxed">
+                Worker accounts and credentials are created and managed by Administrators in the <Link to="/admin/staff" className="text-cyan-300 underline font-semibold hover:text-cyan-200">Admin Staff Portal</Link>.
+              </div>
+            </div>
           </div>
 
         </div>

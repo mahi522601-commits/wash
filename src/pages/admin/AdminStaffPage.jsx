@@ -82,7 +82,7 @@ export const AdminStaffPage = () => {
   const handleOpenEdit = (st) => {
     setCurrentStaff({ 
       ...st,
-      password: st.password || staffService.generateSecurePassword(8)
+      password: st.password || ''
     });
     setShowPassword(false);
     setModalOpen(true);
@@ -100,7 +100,7 @@ export const AdminStaffPage = () => {
 Portal URL: ${origin}/worker/login
 Worker Name: ${staff.name}
 Email / Login: ${staff.email || staff.phone + '@techwash.in'}
-Password: ${staff.password || 'Contact Admin'}
+Password: ${staff.password || '(Contact Administrator)'}
 Hub: ${staff.hub || 'Central Hub'}
 Role: ${staff.role || 'Delivery Executive'}`;
 
@@ -351,7 +351,7 @@ Role: ${staff.role || 'Delivery Executive'}`;
           <div className="p-3 rounded-2xl bg-purple-50/70 border border-purple-200/70 text-xs text-purple-900 flex items-start gap-2.5">
             <Sparkles className="w-4 h-4 text-purple-600 shrink-0 mt-0.5" />
             <div>
-              <strong>Worker Portal Credentials:</strong> The email and password configured here allow the rider to sign into the mobile Worker Portal at <code>/worker/login</code>.
+              <strong>Worker Portal Credentials:</strong> The email and password configured here are stored directly in <strong>Firebase Firestore</strong>, allowing the rider to sign into the mobile Worker Portal at <code>/worker/login</code>.
             </div>
           </div>
 
