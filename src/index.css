@@ -412,40 +412,44 @@
 /* High-Fidelity One-Page A4 / A5 Print Styling for Tech Wash */
 @page {
   size: A4 portrait;
-  margin: 6mm 8mm;
+  margin: 8mm 10mm;
 }
 
 @media print {
   html, body {
     background: #ffffff !important;
     color: #171717 !important;
-    font-size: 12pt;
+    font-size: 11pt;
     margin: 0 !important;
     padding: 0 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+    overflow: visible !important;
   }
 
-  /* Hide everything on website by default */
-  body * {
-    visibility: hidden;
+  /* Hide regular UI elements */
+  nav,
+  header,
+  footer,
+  aside,
+  button,
+  .no-print,
+  .chatbot-drawer,
+  .floating-action-hub,
+  .modal-backdrop {
+    display: none !important;
+    visibility: hidden !important;
   }
 
-  /* Exclusively show the dedicated Tech Wash Receipt Sheet */
+  /* Exclusively render the dedicated Tech Wash Receipt Sheet */
   #techwash-printable-receipt,
-  #techwash-printable-receipt *,
-  .printable-receipt,
-  .printable-receipt * {
-    visibility: visible;
-  }
-
-  #techwash-printable-receipt,
-  .printable-receipt {
-    position: fixed;
-    left: 0;
-    top: 0;
+  .techwash-receipt-sheet {
+    visibility: visible !important;
+    display: block !important;
+    position: relative !important;
     width: 100% !important;
     max-width: 100% !important;
+    min-height: auto !important;
     margin: 0 !important;
     padding: 0 !important;
     border: none !important;
@@ -453,20 +457,12 @@
     border-radius: 0 !important;
     background: #ffffff !important;
     page-break-inside: avoid;
+    page-break-after: avoid;
   }
 
-  /* Force hide UI clutter */
-  .no-print,
-  nav,
-  header,
-  footer,
-  aside,
-  button,
-  .chatbot-drawer,
-  .floating-action-hub,
-  .modal-backdrop {
-    display: none !important;
-    visibility: hidden !important;
+  #techwash-printable-receipt *,
+  .techwash-receipt-sheet * {
+    visibility: visible !important;
   }
 }
 

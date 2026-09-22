@@ -38,8 +38,66 @@ import {
   Bike,
   UserCheck,
   Sparkles,
-  Trash2
+  Trash2,
+  Plus,
+  Minus,
+  Receipt,
+  Store,
+  Tag,
+  Percent,
+  Check
 } from 'lucide-react';
+
+const WALK_IN_SERVICES = [
+  { id: 'srv-dry-cleaning', name: 'Premium Dry Cleaning', emoji: '👔', defaultPrice: 99 },
+  { id: 'srv-wash-and-fold', name: 'Wash & Fold', emoji: '🧺', defaultPrice: 79, perKg: true },
+  { id: 'srv-wash-and-iron', name: 'Wash & Steam Iron', emoji: '👕', defaultPrice: 119, perKg: true },
+  { id: 'srv-steam-ironing', name: 'Steam Ironing Only', emoji: '✨', defaultPrice: 25 },
+  { id: 'srv-starch-and-iron', name: 'Starch & Iron / Finishing', emoji: '🌾', defaultPrice: 45 },
+  { id: 'srv-shoe-spa', name: 'Shoe Spa & Restoration', emoji: '👟', defaultPrice: 399 },
+  { id: 'srv-curtain-spa', name: 'Curtain & Carpet Spa', emoji: '🧼', defaultPrice: 199 },
+];
+
+const PRESET_GARMENTS = [
+  { name: 'Cotton Shirt / T-Shirt', emoji: '👔', unitPrice: 80, category: 'Tops' },
+  { name: 'Trousers / Jeans / Chinos', emoji: '👖', unitPrice: 90, category: 'Bottoms' },
+  { name: 'Saree (Regular / Daily)', emoji: '🥻', unitPrice: 180, category: 'Ethnic' },
+  { name: 'Saree (Silk / Heavy / Zari)', emoji: '✨', unitPrice: 250, category: 'Ethnic' },
+  { name: 'Saree (Starch & Iron)', emoji: '🌾', unitPrice: 220, category: 'Ethnic' },
+  { name: 'Cotton Kurta / Kurti', emoji: '👘', unitPrice: 120, category: 'Ethnic' },
+  { name: 'Dhoti / Traditional Veshti', emoji: '🥻', unitPrice: 110, category: 'Ethnic' },
+  { name: '2-Piece Suit / Blazer & Pant', emoji: '🤵', unitPrice: 350, category: 'Suits' },
+  { name: '3-Piece Designer Suit', emoji: '🧥', unitPrice: 450, category: 'Suits' },
+  { name: 'Blazer / Formal Jacket', emoji: '🧥', unitPrice: 250, category: 'Suits' },
+  { name: 'Single Bedsheet', emoji: '🛏️', unitPrice: 150, category: 'Home' },
+  { name: 'Double Bedsheet + 2 Pillow Covers', emoji: '🛌', unitPrice: 220, category: 'Home' },
+  { name: 'Heavy Blanket / Comforter / Quilt', emoji: '🛋️', unitPrice: 350, category: 'Home' },
+  { name: 'Sneakers / Leather Shoes Spa', emoji: '👟', unitPrice: 399, category: 'Footwear' },
+  { name: 'Starch Shirt (Crisp Finish)', emoji: '👔', unitPrice: 110, category: 'Tops' },
+];
+
+const INITIAL_WALK_IN_FORM = {
+  customerName: '',
+  phone: '',
+  email: '',
+  serviceId: 'srv-dry-cleaning',
+  serviceName: 'Premium Dry Cleaning',
+  serviceEmoji: '👔',
+  pricingType: 'per_item', // 'per_item' | 'per_kg'
+  weightKg: '',
+  pricePerKg: 79,
+  items: [],
+  expressOption: 'STANDARD', // 'STANDARD' | 'EXPRESS_24' | 'SAME_DAY'
+  discountType: 'NONE', // 'NONE' | 'FIXED' | 'PERCENT'
+  discountValue: 0,
+  paymentStatus: 'PAID', // 'PAID' | 'PENDING'
+  paymentMethod: 'CASH', // 'CASH' | 'UPI_QR' | 'CARD' | 'NET_BANKING'
+  notes: '',
+  internalAdminNotes: 'In-Store Walk-in Customer POS Order',
+  storeBranch: 'Central Flagship Hub (Banjara Hills / Jubilee Hills)',
+  autoOpenReceipt: true,
+  autoSendWhatsApp: true,
+};
 
 export const AdminOrdersPage = () => {
   const { currentUser } = useAuth();
@@ -61,6 +119,15 @@ export const AdminOrdersPage = () => {
   const [isSavingGateway, setIsSavingGateway] = useState(false);
   const [testPhone, setTestPhone] = useState('');
   const [isTestingGateway, setIsTestingGateway] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  // Walk-in / In-store POS Order creation state
+  const [showWalkInModal, setShowWalkInModal] = useState(false);
+  const [isCreatingWalkIn, setIsCreatingWalkIn] = useState(false);
+  const [walkInForm, setWalkInForm] = useState(INITIAL_WALK_IN_FORM);
+  const [walkInItemCategory, setWalkInItemCategory] = useState('ALL');
+  const [walkInItemSearch, setWalkInItemSearch] = useState('');
+  const [customGarment, setCustomGarment] = useState({ name: '', unitPrice: '', quantity: 1, category: 'Custom' });
 
   // Status & Weight edit state in modal
   const [newCustomerStage, setNewCustomerStage] = useState('CONFIRMED');
@@ -121,6 +188,235 @@ export const AdminOrdersPage = () => {
       error('Delete Error', err.message || 'Failed to delete order.');
     } finally {
       setIsDeletingOrder(false);
+    }
+  };
+
+  // Calculations for Walk-In POS Order
+  const getWalkInSubtotal = () => {
+    if (walkInForm.pricingType === 'per_kg') {
+      const base = (Number(walkInForm.weightKg) || 0) * (Number(walkInForm.pricePerKg) || 79);
+      const itemsAddon = walkInForm.items.reduce((sum, it) => sum + (Number(it.unitPrice) * Number(it.quantity)), 0);
+      return Math.round(base + itemsAddon);
+    }
+    return walkInForm.items.reduce((sum, it) => sum + (Number(it.unitPrice) * Number(it.quantity)), 0);
+  };
+
+  const getWalkInExpressFee = (subtotal) => {
+    if (walkInForm.expressOption === 'EXPRESS_24') return Math.round(subtotal * 0.25);
+    if (walkInForm.expressOption === 'SAME_DAY') return Math.round(subtotal * 0.50);
+    return 0;
+  };
+
+  const getWalkInDiscount = (subtotal) => {
+    if (walkInForm.discountType === 'FIXED') return Math.min(subtotal, Number(walkInForm.discountValue) || 0);
+    if (walkInForm.discountType === 'PERCENT') {
+      const pct = Math.min(100, Math.max(0, Number(walkInForm.discountValue) || 0));
+      return Math.round(subtotal * (pct / 100));
+    }
+    return 0;
+  };
+
+  const walkInSubtotal = getWalkInSubtotal();
+  const walkInExpressFee = getWalkInExpressFee(walkInSubtotal);
+  const walkInDiscount = getWalkInDiscount(walkInSubtotal);
+  const walkInFinalTotal = Math.max(0, walkInSubtotal + walkInExpressFee - walkInDiscount);
+
+  const handleSelectWalkInService = (srv) => {
+    setWalkInForm(prev => ({
+      ...prev,
+      serviceId: srv.id,
+      serviceName: srv.name,
+      serviceEmoji: srv.emoji,
+      pricingType: srv.perKg ? 'per_kg' : 'per_item',
+      pricePerKg: srv.perKg ? srv.defaultPrice : prev.pricePerKg,
+    }));
+  };
+
+  const handleAddPresetGarment = (preset) => {
+    setWalkInForm(prev => {
+      const existingIdx = prev.items.findIndex(it => it.name === preset.name);
+      if (existingIdx >= 0) {
+        const updated = [...prev.items];
+        const newQ = updated[existingIdx].quantity + 1;
+        updated[existingIdx] = {
+          ...updated[existingIdx],
+          quantity: newQ,
+          lineTotal: newQ * updated[existingIdx].unitPrice
+        };
+        return { ...prev, items: updated };
+      } else {
+        const newItem = {
+          id: `item-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+          name: preset.name,
+          emoji: preset.emoji || '👔',
+          category: preset.category || 'General',
+          unitPrice: Number(preset.unitPrice),
+          quantity: 1,
+          lineTotal: Number(preset.unitPrice),
+        };
+        return { ...prev, items: [...prev.items, newItem] };
+      }
+    });
+  };
+
+  const handleUpdateItemQty = (index, delta) => {
+    setWalkInForm(prev => {
+      const updated = [...prev.items];
+      const newQty = updated[index].quantity + delta;
+      if (newQty <= 0) {
+        return { ...prev, items: updated.filter((_, i) => i !== index) };
+      }
+      updated[index] = {
+        ...updated[index],
+        quantity: newQty,
+        lineTotal: newQty * updated[index].unitPrice
+      };
+      return { ...prev, items: updated };
+    });
+  };
+
+  const handleRemoveItem = (index) => {
+    setWalkInForm(prev => ({
+      ...prev,
+      items: prev.items.filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleAddCustomGarment = (e) => {
+    e?.preventDefault();
+    if (!customGarment.name.trim() || !customGarment.unitPrice) {
+      error('Item Required', 'Please enter custom item name and unit price (₹).');
+      return;
+    }
+    const itemObj = {
+      id: `custom-${Date.now()}`,
+      name: customGarment.name.trim(),
+      emoji: '👕',
+      category: customGarment.category || 'Custom',
+      unitPrice: Number(customGarment.unitPrice),
+      quantity: Math.max(1, Number(customGarment.quantity) || 1),
+      lineTotal: Number(customGarment.unitPrice) * Math.max(1, Number(customGarment.quantity) || 1),
+    };
+    setWalkInForm(prev => ({ ...prev, items: [...prev.items, itemObj] }));
+    setCustomGarment({ name: '', unitPrice: '', quantity: 1, category: 'Custom' });
+    success('Garment Added', `${itemObj.name} added to invoice line items.`);
+  };
+
+  const handleCreateWalkInOrder = async (e) => {
+    e.preventDefault();
+    if (!walkInForm.customerName.trim()) {
+      error('Customer Name Required', 'Please enter customer full name.');
+      return;
+    }
+    const cleanPhone = String(walkInForm.phone).replace(/\D/g, '');
+    if (!cleanPhone || cleanPhone.length < 10) {
+      error('Valid Mobile Required', 'Please enter a valid 10-digit mobile number.');
+      return;
+    }
+
+    if (walkInForm.pricingType === 'per_item' && walkInForm.items.length === 0) {
+      error('No Items Added', 'Please add at least 1 garment/item to the invoice.');
+      return;
+    }
+
+    if (walkInForm.pricingType === 'per_kg' && (!walkInForm.weightKg || Number(walkInForm.weightKg) <= 0)) {
+      error('Weight Required', 'Please enter the weighed laundry weight in Kg.');
+      return;
+    }
+
+    setIsCreatingWalkIn(true);
+    try {
+      const totalGrams = walkInForm.items.reduce((acc, it) => acc + (it.quantity * 350), 0);
+      const estWeight = walkInForm.pricingType === 'per_kg' ? Number(walkInForm.weightKg) : (totalGrams > 0 ? (totalGrams / 1000) : null);
+
+      const orderPayload = {
+        isWalkIn: true,
+        storeBranch: walkInForm.storeBranch,
+        customer: {
+          name: walkInForm.customerName.trim(),
+          phone: cleanPhone,
+          whatsapp: cleanPhone,
+          email: walkInForm.email.trim(),
+          address: `In-Store Walk-in Drop (${walkInForm.storeBranch})`,
+          city: 'Hyderabad',
+        },
+        customerName: walkInForm.customerName.trim(),
+        phone: cleanPhone,
+        whatsapp: cleanPhone,
+        address: `In-Store Walk-in Drop (${walkInForm.storeBranch})`,
+        serviceId: walkInForm.serviceId,
+        serviceName: walkInForm.serviceName,
+        serviceEmoji: walkInForm.serviceEmoji,
+        pricingType: walkInForm.pricingType,
+        items: walkInForm.items.map(it => ({
+          name: it.name,
+          emoji: it.emoji || '👔',
+          category: it.category || 'General',
+          unitPrice: Number(it.unitPrice),
+          quantity: Number(it.quantity),
+          lineTotal: Number(it.unitPrice) * Number(it.quantity),
+        })),
+        estimatedWeightKg: estWeight,
+        actualWeight: estWeight,
+        priceSnapshot: {
+          itemsSubtotal: walkInSubtotal,
+          deliveryFee: 0,
+          expressFee: walkInExpressFee,
+          discountAmount: walkInDiscount,
+          taxes: 0,
+          finalTotal: walkInFinalTotal,
+          isExpress: walkInForm.expressOption !== 'STANDARD',
+        },
+        totalAmount: walkInFinalTotal,
+        finalPrice: walkInFinalTotal,
+        paymentStatus: walkInForm.paymentStatus,
+        paymentMethod: walkInForm.paymentMethod,
+        customerStage: 'INSPECTION',
+        internalStage: 'RECEIVED_AT_HUB',
+        notes: walkInForm.notes || 'In-store counter drop-off',
+        adminNotes: walkInForm.internalAdminNotes || 'In-Store Walk-in Customer POS Order',
+        schedule: {
+          pickupDate: new Date().toLocaleDateString('en-GB'),
+          pickupSlot: 'In-Store Counter',
+        },
+      };
+
+      const created = await orderService.createOrder(orderPayload);
+
+      try {
+        await auditService.logAction({
+          action: 'CREATE',
+          entity: 'Order',
+          entityId: created.id,
+          entityName: `In-Store Order #${created.orderNumber}`,
+          newValue: {
+            customerName: created.customerName,
+            totalAmount: created.totalAmount,
+            paymentStatus: created.paymentStatus,
+          },
+          user: currentUser,
+        });
+      } catch (e) {}
+
+      success('Invoice Generated!', `In-Store Order #${created.orderNumber} saved with official tax invoice.`);
+      setShowWalkInModal(false);
+      setWalkInForm(INITIAL_WALK_IN_FORM);
+      loadOrders();
+
+      if (walkInForm.autoOpenReceipt) {
+        setReceiptModalOrder(created);
+      }
+
+      if (walkInForm.autoSendWhatsApp) {
+        setTimeout(() => {
+          const msg = whatsappNotificationService.buildInvoiceWhatsAppMessage(created);
+          whatsappNotificationService.openWhatsAppManual(cleanPhone, msg);
+        }, 600);
+      }
+    } catch (err) {
+      error('Invoice Error', err.message || 'Failed to create in-store invoice.');
+    } finally {
+      setIsCreatingWalkIn(false);
     }
   };
 
@@ -491,6 +787,15 @@ export const AdminOrdersPage = () => {
         title="Order Lifecycle & Pickup Management"
         subtitle="Manage 10-stage customer milestones, record verified actual weights, assign delivery staff, and sync with Firebase."
       >
+        <Button 
+          variant="primary" 
+          size="md" 
+          icon={Plus} 
+          onClick={() => setShowWalkInModal(true)}
+          className="bg-gradient-to-r from-[#F97316] to-[#EA580C] hover:from-[#EA580C] hover:to-[#C2410C] text-white shadow-md hover:shadow-lg font-bold"
+        >
+          ➕ New Walk-in / In-Store Invoice
+        </Button>
         <Button 
           variant="outline" 
           size="md" 
@@ -1169,6 +1474,463 @@ export const AdminOrdersPage = () => {
             </div>
           </form>
         )}
+      </Modal>
+
+      {/* ─────────────────────────────────────────────────────────
+          In-Store / Walk-in Customer POS & Invoice Creation Modal
+      ───────────────────────────────────────────────────────── */}
+      <Modal
+        isOpen={showWalkInModal}
+        onClose={() => setShowWalkInModal(false)}
+        maxWidth="max-w-5xl"
+        title="➕ In-Store Walk-in Customer POS & Tax Invoice Generator"
+        subtitle="Create official shop walk-in orders, add garments/starch items, compute totals, collect payment, and generate printable & WhatsApp invoices instantly."
+      >
+        <form onSubmit={handleCreateWalkInOrder} className="space-y-6 text-xs max-h-[82vh] overflow-y-auto pr-1">
+          
+          {/* Top Banner */}
+          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-orange-50 via-amber-50 to-orange-50 border border-orange-200 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-[#F97316] text-white flex items-center justify-center font-black">
+                <Store className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="font-black text-slate-900 text-xs">Direct Shop Walk-in / Drop Counter POS</div>
+                <div className="text-[11px] text-slate-500">Auto-generates verified Tax Invoice & WhatsApp message upon submission</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-1 rounded-lg bg-white border border-orange-200 font-bold text-[#EA580C] text-[11px]">
+                📍 {walkInForm.storeBranch}
+              </span>
+            </div>
+          </div>
+
+          {/* Customer Information Grid */}
+          <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-3">
+            <div className="flex items-center gap-2 font-bold text-slate-900 uppercase tracking-wider text-xs border-b border-slate-100 pb-2">
+              <User className="w-4 h-4 text-[#F97316]" />
+              <span>Customer Information</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-slate-700 font-bold mb-1">Customer Full Name *</label>
+                <Input
+                  required
+                  placeholder="e.g. Ramesh Kumar"
+                  value={walkInForm.customerName}
+                  onChange={(e) => setWalkInForm({ ...walkInForm, customerName: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-bold mb-1">10-Digit Mobile / WhatsApp *</label>
+                <Input
+                  required
+                  type="tel"
+                  placeholder="e.g. 9876543210"
+                  value={walkInForm.phone}
+                  onChange={(e) => setWalkInForm({ ...walkInForm, phone: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-bold mb-1">Email (Optional)</label>
+                <Input
+                  type="email"
+                  placeholder="customer@example.com"
+                  value={walkInForm.email}
+                  onChange={(e) => setWalkInForm({ ...walkInForm, email: e.target.value })}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Service Selector Chips */}
+          <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+              <div className="flex items-center gap-2 font-bold text-slate-900 uppercase tracking-wider text-xs">
+                <Sparkles className="w-4 h-4 text-[#F97316]" />
+                <span>Select Core Service</span>
+              </div>
+              <span className="text-[11px] font-bold text-[#EA580C]">
+                Selected: {walkInForm.serviceEmoji} {walkInForm.serviceName}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+              {WALK_IN_SERVICES.map((srv) => {
+                const isSelected = walkInForm.serviceId === srv.id;
+                return (
+                  <button
+                    key={srv.id}
+                    type="button"
+                    onClick={() => handleSelectWalkInService(srv)}
+                    className={`p-2.5 rounded-xl border text-left transition-all flex flex-col justify-between gap-1 cursor-pointer ${
+                      isSelected
+                        ? 'bg-[#FFF7ED] border-[#F97316] ring-2 ring-[#F97316]/20 shadow-xs'
+                        : 'bg-slate-50 border-slate-200 hover:bg-slate-100/80 hover:border-slate-300'
+                    }`}
+                  >
+                    <div className="text-xl">{srv.emoji}</div>
+                    <div className="font-bold text-slate-900 text-[11px] leading-tight line-clamp-2">
+                      {srv.name}
+                    </div>
+                    <div className="text-[10px] text-slate-500 font-semibold">
+                      {srv.perKg ? `₹${srv.defaultPrice}/Kg` : `From ₹${srv.defaultPrice}`}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Pricing Mode Toggle: Per Item vs Per Kg */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100">
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-slate-700">Billing Mode:</span>
+                <div className="inline-flex rounded-xl bg-slate-100 p-1 border border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => setWalkInForm({ ...walkInForm, pricingType: 'per_item' })}
+                    className={`px-3 py-1 rounded-lg font-bold text-xs cursor-pointer transition-all ${
+                      walkInForm.pricingType === 'per_item'
+                        ? 'bg-white text-slate-900 shadow-2xs'
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    👔 Itemized Garments
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setWalkInForm({ ...walkInForm, pricingType: 'per_kg' })}
+                    className={`px-3 py-1 rounded-lg font-bold text-xs cursor-pointer transition-all ${
+                      walkInForm.pricingType === 'per_kg'
+                        ? 'bg-white text-slate-900 shadow-2xs'
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    ⚖️ Weight Based (Per Kg)
+                  </button>
+                </div>
+              </div>
+
+              {walkInForm.pricingType === 'per_kg' && (
+                <div className="flex items-center gap-2 bg-purple-50 px-3 py-1.5 rounded-xl border border-purple-200">
+                  <span className="font-bold text-purple-900">Total Weighed Laundry:</span>
+                  <input
+                    type="number"
+                    step="0.1"
+                    placeholder="Weight (Kg)"
+                    value={walkInForm.weightKg}
+                    onChange={(e) => setWalkInForm({ ...walkInForm, weightKg: e.target.value })}
+                    className="w-24 px-2 py-1 bg-white border border-purple-300 rounded-lg text-xs font-bold text-purple-950 outline-none"
+                  />
+                  <span className="font-bold text-purple-700">Kg @ ₹{walkInForm.pricePerKg}/Kg</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Garment Quick Adder Catalog */}
+          <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2">
+              <div className="flex items-center gap-2 font-bold text-slate-900 uppercase tracking-wider text-xs">
+                <Tag className="w-4 h-4 text-[#F97316]" />
+                <span>1-Click Popular Garments & Starch Items</span>
+              </div>
+              <span className="text-[11px] text-slate-400">Click any garment to add to invoice</span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+              {PRESET_GARMENTS.map((garment, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => handleAddPresetGarment(garment)}
+                  className="p-2.5 rounded-xl bg-slate-50 hover:bg-orange-50 border border-slate-200 hover:border-orange-300 text-left transition-all group flex items-center justify-between gap-1.5 cursor-pointer active:scale-95"
+                >
+                  <div className="min-w-0">
+                    <div className="font-bold text-slate-800 text-[11px] truncate group-hover:text-orange-950 flex items-center gap-1">
+                      <span>{garment.emoji}</span>
+                      <span className="truncate">{garment.name}</span>
+                    </div>
+                    <div className="text-[10px] font-bold text-[#EA580C] mt-0.5">
+                      ₹{garment.unitPrice}
+                    </div>
+                  </div>
+                  <span className="w-5 h-5 rounded-lg bg-white border border-slate-200 group-hover:bg-[#F97316] group-hover:text-white group-hover:border-[#F97316] flex items-center justify-center text-xs font-black shrink-0 transition-colors">
+                    +
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {/* Custom Item Row Adder */}
+            <div className="pt-2 border-t border-slate-100">
+              <div className="font-bold text-slate-700 text-[11px] mb-1.5">Add Custom Item / Special Care:</div>
+              <div className="flex flex-wrap sm:flex-nowrap gap-2">
+                <Input
+                  placeholder="Garment Name (e.g. Silk Dupatta, Leather Jacket)"
+                  value={customGarment.name}
+                  onChange={(e) => setCustomGarment({ ...customGarment, name: e.target.value })}
+                  className="flex-1 bg-slate-50"
+                />
+                <Input
+                  type="number"
+                  placeholder="Price ₹"
+                  value={customGarment.unitPrice}
+                  onChange={(e) => setCustomGarment({ ...customGarment, unitPrice: e.target.value })}
+                  className="w-28 bg-slate-50"
+                />
+                <Input
+                  type="number"
+                  placeholder="Qty"
+                  value={customGarment.quantity}
+                  onChange={(e) => setCustomGarment({ ...customGarment, quantity: e.target.value })}
+                  className="w-20 bg-slate-50"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAddCustomGarment}
+                  className="bg-slate-900 text-white hover:bg-slate-800 shrink-0"
+                >
+                  + Add Item
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Itemized Line Items Table */}
+          <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+              <div className="flex items-center gap-2 font-bold text-slate-900 uppercase tracking-wider text-xs">
+                <Receipt className="w-4 h-4 text-[#F97316]" />
+                <span>Invoice Line Items ({walkInForm.items.length})</span>
+              </div>
+              {walkInForm.items.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setWalkInForm({ ...walkInForm, items: [] })}
+                  className="text-rose-600 hover:text-rose-700 font-bold text-[11px] cursor-pointer"
+                >
+                  Clear All Items
+                </button>
+              )}
+            </div>
+
+            {walkInForm.items.length === 0 ? (
+              <div className="py-6 text-center text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                No items added yet. Click on popular garments above or enter a custom item.
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100 max-h-56 overflow-y-auto pr-1">
+                {walkInForm.items.map((item, idx) => (
+                  <div key={item.id || idx} className="py-2 flex items-center justify-between gap-3 text-xs">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-base">{item.emoji || '👕'}</span>
+                      <div>
+                        <div className="font-bold text-slate-900">{item.name}</div>
+                        <div className="text-[10px] text-slate-400">₹{item.unitPrice} each</div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 shrink-0">
+                      {/* Quantity Stepper */}
+                      <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateItemQty(idx, -1)}
+                          className="w-6 h-6 rounded bg-white hover:bg-rose-50 text-slate-700 hover:text-rose-600 font-bold flex items-center justify-center transition-colors cursor-pointer"
+                        >
+                          -
+                        </button>
+                        <span className="w-7 text-center font-bold font-mono text-slate-900">{item.quantity}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateItemQty(idx, 1)}
+                          className="w-6 h-6 rounded bg-white hover:bg-emerald-50 text-slate-700 hover:text-emerald-600 font-bold flex items-center justify-center transition-colors cursor-pointer"
+                        >
+                          +
+                        </button>
+                      </div>
+
+                      <div className="w-20 text-right font-black font-mono text-slate-900">
+                        ₹{item.unitPrice * item.quantity}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveItem(idx)}
+                        className="text-slate-400 hover:text-rose-600 p-1 cursor-pointer transition-colors"
+                        title="Remove garment"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Speed, Discounts & Payment Configuration */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Speed */}
+            <div className="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-2">
+              <label className="block text-slate-700 font-bold uppercase tracking-wider text-[11px]">
+                ⚡ Turnaround Speed
+              </label>
+              <select
+                value={walkInForm.expressOption}
+                onChange={(e) => setWalkInForm({ ...walkInForm, expressOption: e.target.value })}
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl py-2 px-3 text-xs font-bold text-slate-800"
+              >
+                <option value="STANDARD">🛡️ Standard (48 Hours) — Regular</option>
+                <option value="EXPRESS_24">⚡ Express 24-Hours (+25%)</option>
+                <option value="SAME_DAY">🚀 Same-Day 12-Hours (+50%)</option>
+              </select>
+            </div>
+
+            {/* Discount */}
+            <div className="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-2">
+              <label className="block text-slate-700 font-bold uppercase tracking-wider text-[11px]">
+                🏷️ Shop Discount / Adjustment
+              </label>
+              <div className="flex gap-2">
+                <select
+                  value={walkInForm.discountType}
+                  onChange={(e) => setWalkInForm({ ...walkInForm, discountType: e.target.value })}
+                  className="w-28 bg-slate-50 border border-slate-300 rounded-xl py-2 px-2 text-xs font-bold text-slate-800"
+                >
+                  <option value="NONE">None</option>
+                  <option value="FIXED">Flat ₹</option>
+                  <option value="PERCENT">% Off</option>
+                </select>
+                {walkInForm.discountType !== 'NONE' && (
+                  <Input
+                    type="number"
+                    placeholder={walkInForm.discountType === 'PERCENT' ? 'e.g. 10%' : 'e.g. 50'}
+                    value={walkInForm.discountValue}
+                    onChange={(e) => setWalkInForm({ ...walkInForm, discountValue: e.target.value })}
+                    className="flex-1 bg-slate-50"
+                  />
+                )}
+              </div>
+            </div>
+
+            {/* Payment Method */}
+            <div className="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-2">
+              <label className="block text-slate-700 font-bold uppercase tracking-wider text-[11px]">
+                💳 In-Store Payment
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <select
+                  value={walkInForm.paymentStatus}
+                  onChange={(e) => setWalkInForm({ ...walkInForm, paymentStatus: e.target.value })}
+                  className="bg-slate-50 border border-slate-300 rounded-xl py-2 px-2 text-xs font-bold text-slate-800"
+                >
+                  <option value="PAID">✅ PAID</option>
+                  <option value="PENDING">⏳ PENDING</option>
+                </select>
+                <select
+                  value={walkInForm.paymentMethod}
+                  onChange={(e) => setWalkInForm({ ...walkInForm, paymentMethod: e.target.value })}
+                  className="bg-slate-50 border border-slate-300 rounded-xl py-2 px-2 text-xs font-bold text-slate-800"
+                >
+                  <option value="CASH">💵 Cash</option>
+                  <option value="UPI_QR">📱 UPI / QR</option>
+                  <option value="CARD">💳 Card</option>
+                  <option value="NET_BANKING">🏦 Net Banking</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Notes & Instructions */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-slate-700 font-bold mb-1">Customer / Garment Notes (Printed on Invoice)</label>
+              <Input
+                placeholder="e.g. Collar starch extra crisp, silk saree dry clean only"
+                value={walkInForm.notes}
+                onChange={(e) => setWalkInForm({ ...walkInForm, notes: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="block text-slate-700 font-bold mb-1">Internal Counter Remarks (Admin Only)</label>
+              <Input
+                placeholder="e.g. Counter rack #B3, hanger delivery"
+                value={walkInForm.internalAdminNotes}
+                onChange={(e) => setWalkInForm({ ...walkInForm, internalAdminNotes: e.target.value })}
+              />
+            </div>
+          </div>
+
+          {/* Live Bill Summary Card */}
+          <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-950 text-white shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="space-y-1 text-left w-full sm:w-auto">
+              <div className="text-slate-400 text-xs font-semibold">Bill Calculation Breakdown</div>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-300">
+                <span>Subtotal: <strong>₹{walkInSubtotal}</strong></span>
+                {walkInExpressFee > 0 && <span className="text-amber-400">Express Fee: <strong>+₹{walkInExpressFee}</strong></span>}
+                {walkInDiscount > 0 && <span className="text-emerald-400">Discount: <strong>-₹{walkInDiscount}</strong></span>}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-6 w-full sm:w-auto justify-between sm:justify-end">
+              <div className="text-right">
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Grand Total Bill</span>
+                <span className="text-2xl sm:text-3xl font-black font-mono text-[#F97316]">
+                  {formatCurrency(walkInFinalTotal)}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Instant Actions & Generation Options */}
+          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-4">
+              <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-800">
+                <input
+                  type="checkbox"
+                  checked={walkInForm.autoOpenReceipt}
+                  onChange={(e) => setWalkInForm({ ...walkInForm, autoOpenReceipt: e.target.checked })}
+                  className="rounded text-[#F97316] focus:ring-[#F97316] w-4 h-4 cursor-pointer"
+                />
+                <span>Auto-open Printable Tax Invoice Modal</span>
+              </label>
+
+              <label className="flex items-center gap-2 cursor-pointer font-bold text-emerald-800">
+                <input
+                  type="checkbox"
+                  checked={walkInForm.autoSendWhatsApp}
+                  onChange={(e) => setWalkInForm({ ...walkInForm, autoSendWhatsApp: e.target.checked })}
+                  className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
+                />
+                <span>📲 Dispatch WhatsApp Invoice Instantly</span>
+              </label>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button type="button" variant="ghost" size="sm" onClick={() => setShowWalkInModal(false)}>
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                size="md"
+                isLoading={isCreatingWalkIn}
+                className="bg-gradient-to-r from-[#F97316] to-[#EA580C] hover:from-[#EA580C] hover:to-[#C2410C] text-white shadow-lg font-bold"
+              >
+                🧾 Save Order & Generate Invoice
+              </Button>
+            </div>
+          </div>
+
+        </form>
       </Modal>
 
     </div>

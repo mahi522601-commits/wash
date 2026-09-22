@@ -248,6 +248,65 @@ ${customNote ? `📝 *Update Note:* ${customNote}\n` : ''}${actualWeight ? `⚖�
   },
 
   /**
+   * Build Official Tax Invoice WhatsApp message
+   */
+  buildInvoiceWhatsAppMessage(order, receiptData = {}) {
+    if (!order) return '';
+
+    const customerName = order.customerName || order.customer?.name || 'Valued Customer';
+    const orderNumber = order.orderNumber || order.id || 'TW-ORDER';
+    const invoiceNumber = receiptData.invoiceNumber || `INV-${orderNumber}`;
+    const serviceName = order.serviceName || order.service || 'Premium Garment Care';
+    const serviceEmoji = order.serviceEmoji || '🧾';
+
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://techwash.in';
+    const invoiceUrl = `${origin}/track-order?id=${orderNumber}`;
+
+    const items = order.items || receiptData.items || [];
+    let itemsText = '';
+    if (items.length > 0) {
+      const itemsList = items.map((item, idx) => {
+        const qty = item.quantity || 1;
+        const name = item.name || 'Garment';
+        const price = item.lineTotal || item.totalPrice || (item.unitPrice ? item.unitPrice * qty : null);
+        const priceStr = price ? ` - ₹${price}` : '';
+        return `  ${idx + 1}. *${name}* × ${qty}${priceStr}`;
+      }).join('\n');
+      itemsText = `\n📋 *ITEMIZED BILL:*\n${itemsList}\n`;
+    }
+
+    const finalTotal = order.finalPrice || order.priceSnapshot?.finalTotal || order.totalAmount || 0;
+    const paymentStatus = order.paymentStatus === 'PAID' ? '✅ PAID' : '⏳ PENDING';
+    const paymentMethod = order.paymentMethod === 'UPI_QR' ? 'UPI' : order.paymentMethod === 'CASH' ? 'Cash' : order.paymentMethod === 'CARD' ? 'Card' : 'Pay on Delivery';
+
+    return `✨ *TECH WASH LAUNDRY SERVICES* ✨
+_Official Tax Invoice & Garment Receipt_
+----------------------------------------
+👋 Hello *${customerName}*,
+
+Here is your official invoice for Order *#${orderNumber}*:
+
+🧾 *INVOICE DETAILS*
+• *Invoice No:* *${invoiceNumber}*
+• *Order ID:* *#${orderNumber}*
+• *Service:* ${serviceEmoji} *${serviceName}*
+• *Date:* ${order.pickupDate || order.schedule?.pickupDate || 'Today'}
+${itemsText}
+💰 *PAYMENT SUMMARY*
+• *Total Amount:* *₹${finalTotal}*
+• *Payment Status:* ${paymentStatus}
+• *Payment Mode:* ${paymentMethod}
+
+📲 *VIEW & DOWNLOAD FULL INVOICE / TRACK STATUS:*
+👉 ${invoiceUrl}
+
+📞 *Support Helpline:* +91 89777 69866
+🌐 *Website:* https://techwash.in
+
+_Thank you for trusting Tech Wash for your garment care!_`;
+  },
+
+  /**
    * Build Worker Task Assignment WhatsApp message for dispatching to delivery riders
    */
   buildWorkerAssignmentMessage(order, staffMember) {

@@ -32,6 +32,17 @@ export const INITIAL_PRICING_CONFIG = {
       pricingType: 'ITEMIZED', // Men & Women with per-piece rates
     },
     {
+      id: 'starch-and-iron',
+      slug: 'starch-and-iron',
+      name: 'Starch & Iron',
+      icon: '✨',
+      emoji: '✨',
+      tagline: 'Crisp stiff starching & steam finish',
+      description: 'Traditional organic starching treatment with high-precision steam form pressing for crisp cottons & sarees.',
+      startingPriceDisplay: 'Starts at ₹25',
+      pricingType: 'ITEMIZED',
+    },
+    {
       id: 'wash-and-iron',
       slug: 'wash-and-iron',
       name: 'Wash & Iron',
@@ -240,6 +251,30 @@ export const INITIAL_PRICING_CONFIG = {
       { id: 'ir-w-12', name: 'Kids Shirt', price: 12, emoji: '👕', gender: 'kids', category: 'Kids', subCategory: 'kids' },
       { id: 'ir-w-13', name: 'Kids Pant', price: 12, emoji: '👖', gender: 'kids', category: 'Kids', subCategory: 'kids' },
       { id: 'ir-w-14', name: 'Kids Dhothi/Pyjama', price: 15, emoji: '🥻', gender: 'kids', category: 'Kids', subCategory: 'kids' },
+    ]
+  },
+
+  'starch-and-iron': {
+    men: [
+      { id: 'si-m-1', name: 'Cotton Shirt (Starch & Iron)', price: 30, emoji: '👔', gender: 'men', category: 'Men', subCategory: 'tops' },
+      { id: 'si-m-2', name: 'Khadi / Linen Shirt', price: 35, emoji: '👔', gender: 'men', category: 'Men', subCategory: 'tops' },
+      { id: 'si-m-3', name: 'Cotton Kurta (Starch & Iron)', price: 45, emoji: '👘', gender: 'men', category: 'Men', subCategory: 'traditional' },
+      { id: 'si-m-4', name: 'Cotton Dhoti / Lungi', price: 40, emoji: '🥻', gender: 'men', category: 'Men', subCategory: 'traditional' },
+      { id: 'si-m-5', name: 'Cotton Trouser / Pant', price: 30, emoji: '👖', gender: 'men', category: 'Men', subCategory: 'bottoms' },
+      { id: 'si-m-6', name: 'Kanduva / Angavastram', price: 30, emoji: '🧣', gender: 'men', category: 'Men', subCategory: 'traditional' },
+      { id: 'si-m-7', name: 'Chef / White Apron Starch', price: 35, emoji: '🥼', gender: 'men', category: 'Workwear', subCategory: 'jackets' },
+    ],
+    women: [
+      { id: 'si-w-1', name: 'Cotton Saree (Starch & Iron)', price: 80, emoji: '🥻', gender: 'women', category: 'Women', subCategory: 'traditional' },
+      { id: 'si-w-2', name: 'Silk Cotton Saree', price: 90, emoji: '✨', gender: 'women', category: 'Women', subCategory: 'traditional' },
+      { id: 'si-w-3', name: 'Cotton Dupatta / Chunni', price: 30, emoji: '🧣', gender: 'women', category: 'Women', subCategory: 'traditional' },
+      { id: 'si-w-4', name: 'Cotton Kurti / Top Starch', price: 40, emoji: '👚', gender: 'women', category: 'Women', subCategory: 'tops' },
+      { id: 'si-w-5', name: 'Cotton Salwar / Pyjama', price: 30, emoji: '👖', gender: 'women', category: 'Women', subCategory: 'bottoms' },
+    ],
+    common: [
+      { id: 'si-c-1', name: 'Cotton Table Cloth (Starch)', price: 50, emoji: '🍽️', gender: 'common', category: 'Household', subCategory: 'household' },
+      { id: 'si-c-2', name: 'Cotton Single Bedsheet', price: 50, emoji: '🛏️', gender: 'common', category: 'Household', subCategory: 'household' },
+      { id: 'si-c-3', name: 'Cotton Double Bedsheet', price: 70, emoji: '🛏️', gender: 'common', category: 'Household', subCategory: 'household' },
     ]
   },
 

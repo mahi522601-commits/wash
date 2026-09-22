@@ -95,6 +95,49 @@ export const DEFAULT_SERVICES = [
     order: 2,
   },
   {
+    id: 'srv-starch-and-iron',
+    title: 'Starch & Iron',
+    name: 'Starch & Iron',
+    slug: 'starch-and-iron',
+    category: 'Finishing',
+    pricingType: 'per_item',
+    startingPrice: 25,
+    startingPriceDisplay: 'Starts at ₹25',
+    emoji: '✨',
+    icon: '✨',
+    shortDescription: 'Traditional natural rice/corn starching treatment combined with high-precision steam pressing for crisp shirts, cotton sarees, and ethnic kurtas.',
+    detailedDescription: 'Our specialized Starch & Iron service gives your cotton shirts, sarees, dhotis, and ethnic wear the signature royal crisp stiffness and crisp drape. We calibrate the starch intensity (light, medium, or stiff) based on fabric type and lock the structure in with industrial vacuum form steam pressing.',
+    heroImage: 'https://images.unsplash.com/photo-1545173168-9f1947eebb7f?auto=format&fit=crop&w=1200&q=80',
+    mobileImage: 'https://images.unsplash.com/photo-1545173168-9f1947eebb7f?auto=format&fit=crop&w=600&q=80',
+    features: [
+      'Pure organic rice & corn starch infusion',
+      'Customizable stiffness levels (Light, Medium, Heavy Stiff)',
+      'High-pressure vacuum steam bed pressing',
+      'Preserves cotton weave integrity without yellowing or flaking',
+      'Individual collar and cuff stiffening'
+    ],
+    benefits: [
+      'Gives formal shirts and cotton sarees a majestic, royal look',
+      'Prevents midday garment wrinkling and maintains crisp posture',
+      'Protects natural cotton fibers from sweat and environmental dust',
+      'Odorless, skin-friendly, hypoallergenic formulation'
+    ],
+    processSteps: [
+      { stepNumber: '01', title: 'Fabric & Starch Level Grading', bullets: ['Fiber inspection', 'Starch ratio formulation'] },
+      { stepNumber: '02', title: 'Gentle Starch Infusion Bath', bullets: ['Even fiber absorption', 'No chalky residue'] },
+      { stepNumber: '03', title: 'Precision Form Steam Pressing', bullets: ['High heat crease locking', 'Vacuum table cooling'] }
+    ],
+    faqs: [
+      { question: 'Can I choose how stiff my clothes are starched?', answer: 'Yes! We offer Light, Medium, and Heavy/Crisp starching levels tailored to your exact preference.' },
+      { question: 'Which garments are best suited for Starch & Iron?', answer: 'Cotton shirts, cotton and silk sarees, kurtas, dhotis, linen pants, and chef coats benefit the most from starching.' }
+    ],
+    status: 'published',
+    active: true,
+    featured: true,
+    displayOrder: 3,
+    order: 3,
+  },
+  {
     id: 'srv-wash-and-iron',
     title: 'Wash & Iron',
     name: 'Wash & Iron',
