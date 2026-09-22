@@ -17,7 +17,7 @@ import {
 
 export const PrintReceipt = ({
   receiptData,
-  config,
+  config = {},
   includeInternalNotes = false,
   className = '',
 }) => {
@@ -28,30 +28,23 @@ export const PrintReceipt = ({
     orderNumber,
     invoiceDate,
     receiptGeneratedDate,
-    customer,
+    customer = {},
     pickupLocation,
     serviceName,
-    schedule,
+    schedule = {},
     items = [],
     priceSnapshot,
     paymentStatus,
-    paymentMethod,
+    paymentMethod = 'CASH',
     paymentId,
     customerStage,
     internalNotes,
   } = receiptData;
 
   // Compute tracking and payment QR URLs
-  const trackingUrl = `https://techwash.in/track-order?id=${orderNumber}`;
-  const trackingQrUrl = generateQrImageUrl(trackingUrl, 160);
-
-  const upiQrData = generateUpiQrData({
-    upiId: config.upiId || 'techwash@upi',
-    payeeName: config.businessName || 'Tech Wash Laundry',
-    amount: paymentStatus === 'PAID' ? 0 : priceSnapshot?.finalTotal,
-    orderNumber: orderNumber,
-  });
-  const upiQrUrl = generateQrImageUrl(upiQrData, 160);
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://techwash.in';
+  const trackingUrl = `${origin}/track-order?id=${orderNumber}`;
+  const trackingQrUrl = generateQrImageUrl(trackingUrl, 120);
 
   // Status mapping for the 6-stage visual milestone
   const MILESTONES = [
@@ -71,19 +64,18 @@ export const PrintReceipt = ({
   return (
     <div
       id="techwash-printable-receipt"
-      className={`techwash-receipt-sheet bg-white text-[#171717] font-sans antialiased max-w-[210mm] mx-auto p-8 sm:p-10 border border-slate-200 shadow-2xl rounded-2xl print:p-0 print:border-none print:shadow-none print:max-w-none print:rounded-none ${className}`}
-      style={{ minHeight: '290mm' }}
+      className={`techwash-receipt-sheet bg-white text-[#111827] font-sans antialiased max-w-[210mm] mx-auto p-4 sm:p-5 border border-slate-200 shadow-xl rounded-2xl print:p-0 print:border-none print:shadow-none print:max-w-none print:rounded-none print:m-0 ${className}`}
     >
       
       {/* ─────────────────────────────────────────────────────────
           1. HEADER: BRANDING (LEFT) + INVOICE META (RIGHT)
       ───────────────────────────────────────────────────────── */}
-      <div className="flex justify-between items-start pb-6 border-b-2 border-brand-500/30">
+      <div className="flex justify-between items-start pb-2 border-b-2 border-[#F97316]/40">
         
         {/* Left: Brand Identity */}
-        <div className="space-y-1 max-w-sm">
-          <div className="flex items-center gap-2.5">
-            <div className="w-12 h-12 rounded-2xl bg-white border border-[#FED7AA] flex items-center justify-center p-1 shadow-md print:shadow-none overflow-hidden">
+        <div className="space-y-0.5 max-w-sm">
+          <div className="flex items-center gap-2">
+            <div className="w-9 h-9 rounded-xl bg-white border border-orange-200 flex items-center justify-center p-0.5 shadow-xs shrink-0 overflow-hidden">
               <img 
                 src="/techwashlogo.webp" 
                 alt="Tech Wash" 
@@ -92,48 +84,48 @@ export const PrintReceipt = ({
               />
             </div>
             <div>
-              <h1 className="text-xl font-black font-display tracking-tight text-[#1F2937] uppercase">
+              <h1 className="text-base font-black font-display tracking-tight text-slate-900 uppercase leading-none">
                 {config.businessName || 'Tech Wash'}
               </h1>
-              <p className="text-[10px] font-bold text-[#F97316] tracking-wider uppercase">
+              <p className="text-[9px] font-bold text-[#EA580C] tracking-wider uppercase mt-0.5">
                 {config.tagline || 'Next-Gen Fabric Care & Couture Spa'}
               </p>
             </div>
           </div>
 
-          <div className="text-[10px] text-slate-500 pt-1 space-y-0.5 leading-tight">
-            <p className="font-medium text-slate-700">{config.address}</p>
-            <div className="flex flex-wrap items-center gap-x-3 text-slate-600 font-semibold">
-              <span>Tel: {config.phone}</span>
+          <div className="text-[8.5px] text-slate-500 pt-0.5 space-y-0.5 leading-tight">
+            <p className="font-medium text-slate-700">{config.address || 'Doorstep Pickup & Delivery Hub, Hyderabad'}</p>
+            <div className="flex flex-wrap items-center gap-x-2 text-slate-600 font-semibold text-[8px]">
+              <span>Tel: {config.phone || '+91 89777 69866'}</span>
               <span>•</span>
-              <span>{config.email}</span>
+              <span>{config.email || 'care@techwash.in'}</span>
               <span>•</span>
-              <span>{config.website}</span>
+              <span>{config.website || 'https://techwash.in'}</span>
             </div>
             {config.showGst && config.gstNumber && (
-              <p className="font-bold text-slate-800">
-                GSTIN: <span className="font-mono text-[#F97316]">{config.gstNumber}</span>
+              <p className="font-bold text-slate-800 text-[8px]">
+                GSTIN: <span className="font-mono text-[#EA580C]">{config.gstNumber}</span>
               </p>
             )}
           </div>
         </div>
 
         {/* Right: Invoice Number & Dates */}
-        <div className="text-right space-y-1.5">
-          <div className="inline-block px-3 py-1 rounded-lg bg-[#FFF7ED] border border-brand-200 text-[#F97316] text-xs font-black tracking-wider uppercase">
+        <div className="text-right space-y-0.5">
+          <div className="inline-block px-2 py-0.5 rounded-md bg-orange-50 border border-orange-200 text-[#EA580C] text-[9.5px] font-black tracking-wider uppercase">
             Tax Invoice / Receipt
           </div>
           
           <div>
-            <div className="text-lg sm:text-xl font-black font-display text-[#1F2937] font-mono tracking-tight">
+            <div className="text-sm font-black font-display text-slate-900 font-mono tracking-tight">
               {invoiceNumber}
             </div>
-            <div className="text-[11px] font-bold text-slate-400">
-              Order ID: <span className="font-mono text-slate-700">{orderNumber}</span>
+            <div className="text-[9.5px] font-bold text-slate-500">
+              Order ID: <span className="font-mono text-slate-800 font-bold">{orderNumber}</span>
             </div>
           </div>
 
-          <div className="text-[10px] text-slate-500 space-y-0.5">
+          <div className="text-[8.5px] text-slate-500 space-y-0.5 leading-tight">
             <div>Order Date: <strong className="text-slate-800">{invoiceDate}</strong></div>
             <div>Generated: <span className="text-slate-600">{receiptGeneratedDate}</span></div>
           </div>
@@ -144,46 +136,39 @@ export const PrintReceipt = ({
       {/* ─────────────────────────────────────────────────────────
           2. CUSTOMER & ORDER LOGISTICS (2-COLUMN BOX)
       ───────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 gap-4 py-4 text-xs">
+      <div className="grid grid-cols-2 gap-2 py-1.5 text-[10.5px]">
         
         {/* Customer Information */}
-        <div className="p-3.5 rounded-xl bg-[#FFF7ED]/70 border border-brand-200 space-y-1">
-          <span className="text-[10px] font-bold text-[#F97316] uppercase tracking-wider block">
+        <div className="p-2 rounded-lg bg-orange-50/40 border border-orange-200/70 space-y-0.5">
+          <span className="text-[8.5px] font-bold text-[#EA580C] uppercase tracking-wider block">
             Billed & Delivered To
           </span>
-          <div className="font-black text-slate-900 text-sm">{customer.name}</div>
-          <div className="text-slate-600 font-medium">
+          <div className="font-black text-slate-900 text-[11px]">{customer.name || 'Valued Customer'}</div>
+          <div className="text-slate-600 font-medium text-[9.5px]">
             Phone: <strong className="text-slate-900">{customer.phone}</strong>
           </div>
-          {customer.email && (
-            <div className="text-slate-500 text-[11px] truncate">{customer.email}</div>
-          )}
-          <div className="text-[11px] text-slate-700 font-normal leading-snug pt-0.5">
-            {customer.address}
+          <div className="text-[9.5px] text-slate-600 font-normal leading-tight truncate">
+            {customer.address || 'Direct Shop / Counter Drop'}
           </div>
         </div>
 
         {/* Order Logistics & Schedule */}
-        <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+        <div className="p-2 rounded-lg bg-slate-50 border border-slate-200 space-y-0.5">
+          <span className="text-[8.5px] font-bold text-slate-500 uppercase tracking-wider block">
             Logistics & Schedule
           </span>
-          <div className="flex justify-between">
-            <span className="text-slate-500">Service Category:</span>
-            <span className="font-bold text-slate-900">{serviceName}</span>
+          <div className="flex justify-between text-[9.5px]">
+            <span className="text-slate-500">Service:</span>
+            <span className="font-bold text-slate-900 truncate">{serviceName}</span>
           </div>
-          <div className="flex justify-between">
-            <span className="text-slate-500">Pickup Date & Slot:</span>
-            <span className="font-semibold text-slate-900">{schedule.pickupDate}</span>
+          <div className="flex justify-between text-[9.5px]">
+            <span className="text-slate-500">Pickup Date:</span>
+            <span className="font-semibold text-slate-900">{schedule.pickupDate || 'Today'}</span>
           </div>
-          <div className="flex justify-between">
-            <span className="text-slate-500">Time Window:</span>
-            <span className="font-medium text-slate-800">{schedule.pickupSlot}</span>
-          </div>
-          <div className="flex justify-between pt-0.5 border-t border-slate-200">
-            <span className="text-slate-500">Delivery Speed:</span>
-            <span className="font-bold text-[#F97316]">
-              {priceSnapshot?.expressFee > 0 ? '⚡ 24H Express Turnaround' : 'Standard 48H Eco-Care'}
+          <div className="flex justify-between text-[9.5px]">
+            <span className="text-slate-500">Turnaround:</span>
+            <span className="font-bold text-[#EA580C]">
+              {priceSnapshot?.expressFee > 0 ? '⚡ 24H Express' : 'Standard 48H'}
             </span>
           </div>
         </div>
@@ -193,41 +178,40 @@ export const PrintReceipt = ({
       {/* ─────────────────────────────────────────────────────────
           3. GARMENTS & SERVICES LINE ITEM TABLE
       ───────────────────────────────────────────────────────── */}
-      <div className="pt-2">
-        <table className="w-full text-left text-xs border-collapse">
+      <div className="pt-0.5">
+        <table className="w-full text-left border-collapse text-[10px]">
           <thead>
-            <tr className="bg-[#1F2937] text-white text-[10px] font-bold uppercase tracking-wider">
-              <th className="py-2.5 px-3 rounded-l-lg w-10 text-center">#</th>
-              <th className="py-2.5 px-3">Service & Garment Description</th>
-              <th className="py-2.5 px-3 text-center w-16">Qty</th>
-              <th className="py-2.5 px-3 text-right w-24">Rate (₹)</th>
-              <th className="py-2.5 px-3 rounded-r-lg text-right w-28">Amount (₹)</th>
+            <tr className="bg-slate-900 text-white text-[8.5px] font-bold uppercase tracking-wider">
+              <th className="py-1 px-2 rounded-l-md w-7 text-center">#</th>
+              <th className="py-1 px-2">Garment / Service Description</th>
+              <th className="py-1 px-2 text-center w-12">Qty</th>
+              <th className="py-1 px-2 text-right w-16">Rate (₹)</th>
+              <th className="py-1 px-2 rounded-r-md text-right w-20">Amount (₹)</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 text-slate-800">
             {items.map((item, idx) => (
               <tr key={item.id || idx} className="hover:bg-slate-50/80">
-                <td className="py-2.5 px-3 text-center text-slate-400 font-mono text-[11px]">
+                <td className="py-1 px-2 text-center text-slate-400 font-mono text-[9px]">
                   {String(idx + 1).padStart(2, '0')}
                 </td>
-                <td className="py-2.5 px-3">
-                  <div className="font-bold text-slate-900 text-xs">
+                <td className="py-1 px-2">
+                  <span className="font-bold text-slate-900">
                     {item.name || item.title || serviceName}
-                  </div>
-                  {(item.category || item.instructions) && (
-                    <div className="text-[10px] text-slate-500">
-                      {item.category ? `Category: ${item.category}` : ''}
-                      {item.instructions ? ` • Note: ${item.instructions}` : ''}
-                    </div>
+                  </span>
+                  {item.category && (
+                    <span className="text-[8.5px] text-slate-400 ml-1 font-medium">
+                      ({item.category})
+                    </span>
                   )}
                 </td>
-                <td className="py-2.5 px-3 text-center font-bold text-slate-900">
+                <td className="py-1 px-2 text-center font-bold text-slate-900">
                   {item.quantity || 1}
                 </td>
-                <td className="py-2.5 px-3 text-right font-mono text-slate-700">
+                <td className="py-1 px-2 text-right font-mono text-slate-700">
                   {formatCurrency(item.unitPrice || item.price || 0)}
                 </td>
-                <td className="py-2.5 px-3 text-right font-bold font-mono text-slate-900">
+                <td className="py-1 px-2 text-right font-bold font-mono text-slate-900">
                   {formatCurrency((item.quantity || 1) * (item.unitPrice || item.price || 0))}
                 </td>
               </tr>
@@ -239,61 +223,58 @@ export const PrintReceipt = ({
       {/* ─────────────────────────────────────────────────────────
           4. PAYMENT BREAKDOWN + GRAND TOTAL BOX
       ───────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-12 gap-4 pt-4 border-t border-slate-200">
+      <div className="grid grid-cols-12 gap-2.5 pt-1.5 border-t border-slate-200 text-[10px]">
         
         {/* Left Col: Payment Method & Compact Notes */}
-        <div className="col-span-7 space-y-3">
+        <div className="col-span-7 space-y-1">
           
-          {/* Payment Status & Method Card */}
-          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1.5">
+          <div className="p-1.5 rounded-lg bg-slate-50 border border-slate-200 space-y-0.5">
             <div className="flex items-center justify-between">
-              <span className="text-slate-500 font-bold uppercase tracking-wider text-[10px]">
+              <span className="text-slate-500 font-bold uppercase tracking-wider text-[8.5px]">
                 Payment Status
               </span>
-              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+              <span className={`px-2 py-0.2 rounded-full text-[8.5px] font-black uppercase tracking-wider ${
                 paymentStatus === 'PAID'
                   ? 'bg-emerald-100 text-emerald-800'
-                  : paymentStatus === 'REFUNDED'
-                  ? 'bg-brand-100 text-brand-800'
                   : 'bg-amber-100 text-amber-800'
               }`}>
-                {paymentStatus === 'PAID' ? '✓ PAID IN FULL' : paymentStatus}
+                {paymentStatus === 'PAID' ? '✓ PAID IN FULL' : '⏳ PENDING'}
               </span>
             </div>
 
-            <div className="flex justify-between text-slate-700 text-[11px]">
+            <div className="flex justify-between text-slate-700 text-[9.5px]">
               <span className="text-slate-500">Payment Option:</span>
-              <span className="font-semibold text-slate-900">{paymentMethod.replace(/_/g, ' ')}</span>
+              <span className="font-semibold text-slate-900">{String(paymentMethod).replace(/_/g, ' ')}</span>
             </div>
 
             {paymentId && (
-              <div className="flex justify-between text-[10px] text-slate-500 font-mono">
-                <span>Transaction Ref:</span>
+              <div className="flex justify-between text-[8.5px] text-slate-500 font-mono">
+                <span>Ref:</span>
                 <span className="text-slate-800">{paymentId}</span>
               </div>
             )}
           </div>
 
-          {/* Customer Special Instructions (if any) */}
+          {/* Special Instructions (if any) */}
           {schedule.instructions && (
-            <div className="p-2.5 rounded-lg bg-amber-50/70 border border-amber-200 text-[11px] text-amber-900">
-              <strong className="text-amber-800">Customer Note:</strong> {schedule.instructions}
+            <div className="p-1 rounded bg-amber-50/70 border border-amber-200 text-[8.5px] text-amber-900 leading-tight">
+              <strong className="text-amber-800">Note:</strong> {schedule.instructions}
             </div>
           )}
 
           {/* Internal Staff Notes (Only if Admin enabled) */}
           {includeInternalNotes && internalNotes && (
-            <div className="p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-[10px] text-rose-900">
-              <strong className="text-rose-800">Internal Remarks:</strong> {internalNotes}
+            <div className="p-1 rounded bg-rose-50 border border-rose-200 text-[8.5px] text-rose-900 leading-tight">
+              <strong className="text-rose-800">Internal:</strong> {internalNotes}
             </div>
           )}
 
         </div>
 
         {/* Right Col: Itemized Totals & Grand Total */}
-        <div className="col-span-5 space-y-1.5 text-xs text-slate-600">
+        <div className="col-span-5 space-y-0.5 text-slate-600">
           
-          <div className="flex justify-between py-0.5">
+          <div className="flex justify-between py-0.2 text-[9.5px]">
             <span>Items Subtotal:</span>
             <span className="font-mono font-semibold text-slate-900">
               {formatCurrency(priceSnapshot?.itemsSubtotal || receiptData.totalAmount)}
@@ -301,40 +282,40 @@ export const PrintReceipt = ({
           </div>
 
           {priceSnapshot?.expressFee > 0 && (
-            <div className="flex justify-between py-0.5 text-[#F97316]">
-              <span>Express Priority Fee:</span>
+            <div className="flex justify-between py-0.2 text-[#EA580C] text-[9.5px]">
+              <span>Express Priority:</span>
               <span className="font-mono font-bold">+{formatCurrency(priceSnapshot.expressFee)}</span>
             </div>
           )}
 
           {priceSnapshot?.discountAmount > 0 && (
-            <div className="flex justify-between py-0.5 text-emerald-600">
-              <span>Promotional Discount:</span>
+            <div className="flex justify-between py-0.2 text-emerald-600 text-[9.5px]">
+              <span>Discount:</span>
               <span className="font-mono font-bold">-{formatCurrency(priceSnapshot.discountAmount)}</span>
             </div>
           )}
 
-          <div className="flex justify-between py-0.5">
-            <span>Doorstep Logistics Fee:</span>
+          <div className="flex justify-between py-0.2 text-[9.5px]">
+            <span>Doorstep Logistics:</span>
             <span className="font-mono text-slate-900">
               {priceSnapshot?.deliveryFee === 0 ? 'FREE' : formatCurrency(priceSnapshot?.deliveryFee || 0)}
             </span>
           </div>
 
-          <div className="flex justify-between py-0.5 text-slate-400 text-[11px]">
-            <span>GST / Taxes (5% Included):</span>
+          <div className="flex justify-between py-0.2 text-slate-400 text-[9px]">
+            <span>GST (5% Included):</span>
             <span className="font-mono">{formatCurrency(priceSnapshot?.taxAmount || 0)}</span>
           </div>
 
           {/* GRAND TOTAL HIGHLIGHT BOX */}
-          <div className="mt-2 p-3 rounded-xl bg-[#1F2937] text-white flex items-center justify-between shadow-md print:shadow-none border border-brand-500/30">
+          <div className="mt-0.5 p-1.5 rounded-lg bg-slate-900 text-white flex items-center justify-between border border-orange-400/30">
             <div>
-              <div className="text-[10px] font-bold uppercase tracking-widest text-brand-300">
-                Grand Total Payable
+              <div className="text-[8px] font-bold uppercase tracking-widest text-orange-300">
+                Grand Total
               </div>
-              <div className="text-[10px] text-slate-300">Net Amount (INR)</div>
+              <div className="text-[7.5px] text-slate-400">Net Amount (INR)</div>
             </div>
-            <div className="text-xl font-black font-display font-mono text-[#F97316]">
+            <div className="text-sm sm:text-base font-black font-display font-mono text-[#F97316]">
               {formatCurrency(priceSnapshot?.finalTotal || receiptData.totalAmount)}
             </div>
           </div>
@@ -346,18 +327,15 @@ export const PrintReceipt = ({
       {/* ─────────────────────────────────────────────────────────
           5. 6-STAGE VISUAL TIMELINE BAR
       ───────────────────────────────────────────────────────── */}
-      <div className="mt-4 pt-3 border-t border-slate-100">
-        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
-          Order Status Lifecycle
-        </span>
-        <div className="flex items-center justify-between text-[10px] font-semibold">
+      <div className="mt-1.5 pt-1 border-t border-slate-100">
+        <div className="flex items-center justify-between text-[8px] font-semibold">
           {MILESTONES.map((m, idx) => {
             const isCompleted = currentStageIdx >= idx;
             const isCurrent = currentStageIdx === idx;
             return (
-              <div key={m.key} className="flex items-center gap-1.5">
+              <div key={m.key} className="flex items-center gap-0.5">
                 <div
-                  className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold ${
+                  className={`w-3 h-3 rounded-full flex items-center justify-center text-[7.5px] font-bold shrink-0 ${
                     isCompleted
                       ? 'bg-[#F97316] text-white'
                       : 'bg-slate-200 text-slate-400'
@@ -365,11 +343,11 @@ export const PrintReceipt = ({
                 >
                   {isCompleted ? '✓' : idx + 1}
                 </div>
-                <span className={isCurrent ? 'font-bold text-[#F97316]' : isCompleted ? 'text-slate-800' : 'text-slate-400'}>
+                <span className={isCurrent ? 'font-bold text-[#EA580C]' : isCompleted ? 'text-slate-800' : 'text-slate-400'}>
                   {m.label}
                 </span>
                 {idx < MILESTONES.length - 1 && (
-                  <span className={`mx-1 text-[8px] ${isCompleted ? 'text-[#F97316]' : 'text-slate-300'}`}>
+                  <span className={`mx-0.5 text-[6.5px] ${isCompleted ? 'text-[#F97316]' : 'text-slate-300'}`}>
                     →
                   </span>
                 )}
@@ -382,40 +360,35 @@ export const PrintReceipt = ({
       {/* ─────────────────────────────────────────────────────────
           6. QR CODES + PICKUP LOCATION REFERENCE
       ───────────────────────────────────────────────────────── */}
-      <div className="mt-4 p-3.5 rounded-xl bg-slate-50 border border-slate-200 grid grid-cols-12 gap-3 items-center text-xs">
+      <div className="mt-1.5 p-1.5 rounded-lg bg-slate-50 border border-slate-200 grid grid-cols-12 gap-2 items-center text-[9.5px]">
         
         {/* Left: Location Confirmation text */}
-        <div className="col-span-8 space-y-1">
-          <div className="flex items-center gap-1.5 text-[#F97316] font-bold text-[11px]">
-            <MapPin className="w-3.5 h-3.5 text-[#F97316]" />
-            <span>Doorstep Pickup Coordinates Locked</span>
+        <div className="col-span-9 space-y-0.5">
+          <div className="flex items-center gap-1 text-[#EA580C] font-bold text-[9px]">
+            <MapPin className="w-2.5 h-2.5 text-[#EA580C] shrink-0" />
+            <span>Doorstep Coordinates Locked</span>
             {pickupLocation?.locationSource === 'GPS' && (
-              <span className="text-[9px] px-2 py-0.5 rounded bg-brand-100 text-brand-800 font-mono">
-                🛰️ GPS Verified
+              <span className="text-[7.5px] px-1 py-0.2 rounded bg-orange-100 text-[#EA580C] font-mono">
+                🛰️ GPS
               </span>
             )}
           </div>
-          <p className="text-[11px] text-slate-700 leading-snug">
-            {pickupLocation?.formattedAddress || customer.address}
+          <p className="text-[9px] text-slate-700 leading-snug truncate">
+            {pickupLocation?.formattedAddress || customer.address || 'In-Store Drop Counter'}
           </p>
-          {pickupLocation?.landmark && (
-            <p className="text-[10px] text-slate-500 font-medium">
-              Landmark: {pickupLocation.landmark}
-            </p>
-          )}
         </div>
 
         {/* Right: Live Tracking QR */}
-        {config.showTrackingQr && (
-          <div className="col-span-4 flex items-center justify-end gap-2.5">
+        {config.showTrackingQr !== false && (
+          <div className="col-span-3 flex items-center justify-end gap-1">
             <div className="text-right">
-              <div className="text-[10px] font-bold text-slate-900 leading-tight">Live Tracking</div>
-              <div className="text-[9px] text-slate-400">Scan via Mobile Camera</div>
+              <div className="text-[8px] font-bold text-slate-800 leading-none">Live Status</div>
+              <div className="text-[7px] text-slate-400 leading-none mt-0.5">Scan to Track</div>
             </div>
             <img
               src={trackingQrUrl}
               alt="Tracking QR Code"
-              className="w-14 h-14 object-contain rounded-md border border-slate-300 p-0.5 bg-white shrink-0"
+              className="w-8 h-8 object-contain rounded border border-slate-300 p-0.5 bg-white shrink-0"
             />
           </div>
         )}
@@ -425,25 +398,20 @@ export const PrintReceipt = ({
       {/* ─────────────────────────────────────────────────────────
           7. FOOTER & TERMS & CONDITIONS
       ───────────────────────────────────────────────────────── */}
-      <div className="mt-4 pt-3 border-t-2 border-slate-100 text-[10px] text-slate-500 flex justify-between items-end gap-4">
+      <div className="mt-1.5 pt-1 border-t border-slate-200 text-[8px] text-slate-500 flex justify-between items-end gap-2 leading-tight">
         
-        <div className="space-y-1 max-w-lg">
-          <p className="font-bold text-slate-800">
+        <div className="space-y-0.5 max-w-md">
+          <p className="font-bold text-slate-800 text-[8.5px]">
             {config.thankYouMessage || 'Thank you for choosing Tech Wash Laundry Services.'}
           </p>
-          {config.showTerms && config.termsAndConditions && (
-            <p className="text-[9px] text-slate-400 leading-tight whitespace-pre-line">
-              {config.termsAndConditions}
-            </p>
-          )}
-          <p className="text-[9px] text-slate-400">
-            {config.footerContactNote || 'Customer Concierge: +91 89777 69866 • care@techwash.in'}
+          <p className="text-[7.5px] text-slate-400">
+            {config.footerContactNote || 'Customer Concierge: +91 89777 69866 • care@techwash.in • https://techwash.in'}
           </p>
         </div>
 
         <div className="text-right shrink-0">
-          <div className="text-[10px] font-bold text-[#1F2937]">Authorized Signatory</div>
-          <div className="text-[9px] text-slate-400 font-mono">Tech Wash Operations</div>
+          <div className="text-[8px] font-bold text-slate-900">Authorized Signatory</div>
+          <div className="text-[7px] text-slate-400 font-mono">Tech Wash Operations</div>
         </div>
 
       </div>
