@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { orderService, ORDER_CUSTOMER_STAGES, INTERNAL_OPERATIONAL_STAGES } from '../../services/orderService';
 import { staffService } from '../../services/staffService';
 import { auditService } from '../../services/auditService';
@@ -45,7 +45,12 @@ import {
   Store,
   Tag,
   Percent,
-  Check
+  Check,
+  Zap,
+  Layers,
+  Wrench,
+  HelpCircle,
+  FolderPlus
 } from 'lucide-react';
 
 const WALK_IN_SERVICES = [
@@ -58,22 +63,135 @@ const WALK_IN_SERVICES = [
   { id: 'srv-curtain-spa', name: 'Curtain & Carpet Spa', emoji: '🧼', defaultPrice: 199 },
 ];
 
-const PRESET_GARMENTS = [
-  { name: 'Cotton Shirt / T-Shirt', emoji: '👔', unitPrice: 80, category: 'Tops' },
-  { name: 'Trousers / Jeans / Chinos', emoji: '👖', unitPrice: 90, category: 'Bottoms' },
-  { name: 'Saree (Regular / Daily)', emoji: '🥻', unitPrice: 180, category: 'Ethnic' },
-  { name: 'Saree (Silk / Heavy / Zari)', emoji: '✨', unitPrice: 250, category: 'Ethnic' },
-  { name: 'Saree (Starch & Iron)', emoji: '🌾', unitPrice: 220, category: 'Ethnic' },
-  { name: 'Cotton Kurta / Kurti', emoji: '👘', unitPrice: 120, category: 'Ethnic' },
-  { name: 'Dhoti / Traditional Veshti', emoji: '🥻', unitPrice: 110, category: 'Ethnic' },
-  { name: '2-Piece Suit / Blazer & Pant', emoji: '🤵', unitPrice: 350, category: 'Suits' },
-  { name: '3-Piece Designer Suit', emoji: '🧥', unitPrice: 450, category: 'Suits' },
-  { name: 'Blazer / Formal Jacket', emoji: '🧥', unitPrice: 250, category: 'Suits' },
-  { name: 'Single Bedsheet', emoji: '🛏️', unitPrice: 150, category: 'Home' },
-  { name: 'Double Bedsheet + 2 Pillow Covers', emoji: '🛌', unitPrice: 220, category: 'Home' },
-  { name: 'Heavy Blanket / Comforter / Quilt', emoji: '🛋️', unitPrice: 350, category: 'Home' },
-  { name: 'Sneakers / Leather Shoes Spa', emoji: '👟', unitPrice: 399, category: 'Footwear' },
-  { name: 'Starch Shirt (Crisp Finish)', emoji: '👔', unitPrice: 110, category: 'Tops' },
+export const POS_CATEGORIES = [
+  { key: 'ALL', label: 'All Items', emoji: '✨' },
+  { key: 'MEN', label: "Men's Wear", emoji: '👔' },
+  { key: 'WOMEN', label: "Women's Wear", emoji: '👗' },
+  { key: 'KIDS', label: 'Kids & Baby', emoji: '👶' },
+  { key: 'SAREES_ETHNIC', label: 'Sarees & Ethnic', emoji: '🥻' },
+  { key: 'HOUSEHOLD', label: 'Home & Linens', emoji: '🏠' },
+  { key: 'FOOTWEAR_BAGS', label: 'Shoes & Bags', emoji: '👟' },
+  { key: 'STARCH_FINISHING', label: 'Starch & Iron', emoji: '🌾' },
+  { key: 'EXTRA_SERVICES', label: 'Custom & Extra Charges', emoji: '⚙️' },
+];
+
+export const MASTER_CATALOG_ITEMS = [
+  // ── MEN'S WEAR ──
+  { id: 'm-1', name: 'Cotton Shirt', price: 90, emoji: '👔', categoryKey: 'MEN', categoryName: "Men's Tops" },
+  { id: 'm-2', name: 'Shirt with Starch', price: 100, emoji: '👔', categoryKey: 'MEN', categoryName: "Men's Tops" },
+  { id: 'm-3', name: 'T-Shirt / Polo', price: 90, emoji: '👕', categoryKey: 'MEN', categoryName: "Men's Tops" },
+  { id: 'm-4', name: 'Silk Shirt', price: 90, emoji: '👔', categoryKey: 'MEN', categoryName: "Men's Tops" },
+  { id: 'm-5', name: 'Jeans / Denim', price: 90, emoji: '👖', categoryKey: 'MEN', categoryName: "Men's Bottoms" },
+  { id: 'm-6', name: 'Cotton Trouser / Pant', price: 90, emoji: '👖', categoryKey: 'MEN', categoryName: "Men's Bottoms" },
+  { id: 'm-7', name: 'Trouser with Starch', price: 100, emoji: '👖', categoryKey: 'MEN', categoryName: "Men's Bottoms" },
+  { id: 'm-8', name: 'Shorts / Bermudas', price: 60, emoji: '🩳', categoryKey: 'MEN', categoryName: "Men's Bottoms" },
+  { id: 'm-9', name: 'Trackpant', price: 90, emoji: '👖', categoryKey: 'MEN', categoryName: "Men's Bottoms" },
+  { id: 'm-10', name: 'Pyjama', price: 90, emoji: '🩳', categoryKey: 'MEN', categoryName: "Men's Bottoms" },
+  { id: 'm-11', name: 'Cotton Kurta', price: 120, emoji: '👘', categoryKey: 'MEN', categoryName: "Ethnic" },
+  { id: 'm-12', name: 'Kurta Medium Worked', price: 150, emoji: '👘', categoryKey: 'MEN', categoryName: "Ethnic" },
+  { id: 'm-13', name: 'Kurta Long / Heavy Worked', price: 180, emoji: '👘', categoryKey: 'MEN', categoryName: "Ethnic" },
+  { id: 'm-14', name: 'Sherwani / Bandgala', price: 250, emoji: '🧥', categoryKey: 'MEN', categoryName: "Suits & Outerwear" },
+  { id: 'm-15', name: 'Blazer / Sports Coat', price: 250, emoji: '🧥', categoryKey: 'MEN', categoryName: "Suits & Outerwear" },
+  { id: 'm-16', name: '2-Piece Formal Suit', price: 350, emoji: '🤵', categoryKey: 'MEN', categoryName: "Suits & Outerwear" },
+  { id: 'm-17', name: '3-Piece Designer Suit', price: 450, emoji: '🧥', categoryKey: 'MEN', categoryName: "Suits & Outerwear" },
+  { id: 'm-18', name: 'Jacket - Normal', price: 200, emoji: '🧥', categoryKey: 'MEN', categoryName: "Suits & Outerwear" },
+  { id: 'm-19', name: 'Jacket - Leather / Heavy Winter', price: 300, emoji: '🧥', categoryKey: 'MEN', categoryName: "Suits & Outerwear" },
+  { id: 'm-20', name: 'Pullover / Sweater', price: 120, emoji: '🧶', categoryKey: 'MEN', categoryName: "Suits & Outerwear" },
+  { id: 'm-21', name: 'Waist Coat', price: 90, emoji: '🦺', categoryKey: 'MEN', categoryName: "Suits & Outerwear" },
+  { id: 'm-22', name: 'Neck Tie', price: 40, emoji: '👔', categoryKey: 'MEN', categoryName: "Accessories" },
+  { id: 'm-23', name: 'Silk Dhoti', price: 140, emoji: '🥻', categoryKey: 'MEN', categoryName: "Ethnic" },
+  { id: 'm-24', name: 'Silk Kanduva / Angavastram', price: 100, emoji: '🧣', categoryKey: 'MEN', categoryName: "Ethnic" },
+  { id: 'm-25', name: 'Traditional Lungi', price: 80, emoji: '🩲', categoryKey: 'MEN', categoryName: "Ethnic" },
+  { id: 'm-26', name: 'Shalu', price: 100, emoji: '🧣', categoryKey: 'MEN', categoryName: "Ethnic" },
+  { id: 'm-27', name: 'Apron White', price: 60, emoji: '🥼', categoryKey: 'MEN', categoryName: "Workwear" },
+
+  // ── WOMEN'S WEAR ──
+  { id: 'w-1', name: 'Normal Top / Tunic', price: 120, emoji: '👚', categoryKey: 'WOMEN', categoryName: "Women's Tops" },
+  { id: 'w-2', name: 'Medium Top / Kurti', price: 140, emoji: '👚', categoryKey: 'WOMEN', categoryName: "Women's Tops" },
+  { id: 'w-3', name: 'Long Top / Anarkali', price: 180, emoji: '👚', categoryKey: 'WOMEN', categoryName: "Women's Tops" },
+  { id: 'w-4', name: 'Worked / Embroidered Top', price: 220, emoji: '✨', categoryKey: 'WOMEN', categoryName: "Women's Tops" },
+  { id: 'w-5', name: 'Slack Pant / Leggings', price: 80, emoji: '👖', categoryKey: 'WOMEN', categoryName: "Women's Bottoms" },
+  { id: 'w-6', name: 'Lehanga Bottom', price: 200, emoji: '👗', categoryKey: 'WOMEN', categoryName: "Women's Bottoms" },
+  { id: 'w-7', name: 'Petticoat / Inskirt', price: 50, emoji: '👗', categoryKey: 'WOMEN', categoryName: "Women's Bottoms" },
+  { id: 'w-8', name: 'Dupatta Short', price: 50, emoji: '🧣', categoryKey: 'WOMEN', categoryName: "Ethnic" },
+  { id: 'w-9', name: 'Dupatta Long', price: 70, emoji: '🧣', categoryKey: 'WOMEN', categoryName: "Ethnic" },
+  { id: 'w-10', name: 'Dupatta Heavy Worked', price: 100, emoji: '✨', categoryKey: 'WOMEN', categoryName: "Ethnic" },
+  { id: 'w-11', name: 'Saree (Daily / Georgette / Chiffon)', price: 220, emoji: '🥻', categoryKey: 'WOMEN', categoryName: "Sarees" },
+  { id: 'w-12', name: 'Saree Worked / Zari / Stone', price: 250, emoji: '✨', categoryKey: 'WOMEN', categoryName: "Sarees" },
+  { id: 'w-13', name: 'Saree Blouse Plain', price: 60, emoji: '👚', categoryKey: 'WOMEN', categoryName: "Sarees" },
+  { id: 'w-14', name: 'Saree Blouse Designer / Worked', price: 70, emoji: '✨', categoryKey: 'WOMEN', categoryName: "Sarees" },
+  { id: 'w-15', name: 'Pattu Saree Original (>10K)', price: 900, emoji: '👑', categoryKey: 'WOMEN', categoryName: "Luxury Silk" },
+  { id: 'w-16', name: 'Western Skirt', price: 100, emoji: '👗', categoryKey: 'WOMEN', categoryName: "Dresses" },
+  { id: 'w-17', name: 'Pullover / Sweater (Women)', price: 100, emoji: '🧶', categoryKey: 'WOMEN', categoryName: "Outerwear" },
+  { id: 'w-18', name: 'Nighties / Sleepwear', price: 90, emoji: '👗', categoryKey: 'WOMEN', categoryName: "Dresses" },
+  { id: 'w-19', name: 'Gown / Evening Dress', price: 280, emoji: '👗', categoryKey: 'WOMEN', categoryName: "Couture" },
+  { id: 'w-20', name: 'Bridal Lehanga Heavy Set', price: 550, emoji: '👑', categoryKey: 'WOMEN', categoryName: "Couture" },
+
+  // ── KIDS WEAR ──
+  { id: 'k-1', name: 'Kids Frock / Dress', price: 60, emoji: '👗', categoryKey: 'KIDS', categoryName: "Kids" },
+  { id: 'k-2', name: 'Kids Shirt', price: 70, emoji: '👕', categoryKey: 'KIDS', categoryName: "Kids" },
+  { id: 'k-3', name: 'Kids Pant / Shorts', price: 70, emoji: '👖', categoryKey: 'KIDS', categoryName: "Kids" },
+  { id: 'k-4', name: 'Kids Dhoti / Pyjama', price: 90, emoji: '🥻', categoryKey: 'KIDS', categoryName: "Kids" },
+  { id: 'k-5', name: 'Soft Toys - Small', price: 100, emoji: '🧸', categoryKey: 'KIDS', categoryName: "Toys" },
+  { id: 'k-6', name: 'Soft Toys - Medium', price: 150, emoji: '🧸', categoryKey: 'KIDS', categoryName: "Toys" },
+  { id: 'k-7', name: 'Soft Toys - Large Giant', price: 200, emoji: '🧸', categoryKey: 'KIDS', categoryName: "Toys" },
+  { id: 'k-8', name: 'Kids School Uniform Set', price: 120, emoji: '🎒', categoryKey: 'KIDS', categoryName: "Kids" },
+
+  // ── SAREES & ETHNIC SPA ──
+  { id: 'e-1', name: 'Pattu Saree Original (>10K Hydrocarbon)', price: 900, emoji: '👑', categoryKey: 'SAREES_ETHNIC', categoryName: "Luxury Silk" },
+  { id: 'e-2', name: 'Silk Saree (Kanchipuram / Banarasi / Pattu)', price: 220, emoji: '🥻', categoryKey: 'SAREES_ETHNIC', categoryName: "Silk Sarees" },
+  { id: 'e-3', name: 'Saree with Heavy Zari / Stone Embroidery', price: 250, emoji: '✨', categoryKey: 'SAREES_ETHNIC', categoryName: "Designer Sarees" },
+  { id: 'e-4', name: 'Saree Rolling & Polishing', price: 150, emoji: '🥻', categoryKey: 'SAREES_ETHNIC', categoryName: "Saree Rolling" },
+  { id: 'e-5', name: 'Saree Steam Ironing Only', price: 60, emoji: '🥻', categoryKey: 'SAREES_ETHNIC', categoryName: "Steam Press" },
+  { id: 'e-6', name: 'Cotton Saree Starch & Steam Iron', price: 80, emoji: '🌾', categoryKey: 'SAREES_ETHNIC', categoryName: "Starch & Iron" },
+  { id: 'e-7', name: 'Designer Saree Blouse (Padded/Worked)', price: 70, emoji: '👚', categoryKey: 'SAREES_ETHNIC', categoryName: "Blouses" },
+  { id: 'e-8', name: 'Silk Dhoti & Kanduva Set', price: 240, emoji: '🥻', categoryKey: 'SAREES_ETHNIC', categoryName: "Men Ethnic" },
+  { id: 'e-9', name: 'Sherwani / Brocade Bandgala', price: 250, emoji: '🧥', categoryKey: 'SAREES_ETHNIC', categoryName: "Occasion" },
+  { id: 'e-10', name: 'Men Silk / Heavy Kurta', price: 180, emoji: '👘', categoryKey: 'SAREES_ETHNIC', categoryName: "Men Ethnic" },
+  { id: 'e-11', name: 'Bridal Lehanga Set (Heavy Zari)', price: 550, emoji: '👑', categoryKey: 'SAREES_ETHNIC', categoryName: "Bridal" },
+
+  // ── HOUSEHOLD & LINENS ──
+  { id: 'h-1', name: 'Single Bedsheet', price: 150, emoji: '🛏️', categoryKey: 'HOUSEHOLD', categoryName: "Bedding" },
+  { id: 'h-2', name: 'Double / King Bedsheet + 2 Pillow Covers', price: 220, emoji: '🛌', categoryKey: 'HOUSEHOLD', categoryName: "Bedding" },
+  { id: 'h-3', name: 'Pillow Cover (Pair)', price: 40, emoji: '🛋️', categoryKey: 'HOUSEHOLD', categoryName: "Bedding" },
+  { id: 'h-4', name: 'Single Blanket / Dohar / Comforter', price: 200, emoji: '🛋️', categoryKey: 'HOUSEHOLD', categoryName: "Blankets" },
+  { id: 'h-5', name: 'Double Heavy Quilt / Razai', price: 350, emoji: '🛋️', categoryKey: 'HOUSEHOLD', categoryName: "Quilts" },
+  { id: 'h-6', name: 'Cotton Table Cloth', price: 80, emoji: '🍽️', categoryKey: 'HOUSEHOLD', categoryName: "Linens" },
+  { id: 'h-7', name: 'Bath Towel / Large Hand Towel', price: 50, emoji: '🧖', categoryKey: 'HOUSEHOLD', categoryName: "Linens" },
+  { id: 'h-8', name: 'Curtains - Half Window (per panel)', price: 100, emoji: '🪟', categoryKey: 'HOUSEHOLD', categoryName: "Curtains" },
+  { id: 'h-9', name: 'Curtains - Medium Window (per panel)', price: 150, emoji: '🪟', categoryKey: 'HOUSEHOLD', categoryName: "Curtains" },
+  { id: 'h-10', name: 'Curtains - Full Length (per panel)', price: 300, emoji: '🪟', categoryKey: 'HOUSEHOLD', categoryName: "Curtains" },
+  { id: 'h-11', name: 'Living Room Carpet / Wool Rug Spa', price: 450, emoji: '🧶', categoryKey: 'HOUSEHOLD', categoryName: "Carpets" },
+
+  // ── FOOTWEAR & BAGS ──
+  { id: 'f-1', name: 'Sneakers & Casual Shoes Spa', price: 350, emoji: '👟', categoryKey: 'FOOTWEAR_BAGS', categoryName: "Shoes" },
+  { id: 'f-2', name: 'Sports & Running Shoes Spa', price: 350, emoji: '🏃', categoryKey: 'FOOTWEAR_BAGS', categoryName: "Shoes" },
+  { id: 'f-3', name: 'Formal Leather Shoes Nourish & Shine', price: 350, emoji: '👞', categoryKey: 'FOOTWEAR_BAGS', categoryName: "Shoes" },
+  { id: 'f-4', name: 'Suede Boots & Loafers Restoration', price: 399, emoji: '🥾', categoryKey: 'FOOTWEAR_BAGS', categoryName: "Shoes" },
+  { id: 'f-5', name: 'School / College Backpack Spa', price: 150, emoji: '🎒', categoryKey: 'FOOTWEAR_BAGS', categoryName: "Bags" },
+  { id: 'f-6', name: 'Leather / Designer Handbag Conditioning', price: 250, emoji: '👜', categoryKey: 'FOOTWEAR_BAGS', categoryName: "Bags" },
+  { id: 'f-7', name: 'Travel Duffel / Trolley Bag Cleanse', price: 299, emoji: '🧳', categoryKey: 'FOOTWEAR_BAGS', categoryName: "Bags" },
+
+  // ── STARCH & FINISHING ──
+  { id: 's-1', name: 'Cotton Shirt (Starch & Iron)', price: 45, emoji: '👔', categoryKey: 'STARCH_FINISHING', categoryName: "Starch" },
+  { id: 's-2', name: 'Khadi / Linen Shirt Starch', price: 50, emoji: '👔', categoryKey: 'STARCH_FINISHING', categoryName: "Starch" },
+  { id: 's-3', name: 'Cotton Kurta (Starch & Iron)', price: 60, emoji: '👘', categoryKey: 'STARCH_FINISHING', categoryName: "Starch" },
+  { id: 's-4', name: 'Cotton Dhoti / Lungi Starch', price: 50, emoji: '🥻', categoryKey: 'STARCH_FINISHING', categoryName: "Starch" },
+  { id: 's-5', name: 'Cotton Saree (Starch & Iron)', price: 80, emoji: '🥻', categoryKey: 'STARCH_FINISHING', categoryName: "Starch" },
+  { id: 's-6', name: 'Silk Cotton Saree Starch & Polish', price: 90, emoji: '✨', categoryKey: 'STARCH_FINISHING', categoryName: "Starch" },
+  { id: 's-7', name: 'Cotton Dupatta / Chunni Starch', price: 30, emoji: '🧣', categoryKey: 'STARCH_FINISHING', categoryName: "Starch" },
+  { id: 's-8', name: 'Cotton Kurti / Top Starch', price: 40, emoji: '👚', categoryKey: 'STARCH_FINISHING', categoryName: "Starch" },
+  { id: 's-9', name: 'Chef / White Apron Starch', price: 50, emoji: '🥼', categoryKey: 'STARCH_FINISHING', categoryName: "Starch" },
+  { id: 's-10', name: 'Cotton Table Cloth Starch', price: 60, emoji: '🍽️', categoryKey: 'STARCH_FINISHING', categoryName: "Starch" },
+  { id: 's-11', name: 'Cotton Bedsheet Starch', price: 90, emoji: '🛏️', categoryKey: 'STARCH_FINISHING', categoryName: "Starch" },
+
+  // ── EXTRA CHARGES & CUSTOM SERVICES ──
+  { id: 'ex-1', name: 'Urgent Heavy Stain Removal Treatment', price: 100, emoji: '🧼', categoryKey: 'EXTRA_SERVICES', categoryName: "Special Care" },
+  { id: 'ex-2', name: 'Gold/Silver Zari Polishing & Shield', price: 150, emoji: '✨', categoryKey: 'EXTRA_SERVICES', categoryName: "Special Care" },
+  { id: 'ex-3', name: 'Zip Replacement & Minor Tailoring Alteration', price: 80, emoji: '🪡', categoryKey: 'EXTRA_SERVICES', categoryName: "Alteration" },
+  { id: 'ex-4', name: 'Button Stitch & Hemming Repair', price: 40, emoji: '🪡', categoryKey: 'EXTRA_SERVICES', categoryName: "Alteration" },
+  { id: 'ex-5', name: 'Luxury Gift Box Packaging & Hanger', price: 50, emoji: '🎁', categoryKey: 'EXTRA_SERVICES', categoryName: "Packing" },
+  { id: 'ex-6', name: 'Antiseptic Fabric Sanitization Surcharge', price: 40, emoji: '🛡️', categoryKey: 'EXTRA_SERVICES', categoryName: "Special Care" },
 ];
 
 const INITIAL_WALK_IN_FORM = {
@@ -127,7 +245,12 @@ export const AdminOrdersPage = () => {
   const [walkInForm, setWalkInForm] = useState(INITIAL_WALK_IN_FORM);
   const [walkInItemCategory, setWalkInItemCategory] = useState('ALL');
   const [walkInItemSearch, setWalkInItemSearch] = useState('');
-  const [customGarment, setCustomGarment] = useState({ name: '', unitPrice: '', quantity: 1, category: 'Custom' });
+  const [manualCustomItem, setManualCustomItem] = useState({
+    name: '',
+    unitPrice: '',
+    quantity: 1,
+    tag: 'Custom Charge'
+  });
 
   // Status & Weight edit state in modal
   const [newCustomerStage, setNewCustomerStage] = useState('CONFIRMED');
@@ -221,6 +344,16 @@ export const AdminOrdersPage = () => {
   const walkInDiscount = getWalkInDiscount(walkInSubtotal);
   const walkInFinalTotal = Math.max(0, walkInSubtotal + walkInExpressFee - walkInDiscount);
 
+  const filteredCatalogItems = useMemo(() => {
+    return MASTER_CATALOG_ITEMS.filter((item) => {
+      const matchesCategory = walkInItemCategory === 'ALL' || item.categoryKey === walkInItemCategory;
+      const matchesSearch = !walkInItemSearch || 
+        item.name.toLowerCase().includes(walkInItemSearch.toLowerCase()) ||
+        (item.categoryName && item.categoryName.toLowerCase().includes(walkInItemSearch.toLowerCase()));
+      return matchesCategory && matchesSearch;
+    });
+  }, [walkInItemCategory, walkInItemSearch]);
+
   const handleSelectWalkInService = (srv) => {
     setWalkInForm(prev => ({
       ...prev,
@@ -232,9 +365,9 @@ export const AdminOrdersPage = () => {
     }));
   };
 
-  const handleAddPresetGarment = (preset) => {
+  const handleAddCatalogItem = (catalogItem) => {
     setWalkInForm(prev => {
-      const existingIdx = prev.items.findIndex(it => it.name === preset.name);
+      const existingIdx = prev.items.findIndex(it => it.name === catalogItem.name);
       if (existingIdx >= 0) {
         const updated = [...prev.items];
         const newQ = updated[existingIdx].quantity + 1;
@@ -247,16 +380,55 @@ export const AdminOrdersPage = () => {
       } else {
         const newItem = {
           id: `item-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-          name: preset.name,
-          emoji: preset.emoji || '👔',
-          category: preset.category || 'General',
-          unitPrice: Number(preset.unitPrice),
+          name: catalogItem.name,
+          emoji: catalogItem.emoji || '👔',
+          category: catalogItem.categoryName || 'General',
+          unitPrice: Number(catalogItem.price),
           quantity: 1,
-          lineTotal: Number(preset.unitPrice),
+          lineTotal: Number(catalogItem.price),
         };
         return { ...prev, items: [...prev.items, newItem] };
       }
     });
+  };
+
+  const handleAddManualCustomCharge = (e) => {
+    e?.preventDefault();
+    if (!manualCustomItem.name.trim()) {
+      error('Item Name Required', 'Please enter a name or description for this manual charge.');
+      return;
+    }
+    const priceNum = Number(manualCustomItem.unitPrice);
+    if (isNaN(priceNum) || priceNum <= 0) {
+      error('Valid Amount Required', 'Please enter a valid amount in ₹ (e.g. 150).');
+      return;
+    }
+    const qty = Math.max(1, Number(manualCustomItem.quantity) || 1);
+    
+    const newItem = {
+      id: `manual-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      name: manualCustomItem.name.trim(),
+      emoji: '⚡',
+      category: manualCustomItem.tag || 'Custom Charge',
+      unitPrice: priceNum,
+      quantity: qty,
+      lineTotal: priceNum * qty,
+      isManual: true,
+    };
+
+    setWalkInForm(prev => ({
+      ...prev,
+      items: [...prev.items, newItem]
+    }));
+
+    setManualCustomItem({
+      name: '',
+      unitPrice: '',
+      quantity: 1,
+      tag: 'Custom Charge'
+    });
+
+    success('Custom Charge Added', `"${newItem.name}" (₹${newItem.unitPrice} × ${newItem.quantity}) added and calculated.`);
   };
 
   const handleUpdateItemQty = (index, delta) => {
@@ -280,26 +452,6 @@ export const AdminOrdersPage = () => {
       ...prev,
       items: prev.items.filter((_, i) => i !== index)
     }));
-  };
-
-  const handleAddCustomGarment = (e) => {
-    e?.preventDefault();
-    if (!customGarment.name.trim() || !customGarment.unitPrice) {
-      error('Item Required', 'Please enter custom item name and unit price (₹).');
-      return;
-    }
-    const itemObj = {
-      id: `custom-${Date.now()}`,
-      name: customGarment.name.trim(),
-      emoji: '👕',
-      category: customGarment.category || 'Custom',
-      unitPrice: Number(customGarment.unitPrice),
-      quantity: Math.max(1, Number(customGarment.quantity) || 1),
-      lineTotal: Number(customGarment.unitPrice) * Math.max(1, Number(customGarment.quantity) || 1),
-    };
-    setWalkInForm(prev => ({ ...prev, items: [...prev.items, itemObj] }));
-    setCustomGarment({ name: '', unitPrice: '', quantity: 1, category: 'Custom' });
-    success('Garment Added', `${itemObj.name} added to invoice line items.`);
   };
 
   const handleCreateWalkInOrder = async (e) => {
@@ -1632,72 +1784,194 @@ export const AdminOrdersPage = () => {
             </div>
           </div>
 
-          {/* Garment Quick Adder Catalog */}
+          {/* Master Catalog Category Filter & Search Bar */}
           <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2">
               <div className="flex items-center gap-2 font-bold text-slate-900 uppercase tracking-wider text-xs">
                 <Tag className="w-4 h-4 text-[#F97316]" />
-                <span>1-Click Popular Garments & Starch Items</span>
+                <span>Garment & Service Master Price Catalog ({MASTER_CATALOG_ITEMS.length} Items)</span>
               </div>
-              <span className="text-[11px] text-slate-400">Click any garment to add to invoice</span>
+              <span className="text-[11px] text-slate-400">Filter by category or search item name</span>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
-              {PRESET_GARMENTS.map((garment, idx) => (
+            {/* Category Filter Tabs */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+              {POS_CATEGORIES.map((cat) => {
+                const isActive = walkInItemCategory === cat.key;
+                const count = cat.key === 'ALL' 
+                  ? MASTER_CATALOG_ITEMS.length 
+                  : MASTER_CATALOG_ITEMS.filter(it => it.categoryKey === cat.key).length;
+                return (
+                  <button
+                    key={cat.key}
+                    type="button"
+                    onClick={() => setWalkInItemCategory(cat.key)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap border flex items-center gap-1.5 cursor-pointer ${
+                      isActive
+                        ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                        : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                    }`}
+                  >
+                    <span>{cat.emoji}</span>
+                    <span>{cat.label}</span>
+                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                      isActive ? 'bg-white/20 text-white' : 'bg-slate-200/80 text-slate-600'
+                    }`}>
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Search Input for Instant Filtering */}
+            <div className="relative">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="🔍 Search across 70+ catalog items (e.g. Saree, Blazer, Kurta, Bedsheet, Shoes, Quilt, Stain, Zari)..."
+                value={walkInItemSearch}
+                onChange={(e) => setWalkInItemSearch(e.target.value)}
+                className="w-full pl-10 pr-24 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 font-medium focus:ring-2 focus:ring-[#F97316] outline-none"
+              />
+              {walkInItemSearch && (
                 <button
-                  key={idx}
                   type="button"
-                  onClick={() => handleAddPresetGarment(garment)}
-                  className="p-2.5 rounded-xl bg-slate-50 hover:bg-orange-50 border border-slate-200 hover:border-orange-300 text-left transition-all group flex items-center justify-between gap-1.5 cursor-pointer active:scale-95"
+                  onClick={() => setWalkInItemSearch('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 font-bold text-xs cursor-pointer"
                 >
-                  <div className="min-w-0">
-                    <div className="font-bold text-slate-800 text-[11px] truncate group-hover:text-orange-950 flex items-center gap-1">
-                      <span>{garment.emoji}</span>
-                      <span className="truncate">{garment.name}</span>
-                    </div>
-                    <div className="text-[10px] font-bold text-[#EA580C] mt-0.5">
-                      ₹{garment.unitPrice}
-                    </div>
-                  </div>
-                  <span className="w-5 h-5 rounded-lg bg-white border border-slate-200 group-hover:bg-[#F97316] group-hover:text-white group-hover:border-[#F97316] flex items-center justify-center text-xs font-black shrink-0 transition-colors">
-                    +
-                  </span>
+                  ✕ Clear
                 </button>
-              ))}
+              )}
             </div>
 
-            {/* Custom Item Row Adder */}
-            <div className="pt-2 border-t border-slate-100">
-              <div className="font-bold text-slate-700 text-[11px] mb-1.5">Add Custom Item / Special Care:</div>
-              <div className="flex flex-wrap sm:flex-nowrap gap-2">
+            {/* Catalog Items Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 max-h-64 overflow-y-auto pr-1">
+              {filteredCatalogItems.length === 0 ? (
+                <div className="col-span-full py-6 text-center text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-xs">
+                  No items match "{walkInItemSearch}". Use the Manual Custom Billing box below to add any custom item or rate.
+                </div>
+              ) : (
+                filteredCatalogItems.map((item) => {
+                  const existingItem = walkInForm.items.find(it => it.name === item.name);
+                  const isAdded = !!existingItem;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => handleAddCatalogItem(item)}
+                      className={`p-2.5 rounded-xl border text-left transition-all group flex flex-col justify-between gap-1.5 cursor-pointer active:scale-95 ${
+                        isAdded
+                          ? 'bg-orange-50/90 border-orange-300 ring-1 ring-orange-400/30'
+                          : 'bg-slate-50 hover:bg-orange-50/50 border-slate-200 hover:border-orange-200'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-1">
+                        <span className="text-base">{item.emoji}</span>
+                        {isAdded && (
+                          <span className="px-1.5 py-0.5 rounded-md bg-[#F97316] text-white text-[9px] font-black font-mono">
+                            ×{existingItem.quantity}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="min-w-0">
+                        <div className="font-bold text-slate-900 text-[11px] truncate group-hover:text-orange-950" title={item.name}>
+                          {item.name}
+                        </div>
+                        <div className="text-[10px] text-slate-500 truncate">
+                          {item.categoryName}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-1 border-t border-slate-200/60 mt-0.5">
+                        <span className="font-mono font-bold text-[#EA580C] text-xs">
+                          ₹{item.price}
+                        </span>
+                        <span className="text-[10px] font-bold text-slate-600 group-hover:text-[#EA580C]">
+                          + Add
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          {/* ─────────────────────────────────────────────────────────
+              Dedicated Manual Custom Billing & Extra Charges Section
+          ───────────────────────────────────────────────────────── */}
+          <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-emerald-500/10 border-2 border-[#F97316]/30 shadow-xs space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-orange-200/60 pb-2">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-[#F97316] to-[#EA580C] text-white flex items-center justify-center shadow-xs">
+                  <Zap className="w-3.5 h-3.5" />
+                </div>
+                <div>
+                  <span className="font-black text-slate-900 text-xs uppercase tracking-wider">
+                    Manual Custom Billing & Extra Charges
+                  </span>
+                  <span className="text-[11px] text-slate-600 block">
+                    Enter any custom garment, urgent stain treatment, alteration, zari polishing, extra delivery or custom fee with direct calculation.
+                  </span>
+                </div>
+              </div>
+              <span className="px-2 py-0.5 rounded-full bg-white border border-orange-300 text-[10px] font-bold text-[#EA580C]">
+                ⚡ Live Calculation
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-end">
+              <div className="sm:col-span-5">
+                <label className="block text-[11px] font-bold text-slate-800 mb-1">
+                  Custom Item / Service Description *
+                </label>
                 <Input
-                  placeholder="Garment Name (e.g. Silk Dupatta, Leather Jacket)"
-                  value={customGarment.name}
-                  onChange={(e) => setCustomGarment({ ...customGarment, name: e.target.value })}
-                  className="flex-1 bg-slate-50"
+                  placeholder="e.g. Heavy Wine Stain Removal, Silk Lehenga Dry Clean, Zari Polishing, Extra Packaging"
+                  value={manualCustomItem.name}
+                  onChange={(e) => setManualCustomItem({ ...manualCustomItem, name: e.target.value })}
+                  className="bg-white text-xs font-semibold"
                 />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block text-[11px] font-bold text-slate-800 mb-1">
+                  Amount (₹) *
+                </label>
                 <Input
                   type="number"
-                  placeholder="Price ₹"
-                  value={customGarment.unitPrice}
-                  onChange={(e) => setCustomGarment({ ...customGarment, unitPrice: e.target.value })}
-                  className="w-28 bg-slate-50"
+                  placeholder="e.g. 250"
+                  value={manualCustomItem.unitPrice}
+                  onChange={(e) => setManualCustomItem({ ...manualCustomItem, unitPrice: e.target.value })}
+                  className="bg-white text-xs font-bold font-mono text-emerald-900"
                 />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block text-[11px] font-bold text-slate-800 mb-1">
+                  Quantity
+                </label>
                 <Input
                   type="number"
-                  placeholder="Qty"
-                  value={customGarment.quantity}
-                  onChange={(e) => setCustomGarment({ ...customGarment, quantity: e.target.value })}
-                  className="w-20 bg-slate-50"
+                  min="1"
+                  placeholder="1"
+                  value={manualCustomItem.quantity}
+                  onChange={(e) => setManualCustomItem({ ...manualCustomItem, quantity: e.target.value })}
+                  className="bg-white text-xs font-bold font-mono"
                 />
+              </div>
+
+              <div className="sm:col-span-3">
                 <Button
                   type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleAddCustomGarment}
-                  className="bg-slate-900 text-white hover:bg-slate-800 shrink-0"
+                  variant="primary"
+                  size="md"
+                  onClick={handleAddManualCustomCharge}
+                  className="w-full justify-center bg-gradient-to-r from-[#F97316] to-[#EA580C] hover:from-[#EA580C] hover:to-[#C2410C] text-white shadow-md font-bold text-xs py-2.5"
                 >
-                  + Add Item
+                  <Plus className="w-4 h-4 mr-1" />
+                  <span>+ Add to Bill & Calculate</span>
                 </Button>
               </div>
             </div>
