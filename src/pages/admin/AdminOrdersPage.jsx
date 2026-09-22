@@ -447,6 +447,20 @@ export const AdminOrdersPage = () => {
     });
   };
 
+  const handleUpdateItemUnitPrice = (index, newPrice) => {
+    setWalkInForm(prev => {
+      const updated = [...prev.items];
+      if (!updated[index]) return prev;
+      const parsedPrice = Math.max(0, Number(newPrice) || 0);
+      updated[index] = {
+        ...updated[index],
+        unitPrice: parsedPrice,
+        lineTotal: parsedPrice * (Number(updated[index].quantity) || 1)
+      };
+      return { ...prev, items: updated };
+    });
+  };
+
   const handleRemoveItem = (index) => {
     setWalkInForm(prev => ({
       ...prev,
@@ -2002,12 +2016,45 @@ export const AdminOrdersPage = () => {
             ) : (
               <div className="divide-y divide-slate-100 max-h-56 overflow-y-auto pr-1">
                 {walkInForm.items.map((item, idx) => (
-                  <div key={item.id || idx} className="py-2 flex items-center justify-between gap-3 text-xs">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="text-base">{item.emoji || '👕'}</span>
-                      <div>
-                        <div className="font-bold text-slate-900">{item.name}</div>
-                        <div className="text-[10px] text-slate-400">₹{item.unitPrice} each</div>
+                  <div key={item.id || idx} className="py-2.5 flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 text-xs">
+                    <div className="flex items-center gap-2 min-w-0 sm:w-1/3">
+                      <span className="text-base shrink-0">{item.emoji || '👕'}</span>
+                      <div className="min-w-0">
+                        <div className="font-bold text-slate-900 truncate" title={item.name}>{item.name}</div>
+                        <div className="text-[10px] text-slate-400 truncate">{item.category || 'General'}</div>
+                      </div>
+                    </div>
+
+                    {/* Rate / Unit Price Editor */}
+                    <div className="flex items-center gap-1.5 shrink-0 bg-orange-50/70 px-2 py-1 rounded-xl border border-orange-200">
+                      <span className="text-[10px] font-bold text-slate-600 uppercase">Rate:</span>
+                      <span className="text-xs font-bold text-[#EA580C]">₹</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="5"
+                        value={item.unitPrice}
+                        onChange={(e) => handleUpdateItemUnitPrice(idx, e.target.value)}
+                        className="w-16 px-1.5 py-0.5 text-xs font-black font-mono text-slate-900 bg-white border border-orange-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F97316] text-center"
+                        title="Edit unit price / rate in ₹"
+                      />
+                      <div className="flex items-center gap-0.5">
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateItemUnitPrice(idx, Math.max(0, Number(item.unitPrice) - 10))}
+                          className="w-4 h-4 rounded bg-white hover:bg-orange-100 text-[10px] font-bold text-slate-600 flex items-center justify-center border border-orange-200 transition-colors cursor-pointer"
+                          title="Decrease rate by ₹10"
+                        >
+                          -
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateItemUnitPrice(idx, Number(item.unitPrice) + 10)}
+                          className="w-4 h-4 rounded bg-white hover:bg-orange-100 text-[10px] font-bold text-slate-600 flex items-center justify-center border border-orange-200 transition-colors cursor-pointer"
+                          title="Increase rate by ₹10"
+                        >
+                          +
+                        </button>
                       </div>
                     </div>
 
@@ -2018,20 +2065,22 @@ export const AdminOrdersPage = () => {
                           type="button"
                           onClick={() => handleUpdateItemQty(idx, -1)}
                           className="w-6 h-6 rounded bg-white hover:bg-rose-50 text-slate-700 hover:text-rose-600 font-bold flex items-center justify-center transition-colors cursor-pointer"
+                          title="Decrease quantity"
                         >
                           -
                         </button>
-                        <span className="w-7 text-center font-bold font-mono text-slate-900">{item.quantity}</span>
+                        <span className="w-6 text-center font-bold font-mono text-slate-900">{item.quantity}</span>
                         <button
                           type="button"
                           onClick={() => handleUpdateItemQty(idx, 1)}
                           className="w-6 h-6 rounded bg-white hover:bg-emerald-50 text-slate-700 hover:text-emerald-600 font-bold flex items-center justify-center transition-colors cursor-pointer"
+                          title="Increase quantity"
                         >
                           +
                         </button>
                       </div>
 
-                      <div className="w-20 text-right font-black font-mono text-slate-900">
+                      <div className="w-18 text-right font-black font-mono text-slate-900">
                         ₹{item.unitPrice * item.quantity}
                       </div>
 

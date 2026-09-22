@@ -268,9 +268,11 @@ ${customNote ? `📝 *Update Note:* ${customNote}\n` : ''}${actualWeight ? `⚖�
       const itemsList = items.map((item, idx) => {
         const qty = item.quantity || 1;
         const name = item.name || 'Garment';
-        const price = item.lineTotal || item.totalPrice || (item.unitPrice ? item.unitPrice * qty : null);
-        const priceStr = price ? ` - ₹${price}` : '';
-        return `  ${idx + 1}. *${name}* × ${qty}${priceStr}`;
+        const unitPrice = item.unitPrice || item.price;
+        const lineTotal = item.lineTotal || item.totalPrice || (unitPrice ? unitPrice * qty : null);
+        const rateStr = unitPrice ? ` (@ ₹${unitPrice})` : '';
+        const totalStr = lineTotal ? ` = *₹${lineTotal}*` : '';
+        return `  ${idx + 1}. *${name}* × ${qty}${rateStr}${totalStr}`;
       }).join('\n');
       itemsText = `\n📋 *ITEMIZED BILL:*\n${itemsList}\n`;
     }
