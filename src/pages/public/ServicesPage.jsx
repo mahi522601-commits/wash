@@ -14,6 +14,8 @@ import {
   ArrowUpRight,
   Droplets
 } from 'lucide-react';
+import { SEOHead } from '../../components/seo/SEOHead';
+import { BASE_URL, BUSINESS_INFO, SEO_SERVICES } from '../../data/seoData';
 
 export const ServicesPage = () => {
   const [services, setServices] = useState([]);
@@ -46,8 +48,49 @@ export const ServicesPage = () => {
     return matchesCategory && matchesSearch;
   });
 
+  const structuredData = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          {
+            '@type': 'ListItem',
+            position: 1,
+            name: 'Home',
+            item: BASE_URL,
+          },
+          {
+            '@type': 'ListItem',
+            position: 2,
+            name: 'Services',
+            item: `${BASE_URL}/services`,
+          },
+        ],
+      },
+      {
+        '@type': 'ItemList',
+        itemListElement: SEO_SERVICES.map((s, idx) => ({
+          '@type': 'ListItem',
+          position: idx + 1,
+          name: s.name,
+          url: `${BASE_URL}/services/${s.slug}`,
+          description: s.metaDescription,
+        })),
+      },
+    ],
+  };
+
   return (
-    <div className="py-16 sm:py-24 bg-brand-50 min-h-screen relative overflow-hidden">
+    <>
+      <SEOHead
+        title="Dry Cleaning, Laundry & Steam Pressing Services in Hyderabad | Tech Wash"
+        description="Comprehensive garment care services in Hyderabad: Non-toxic hydrocarbon dry cleaning, 3D steam ironing, starch & iron, per-kg wash & fold, saree rolling, and shoe laundry."
+        canonicalUrl={`${BASE_URL}/services`}
+        keywords="dry cleaning services hyderabad, steam ironing manikonda, saree rolling puppalaguda, shoe care hyderabad, laundry per kg"
+        structuredData={structuredData}
+      />
+      <div className="py-16 sm:py-24 bg-brand-50 min-h-screen relative overflow-hidden">
       
       {/* Background Lighting */}
       <div className="absolute top-10 right-0 w-[500px] h-[500px] bg-[#F97316]/10 rounded-full blur-3xl pointer-events-none" />
@@ -214,5 +257,6 @@ export const ServicesPage = () => {
 
       </div>
     </div>
+    </>
   );
 };

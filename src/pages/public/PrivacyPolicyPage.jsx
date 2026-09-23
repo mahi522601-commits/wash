@@ -1,12 +1,20 @@
 import React from 'react';
 import { useSettings } from '../../context/SettingsContext';
+import { SEOHead } from '../../components/seo/SEOHead';
+import { BASE_URL } from '../../data/seoData';
 
 export const PrivacyPolicyPage = () => {
   const { settings } = useSettings();
   const businessName = settings?.general?.businessName || 'Tech Wash Laundry Services';
 
   return (
-    <div className="py-12 sm:py-20 bg-slate-50 min-h-screen">
+    <>
+      <SEOHead
+        title="Privacy Policy | Tech Wash Laundry Services"
+        description="Privacy policy and data protection standards for Tech Wash Laundry Services customers in Hyderabad."
+        canonicalUrl={`${BASE_URL}/privacy-policy`}
+      />
+      <div className="py-12 sm:py-20 bg-slate-50 min-h-screen">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-white p-8 sm:p-12 rounded-3xl border border-slate-200 shadow-luxury space-y-6 text-slate-700 text-sm sm:text-base leading-relaxed">
           <h1 className="text-3xl font-black text-slate-900 font-display tracking-tight border-b border-slate-100 pb-4">
@@ -37,5 +45,6 @@ export const PrivacyPolicyPage = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };

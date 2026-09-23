@@ -5,6 +5,8 @@ import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { MapPin, Phone, MessageSquare, Clock, Navigation, Sparkles, Calendar } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { SEOHead } from '../../components/seo/SEOHead';
+import { BASE_URL, BUSINESS_INFO } from '../../data/seoData';
 
 export const LocationsPage = () => {
   const [locations, setLocations] = useState([]);
@@ -16,8 +18,58 @@ export const LocationsPage = () => {
       .finally(() => setLoading(false));
   }, []);
 
+  const structuredData = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          {
+            '@type': 'ListItem',
+            position: 1,
+            name: 'Home',
+            item: BASE_URL,
+          },
+          {
+            '@type': 'ListItem',
+            position: 2,
+            name: 'Store Branches',
+            item: `${BASE_URL}/locations`,
+          },
+        ],
+      },
+      {
+        '@type': 'ItemList',
+        itemListElement: locations.map((loc, idx) => ({
+          '@type': 'ListItem',
+          position: idx + 1,
+          item: {
+            '@type': 'DryCleaningOrLaundry',
+            name: loc.name,
+            telephone: loc.phone || BUSINESS_INFO.telephone,
+            address: {
+              '@type': 'PostalAddress',
+              streetAddress: loc.address,
+              addressLocality: 'Hyderabad',
+              addressRegion: 'Telangana',
+              addressCountry: 'IN',
+            },
+          },
+        })),
+      },
+    ],
+  };
+
   return (
-    <div className="py-12 sm:py-20 bg-slate-50 min-h-screen">
+    <>
+      <SEOHead
+        title="Store Locations & Processing Hubs in Hyderabad | Tech Wash"
+        description="Find Tech Wash store locations and garment care hubs in Hyderabad. Fast doorstep pickup across Manikonda, Puppalaguda, Khajaguda, Lanco Hills, and West Hyderabad."
+        canonicalUrl={`${BASE_URL}/locations`}
+        keywords="laundry near me, dry cleaners hyderabad locations, laundry manikonda store, dry cleaner jubliee hills"
+        structuredData={structuredData}
+      />
+      <div className="py-12 sm:py-20 bg-slate-50 min-h-screen">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         <div className="text-center max-w-3xl mx-auto mb-16">
@@ -141,5 +193,6 @@ export const LocationsPage = () => {
 
       </div>
     </div>
+    </>
   );
 };

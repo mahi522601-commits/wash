@@ -52,6 +52,8 @@ import {
   Search,
   CheckCircle
 } from 'lucide-react';
+import { SEOHead } from '../../components/seo/SEOHead';
+import { BASE_URL } from '../../data/seoData';
 
 const STEPS = [
   { id: 1, label: 'SERVICE', shortLabel: 'Service', icon: Sparkles },
@@ -923,7 +925,14 @@ export const BookPickupPage = () => {
   // MAIN BOOKING WIZARD INTERFACE
   // ----------------------------------------------------
   return (
-    <div className="py-8 sm:py-14 bg-slate-50 min-h-screen">
+    <>
+      <SEOHead
+        title="Schedule Doorstep Laundry & Dry Cleaning Pickup | Tech Wash Hyderabad"
+        description="Book your doorstep laundry or dry cleaning pickup in 60 seconds across Manikonda, Puppalaguda, Khajaguda, Lanco Hills & Hyderabad with Tech Wash."
+        canonicalUrl={`${BASE_URL}/book-pickup`}
+        keywords="book laundry pickup hyderabad, schedule dry clean manikonda, doorstep wash and fold booking"
+      />
+      <div className="py-8 sm:py-14 bg-slate-50 min-h-screen">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Step Indicator Progress Bar */}
@@ -2497,5 +2506,6 @@ export const BookPickupPage = () => {
 
       </div>
     </div>
+    </>
   );
 };

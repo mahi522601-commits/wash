@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { staffService } from '../../services/staffService';
 import { auditService } from '../../services/auditService';
+import { terminalAuthService, DEFAULT_BILLING_TERMINALS } from '../../services/terminalAuthService';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { AdminPageHeader } from '../../components/admin/AdminPageHeader';
@@ -24,7 +25,13 @@ import {
   Bike, 
   ShieldCheck, 
   Check, 
-  Clock 
+  Clock,
+  Store,
+  MapPin,
+  Laptop,
+  Lock,
+  ArrowRight,
+  RefreshCw
 } from 'lucide-react';
 
 const INITIAL_STAFF = {
@@ -53,10 +60,22 @@ export const AdminStaffPage = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [copiedId, setCopiedId] = useState(null);
 
+  // Billing Terminals State
+  const [terminals, setTerminals] = useState(DEFAULT_BILLING_TERMINALS);
+  const [terminalModalOpen, setTerminalModalOpen] = useState(false);
+  const [currentTerminal, setCurrentTerminal] = useState(null);
+  const [showTerminalPwd, setShowTerminalPwd] = useState(false);
+  const [isSavingTerminal, setIsSavingTerminal] = useState(false);
+  const [copiedTerminalId, setCopiedTerminalId] = useState(null);
+
   const loadData = async () => {
     try {
-      const data = await staffService.getStaff();
-      setStaffList(data);
+      const [staffData, terminalData] = await Promise.all([
+        staffService.getStaff(),
+        terminalAuthService.getTerminals()
+      ]);
+      setStaffList(staffData);
+      setTerminals(terminalData);
     } catch (e) {
       console.warn(e);
     } finally {
@@ -67,6 +86,74 @@ export const AdminStaffPage = () => {
   useEffect(() => {
     loadData();
   }, []);
+
+  const handleOpenEditTerminal = (term) => {
+    setCurrentTerminal({ ...term });
+    setShowTerminalPwd(false);
+    setTerminalModalOpen(true);
+  };
+
+  const handleGenerateTerminalPIN = () => {
+    const randomPin = 'tw' + Math.floor(1000 + Math.random() * 9000);
+    setCurrentTerminal({ ...currentTerminal, password: randomPin });
+    setShowTerminalPwd(true);
+  };
+
+  const handleSaveTerminal = async (e) => {
+    e.preventDefault();
+    if (!currentTerminal.password?.trim()) {
+      error('PIN Required', 'Please assign a password / PIN for this billing counter.');
+      return;
+    }
+
+    setIsSavingTerminal(true);
+    try {
+      await terminalAuthService.updateTerminal(currentTerminal.id, {
+        name: currentTerminal.name,
+        assignedOperator: currentTerminal.assignedOperator,
+        password: currentTerminal.password.trim(),
+        phone: currentTerminal.phone,
+        active: currentTerminal.active !== false,
+      });
+
+      await auditService.logAction({
+        action: 'UPDATE',
+        entity: 'BillingTerminal',
+        entityId: currentTerminal.id,
+        entityName: currentTerminal.name,
+        user: currentUser,
+      });
+
+      success('Terminal Updated', `Password and settings saved for ${currentTerminal.name}.`);
+      setTerminalModalOpen(false);
+      const updated = await terminalAuthService.getTerminals();
+      setTerminals(updated);
+    } catch (err) {
+      error('Update Failed', err.message);
+    } finally {
+      setIsSavingTerminal(false);
+    }
+  };
+
+  const handleCopyTerminalCredentials = (term) => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const text = `🏪 Tech Wash POS Billing Counter Credentials:
+URL: ${origin}/billing/${term.id}
+Counter: ${term.name} (${term.code})
+Location: ${term.locationName}
+Address: ${term.address}
+Assigned Cashier: ${term.assignedOperator}
+Security PIN / Password: ${term.password}
+Admin Master Unlock: techwashadmin`;
+
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedTerminalId(term.id);
+      success('Copied to Clipboard!', `Credentials for ${term.name} copied.`);
+      setTimeout(() => setCopiedTerminalId(null), 3000);
+    }).catch(() => {
+      info('Terminal Credentials', text);
+    });
+  };
 
   const handleOpenCreate = () => {
     const defaultPassword = staffService.generateSecurePassword(8);
@@ -290,7 +377,137 @@ Role: ${staff.role || 'Delivery Executive'}`;
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      {/* 1. 3 IN-STORE BILLING COUNTERS & PASSWORDS SECTION */}
+      <div className="bg-gradient-to-br from-slate-900 via-[#0B0A1C] to-slate-950 p-6 sm:p-7 rounded-3xl border border-purple-500/20 shadow-xl text-white space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-5">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-0.5 rounded-full bg-orange-500/20 border border-orange-500/40 text-orange-300 text-[11px] font-black tracking-wider uppercase flex items-center gap-1">
+                <Store className="w-3.5 h-3.5" />
+                <span>In-Store POS Terminals</span>
+              </span>
+              <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-[11px] font-black tracking-wider uppercase">
+                3 Dedicated Counters
+              </span>
+            </div>
+            <h2 className="text-xl sm:text-2xl font-black font-display text-white mt-1.5 flex items-center gap-2">
+              <span>🏪 3 Billing Machines & Password Access</span>
+            </h2>
+            <p className="text-xs text-slate-300 mt-1 max-w-2xl">
+              Assign cashier operators, set login passwords/PINs, and launch standalone counter POS machines for walk-in billing. All 3 counter machines sync live with central orders & inventory.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            <a
+              href="/billing"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-md shadow-orange-500/20"
+            >
+              <ExternalLink className="w-4 h-4" />
+              <span>Open Billing Hub</span>
+            </a>
+          </div>
+        </div>
+
+        {/* 3 Counter Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {terminals.map((term, idx) => (
+            <div 
+              key={term.id}
+              className="p-5 rounded-2xl bg-white/5 border border-white/10 hover:border-orange-500/40 transition-all flex flex-col justify-between gap-4 group"
+            >
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="px-2.5 py-0.5 rounded-lg bg-white/10 text-[11px] font-mono font-bold text-slate-300">
+                    Counter #{idx + 1} • {term.code}
+                  </span>
+                  <Badge variant={term.active !== false ? 'emerald' : 'slate'} size="sm">
+                    {term.active !== false ? 'Active' : 'Disabled'}
+                  </Badge>
+                </div>
+
+                <div>
+                  <h3 className="font-bold text-white text-sm group-hover:text-orange-400 transition-colors">
+                    {term.name}
+                  </h3>
+                  <div className="text-[11px] text-slate-400 flex items-start gap-1.5 mt-1">
+                    <MapPin className="w-3.5 h-3.5 text-orange-400 shrink-0 mt-0.5" />
+                    <span className="leading-tight">{term.address}</span>
+                  </div>
+                </div>
+
+                {/* Password & Operator Display Box */}
+                <div className="p-3 rounded-xl bg-black/40 border border-white/5 space-y-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-400 text-[11px]">Cashier:</span>
+                    <span className="font-semibold text-orange-300 truncate max-w-[140px]" title={term.assignedOperator}>
+                      {term.assignedOperator}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-1 border-t border-white/5">
+                    <span className="text-slate-400 text-[11px] flex items-center gap-1">
+                      <Lock className="w-3 h-3 text-purple-400" />
+                      <span>Security PIN:</span>
+                    </span>
+                    <span className="font-mono font-black text-amber-300 tracking-wider bg-white/10 px-2 py-0.5 rounded">
+                      {term.password || 'techwash' + (idx + 1)}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-[10px] text-slate-500 pt-0.5">
+                    <span>URL:</span>
+                    <span className="font-mono text-cyan-400">/billing/{term.id}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="pt-2 border-t border-white/10 flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => handleOpenEditTerminal(term)}
+                    className="px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-semibold flex items-center gap-1 transition-colors"
+                    title="Change password, cashier name or branch"
+                  >
+                    <Edit3 className="w-3.5 h-3.5 text-purple-300" />
+                    <span>Edit PIN</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleCopyTerminalCredentials(term)}
+                    className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition-colors"
+                    title="Copy full credentials to clipboard"
+                  >
+                    {copiedTerminalId === term.id ? (
+                      <Check className="w-4 h-4 text-emerald-400" />
+                    ) : (
+                      <Copy className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+
+                <a
+                  href={`/billing/${term.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-1.5 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold flex items-center gap-1 transition-all"
+                >
+                  <span>Launch POS</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </a>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 2. WORKER & DELIVERY FLEET SECTION */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs">
         <div>
           <div className="flex items-center gap-2">
@@ -338,6 +555,109 @@ Role: ${staff.role || 'Delivery Executive'}`;
         isLoading={loading}
         emptyMessage="No delivery riders or workers registered yet."
       />
+
+      {/* Edit Billing Counter Modal */}
+      {currentTerminal && (
+        <Modal
+          isOpen={terminalModalOpen}
+          onClose={() => setTerminalModalOpen(false)}
+          maxWidth="max-w-lg"
+          title={`Edit Billing Machine: ${currentTerminal.name}`}
+        >
+          <form onSubmit={handleSaveTerminal} className="space-y-4">
+            <div className="p-3 rounded-2xl bg-amber-50/70 border border-amber-200/70 text-xs text-amber-900 flex items-start gap-2.5">
+              <Sparkles className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <strong>Counter Terminal Security:</strong> The password or PIN you set here is stored in Firebase Firestore and unlocks <code>/billing/{currentTerminal.id}</code> for in-store staff.
+              </div>
+            </div>
+
+            <Input
+              label="Counter / Machine Display Name *"
+              required
+              placeholder="e.g. Counter 1 — Jubilee Hills Flagship"
+              value={currentTerminal.name}
+              onChange={(e) => setCurrentTerminal({ ...currentTerminal, name: e.target.value })}
+            />
+
+            <Input
+              label="Assigned Cashier / Operator *"
+              required
+              placeholder="e.g. Rahul Verma (Cashier #1)"
+              value={currentTerminal.assignedOperator}
+              onChange={(e) => setCurrentTerminal({ ...currentTerminal, assignedOperator: e.target.value })}
+            />
+
+            {/* Password Input with Quick PIN Generator */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600">
+                  Counter Sign-In Password / PIN *
+                </label>
+                <button
+                  type="button"
+                  onClick={handleGenerateTerminalPIN}
+                  className="text-[11px] text-purple-600 hover:text-purple-700 font-bold flex items-center gap-1"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                  <span>🎲 Generate PIN</span>
+                </button>
+              </div>
+
+              <div className="relative">
+                <input
+                  type={showTerminalPwd ? 'text' : 'password'}
+                  required
+                  placeholder="Enter counter password or PIN"
+                  value={currentTerminal.password || ''}
+                  onChange={(e) => setCurrentTerminal({ ...currentTerminal, password: e.target.value })}
+                  className="w-full bg-white border border-slate-200 rounded-xl py-2 pl-3 pr-10 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowTerminalPwd(!showTerminalPwd)}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+                  title={showTerminalPwd ? 'Hide PIN' : 'Show PIN'}
+                >
+                  {showTerminalPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              <p className="text-[10px] text-slate-400 mt-1">
+                Cashiers at this branch will enter this PIN or password to start billing.
+              </p>
+            </div>
+
+            <Input
+              label="Store Contact Phone"
+              placeholder="+91 89777 69866"
+              value={currentTerminal.phone || ''}
+              onChange={(e) => setCurrentTerminal({ ...currentTerminal, phone: e.target.value })}
+            />
+
+            <div className="flex items-center gap-2 pt-2">
+              <input
+                type="checkbox"
+                id="terminal-active"
+                checked={currentTerminal.active !== false}
+                onChange={(e) => setCurrentTerminal({ ...currentTerminal, active: e.target.checked })}
+                className="w-4 h-4 text-purple-600 rounded border-slate-300 focus:ring-purple-500"
+              />
+              <label htmlFor="terminal-active" className="text-xs font-semibold text-slate-700">
+                Counter Active (Enables billing machine URL)
+              </label>
+            </div>
+
+            <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-100">
+              <Button variant="ghost" size="sm" onClick={() => setTerminalModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" variant="primary" size="sm" isLoading={isSavingTerminal}>
+                Save Counter Settings
+              </Button>
+            </div>
+          </form>
+        </Modal>
+      )}
 
       {/* Create / Edit Worker Modal with Email & Password */}
       <Modal

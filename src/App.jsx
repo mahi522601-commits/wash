@@ -34,6 +34,9 @@ import { OffersPage } from './pages/public/OffersPage';
 import { PrivacyPolicyPage } from './pages/public/PrivacyPolicyPage';
 import { TermsPage } from './pages/public/TermsPage';
 import { RefundPolicyPage } from './pages/public/RefundPolicyPage';
+import { AreasPage } from './pages/public/AreasPage';
+import { AreaDetailPage } from './pages/public/AreaDetailPage';
+import { AreaServiceDetailPage } from './pages/public/AreaServiceDetailPage';
 
 // Admin Layout & Pages
 import { AdminLayout } from './components/admin/AdminLayout';
@@ -55,6 +58,10 @@ import { AdminStaffPage } from './pages/admin/AdminStaffPage';
 import { WorkerLoginPage } from './pages/worker/WorkerLoginPage';
 import { WorkerLayout } from './components/worker/WorkerLayout';
 import { WorkerDashboardPage } from './pages/worker/WorkerDashboardPage';
+
+// In-Store POS Billing Machines
+import { BillingHubPage } from './pages/billing/BillingHubPage';
+import { BillingMachinePage } from './pages/billing/BillingMachinePage';
 
 // Scroll to top helper with instant jump on route change
 const ScrollToTop = () => {
@@ -125,6 +132,9 @@ export function App() {
             <Route path="/book-pickup" element={<PublicLayout><BookPickupPage /></PublicLayout>} />
             <Route path="/track-order" element={<PublicLayout><TrackOrderPage /></PublicLayout>} />
             <Route path="/offers" element={<PublicLayout><OffersPage /></PublicLayout>} />
+            <Route path="/areas" element={<PublicLayout><AreasPage /></PublicLayout>} />
+            <Route path="/areas/:areaSlug" element={<PublicLayout><AreaDetailPage /></PublicLayout>} />
+            <Route path="/areas/:areaSlug/:serviceSlug" element={<PublicLayout><AreaServiceDetailPage /></PublicLayout>} />
             <Route path="/privacy-policy" element={<PublicLayout><PrivacyPolicyPage /></PublicLayout>} />
             <Route path="/terms-and-conditions" element={<PublicLayout><TermsPage /></PublicLayout>} />
             <Route path="/refund-policy" element={<PublicLayout><RefundPolicyPage /></PublicLayout>} />
@@ -155,6 +165,11 @@ export function App() {
               <Route index element={<WorkerDashboardPage />} />
               <Route path="dashboard" element={<WorkerDashboardPage />} />
             </Route>
+
+            {/* STANDALONE POS BILLING TERMINAL SUITE */}
+            <Route path="/billing" element={<BillingHubPage />} />
+            <Route path="/billing/:terminalId" element={<BillingMachinePage />} />
+            <Route path="/pos/:terminalId" element={<BillingMachinePage />} />
 
             {/* Catch-all Fallback */}
             <Route path="*" element={<PublicLayout><HomePage /></PublicLayout>} />

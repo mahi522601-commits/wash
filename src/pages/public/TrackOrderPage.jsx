@@ -36,6 +36,8 @@ import {
   Zap,
   RotateCcw
 } from 'lucide-react';
+import { SEOHead } from '../../components/seo/SEOHead';
+import { BASE_URL } from '../../data/seoData';
 
 const ICON_COMPONENTS = {
   CheckCircle2,
@@ -146,7 +148,14 @@ export const TrackOrderPage = () => {
   };
 
   return (
-    <div className="py-12 sm:py-20 bg-slate-50 min-h-screen">
+    <>
+      <SEOHead
+        title="Live Order Tracking & Status — Tech Wash Laundry Hyderabad"
+        description="Track your laundry and dry cleaning order status in real time across 10 processing stages with Tech Wash Hyderabad."
+        canonicalUrl={`${BASE_URL}/track-order`}
+        noindex={!!order}
+      />
+      <div className="py-12 sm:py-20 bg-slate-50 min-h-screen">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Header */}
@@ -553,6 +562,7 @@ export const TrackOrderPage = () => {
         />
       )}
 
-    </div>
+      </div>
+    </>
   );
 };

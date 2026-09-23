@@ -1,0 +1,35 @@
+# Tech Wash Laundry Services - Robots.txt
+# Canonical: https://www.techwashlaundry.com
+
+User-agent: *
+Allow: /
+Allow: /services
+Allow: /services/
+Allow: /areas
+Allow: /areas/
+Allow: /pricing
+Allow: /how-it-works
+Allow: /about
+Allow: /gallery
+Allow: /blog
+Allow: /blog/
+Allow: /locations
+Allow: /contact
+Allow: /faq
+Allow: /offers
+Allow: /book-pickup
+Allow: /privacy-policy
+Allow: /terms-and-conditions
+Allow: /refund-policy
+
+# Protected SaaS & Worker Portals
+Disallow: /admin
+Disallow: /admin/
+Disallow: /worker
+Disallow: /worker/
+
+# Private Parameterized Order Tracking
+Disallow: /track-order?*
+
+# XML Sitemap
+Sitemap: https://www.techwashlaundry.com/sitemap.xml

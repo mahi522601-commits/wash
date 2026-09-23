@@ -35,7 +35,8 @@ import {
   X,
   ExternalLink,
   ShieldCheck,
-  Bike
+  Bike,
+  Store
 } from 'lucide-react';
 
 const SIDEBAR_COLLAPSED_KEY = 'techwash_admin_sidebar_collapsed';
@@ -56,6 +57,7 @@ export const AdminSidebar = ({ isOpen, onClose, isCollapsed, onToggleCollapse })
       title: 'OPERATIONS & LOGISTICS',
       items: [
         { name: 'Orders Management', path: '/admin/orders', icon: ShoppingBag, badge: 'Live', badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' },
+        { name: 'POS Billing Machines', path: '/billing', icon: Store, badge: '3 Counters', badgeColor: 'bg-orange-500/20 text-orange-300 border-orange-500/30' },
         { name: 'Customer CRM', path: '/admin/customers', icon: Users },
         { name: 'Store Locations', path: '/admin/locations', icon: MapPin },
         { name: 'Payments & QR', path: '/admin/payments', icon: CreditCard },

@@ -37,6 +37,8 @@ import {
   RotateCcw,
   Sparkle
 } from 'lucide-react';
+import { SEOHead } from '../../components/seo/SEOHead';
+import { BASE_URL, BUSINESS_INFO, SEO_AREAS } from '../../data/seoData';
 
 const DEFAULT_PROCESS_STEPS = [
   {
@@ -195,8 +197,79 @@ export const ServiceDetailPage = () => {
     day: 'numeric',
   });
 
+  const serviceTitle = service.title || service.name || 'Service';
+  const pageMetaTitle = `${serviceTitle} Services in Hyderabad | Tech Wash`;
+  const pageMetaDesc = service.shortDescription || `${serviceTitle} in Hyderabad with 100% demineralized RO soft water and eco-friendly solvents. Doorstep pickup across Manikonda, Puppalaguda, Khajaguda & Hyderabad.`;
+
+  const structuredData = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          {
+            '@type': 'ListItem',
+            position: 1,
+            name: 'Home',
+            item: BASE_URL,
+          },
+          {
+            '@type': 'ListItem',
+            position: 2,
+            name: 'Services',
+            item: `${BASE_URL}/services`,
+          },
+          {
+            '@type': 'ListItem',
+            position: 3,
+            name: serviceTitle,
+            item: `${BASE_URL}/services/${service.slug}`,
+          },
+        ],
+      },
+      {
+        '@type': 'Service',
+        '@id': `${BASE_URL}/services/${service.slug}#service`,
+        name: serviceTitle,
+        serviceType: service.category || 'Garment Care',
+        description: pageMetaDesc,
+        provider: {
+          '@type': 'DryCleaningOrLaundry',
+          name: BUSINESS_INFO.name,
+          telephone: BUSINESS_INFO.telephone,
+          url: BASE_URL,
+          address: BUSINESS_INFO.address,
+        },
+        areaServed: SEO_AREAS.map((a) => ({
+          '@type': 'AdministrativeArea',
+          name: `${a.name}, Hyderabad`,
+        })),
+        offers: {
+          '@type': 'Offer',
+          priceCurrency: 'INR',
+          price: service.startingPrice || 40,
+          priceSpecification: {
+            '@type': 'UnitPriceSpecification',
+            price: service.startingPrice || 40,
+            priceCurrency: 'INR',
+            unitText: pricingUnit,
+          },
+          availability: 'https://schema.org/InStock',
+        },
+      },
+    ],
+  };
+
   return (
-    <div className="bg-slate-50 min-h-screen pb-24">
+    <>
+      <SEOHead
+        title={pageMetaTitle}
+        description={pageMetaDesc}
+        canonicalUrl={`${BASE_URL}/services/${service.slug}`}
+        keywords={`${serviceTitle.toLowerCase()} hyderabad, dry cleaning hyderabad, steam ironing manikonda, laundry pickup hyderabad`}
+        structuredData={structuredData}
+      />
+      <div className="bg-slate-50 min-h-screen pb-24">
       
       {/* ─────────────────────────────────────────────────────────
           1. ULTRA-LUXURY HERO HEADER WITH LIVE STATUS & IMAGE
@@ -865,5 +938,6 @@ export const ServiceDetailPage = () => {
       </section>
 
     </div>
+    </>
   );
 };

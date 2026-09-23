@@ -7,6 +7,8 @@ import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Tag, Sparkles, Calendar, Copy, CheckCircle2, ArrowRight, Clock } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
+import { SEOHead } from '../../components/seo/SEOHead';
+import { BASE_URL } from '../../data/seoData';
 
 export const OffersPage = () => {
   const { success } = useToast();
@@ -31,8 +33,39 @@ export const OffersPage = () => {
     setTimeout(() => setCopiedCode(null), 2500);
   };
 
+  const structuredData = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          {
+            '@type': 'ListItem',
+            position: 1,
+            name: 'Home',
+            item: BASE_URL,
+          },
+          {
+            '@type': 'ListItem',
+            position: 2,
+            name: 'Offers',
+            item: `${BASE_URL}/offers`,
+          },
+        ],
+      },
+    ],
+  };
+
   return (
-    <div className="py-12 sm:py-20 bg-slate-50 min-h-screen">
+    <>
+      <SEOHead
+        title="Special Laundry Offers & Promo Discounts | Tech Wash Hyderabad"
+        description="Save on dry cleaning, steam ironing, and wash & fold with Tech Wash exclusive discounts and seasonal coupons in Hyderabad."
+        canonicalUrl={`${BASE_URL}/offers`}
+        keywords="laundry offers hyderabad, dry cleaning coupon code, techwash discount"
+        structuredData={structuredData}
+      />
+      <div className="py-12 sm:py-20 bg-slate-50 min-h-screen">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
         
         <div className="text-center max-w-3xl mx-auto">
@@ -111,5 +144,6 @@ export const OffersPage = () => {
 
       </div>
     </div>
+    </>
   );
 };

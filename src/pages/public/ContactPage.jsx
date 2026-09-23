@@ -6,6 +6,8 @@ import { Card } from '../../components/ui/Card';
 import { Input, Textarea } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { Mail, Clock, MapPin, Send, Sparkles } from 'lucide-react';
+import { SEOHead } from '../../components/seo/SEOHead';
+import { BASE_URL, BUSINESS_INFO } from '../../data/seoData';
 
 export const ContactPage = () => {
   const { settings } = useSettings();
@@ -24,6 +26,43 @@ export const ContactPage = () => {
   const phone = general.primaryPhone || '+91 89777 69866';
   const whatsapp = (general.whatsappNumber || phone).replace(/\D/g, '');
 
+  const structuredData = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          {
+            '@type': 'ListItem',
+            position: 1,
+            name: 'Home',
+            item: BASE_URL,
+          },
+          {
+            '@type': 'ListItem',
+            position: 2,
+            name: 'Contact',
+            item: `${BASE_URL}/contact`,
+          },
+        ],
+      },
+      {
+        '@type': 'ContactPage',
+        '@id': `${BASE_URL}/contact#webpage`,
+        url: `${BASE_URL}/contact`,
+        name: 'Contact Tech Wash Laundry Services Hyderabad',
+        description: 'Get in touch with Tech Wash for doorstep laundry pickup, dry cleaning inquiries, and garment care concierge in Hyderabad.',
+        mainEntity: {
+          '@type': 'LocalBusiness',
+          name: BUSINESS_INFO.name,
+          telephone: phone,
+          email: BUSINESS_INFO.email,
+          address: BUSINESS_INFO.address,
+        },
+      },
+    ],
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -35,7 +74,15 @@ export const ContactPage = () => {
   };
 
   return (
-    <div className="py-12 sm:py-20 bg-slate-50 min-h-screen">
+    <>
+      <SEOHead
+        title="Contact Us — Laundry & Dry Cleaning Concierge | Tech Wash Hyderabad"
+        description="Contact Tech Wash Laundry Services in Hyderabad. Call +91 89777 69866 or message via WhatsApp for doorstep pickup in Manikonda, Puppalaguda & Hyderabad."
+        canonicalUrl={`${BASE_URL}/contact`}
+        keywords="contact laundry hyderabad, tech wash phone number, dry cleaning customer care hyderabad"
+        structuredData={structuredData}
+      />
+      <div className="py-12 sm:py-20 bg-slate-50 min-h-screen">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Header */}
@@ -194,5 +241,6 @@ export const ContactPage = () => {
 
       </div>
     </div>
+    </>
   );
 };

@@ -3,10 +3,59 @@ import { Link } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Sparkles, ShieldCheck, Droplets, Award, Calendar, Users, HeartHandshake } from 'lucide-react';
+import { SEOHead } from '../../components/seo/SEOHead';
+import { BASE_URL, BUSINESS_INFO } from '../../data/seoData';
 
 export const AboutPage = () => {
+  const structuredData = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          {
+            '@type': 'ListItem',
+            position: 1,
+            name: 'Home',
+            item: BASE_URL,
+          },
+          {
+            '@type': 'ListItem',
+            position: 2,
+            name: 'About Us',
+            item: `${BASE_URL}/about`,
+          },
+        ],
+      },
+      {
+        '@type': 'AboutPage',
+        '@id': `${BASE_URL}/about#webpage`,
+        url: `${BASE_URL}/about`,
+        name: 'About Tech Wash Laundry Services',
+        description: 'Learn about Tech Wash, Hyderabad’s premier garment care ecosystem specializing in European hydrocarbon dry cleaning and RO soft water washing.',
+        mainEntity: {
+          '@type': 'Organization',
+          name: BUSINESS_INFO.name,
+          url: BASE_URL,
+          logo: BUSINESS_INFO.logo,
+          telephone: BUSINESS_INFO.telephone,
+          email: BUSINESS_INFO.email,
+          address: BUSINESS_INFO.address,
+        },
+      },
+    ],
+  };
+
   return (
-    <div className="py-12 sm:py-20 bg-slate-50 min-h-screen">
+    <>
+      <SEOHead
+        title="About Us — Next-Gen Garment Care & Dry Cleaning | Tech Wash Hyderabad"
+        description="Learn about Tech Wash Laundry Services in Hyderabad. Over 9+ years of experience and 10,000+ happy customers with zero-mixing RO soft water laundry and eco-safe dry cleaning."
+        canonicalUrl={`${BASE_URL}/about`}
+        keywords="about tech wash, laundry hyderabad story, eco friendly dry clean hyderabad, professional garment care"
+        structuredData={structuredData}
+      />
+      <div className="py-12 sm:py-20 bg-slate-50 min-h-screen">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
         
         {/* Header */}
@@ -95,5 +144,6 @@ export const AboutPage = () => {
 
       </div>
     </div>
+    </>
   );
 };

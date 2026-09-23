@@ -26,6 +26,7 @@ export const Footer = () => {
     { label: 'All Services', path: '/services' },
     { label: 'Pricing & Calculator', path: '/pricing' },
     { label: '6-Stage Process', path: '/how-it-works' },
+    { label: 'Service Areas', path: '/areas' },
     { label: 'Track Order Status', path: '/track-order' },
     { label: 'Book Doorstep Pickup', path: '/book-pickup' },
     { label: 'Store Branches', path: '/locations' },

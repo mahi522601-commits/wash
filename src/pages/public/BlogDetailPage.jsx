@@ -6,6 +6,8 @@ import { Button } from '../../components/ui/Button';
 import { formatDate } from '../../utils/formatters';
 import { ArrowLeft, Clock, User, Calendar, Share2, Sparkles } from 'lucide-react';
 import { AdvancedLogoLoader } from '../../components/common/AdvancedLogoLoader';
+import { SEOHead } from '../../components/seo/SEOHead';
+import { BASE_URL, BUSINESS_INFO } from '../../data/seoData';
 
 export const BlogDetailPage = () => {
   const { slug } = useParams();
@@ -44,8 +46,75 @@ export const BlogDetailPage = () => {
     );
   }
 
+  const pageTitle = `${blog.title} | Tech Wash Blog`;
+  const pageDesc = blog.excerpt || blog.summary || blog.title;
+  const pageCanonical = `${BASE_URL}/blog/${blog.slug || blog.id}`;
+
+  const structuredData = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          {
+            '@type': 'ListItem',
+            position: 1,
+            name: 'Home',
+            item: BASE_URL,
+          },
+          {
+            '@type': 'ListItem',
+            position: 2,
+            name: 'Blog',
+            item: `${BASE_URL}/blog`,
+          },
+          {
+            '@type': 'ListItem',
+            position: 3,
+            name: blog.title,
+            item: pageCanonical,
+          },
+        ],
+      },
+      {
+        '@type': 'BlogPosting',
+        headline: blog.title,
+        description: pageDesc,
+        image: blog.featuredImage || `${BASE_URL}/techwashlogo.webp`,
+        datePublished: blog.createdAt,
+        dateModified: blog.updatedAt || blog.createdAt,
+        author: {
+          '@type': 'Person',
+          name: blog.author || 'Tech Wash Fabric Specialist',
+        },
+        publisher: {
+          '@type': 'Organization',
+          name: BUSINESS_INFO.name,
+          logo: {
+            '@type': 'ImageObject',
+            url: BUSINESS_INFO.logo,
+          },
+        },
+        mainEntityOfPage: {
+          '@type': 'WebPage',
+          '@id': pageCanonical,
+        },
+      },
+    ],
+  };
+
   return (
-    <article className="py-12 sm:py-20 bg-slate-50 min-h-screen">
+    <>
+      <SEOHead
+        title={pageTitle}
+        description={pageDesc}
+        canonicalUrl={pageCanonical}
+        ogType="article"
+        ogImage={blog.featuredImage || `${BASE_URL}/techwashlogo.webp`}
+        keywords={`${blog.category || 'fabric care'}, laundry hyderabad, dry cleaning tips`}
+        structuredData={structuredData}
+      />
+      <article className="py-12 sm:py-20 bg-slate-50 min-h-screen">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         
         <Link
@@ -106,5 +175,6 @@ export const BlogDetailPage = () => {
 
       </div>
     </article>
+    </>
   );
 };

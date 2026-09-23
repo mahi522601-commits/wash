@@ -53,7 +53,7 @@ import {
   FolderPlus
 } from 'lucide-react';
 
-const WALK_IN_SERVICES = [
+export const WALK_IN_SERVICES = [
   { id: 'srv-dry-cleaning', name: 'Premium Dry Cleaning', emoji: '👔', defaultPrice: 99 },
   { id: 'srv-wash-and-fold', name: 'Wash & Fold', emoji: '🧺', defaultPrice: 79, perKg: true },
   { id: 'srv-wash-and-iron', name: 'Wash & Steam Iron', emoji: '👕', defaultPrice: 119, perKg: true },

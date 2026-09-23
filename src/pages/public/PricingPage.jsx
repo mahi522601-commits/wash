@@ -20,6 +20,8 @@ import {
   Layers,
   HeartHandshake
 } from 'lucide-react';
+import { SEOHead } from '../../components/seo/SEOHead';
+import { BASE_URL, BUSINESS_INFO, SEO_SERVICES } from '../../data/seoData';
 
 export const PricingPage = () => {
   const [services, setServices] = useState(DEFAULT_SERVICES);
@@ -96,8 +98,47 @@ export const PricingPage = () => {
     { name: 'Full Long Curtain Steam Press', method: 'Per-piece vertical tension steam', price: 300, unit: 'per piece', emoji: '🪟', tag: 'Curtains' },
   ];
 
+  const structuredData = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          {
+            '@type': 'ListItem',
+            position: 1,
+            name: 'Home',
+            item: BASE_URL,
+          },
+          {
+            '@type': 'ListItem',
+            position: 2,
+            name: 'Pricing',
+            item: `${BASE_URL}/pricing`,
+          },
+        ],
+      },
+      {
+        '@type': 'PriceSpecification',
+        name: 'Tech Wash Laundry & Dry Cleaning Rates',
+        description: 'Transparent garment care tariff list for Hyderabad.',
+        priceCurrency: 'INR',
+        minPrice: 12,
+        maxPrice: 350,
+      },
+    ],
+  };
+
   return (
-    <div className="py-6 sm:py-14 bg-slate-50 min-h-screen">
+    <>
+      <SEOHead
+        title="Laundry & Dry Cleaning Pricing in Hyderabad | Tech Wash Rate Card"
+        description="Transparent rates for dry cleaning (from ₹40), steam ironing (from ₹12), starch & iron (from ₹25), per-kg laundry (₹100/kg), and sneaker cleaning (₹350/pair) in Hyderabad."
+        canonicalUrl={`${BASE_URL}/pricing`}
+        keywords="laundry prices hyderabad, dry cleaning cost manikonda, steam iron rates hyderabad, laundry per kg price puppalaguda"
+        structuredData={structuredData}
+      />
+      <div className="py-6 sm:py-14 bg-slate-50 min-h-screen">
       <div className="max-w-6xl mx-auto px-3.5 sm:px-6 lg:px-8 space-y-6 sm:space-y-10">
         
         {/* ─────────────────────────────────────────────────────────
@@ -954,6 +995,7 @@ export const PricingPage = () => {
 
       </div>
     </div>
+    </>
   );
 };
 

@@ -3,6 +3,8 @@ import { cmsService } from '../../services/cmsService';
 import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { Sparkles, Eye, X } from 'lucide-react';
+import { SEOHead } from '../../components/seo/SEOHead';
+import { BASE_URL } from '../../data/seoData';
 
 export const GalleryPage = () => {
   const [items, setItems] = useState([]);
@@ -57,8 +59,44 @@ export const GalleryPage = () => {
     ? items
     : items.filter(i => (i.category || 'General Care') === selectedCategory);
 
+  const structuredData = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          {
+            '@type': 'ListItem',
+            position: 1,
+            name: 'Home',
+            item: BASE_URL,
+          },
+          {
+            '@type': 'ListItem',
+            position: 2,
+            name: 'Transformation Gallery',
+            item: `${BASE_URL}/gallery`,
+          },
+        ],
+      },
+      {
+        '@type': 'ImageGallery',
+        name: 'Tech Wash Garment Care Transformations',
+        description: 'Before and after dry cleaning, sneaker restoration, and steam pressing gallery from Tech Wash Hyderabad.',
+      },
+    ],
+  };
+
   return (
-    <div className="py-12 sm:py-20 bg-slate-50 min-h-screen">
+    <>
+      <SEOHead
+        title="Garment Transformation & Dry Cleaning Gallery | Tech Wash Hyderabad"
+        description="View real before & after transformations of dry cleaned silk lehengas, suits, restored sneakers, and curtains by Tech Wash Hyderabad."
+        canonicalUrl={`${BASE_URL}/gallery`}
+        keywords="laundry gallery, dry cleaning before after hyderabad, shoe restoration photos"
+        structuredData={structuredData}
+      />
+      <div className="py-12 sm:py-20 bg-slate-50 min-h-screen">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         <div className="text-center max-w-3xl mx-auto mb-12">
@@ -172,6 +210,7 @@ export const GalleryPage = () => {
         )}
       </Modal>
 
-    </div>
+      </div>
+    </>
   );
 };

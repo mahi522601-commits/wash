@@ -6,11 +6,86 @@ import {
   Sparkles, 
   Calendar
 } from 'lucide-react';
+import { SEOHead } from '../../components/seo/SEOHead';
+import { BASE_URL } from '../../data/seoData';
 
 export const HowItWorksPage = () => {
+  const structuredData = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          {
+            '@type': 'ListItem',
+            position: 1,
+            name: 'Home',
+            item: BASE_URL,
+          },
+          {
+            '@type': 'ListItem',
+            position: 2,
+            name: 'How It Works',
+            item: `${BASE_URL}/how-it-works`,
+          },
+        ],
+      },
+      {
+        '@type': 'HowTo',
+        name: 'How Tech Wash Garment Care Works',
+        description: '6-stage garment care process: Pickup, Optical Fiber Mapping, Demineralized RO Wash, Eco-Dry, 3D Tension Steam Press, and Sealed Delivery.',
+        step: [
+          {
+            '@type': 'HowToStep',
+            position: 1,
+            name: 'Doorstep Pickup',
+            text: 'Schedule pickup online; our executive arrives with calibrated scales and tags.',
+          },
+          {
+            '@type': 'HowToStep',
+            position: 2,
+            name: 'Inspection & Spot Pre-treatment',
+            text: 'Optical fiber identification and ultrasonic stain pre-spotting.',
+          },
+          {
+            '@type': 'HowToStep',
+            position: 3,
+            name: 'Demineralized RO Wash or Solvent Bath',
+            text: 'Individualized single-customer drum wash in 0 PPM soft water or hydrocarbon solvent.',
+          },
+          {
+            '@type': 'HowToStep',
+            position: 4,
+            name: 'Moisture Controlled Drying',
+            text: 'Anti-static sensor-controlled drying protecting textile elasticity.',
+          },
+          {
+            '@type': 'HowToStep',
+            position: 5,
+            name: '3D Form Steam Ironing',
+            text: 'Vacuum table and mannequin tension steam pressing.',
+          },
+          {
+            '@type': 'HowToStep',
+            position: 6,
+            name: 'QC & Sealed Delivery',
+            text: '10-point inspection and protective breathable wrap delivery.',
+          },
+        ],
+      },
+    ],
+  };
 
   return (
-    <div className="py-12 sm:py-20 bg-slate-50 min-h-screen">
+    <>
+      <SEOHead
+        title="How It Works — 6-Stage Garment Care Process | Tech Wash Hyderabad"
+        description="Learn about Tech Wash's scientific 6-stage laundry and dry cleaning process: doorstep pickup, RO soft water washing, hydrocarbon eco-cleaning, and 3D steam finishing in Hyderabad."
+        canonicalUrl={`${BASE_URL}/how-it-works`}
+        keywords="how laundry works, dry cleaning process hyderabad, ro soft water laundry, steam pressing hyderabad"
+        structuredData={structuredData}
+      />
+      <div className="py-12 sm:py-20 bg-slate-50 min-h-screen">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Page Header */}
@@ -51,5 +126,6 @@ export const HowItWorksPage = () => {
 
       </div>
     </div>
+    </>
   );
 };

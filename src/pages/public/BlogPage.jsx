@@ -5,6 +5,8 @@ import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { formatDate } from '../../utils/formatters';
 import { BookOpen, Clock, User, ArrowRight, Sparkles } from 'lucide-react';
+import { SEOHead } from '../../components/seo/SEOHead';
+import { BASE_URL } from '../../data/seoData';
 
 export const BlogPage = () => {
   const [blogs, setBlogs] = useState([]);
@@ -56,8 +58,45 @@ export const BlogPage = () => {
       .finally(() => setLoading(false));
   }, []);
 
+  const structuredData = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          {
+            '@type': 'ListItem',
+            position: 1,
+            name: 'Home',
+            item: BASE_URL,
+          },
+          {
+            '@type': 'ListItem',
+            position: 2,
+            name: 'Blog',
+            item: `${BASE_URL}/blog`,
+          },
+        ],
+      },
+      {
+        '@type': 'Blog',
+        name: 'Tech Wash Garment Care & Fabric Science Blog',
+        description: 'Expert fabric care advice, eco-friendly dry cleaning tips, and laundry maintenance guides from Tech Wash Hyderabad.',
+        url: `${BASE_URL}/blog`,
+      },
+    ],
+  };
+
   return (
-    <div className="py-12 sm:py-20 bg-slate-50 min-h-screen">
+    <>
+      <SEOHead
+        title="Garment Care & Fabric Science Blog | Tech Wash Hyderabad"
+        description="Expert fabric care tips, dry cleaning guides, saree care advice, and sneaker maintenance insights from Tech Wash Hyderabad master technicians."
+        canonicalUrl={`${BASE_URL}/blog`}
+        keywords="laundry blog hyderabad, fabric care tips, silk saree dry cleaning guide, shoe cleaning tips"
+        structuredData={structuredData}
+      />
+      <div className="py-12 sm:py-20 bg-slate-50 min-h-screen">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         <div className="text-center max-w-3xl mx-auto mb-16">
@@ -129,5 +168,6 @@ export const BlogPage = () => {
 
       </div>
     </div>
+    </>
   );
 };
