@@ -71,15 +71,11 @@ export const receiptService = {
    */
   formatInvoiceNumber(order, config = DEFAULT_RECEIPT_CONFIG) {
     if (order.invoiceNumber) return order.invoiceNumber;
+    if (order.orderNumber && order.orderNumber.startsWith('TW-')) return order.orderNumber;
     
-    const year = new Date(order.createdAt || Date.now()).getFullYear();
-    const rawNum = (order.orderNumber || order.id || '100001').replace(/[^0-9]/g, '').slice(-6) || '001245';
-    const formattedSeq = rawNum.padStart(6, '0');
-    
-    const pattern = config.prefixPattern || 'TW-{YEAR}-{NUMBER}';
-    return pattern
-      .replace('{YEAR}', year)
-      .replace('{NUMBER}', formattedSeq);
+    const rawNum = (order.orderNumber || order.id || '1').replace(/[^0-9]/g, '').slice(-5) || '1';
+    const formattedSeq = rawNum.padStart(5, '0');
+    return `TW-${formattedSeq}`;
   },
 
   /**
@@ -100,51 +96,102 @@ export const receiptService = {
       minute: '2-digit',
     });
 
-    const items = (order.items && order.items.length > 0)
-      ? order.items
-      : [
-          {
-            id: 'item-1',
-            name: order.serviceName || 'Premium Garment Care',
-            category: 'Care Service',
-            quantity: 1,
-            unitPrice: order.totalAmount || 499,
-            totalPrice: order.totalAmount || 499,
-          },
-        ];
+    let items = (order.items && order.items.length > 0)
+      ? order.items.map(it => {
+          const qty = Number(it.quantity) || 1;
+          const uPrice = Number(it.unitPrice !== undefined ? it.unitPrice : (it.price !== undefined ? it.price : 0));
+          const lTotal = Number(it.lineTotal !== undefined ? it.lineTotal : (it.totalPrice !== undefined ? it.totalPrice : (qty * uPrice)));
+          return {
+            ...it,
+            name: it.name || 'Garment Item',
+            category: it.category || 'General',
+            quantity: qty,
+            unitPrice: uPrice,
+            lineTotal: lTotal,
+          };
+        })
+      : [];
+
+    const totalAmount = Number(order.totalAmount || order.finalPrice || order.priceSnapshot?.finalTotal || 0);
+    const weightVal = Number(order.actualWeight || order.estimatedWeightKg || order.weightKg || 0);
+    const isPerKgService = order.pricingType === 'per_kg' || (order.serviceName && (order.serviceName.toLowerCase().includes('fold') || order.serviceName.toLowerCase().includes('steam iron') || order.serviceName.toLowerCase().includes('wash & iron')));
+
+    if (isPerKgService && weightVal > 0) {
+      const perKgRate = Number(order.pricePerKg || (order.serviceName?.toLowerCase().includes('iron') ? 130 : 100));
+      const hasWeightItem = items.some(it => it.isWeightItem || it.name?.toLowerCase().includes('kg'));
+      if (!hasWeightItem) {
+        items.unshift({
+          id: 'wt-base-line',
+          name: `${order.serviceName || 'Laundry'} (${weightVal} Kg @ ₹${perKgRate}/Kg)`,
+          category: 'Weighed Laundry',
+          quantity: weightVal,
+          unitPrice: perKgRate,
+          lineTotal: Math.round(weightVal * perKgRate),
+          isWeightItem: true,
+        });
+      }
+    }
+
+    if (items.length === 0) {
+      items = [
+        {
+          id: 'item-1',
+          name: order.serviceName || 'Premium Garment Care Service',
+          category: 'Care Service',
+          quantity: 1,
+          unitPrice: totalAmount,
+          lineTotal: totalAmount,
+        },
+      ];
+    }
+
+    const itemsSubtotal = items.reduce((acc, it) => acc + (Number(it.lineTotal) || 0), 0) || totalAmount;
+    const receivedAmount = Number(order.receivedAmount !== undefined 
+      ? order.receivedAmount 
+      : (order.paymentStatus === 'PAID' ? totalAmount : 0));
+    const balanceAmount = Number(order.balanceAmount !== undefined 
+      ? order.balanceAmount 
+      : Math.max(0, totalAmount - receivedAmount));
 
     return {
       invoiceNumber,
-      orderNumber: order.orderNumber || order.id,
+      orderNumber: order.orderNumber || order.id || invoiceNumber,
       invoiceDate,
       receiptGeneratedDate,
       customer: {
-        name: order.customer?.name || 'Valued Customer',
-        phone: order.customer?.phone || 'N/A',
-        email: order.customer?.email || '',
-        address: order.customer?.address || 'Pickup location confirmed on file',
-        locality: order.customer?.locality || '',
-        city: order.customer?.city || 'Hyderabad',
+        name: order.customer?.name || order.customerName || 'Valued Customer',
+        phone: order.customer?.phone || order.phone || 'N/A',
+        email: order.customer?.email || order.email || '',
+        address: order.customer?.address || order.address || (order.isWalkIn ? 'In-Store Walk-in Drop' : 'Pickup location confirmed on file'),
+        locality: order.customer?.locality || order.locality || '',
+        city: order.customer?.city || order.city || 'Hyderabad',
       },
       pickupLocation: order.pickupLocation || null,
       serviceName: order.serviceName || 'Garment Care',
+      storeBranch: order.storeBranch || null,
+      cashierName: order.cashierName || null,
+      isWalkIn: Boolean(order.isWalkIn),
       schedule: {
-        pickupDate: order.schedule?.pickupDate || 'Scheduled on demand',
-        pickupSlot: order.schedule?.pickupSlot || 'Morning Window',
-        instructions: order.schedule?.instructions || '',
+        pickupDate: order.schedule?.pickupDate || order.pickupDate || 'Scheduled on demand',
+        pickupSlot: order.schedule?.pickupSlot || order.pickupSlot || (order.isWalkIn ? 'In-Store Counter' : 'Morning Window'),
+        instructions: order.schedule?.instructions || order.notes || '',
       },
       items,
-      priceSnapshot: order.priceSnapshot || {
-        itemsSubtotal: order.totalAmount || 499,
-        expressFee: order.isExpress ? 99 : 0,
-        deliveryFee: 0,
+      priceSnapshot: {
+        itemsSubtotal: order.priceSnapshot?.itemsSubtotal || itemsSubtotal,
+        expressFee: order.priceSnapshot?.expressFee || (order.isExpress ? 100 : 0),
+        deliveryFee: order.priceSnapshot?.deliveryFee || 0,
         discountAmount: 0,
-        taxAmount: 0,
-        finalTotal: order.totalAmount || 499,
+        taxAmount: 0, // GST REMOVED
+        finalTotal: totalAmount,
+        receivedAmount,
+        balanceAmount,
       },
-      totalAmount: order.totalAmount || order.priceSnapshot?.finalTotal || 499,
-      paymentStatus: order.paymentStatus || 'PENDING',
-      paymentMethod: order.paymentMethod || 'PAY_ON_DELIVERY',
+      totalAmount,
+      receivedAmount,
+      balanceAmount,
+      paymentStatus: order.paymentStatus || (balanceAmount === 0 ? 'PAID' : (receivedAmount > 0 ? 'PARTIAL' : 'PENDING')),
+      paymentMethod: order.paymentMethod || 'CASH',
       paymentId: order.paymentId || order.transactionId || null,
       customerStage: order.customerStage || 'CONFIRMED',
       internalNotes: order.internalNotes || '',

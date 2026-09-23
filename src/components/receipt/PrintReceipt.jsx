@@ -209,10 +209,10 @@ export const PrintReceipt = ({
                   {item.quantity || 1}
                 </td>
                 <td className="py-1 px-2 text-right font-mono text-slate-700">
-                  {formatCurrency(item.unitPrice || item.price || 0)}
+                  {formatCurrency(item.unitPrice !== undefined ? item.unitPrice : (item.price || 0))}
                 </td>
                 <td className="py-1 px-2 text-right font-bold font-mono text-slate-900">
-                  {formatCurrency((item.quantity || 1) * (item.unitPrice || item.price || 0))}
+                  {formatCurrency(item.lineTotal !== undefined ? item.lineTotal : (item.totalPrice || ((item.quantity || 1) * (item.unitPrice || item.price || 0))))}
                 </td>
               </tr>
             ))}
@@ -228,17 +228,20 @@ export const PrintReceipt = ({
         {/* Left Col: Payment Method & Compact Notes */}
         <div className="col-span-7 space-y-1">
           
+          {/* Status Badge & Mode */}
           <div className="p-1.5 rounded-lg bg-slate-50 border border-slate-200 space-y-0.5">
             <div className="flex items-center justify-between">
               <span className="text-slate-500 font-bold uppercase tracking-wider text-[8.5px]">
                 Payment Status
               </span>
-              <span className={`px-2 py-0.2 rounded-full text-[8.5px] font-black uppercase tracking-wider ${
-                paymentStatus === 'PAID'
+              <span className={`px-2 py-0.5 rounded-full text-[8.5px] font-black uppercase tracking-wider ${
+                (receiptData.balanceAmount === 0 || paymentStatus === 'PAID')
                   ? 'bg-emerald-100 text-emerald-800'
-                  : 'bg-amber-100 text-amber-800'
+                  : (receiptData.receivedAmount > 0 ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800')
               }`}>
-                {paymentStatus === 'PAID' ? '✓ PAID IN FULL' : '⏳ PENDING'}
+                {(receiptData.balanceAmount === 0 || paymentStatus === 'PAID')
+                  ? '✓ FULLY PAID'
+                  : (receiptData.receivedAmount > 0 ? `⏳ PARTIAL (₹${receiptData.balanceAmount} DUE)` : `⏳ DUE ₹${receiptData.totalAmount || receiptData.balanceAmount}`)}
               </span>
             </div>
 
@@ -246,6 +249,13 @@ export const PrintReceipt = ({
               <span className="text-slate-500">Payment Option:</span>
               <span className="font-semibold text-slate-900">{String(paymentMethod).replace(/_/g, ' ')}</span>
             </div>
+
+            {receiptData.storeBranch && (
+              <div className="flex justify-between text-slate-700 text-[8.5px]">
+                <span className="text-slate-500">Counter Branch:</span>
+                <span className="font-semibold text-orange-700 truncate max-w-[150px]">{receiptData.storeBranch}</span>
+              </div>
+            )}
 
             {paymentId && (
               <div className="flex justify-between text-[8.5px] text-slate-500 font-mono">
@@ -271,13 +281,13 @@ export const PrintReceipt = ({
 
         </div>
 
-        {/* Right Col: Itemized Totals & Grand Total */}
+        {/* Right Col: Itemized Totals & Grand Total & Balance Due */}
         <div className="col-span-5 space-y-0.5 text-slate-600">
           
           <div className="flex justify-between py-0.2 text-[9.5px]">
             <span>Items Subtotal:</span>
             <span className="font-mono font-semibold text-slate-900">
-              {formatCurrency(priceSnapshot?.itemsSubtotal || receiptData.totalAmount)}
+              {formatCurrency(priceSnapshot?.itemsSubtotal || receiptData.totalAmount || 0)}
             </span>
           </div>
 
@@ -288,35 +298,42 @@ export const PrintReceipt = ({
             </div>
           )}
 
-          {priceSnapshot?.discountAmount > 0 && (
-            <div className="flex justify-between py-0.2 text-emerald-600 text-[9.5px]">
-              <span>Discount:</span>
-              <span className="font-mono font-bold">-{formatCurrency(priceSnapshot.discountAmount)}</span>
+          {priceSnapshot?.deliveryFee > 0 && (
+            <div className="flex justify-between py-0.2 text-[9.5px]">
+              <span>Doorstep Logistics:</span>
+              <span className="font-mono text-slate-900">
+                {formatCurrency(priceSnapshot.deliveryFee)}
+              </span>
             </div>
           )}
 
-          <div className="flex justify-between py-0.2 text-[9.5px]">
-            <span>Doorstep Logistics:</span>
-            <span className="font-mono text-slate-900">
-              {priceSnapshot?.deliveryFee === 0 ? 'FREE' : formatCurrency(priceSnapshot?.deliveryFee || 0)}
-            </span>
-          </div>
-
-          <div className="flex justify-between py-0.2 text-slate-400 text-[9px]">
-            <span>GST (5% Included):</span>
-            <span className="font-mono">{formatCurrency(priceSnapshot?.taxAmount || 0)}</span>
-          </div>
-
           {/* GRAND TOTAL HIGHLIGHT BOX */}
-          <div className="mt-0.5 p-1.5 rounded-lg bg-slate-900 text-white flex items-center justify-between border border-orange-400/30">
+          <div className="mt-0.5 p-1.5 rounded-lg bg-slate-900 text-white flex items-center justify-between border border-orange-400/30 print:bg-slate-100 print:text-black print:border-black">
             <div>
-              <div className="text-[8px] font-bold uppercase tracking-widest text-orange-300">
+              <div className="text-[8px] font-bold uppercase tracking-widest text-orange-300 print:text-black">
                 Grand Total
               </div>
-              <div className="text-[7.5px] text-slate-400">Net Amount (INR)</div>
+              <div className="text-[7.5px] text-slate-400 print:text-slate-600">Net Bill Amount</div>
             </div>
-            <div className="text-sm sm:text-base font-black font-display font-mono text-[#F97316]">
-              {formatCurrency(priceSnapshot?.finalTotal || receiptData.totalAmount)}
+            <div className="text-sm sm:text-base font-black font-display font-mono text-[#F97316] print:text-black">
+              {formatCurrency(priceSnapshot?.finalTotal || receiptData.totalAmount || 0)}
+            </div>
+          </div>
+
+          {/* RECEIVED & BALANCE DUE ROW */}
+          <div className="pt-1 space-y-0.5 text-[9px] border-t border-slate-100">
+            <div className="flex justify-between text-slate-700">
+              <span>Amount Received:</span>
+              <span className="font-mono font-bold text-emerald-700 print:text-black">
+                {formatCurrency(receiptData.receivedAmount || 0)}
+              </span>
+            </div>
+
+            <div className="flex justify-between">
+              <span className="font-bold text-slate-800">Balance Due:</span>
+              <span className={`font-mono font-black ${(receiptData.balanceAmount || 0) > 0 ? 'text-rose-600 print:text-black' : 'text-emerald-600 print:text-black'}`}>
+                {(receiptData.balanceAmount || 0) > 0 ? formatCurrency(receiptData.balanceAmount) : '₹0 (Cleared)'}
+              </span>
             </div>
           </div>
 

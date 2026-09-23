@@ -53,6 +53,8 @@ import { AdminBlogPage } from './pages/admin/AdminBlogPage';
 import { AdminLocationsPage } from './pages/admin/AdminLocationsPage';
 import { AdminPaymentsPage } from './pages/admin/AdminPaymentsPage';
 import { AdminStaffPage } from './pages/admin/AdminStaffPage';
+import { AdminBalanceDuePage } from './pages/admin/AdminBalanceDuePage';
+import { AdminReportsPage } from './pages/admin/AdminReportsPage';
 
 // Worker & Delivery Executive Portal
 import { WorkerLoginPage } from './pages/worker/WorkerLoginPage';
@@ -156,6 +158,13 @@ export function App() {
               <Route path="blog" element={<AdminBlogPage />} />
               <Route path="locations" element={<AdminLocationsPage />} />
               <Route path="payments" element={<AdminPaymentsPage />} />
+              <Route path="balances" element={<AdminBalanceDuePage />} />
+              <Route path="balance-due" element={<AdminBalanceDuePage />} />
+              <Route path="reports" element={<AdminReportsPage />} />
+              <Route path="reports/30-days" element={<AdminReportsPage />} />
+              <Route path="reports/daily" element={<AdminReportsPage />} />
+              <Route path="history" element={<AdminReportsPage />} />
+              <Route path="settlements" element={<AdminReportsPage />} />
               <Route path="staff" element={<AdminStaffPage />} />
             </Route>
 

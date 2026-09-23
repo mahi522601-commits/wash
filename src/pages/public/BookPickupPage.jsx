@@ -563,8 +563,8 @@ export const BookPickupPage = () => {
     }
 
     const taxableBase = Math.max(0, itemsSubtotal + expressFee - discountAmount);
-    const taxAmount = Math.round(taxableBase * 0.05); // 5% GST
-    const finalTotal = Math.max(0, taxableBase + deliveryFee + taxAmount);
+    const taxAmount = 0; // 0% GST (GST removed)
+    const finalTotal = Math.max(0, taxableBase + deliveryFee);
 
     return {
       lineItems,
@@ -2337,10 +2337,12 @@ export const BookPickupPage = () => {
                     {orderBreakdown.deliveryFee === 0 ? 'FREE' : formatCurrency(orderBreakdown.deliveryFee)}
                   </span>
                 </div>
-                <div className="flex justify-between text-slate-400 text-[11px]">
-                  <span>GST (5%):</span>
-                  <span>{formatCurrency(orderBreakdown.taxAmount)}</span>
-                </div>
+                {orderBreakdown.taxAmount > 0 && (
+                  <div className="flex justify-between text-slate-400 text-[11px]">
+                    <span>GST:</span>
+                    <span>{formatCurrency(orderBreakdown.taxAmount)}</span>
+                  </div>
+                )}
 
                 <div className="pt-3 border-t border-slate-200 flex justify-between items-baseline text-sm font-bold text-slate-900">
                   <span className="font-display">Estimated Total:</span>
@@ -2474,10 +2476,12 @@ export const BookPickupPage = () => {
                     {orderBreakdown.deliveryFee === 0 ? 'FREE' : formatCurrency(orderBreakdown.deliveryFee)}
                   </span>
                 </div>
-                <div className="flex justify-between">
-                  <span>GST (5%):</span>
-                  <span>{formatCurrency(orderBreakdown.taxAmount)}</span>
-                </div>
+                {orderBreakdown.taxAmount > 0 && (
+                  <div className="flex justify-between">
+                    <span>GST:</span>
+                    <span>{formatCurrency(orderBreakdown.taxAmount)}</span>
+                  </div>
+                )}
                 <div className="pt-2 border-t border-slate-200 flex justify-between items-baseline font-bold text-slate-900 text-sm">
                   <span>Estimated Total:</span>
                   <span className="text-xl font-black text-brand-600 font-display">

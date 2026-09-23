@@ -15,10 +15,10 @@ export const PRICING_UNITS = {
 
 export const DEFAULT_DELIVERY_RULES = {
   freeDeliveryThreshold: 499,
-  standardDeliveryFee: 49,
+  standardDeliveryFee: 0,
   expressDeliveryMultiplier: 1.5, // 50% extra for 24-hr express turnaround
   expressFlatFee: 99,
-  taxRate: 0.05, // 5% GST on laundry services in India
+  taxRate: 0, // No GST
 };
 
 /**
@@ -63,7 +63,7 @@ export const calculateOrderTotal = ({
   // 3. Delivery Fee (Free if above threshold)
   const deliveryFee = (baseAmount >= deliveryRules.freeDeliveryThreshold || baseAmount === 0)
     ? 0
-    : deliveryRules.standardDeliveryFee;
+    : (deliveryRules.standardDeliveryFee || 0);
 
   // 4. Calculate Discount
   let discountAmount = 0;
@@ -78,12 +78,9 @@ export const calculateOrderTotal = ({
     }
   }
 
-  // 5. Tax Calculation
-  const taxableAmount = Math.max(0, baseAmount + expressFee - discountAmount);
-  const taxAmount = Math.round(taxableAmount * deliveryRules.taxRate);
-
-  // 6. Final Payable Total
-  const finalTotal = Math.max(0, taxableAmount + deliveryFee + taxAmount);
+  // 5. Total Calculation (No GST)
+  const taxAmount = 0;
+  const finalTotal = Math.max(0, baseAmount + expressFee + deliveryFee - discountAmount);
 
   // 7. Generate Immutable Price Snapshot
   const priceSnapshot = {

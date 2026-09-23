@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { orderService, ORDER_CUSTOMER_STAGES, INTERNAL_OPERATIONAL_STAGES } from '../../services/orderService';
 import { staffService } from '../../services/staffService';
 import { auditService } from '../../services/auditService';
@@ -54,29 +55,31 @@ import {
 } from 'lucide-react';
 
 export const WALK_IN_SERVICES = [
-  { id: 'srv-dry-cleaning', name: 'Premium Dry Cleaning', emoji: '👔', defaultPrice: 99 },
-  { id: 'srv-wash-and-fold', name: 'Wash & Fold', emoji: '🧺', defaultPrice: 79, perKg: true },
-  { id: 'srv-wash-and-iron', name: 'Wash & Steam Iron', emoji: '👕', defaultPrice: 119, perKg: true },
+  { id: 'srv-dry-cleaning', name: 'Premium Dry Cleaning', emoji: '👔', defaultPrice: 90 },
+  { id: 'srv-wash-and-fold', name: 'Wash & Fold', emoji: '🧺', defaultPrice: 100, perKg: true },
+  { id: 'srv-wash-and-iron', name: 'Wash & Steam Iron', emoji: '👕', defaultPrice: 130, perKg: true },
   { id: 'srv-steam-ironing', name: 'Steam Ironing Only', emoji: '✨', defaultPrice: 25 },
-  { id: 'srv-starch-and-iron', name: 'Starch & Iron / Finishing', emoji: '🌾', defaultPrice: 45 },
-  { id: 'srv-shoe-spa', name: 'Shoe Spa & Restoration', emoji: '👟', defaultPrice: 399 },
-  { id: 'srv-curtain-spa', name: 'Curtain & Carpet Spa', emoji: '🧼', defaultPrice: 199 },
+  { id: 'srv-saree-spa', name: 'Sarees & Ethnic Spa', emoji: '🥻', defaultPrice: 60 },
+  { id: 'srv-shoe-spa', name: 'Shoe & Sneaker Spa', emoji: '👟', defaultPrice: 350 },
+  { id: 'srv-curtain-spa', name: 'Curtain & Home Care', emoji: '🧼', defaultPrice: 100 },
+  { id: 'srv-starch-and-iron', name: 'Starch & Finishing', emoji: '🌾', defaultPrice: 45 },
 ];
 
 export const POS_CATEGORIES = [
   { key: 'ALL', label: 'All Items', emoji: '✨' },
   { key: 'MEN', label: "Men's Wear", emoji: '👔' },
   { key: 'WOMEN', label: "Women's Wear", emoji: '👗' },
-  { key: 'KIDS', label: 'Kids & Baby', emoji: '👶' },
   { key: 'SAREES_ETHNIC', label: 'Sarees & Ethnic', emoji: '🥻' },
+  { key: 'STEAM_IRONING', label: 'Steam Ironing', emoji: '♨️' },
   { key: 'HOUSEHOLD', label: 'Home & Linens', emoji: '🏠' },
   { key: 'FOOTWEAR_BAGS', label: 'Shoes & Bags', emoji: '👟' },
   { key: 'STARCH_FINISHING', label: 'Starch & Iron', emoji: '🌾' },
+  { key: 'KIDS', label: 'Kids & Baby', emoji: '👶' },
   { key: 'EXTRA_SERVICES', label: 'Custom & Extra Charges', emoji: '⚙️' },
 ];
 
 export const MASTER_CATALOG_ITEMS = [
-  // ── MEN'S WEAR ──
+  // ── MEN'S WEAR (DRY CLEAN / CARE) ──
   { id: 'm-1', name: 'Cotton Shirt', price: 90, emoji: '👔', categoryKey: 'MEN', categoryName: "Men's Tops" },
   { id: 'm-2', name: 'Shirt with Starch', price: 100, emoji: '👔', categoryKey: 'MEN', categoryName: "Men's Tops" },
   { id: 'm-3', name: 'T-Shirt / Polo', price: 90, emoji: '👕', categoryKey: 'MEN', categoryName: "Men's Tops" },
@@ -126,6 +129,21 @@ export const MASTER_CATALOG_ITEMS = [
   { id: 'w-18', name: 'Nighties / Sleepwear', price: 90, emoji: '👗', categoryKey: 'WOMEN', categoryName: "Dresses" },
   { id: 'w-19', name: 'Gown / Evening Dress', price: 280, emoji: '👗', categoryKey: 'WOMEN', categoryName: "Couture" },
   { id: 'w-20', name: 'Bridal Lehanga Heavy Set', price: 550, emoji: '👑', categoryKey: 'WOMEN', categoryName: "Couture" },
+
+  // ── STEAM IRONING ONLY (PER ITEM) ──
+  { id: 'st-1', name: 'Shirt Steam Ironing', price: 25, emoji: '👔', categoryKey: 'STEAM_IRONING', categoryName: "Steam Press" },
+  { id: 'st-2', name: 'Trouser / Pant Steam Ironing', price: 25, emoji: '👖', categoryKey: 'STEAM_IRONING', categoryName: "Steam Press" },
+  { id: 'st-3', name: 'T-Shirt / Polo Steam Ironing', price: 20, emoji: '👕', categoryKey: 'STEAM_IRONING', categoryName: "Steam Press" },
+  { id: 'st-4', name: 'Cotton Kurta Steam Press', price: 30, emoji: '👘', categoryKey: 'STEAM_IRONING', categoryName: "Steam Press" },
+  { id: 'st-5', name: 'Saree Steam Ironing Only', price: 60, emoji: '🥻', categoryKey: 'STEAM_IRONING', categoryName: "Steam Press" },
+  { id: 'st-6', name: 'Saree Blouse Steam Iron', price: 20, emoji: '👚', categoryKey: 'STEAM_IRONING', categoryName: "Steam Press" },
+  { id: 'st-7', name: 'Silk Dhoti Steam Press', price: 40, emoji: '🥻', categoryKey: 'STEAM_IRONING', categoryName: "Steam Press" },
+  { id: 'st-8', name: 'Dupatta / Chunni Steam Press', price: 25, emoji: '🧣', categoryKey: 'STEAM_IRONING', categoryName: "Steam Press" },
+  { id: 'st-9', name: 'Blazer / Coat Steam Press', price: 90, emoji: '🧥', categoryKey: 'STEAM_IRONING', categoryName: "Steam Press" },
+  { id: 'st-10', name: '2-Piece Suit Steam Press', price: 120, emoji: '🤵', categoryKey: 'STEAM_IRONING', categoryName: "Steam Press" },
+  { id: 'st-11', name: 'Single Bedsheet Steam Press', price: 40, emoji: '🛏️', categoryKey: 'STEAM_IRONING', categoryName: "Steam Press" },
+  { id: 'st-12', name: 'Double / King Bedsheet Steam Press', price: 60, emoji: '🛌', categoryKey: 'STEAM_IRONING', categoryName: "Steam Press" },
+  { id: 'st-13', name: 'Kids Dress / Uniform Steam Press', price: 20, emoji: '👗', categoryKey: 'STEAM_IRONING', categoryName: "Steam Press" },
 
   // ── KIDS WEAR ──
   { id: 'k-1', name: 'Kids Frock / Dress', price: 60, emoji: '👗', categoryKey: 'KIDS', categoryName: "Kids" },
@@ -203,13 +221,12 @@ const INITIAL_WALK_IN_FORM = {
   serviceEmoji: '👔',
   pricingType: 'per_item', // 'per_item' | 'per_kg'
   weightKg: '',
-  pricePerKg: 79,
+  pricePerKg: 100,
   items: [],
   expressOption: 'STANDARD', // 'STANDARD' | 'EXPRESS_24' | 'SAME_DAY'
-  discountType: 'NONE', // 'NONE' | 'FIXED' | 'PERCENT'
-  discountValue: 0,
-  paymentStatus: 'PAID', // 'PAID' | 'PENDING'
-  paymentMethod: 'CASH', // 'CASH' | 'UPI_QR' | 'CARD' | 'NET_BANKING'
+  receivedAmount: '', // empty defaults to full or custom entered
+  paymentStatus: 'PAID', // 'PAID' | 'PARTIAL' | 'PENDING'
+  paymentMethod: 'CASH', // 'CASH' | 'UPI_QR' | 'CARD' | 'PAY_ON_DELIVERY'
   notes: '',
   internalAdminNotes: 'In-Store Walk-in Customer POS Order',
   storeBranch: 'Central Flagship Hub (Banjara Hills / Jubilee Hills)',
@@ -224,6 +241,7 @@ export const AdminOrdersPage = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedStatus, setSelectedStatus] = useState('ALL');
+  const [channelFilter, setChannelFilter] = useState('ALL'); // 'ALL' | 'ONLINE_WEBSITE' | 'OFFLINE_POS'
   const [searchQuery, setSearchQuery] = useState('');
   const [activeOrder, setActiveOrder] = useState(null);
   const [receiptModalOrder, setReceiptModalOrder] = useState(null);
@@ -238,6 +256,12 @@ export const AdminOrdersPage = () => {
   const [testPhone, setTestPhone] = useState('');
   const [isTestingGateway, setIsTestingGateway] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+
+  // Quick payment collection state inside active order modal
+  const [collectionAmount, setCollectionAmount] = useState('');
+  const [collectionMode, setCollectionMode] = useState('UPI_QR');
+  const [collectionNotes, setCollectionNotes] = useState('');
+  const [isCollectingPayment, setIsCollectingPayment] = useState(false);
 
   // Walk-in / In-store POS Order creation state
   const [showWalkInModal, setShowWalkInModal] = useState(false);
@@ -317,7 +341,7 @@ export const AdminOrdersPage = () => {
   // Calculations for Walk-In POS Order
   const getWalkInSubtotal = () => {
     if (walkInForm.pricingType === 'per_kg') {
-      const base = (Number(walkInForm.weightKg) || 0) * (Number(walkInForm.pricePerKg) || 79);
+      const base = (Number(walkInForm.weightKg) || 0) * (Number(walkInForm.pricePerKg) || 100);
       const itemsAddon = walkInForm.items.reduce((sum, it) => sum + (Number(it.unitPrice) * Number(it.quantity)), 0);
       return Math.round(base + itemsAddon);
     }
@@ -330,19 +354,34 @@ export const AdminOrdersPage = () => {
     return 0;
   };
 
-  const getWalkInDiscount = (subtotal) => {
-    if (walkInForm.discountType === 'FIXED') return Math.min(subtotal, Number(walkInForm.discountValue) || 0);
-    if (walkInForm.discountType === 'PERCENT') {
-      const pct = Math.min(100, Math.max(0, Number(walkInForm.discountValue) || 0));
-      return Math.round(subtotal * (pct / 100));
-    }
-    return 0;
-  };
-
   const walkInSubtotal = getWalkInSubtotal();
   const walkInExpressFee = getWalkInExpressFee(walkInSubtotal);
-  const walkInDiscount = getWalkInDiscount(walkInSubtotal);
-  const walkInFinalTotal = Math.max(0, walkInSubtotal + walkInExpressFee - walkInDiscount);
+  const walkInFinalTotal = Math.max(0, walkInSubtotal + walkInExpressFee);
+  const walkInReceived = walkInForm.receivedAmount !== '' 
+    ? Number(walkInForm.receivedAmount) 
+    : (walkInForm.paymentStatus === 'PAID' ? walkInFinalTotal : 0);
+  const walkInBalanceDue = Math.max(0, walkInFinalTotal - (isNaN(walkInReceived) ? 0 : walkInReceived));
+
+  // Channel and status filtering
+  const filteredOrders = useMemo(() => {
+    return orders.filter(ord => {
+      if (channelFilter === 'ONLINE_WEBSITE') {
+        return !ord.isWalkIn && ord.orderSource !== 'OFFLINE_POS';
+      }
+      if (channelFilter === 'OFFLINE_POS') {
+        return ord.isWalkIn || ord.orderSource === 'OFFLINE_POS';
+      }
+      return true;
+    });
+  }, [orders, channelFilter]);
+
+  const onlineOrdersCount = useMemo(() => {
+    return orders.filter(o => !o.isWalkIn && o.orderSource !== 'OFFLINE_POS').length;
+  }, [orders]);
+
+  const offlinePosOrdersCount = useMemo(() => {
+    return orders.filter(o => o.isWalkIn || o.orderSource === 'OFFLINE_POS').length;
+  }, [orders]);
 
   const filteredCatalogItems = useMemo(() => {
     return MASTER_CATALOG_ITEMS.filter((item) => {
@@ -495,8 +534,15 @@ export const AdminOrdersPage = () => {
       const totalGrams = walkInForm.items.reduce((acc, it) => acc + (it.quantity * 350), 0);
       const estWeight = walkInForm.pricingType === 'per_kg' ? Number(walkInForm.weightKg) : (totalGrams > 0 ? (totalGrams / 1000) : null);
 
+      const parsedReceived = walkInForm.receivedAmount !== '' 
+        ? Math.max(0, Number(walkInForm.receivedAmount) || 0)
+        : (walkInForm.paymentStatus === 'PAID' ? walkInFinalTotal : 0);
+      const computedBalance = Math.max(0, walkInFinalTotal - parsedReceived);
+      const computedPaymentStatus = computedBalance === 0 ? 'PAID' : (parsedReceived > 0 ? 'PARTIAL' : 'PENDING');
+
       const orderPayload = {
         isWalkIn: true,
+        orderSource: 'OFFLINE_POS',
         storeBranch: walkInForm.storeBranch,
         customer: {
           name: walkInForm.customerName.trim(),
@@ -528,14 +574,18 @@ export const AdminOrdersPage = () => {
           itemsSubtotal: walkInSubtotal,
           deliveryFee: 0,
           expressFee: walkInExpressFee,
-          discountAmount: walkInDiscount,
+          discountAmount: 0,
           taxes: 0,
           finalTotal: walkInFinalTotal,
+          receivedAmount: parsedReceived,
+          balanceAmount: computedBalance,
           isExpress: walkInForm.expressOption !== 'STANDARD',
         },
         totalAmount: walkInFinalTotal,
         finalPrice: walkInFinalTotal,
-        paymentStatus: walkInForm.paymentStatus,
+        receivedAmount: parsedReceived,
+        balanceAmount: computedBalance,
+        paymentStatus: computedPaymentStatus,
         paymentMethod: walkInForm.paymentMethod,
         customerStage: 'INSPECTION',
         internalStage: 'RECEIVED_AT_HUB',
@@ -558,6 +608,8 @@ export const AdminOrdersPage = () => {
           newValue: {
             customerName: created.customerName,
             totalAmount: created.totalAmount,
+            receivedAmount: parsedReceived,
+            balanceAmount: computedBalance,
             paymentStatus: created.paymentStatus,
           },
           user: currentUser,
@@ -583,6 +635,51 @@ export const AdminOrdersPage = () => {
       error('Invoice Error', err.message || 'Failed to create in-store invoice.');
     } finally {
       setIsCreatingWalkIn(false);
+    }
+  };
+
+  const handleQuickCollectPayment = async (e) => {
+    e?.preventDefault();
+    if (!activeOrder) return;
+    const amountNum = Number(collectionAmount);
+    if (isNaN(amountNum) || amountNum <= 0) {
+      error('Invalid Amount', 'Please enter a valid amount in ₹ to collect (e.g. 200).');
+      return;
+    }
+
+    setIsCollectingPayment(true);
+    try {
+      const updated = await orderService.updateOrderPayment(activeOrder.id, {
+        amountCollected: amountNum,
+        paymentMethod: collectionMode,
+        paymentNotes: collectionNotes || 'Settled in Admin Order Manager',
+        recordedBy: currentUser?.email || 'Admin Staff',
+      });
+
+      await auditService.logAction({
+        action: 'PAYMENT_COLLECT',
+        entity: 'Order',
+        entityId: activeOrder.id,
+        entityName: `Order #${activeOrder.orderNumber}`,
+        newValue: {
+          amountCollected: amountNum,
+          paymentMethod: collectionMode,
+          newReceivedAmount: updated.receivedAmount,
+          newBalanceAmount: updated.balanceAmount,
+          newPaymentStatus: updated.paymentStatus,
+        },
+        user: currentUser,
+      });
+
+      success('Payment Recorded!', `₹${amountNum} recorded for Order #${activeOrder.orderNumber}. Balance updated.`);
+      setActiveOrder(updated);
+      setCollectionAmount('');
+      setCollectionNotes('');
+      loadOrders();
+    } catch (err) {
+      error('Collection Error', err.message || 'Failed to record balance payment.');
+    } finally {
+      setIsCollectingPayment(false);
     }
   };
 
@@ -794,14 +891,28 @@ export const AdminOrdersPage = () => {
 
   const columns = [
     {
-      title: 'Order ID',
+      title: 'Order ID & Source',
       key: 'orderNumber',
       className: 'whitespace-nowrap',
-      render: (val, row) => (
-        <span className="font-mono font-black text-xs text-purple-800 bg-purple-100/80 px-2 py-1 rounded-lg border border-purple-200 shadow-2xs">
-          #{val || row.id}
-        </span>
-      ),
+      render: (val, row) => {
+        const isOffline = row.isWalkIn || row.orderSource === 'OFFLINE_POS';
+        return (
+          <div className="space-y-1">
+            <span className="font-mono font-black text-xs text-purple-800 bg-purple-100/80 px-2 py-1 rounded-lg border border-purple-200 shadow-2xs block w-fit">
+              #{val || row.id}
+            </span>
+            {isOffline ? (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black bg-orange-100 text-orange-900 border border-orange-200 shadow-2xs">
+                🏪 IN-STORE (POS)
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black bg-blue-100 text-blue-800 border border-blue-200 shadow-2xs">
+                🌐 ONLINE PICKUP
+              </span>
+            )}
+          </div>
+        );
+      },
     },
     {
       title: 'Customer',
@@ -828,18 +939,37 @@ export const AdminOrdersPage = () => {
       ),
     },
     {
-      title: 'Amount',
+      title: 'Amount & Balance',
       key: 'finalPrice',
-      render: (val, row) => (
-        <div>
-          <span className="font-bold text-xs text-slate-900">
-            {formatCurrency(val || row.priceSnapshot?.finalTotal || row.totalAmount)}
-          </span>
-          {row.actualWeight && row.finalPrice && (
-            <div className="text-[10px] text-emerald-600 font-semibold">Verified Final</div>
-          )}
-        </div>
-      ),
+      render: (val, row) => {
+        const total = Number(val || row.priceSnapshot?.finalTotal || row.totalAmount || 0);
+        const received = Number(row.receivedAmount !== undefined && row.receivedAmount !== null ? row.receivedAmount : (row.paymentStatus === 'PAID' ? total : 0));
+        const balance = Number(row.balanceAmount !== undefined && row.balanceAmount !== null ? row.balanceAmount : Math.max(0, total - received));
+
+        return (
+          <div className="space-y-0.5 min-w-[125px]">
+            <div className="font-bold text-xs text-slate-900 flex items-center justify-between gap-2">
+              <span className="text-slate-500 font-normal">Bill:</span>
+              <span className="font-mono font-black">{formatCurrency(total)}</span>
+            </div>
+            <div className="text-[11px] text-emerald-700 flex items-center justify-between gap-2">
+              <span className="text-slate-400">Recv:</span>
+              <span className="font-mono font-bold">{formatCurrency(received)}</span>
+            </div>
+            {balance > 0 ? (
+              <div className="text-[10px] font-black text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200 flex items-center justify-between gap-1">
+                <span>DUE:</span>
+                <span className="font-mono font-black">{formatCurrency(balance)}</span>
+              </div>
+            ) : (
+              <div className="text-[10px] font-bold text-emerald-600 flex items-center gap-1">
+                <Check className="w-3 h-3 text-emerald-500" />
+                <span>Cleared (₹0 Due)</span>
+              </div>
+            )}
+          </div>
+        );
+      },
     },
     {
       title: 'Stage',
@@ -951,7 +1081,7 @@ export const AdminOrdersPage = () => {
     <div className="space-y-6">
       <AdminPageHeader
         title="Order Lifecycle & Pickup Management"
-        subtitle="Manage 10-stage customer milestones, record verified actual weights, assign delivery staff, and sync with Firebase."
+        subtitle="Manage 10-stage customer milestones, record verified actual weights, assign delivery staff, and track offline POS & online channels."
       >
         <Button 
           variant="primary" 
@@ -976,11 +1106,71 @@ export const AdminOrdersPage = () => {
         </Button>
       </AdminPageHeader>
 
+      {/* Top Channel Filter Tabs & Quick Link to Balances */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-xs">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Channel Filter:</span>
+          <div className="inline-flex rounded-xl bg-slate-100 p-1 border border-slate-200">
+            <button
+              type="button"
+              onClick={() => setChannelFilter('ALL')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                channelFilter === 'ALL'
+                  ? 'bg-slate-900 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              All Channels ({orders.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setChannelFilter('ONLINE_WEBSITE')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                channelFilter === 'ONLINE_WEBSITE'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-blue-700'
+              }`}
+            >
+              <span>🌐 Online Pickups</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                channelFilter === 'ONLINE_WEBSITE' ? 'bg-white/20 text-white' : 'bg-blue-100 text-blue-800'
+              }`}>
+                {onlineOrdersCount}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setChannelFilter('OFFLINE_POS')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                channelFilter === 'OFFLINE_POS'
+                  ? 'bg-[#F97316] text-white shadow-xs'
+                  : 'text-slate-600 hover:text-orange-700'
+              }`}
+            >
+              <span>🏪 In-Store POS (Offline)</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                channelFilter === 'OFFLINE_POS' ? 'bg-white/20 text-white' : 'bg-orange-100 text-orange-800'
+              }`}>
+                {offlinePosOrdersCount}
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <Link
+          to="/admin/balances"
+          className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-rose-500/10 to-amber-500/10 hover:from-rose-500/20 hover:to-amber-500/20 text-rose-800 border border-rose-200 text-xs font-black flex items-center gap-2 transition-all"
+        >
+          <span>💳 Dedicated Balance Due Tracker</span>
+          <span className="text-xs">➔</span>
+        </Link>
+      </div>
+
       {/* Filter & Search Bar */}
       <div className="bg-white p-4 rounded-3xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 scrollbar-none">
           {[
-            { key: 'ALL', label: 'All Orders' },
+            { key: 'ALL', label: 'All Milestones' },
             { key: 'CONFIRMED', label: 'Confirmed' },
             { key: 'PICKUP_SCHEDULED', label: 'Pickup Scheduled' },
             { key: 'PICKED_UP', label: 'Picked Up' },
@@ -1021,9 +1211,9 @@ export const AdminOrdersPage = () => {
       {/* Orders Table */}
       <Table
         columns={columns}
-        data={orders}
+        data={filteredOrders}
         isLoading={loading}
-        emptyMessage="No orders found matching the filter."
+        emptyMessage="No orders found matching the channel or milestone filter."
       />
 
       {/* Order Management Modal */}
@@ -1032,11 +1222,55 @@ export const AdminOrdersPage = () => {
         onClose={() => setActiveOrder(null)}
         maxWidth="max-w-4xl"
         title={activeOrder ? `Manage Order #${activeOrder.orderNumber}` : 'Order Details'}
-        subtitle="Update milestone stages, record inspected weight, assign staff, and send WhatsApp updates."
+        subtitle="Update milestone stages, record inspected weight, collect balance payments, and send updates."
       >
         {activeOrder && (
           <div className="space-y-6 max-h-[80vh] overflow-y-auto pr-1">
             
+            {/* Channel Source Banner & Financial Card */}
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-slate-900 to-slate-950 text-white shadow-md flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center font-bold text-lg">
+                  {activeOrder.isWalkIn || activeOrder.orderSource === 'OFFLINE_POS' ? '🏪' : '🌐'}
+                </div>
+                <div>
+                  <div className="font-bold text-xs text-slate-300 uppercase tracking-wider">
+                    {activeOrder.isWalkIn || activeOrder.orderSource === 'OFFLINE_POS' 
+                      ? 'In-Store Walk-in Drop (Offline POS Counter)' 
+                      : 'Online Website Doorstep Pickup Booking'}
+                  </div>
+                  <div className="text-sm font-black text-white">
+                    Order #{activeOrder.orderNumber} • {activeOrder.customerName || activeOrder.customer?.name}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4 text-xs font-mono">
+                <div>
+                  <span className="text-slate-400 block text-[10px]">TOTAL BILL</span>
+                  <span className="text-sm font-black text-white">
+                    {formatCurrency(activeOrder.finalPrice || activeOrder.priceSnapshot?.finalTotal || activeOrder.totalAmount || 0)}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[10px]">RECEIVED</span>
+                  <span className="text-sm font-black text-emerald-400">
+                    {formatCurrency(activeOrder.receivedAmount !== undefined ? activeOrder.receivedAmount : (activeOrder.paymentStatus === 'PAID' ? (activeOrder.finalPrice || activeOrder.totalAmount) : 0))}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[10px]">BALANCE DUE</span>
+                  <span className={`text-sm font-black ${
+                    (activeOrder.balanceAmount > 0 || (activeOrder.balanceAmount === undefined && activeOrder.paymentStatus !== 'PAID')) 
+                      ? 'text-rose-400' 
+                      : 'text-emerald-400'
+                  }`}>
+                    {formatCurrency(activeOrder.balanceAmount !== undefined ? activeOrder.balanceAmount : (activeOrder.paymentStatus === 'PAID' ? 0 : (activeOrder.finalPrice || activeOrder.totalAmount)))}
+                  </span>
+                </div>
+              </div>
+            </div>
+
             {/* Customer Overview & Contact Actions */}
             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
               <div className="space-y-1.5">
@@ -1098,6 +1332,75 @@ export const AdminOrdersPage = () => {
                 </div>
               </div>
             </div>
+
+            {/* Quick Balance Payment Collection Card */}
+            {(activeOrder.balanceAmount > 0 || (activeOrder.balanceAmount === undefined && activeOrder.paymentStatus !== 'PAID')) && (
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-rose-50 via-amber-50 to-orange-50 border border-rose-200 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <DollarSign className="w-4 h-4 text-rose-600" />
+                    <span className="font-black text-rose-950 text-xs uppercase tracking-wider">
+                      Record In-Person / Online Balance Collection
+                    </span>
+                  </div>
+                  <span className="font-mono font-bold text-xs text-rose-700 bg-rose-100 px-2 py-0.5 rounded-md">
+                    Outstanding: {formatCurrency(activeOrder.balanceAmount !== undefined ? activeOrder.balanceAmount : (activeOrder.finalPrice || activeOrder.totalAmount))}
+                  </span>
+                </div>
+
+                <form onSubmit={handleQuickCollectPayment} className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end">
+                  <div className="sm:col-span-4">
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Amount to Collect (₹) *</label>
+                    <Input
+                      type="number"
+                      required
+                      placeholder={`e.g. ${activeOrder.balanceAmount || activeOrder.totalAmount || 100}`}
+                      value={collectionAmount}
+                      onChange={(e) => setCollectionAmount(e.target.value)}
+                      className="bg-white font-mono font-bold"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-3">
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Payment Method</label>
+                    <select
+                      value={collectionMode}
+                      onChange={(e) => setCollectionMode(e.target.value)}
+                      className="w-full bg-white border border-slate-300 rounded-xl py-2 px-2 text-xs font-bold text-slate-800"
+                    >
+                      <option value="UPI_QR">📱 UPI / QR</option>
+                      <option value="CASH">💵 Cash</option>
+                      <option value="CARD">💳 Card</option>
+                      <option value="NET_BANKING">🏦 Bank</option>
+                    </select>
+                  </div>
+
+                  <div className="sm:col-span-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCollectionAmount(String(activeOrder.balanceAmount !== undefined ? activeOrder.balanceAmount : activeOrder.totalAmount))}
+                      className="w-full justify-center bg-white text-xs border-amber-300 text-amber-900 hover:bg-amber-100 py-2 font-bold"
+                    >
+                      [Collect Full Balance]
+                    </Button>
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <Button
+                      type="submit"
+                      variant="primary"
+                      size="sm"
+                      isLoading={isCollectingPayment}
+                      className="w-full justify-center bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2"
+                    >
+                      ✓ Record
+                    </Button>
+                  </div>
+                </form>
+              </div>
+            )}
 
             {/* GPS & Pickup Location Card */}
             <OrderMapCard
@@ -2099,8 +2402,8 @@ export const AdminOrdersPage = () => {
             )}
           </div>
 
-          {/* Speed, Discounts & Payment Configuration */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {/* Speed & Payment Configuration */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Speed */}
             <div className="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-2">
               <label className="block text-slate-700 font-bold uppercase tracking-wider text-[11px]">
@@ -2117,57 +2420,66 @@ export const AdminOrdersPage = () => {
               </select>
             </div>
 
-            {/* Discount */}
+            {/* Payment Method & Received / Balance Due */}
             <div className="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-2">
-              <label className="block text-slate-700 font-bold uppercase tracking-wider text-[11px]">
-                🏷️ Shop Discount / Adjustment
-              </label>
-              <div className="flex gap-2">
-                <select
-                  value={walkInForm.discountType}
-                  onChange={(e) => setWalkInForm({ ...walkInForm, discountType: e.target.value })}
-                  className="w-28 bg-slate-50 border border-slate-300 rounded-xl py-2 px-2 text-xs font-bold text-slate-800"
-                >
-                  <option value="NONE">None</option>
-                  <option value="FIXED">Flat ₹</option>
-                  <option value="PERCENT">% Off</option>
-                </select>
-                {walkInForm.discountType !== 'NONE' && (
+              <div className="flex items-center justify-between">
+                <label className="block text-slate-700 font-bold uppercase tracking-wider text-[11px]">
+                  💳 In-Store Payment & Receipt
+                </label>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setWalkInForm({ ...walkInForm, receivedAmount: String(walkInFinalTotal), paymentStatus: 'PAID' })}
+                    className="text-[10px] font-black px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 hover:bg-emerald-200 cursor-pointer"
+                  >
+                    [Full Paid]
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setWalkInForm({ ...walkInForm, receivedAmount: '0', paymentStatus: 'PENDING' })}
+                    className="text-[10px] font-black px-1.5 py-0.5 rounded bg-rose-100 text-rose-800 hover:bg-rose-200 cursor-pointer"
+                  >
+                    [Unpaid]
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 mb-0.5">Amount Received (₹)</label>
                   <Input
                     type="number"
-                    placeholder={walkInForm.discountType === 'PERCENT' ? 'e.g. 10%' : 'e.g. 50'}
-                    value={walkInForm.discountValue}
-                    onChange={(e) => setWalkInForm({ ...walkInForm, discountValue: e.target.value })}
-                    className="flex-1 bg-slate-50"
+                    placeholder={`₹${walkInFinalTotal}`}
+                    value={walkInForm.receivedAmount}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const num = Number(val) || 0;
+                      const status = num >= walkInFinalTotal ? 'PAID' : (num > 0 ? 'PARTIAL' : 'PENDING');
+                      setWalkInForm({ ...walkInForm, receivedAmount: val, paymentStatus: status });
+                    }}
+                    className="bg-slate-50 font-mono font-bold"
                   />
-                )}
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 mb-0.5">Payment Mode</label>
+                  <select
+                    value={walkInForm.paymentMethod}
+                    onChange={(e) => setWalkInForm({ ...walkInForm, paymentMethod: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl py-2 px-2 text-xs font-bold text-slate-800"
+                  >
+                    <option value="CASH">💵 Cash</option>
+                    <option value="UPI_QR">📱 UPI / QR</option>
+                    <option value="CARD">💳 Card</option>
+                    <option value="NET_BANKING">🏦 Net Banking</option>
+                  </select>
+                </div>
               </div>
-            </div>
 
-            {/* Payment Method */}
-            <div className="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-2">
-              <label className="block text-slate-700 font-bold uppercase tracking-wider text-[11px]">
-                💳 In-Store Payment
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                <select
-                  value={walkInForm.paymentStatus}
-                  onChange={(e) => setWalkInForm({ ...walkInForm, paymentStatus: e.target.value })}
-                  className="bg-slate-50 border border-slate-300 rounded-xl py-2 px-2 text-xs font-bold text-slate-800"
-                >
-                  <option value="PAID">✅ PAID</option>
-                  <option value="PENDING">⏳ PENDING</option>
-                </select>
-                <select
-                  value={walkInForm.paymentMethod}
-                  onChange={(e) => setWalkInForm({ ...walkInForm, paymentMethod: e.target.value })}
-                  className="bg-slate-50 border border-slate-300 rounded-xl py-2 px-2 text-xs font-bold text-slate-800"
-                >
-                  <option value="CASH">💵 Cash</option>
-                  <option value="UPI_QR">📱 UPI / QR</option>
-                  <option value="CARD">💳 Card</option>
-                  <option value="NET_BANKING">🏦 Net Banking</option>
-                </select>
+              <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-[11px]">
+                <span className="text-slate-500 font-semibold">Balance Due:</span>
+                <span className={`font-mono font-black ${walkInBalanceDue > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                  {walkInBalanceDue > 0 ? `₹${walkInBalanceDue} Due` : '✅ ₹0 (Cleared)'}
+                </span>
               </div>
             </div>
           </div>
@@ -2195,19 +2507,24 @@ export const AdminOrdersPage = () => {
           {/* Live Bill Summary Card */}
           <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-950 text-white shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="space-y-1 text-left w-full sm:w-auto">
-              <div className="text-slate-400 text-xs font-semibold">Bill Calculation Breakdown</div>
+              <div className="text-slate-400 text-xs font-semibold">Bill Calculation Breakdown (0% GST)</div>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-300">
                 <span>Subtotal: <strong>₹{walkInSubtotal}</strong></span>
-                {walkInExpressFee > 0 && <span className="text-amber-400">Express Fee: <strong>+₹{walkInExpressFee}</strong></span>}
-                {walkInDiscount > 0 && <span className="text-emerald-400">Discount: <strong>-₹{walkInDiscount}</strong></span>}
+                {walkInExpressFee > 0 && <span className="text-amber-400">Express: <strong>+₹{walkInExpressFee}</strong></span>}
               </div>
             </div>
 
             <div className="flex items-center gap-6 w-full sm:w-auto justify-between sm:justify-end">
               <div className="text-right">
-                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Grand Total Bill</span>
-                <span className="text-2xl sm:text-3xl font-black font-mono text-[#F97316]">
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Total Bill</span>
+                <span className="text-xl sm:text-2xl font-black font-mono text-[#F97316]">
                   {formatCurrency(walkInFinalTotal)}
+                </span>
+              </div>
+              <div className="text-right border-l border-white/10 pl-4">
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Balance Due</span>
+                <span className={`text-xl sm:text-2xl font-black font-mono ${walkInBalanceDue > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
+                  {formatCurrency(walkInBalanceDue)}
                 </span>
               </div>
             </div>
@@ -2255,6 +2572,15 @@ export const AdminOrdersPage = () => {
 
         </form>
       </Modal>
+
+      {/* Printable Receipt Modal */}
+      {receiptModalOrder && (
+        <ReceiptModal
+          isOpen={Boolean(receiptModalOrder)}
+          order={receiptModalOrder}
+          onClose={() => setReceiptModalOrder(null)}
+        />
+      )}
 
     </div>
   );

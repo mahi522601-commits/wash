@@ -46,30 +46,136 @@ export const INTERNAL_OPERATIONAL_STAGES = {
 };
 
 const ORDERS_STORAGE_KEY = 'techwash_orders_store';
+const ORDER_SEQ_KEY = 'techwash_order_sequence_counter';
 
 export const orderService = {
+  /**
+   * Generates next sequential 5-digit order number (e.g. 00001 -> 99999, TW-00001)
+   */
+  async getNextOrderSequence() {
+    let nextSeq = 1;
+
+    // 1. Try Firebase Firestore settings/order_sequence
+    if (isFirebaseConfigured && db) {
+      try {
+        const seqRef = doc(db, 'settings', 'order_sequence');
+        const snap = await getDoc(seqRef);
+        if (snap.exists()) {
+          const data = snap.data();
+          const current = Number(data.currentSeq || data.counter || 0);
+          nextSeq = current + 1;
+        } else {
+          // Initialize sequence counter from existing orders in Firestore
+          const ordersSnap = await getDocs(collection(db, 'orders'));
+          if (!ordersSnap.empty) {
+            let maxNum = 0;
+            ordersSnap.docs.forEach(d => {
+              const oData = d.data();
+              const numMatch = (oData.orderNumber || oData.id || '').replace(/[^0-9]/g, '');
+              if (numMatch) {
+                const parsed = parseInt(numMatch, 10);
+                if (parsed > 0 && parsed < 100000 && parsed > maxNum) {
+                  maxNum = parsed;
+                }
+              }
+            });
+            nextSeq = maxNum + 1;
+          }
+        }
+        await setDoc(seqRef, { currentSeq: nextSeq, updatedAt: new Date().toISOString() }, { merge: true });
+      } catch (e) {
+        console.warn("Firestore order sequence fetch error:", e);
+      }
+    }
+
+    // 2. Fallback / Sync with local storage
+    try {
+      const storedSeq = parseInt(localStorage.getItem(ORDER_SEQ_KEY) || '0', 10);
+      if (storedSeq >= nextSeq) {
+        nextSeq = storedSeq + 1;
+      }
+      localStorage.setItem(ORDER_SEQ_KEY, String(nextSeq));
+    } catch (e) {}
+
+    const formattedSeq = String(nextSeq).padStart(5, '0');
+    return {
+      sequenceNumber: nextSeq,
+      formattedSeq,
+      orderNumber: `TW-${formattedSeq}`,
+      orderId: `TW-${formattedSeq}`,
+      invoiceNumber: `TW-${formattedSeq}`
+    };
+  },
+
   /**
    * Create a new booking with immutable price snapshot & customer CRM sync
    */
   async createOrder(orderPayload) {
-    const orderNumber = `TW-${Math.floor(100000 + Math.random() * 900000)}`;
-    const orderId = orderPayload.id || orderNumber;
+    let orderNumber = orderPayload.orderNumber;
+    let orderId = orderPayload.id;
+
+    if (!orderNumber || !orderNumber.startsWith('TW-')) {
+      const seqData = await this.getNextOrderSequence();
+      orderNumber = seqData.orderNumber;
+      orderId = orderId || seqData.orderId;
+    } else {
+      orderId = orderId || orderNumber;
+    }
+
     const phone = orderPayload.customer?.phone ? String(orderPayload.customer.phone).replace(/\D/g, '') : '';
     const customerId = `cust-${phone || Math.random().toString(36).substring(2, 8)}`;
 
     const estimatedPrice = Number(orderPayload.priceSnapshot?.finalTotal || orderPayload.totalAmount || 0);
     const estimatedWeight = orderPayload.estimatedWeightKg || orderPayload.estimatedWeight || null;
 
+    const isWalkIn = Boolean(orderPayload.isWalkIn || orderPayload.terminalId || orderPayload.terminalCode);
+    const orderSource = isWalkIn ? 'OFFLINE_POS' : 'ONLINE_WEBSITE';
+
+    // Received Amount & Balance Due calculation
+    const totalAmount = estimatedPrice;
+    let receivedAmount = orderPayload.receivedAmount !== undefined 
+      ? Number(orderPayload.receivedAmount || 0) 
+      : (orderPayload.paymentStatus === 'PAID' ? totalAmount : 0);
+    
+    // Auto-fix if marked PAID
+    if (orderPayload.paymentStatus === 'PAID' && receivedAmount < totalAmount) {
+      receivedAmount = totalAmount;
+    }
+
+    const balanceAmount = Math.max(0, totalAmount - receivedAmount);
+    let resolvedPaymentStatus = orderPayload.paymentStatus || 'PENDING';
+    if (receivedAmount >= totalAmount && totalAmount > 0) {
+      resolvedPaymentStatus = 'PAID';
+    } else if (receivedAmount > 0 && receivedAmount < totalAmount) {
+      resolvedPaymentStatus = 'PARTIAL';
+    } else if (receivedAmount === 0 && resolvedPaymentStatus === 'PAID') {
+      resolvedPaymentStatus = 'PENDING';
+    }
+
+    const priceSnapshot = {
+      itemsSubtotal: orderPayload.priceSnapshot?.itemsSubtotal || totalAmount,
+      deliveryFee: orderPayload.priceSnapshot?.deliveryFee || 0,
+      expressFee: orderPayload.priceSnapshot?.expressFee || (orderPayload.isExpress ? 100 : 0),
+      discountAmount: orderPayload.priceSnapshot?.discountAmount || 0,
+      taxAmount: 0, // GST REMOVED
+      taxes: 0,
+      finalTotal: totalAmount,
+      receivedAmount,
+      balanceAmount,
+      isExpress: Boolean(orderPayload.priceSnapshot?.isExpress || orderPayload.isExpress),
+    };
+
     const fullOrder = {
       ...orderPayload,
       id: orderId,
       bookingId: orderId,
       orderNumber,
+      invoiceNumber: orderPayload.invoiceNumber || orderNumber,
       customerId,
       customerName: orderPayload.customer?.name || 'Valued Customer',
       phone: orderPayload.customer?.phone || '',
       whatsapp: orderPayload.customer?.whatsapp || orderPayload.customer?.phone || '',
-      address: orderPayload.customer?.address || orderPayload.pickupLocation?.formattedAddress || '',
+      address: orderPayload.customer?.address || orderPayload.pickupLocation?.formattedAddress || (isWalkIn ? 'In-Store Walk-in Drop' : ''),
       landmark: orderPayload.customer?.landmark || orderPayload.pickupLocation?.landmark || '',
       locality: orderPayload.customer?.locality || orderPayload.pickupLocation?.area || '',
       city: orderPayload.customer?.city || orderPayload.pickupLocation?.city || 'Hyderabad',
@@ -82,25 +188,34 @@ export const orderService = {
       estimatedWeightKg: estimatedWeight,
       estimatedPrice: estimatedPrice,
       actualWeight: orderPayload.actualWeight || null,
-      finalPrice: orderPayload.finalPrice || estimatedPrice,
+      finalPrice: totalAmount,
+      totalAmount,
+      receivedAmount,
+      balanceAmount,
+      isWalkIn,
+      orderSource,
+      terminalId: orderPayload.terminalId || null,
+      terminalCode: orderPayload.terminalCode || null,
+      storeBranch: orderPayload.storeBranch || null,
+      cashierName: orderPayload.cashierName || null,
       pickupDate: orderPayload.schedule?.pickupDate || orderPayload.pickupDate || new Date().toISOString().split('T')[0],
-      pickupSlot: orderPayload.schedule?.pickupSlot || orderPayload.pickupSlot || '10:00 AM - 12:00 PM',
+      pickupSlot: orderPayload.schedule?.pickupSlot || orderPayload.pickupSlot || (isWalkIn ? 'In-Store Counter' : '10:00 AM - 12:00 PM'),
       notes: orderPayload.schedule?.instructions || orderPayload.notes || '',
       adminNotes: orderPayload.adminNotes || '',
-      customerStage: 'CONFIRMED',
-      status: 'CONFIRMED',
-      internalStage: 'RECEIVED_AT_HUB',
-      paymentStatus: orderPayload.paymentStatus || 'PENDING', // PENDING, PAID, REFUNDED, CANCELLED
+      customerStage: orderPayload.customerStage || 'CONFIRMED',
+      status: orderPayload.status || 'CONFIRMED',
+      internalStage: orderPayload.internalStage || 'RECEIVED_AT_HUB',
+      paymentStatus: resolvedPaymentStatus,
       paymentMethod: orderPayload.paymentMethod || 'PAY_ON_DELIVERY',
-      totalAmount: estimatedPrice,
-      createdAt: new Date().toISOString(),
+      priceSnapshot,
+      createdAt: orderPayload.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      statusTimeline: [
+      statusTimeline: orderPayload.statusTimeline || [
         {
           stage: 'CONFIRMED',
-          label: 'Booking Confirmed',
+          label: isWalkIn ? 'In-Store Walk-in Bill Generated' : 'Booking Confirmed',
           timestamp: new Date().toISOString(),
-          note: 'Your pickup order has been placed successfully.',
+          note: isWalkIn ? 'Invoice created at physical store counter.' : 'Your pickup order has been placed successfully.',
         }
       ],
       assignedStaff: orderPayload.assignedStaff || null,
@@ -351,6 +466,82 @@ export const orderService = {
       adminNotes,
       note,
     });
+  },
+
+  /**
+   * Dedicated helper to update received payment, balance due, and payment status
+   */
+  async updateOrderPayment(orderId, { receivedAmount, paymentMethod, paymentStatus, note = 'Payment updated' }) {
+    const orders = await this.getOrders({ limitCount: 500 });
+    const order = orders.find(o => o.id === orderId || o.orderNumber === orderId || o.bookingId === orderId);
+    if (!order) throw new Error(`Order ${orderId} not found`);
+
+    const total = Number(order.totalAmount || order.finalPrice || order.priceSnapshot?.finalTotal || 0);
+    const newReceived = Number(receivedAmount);
+    const oldReceived = Number(order.receivedAmount !== undefined ? order.receivedAmount : 0);
+    const diffCollected = Math.max(0, newReceived - oldReceived);
+    const newBalance = Math.max(0, total - newReceived);
+    
+    let newStatus = paymentStatus;
+    if (!newStatus) {
+      if (newReceived >= total && total > 0) newStatus = 'PAID';
+      else if (newReceived > 0) newStatus = 'PARTIAL';
+      else newStatus = 'PENDING';
+    }
+
+    const newPaymentEntry = {
+      timestamp: new Date().toISOString(),
+      amount: diffCollected > 0 ? diffCollected : newReceived,
+      mode: paymentMethod || order.paymentMethod || 'CASH',
+      note: note || `Payment recorded`,
+      isBalanceSettlement: oldReceived > 0,
+      balanceRemaining: newBalance,
+    };
+
+    const updatedOrder = {
+      ...order,
+      receivedAmount: newReceived,
+      balanceAmount: newBalance,
+      paymentStatus: newStatus,
+      paymentMethod: paymentMethod || order.paymentMethod,
+      paymentHistory: [...(order.paymentHistory || []), newPaymentEntry],
+      priceSnapshot: {
+        ...(order.priceSnapshot || {}),
+        receivedAmount: newReceived,
+        balanceAmount: newBalance,
+      },
+      updatedAt: new Date().toISOString(),
+      statusTimeline: [
+        ...(order.statusTimeline || []),
+        {
+          stage: order.customerStage || 'CONFIRMED',
+          label: `Payment: ₹${newReceived} Received (Balance: ₹${newBalance})`,
+          timestamp: new Date().toISOString(),
+          note: note || `Payment of ₹${newReceived} recorded via ${paymentMethod || order.paymentMethod}.`,
+        }
+      ]
+    };
+
+    if (isFirebaseConfigured && db) {
+      try {
+        await Promise.all([
+          setDoc(doc(db, 'orders', order.id), updatedOrder, { merge: true }),
+          setDoc(doc(db, 'bookings', order.id), updatedOrder, { merge: true })
+        ]);
+      } catch (e) {
+        console.warn("Firestore updateOrderPayment error:", e);
+      }
+    }
+
+    const idx = orders.findIndex(o => o.id === order.id);
+    if (idx >= 0) orders[idx] = updatedOrder;
+    localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(orders));
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('techwash-order-payment-updated', { detail: updatedOrder }));
+    }
+
+    return updatedOrder;
   },
 
   /**

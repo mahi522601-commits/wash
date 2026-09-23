@@ -514,29 +514,49 @@ export const TrackOrderPage = () => {
                           <span>Delivery Fee:</span>
                           <span>{order.priceSnapshot?.deliveryFee === 0 ? 'FREE' : formatCurrency(order.priceSnapshot?.deliveryFee)}</span>
                         </div>
-                        <div className="flex justify-between text-slate-400">
-                          <span>GST (5%):</span>
-                          <span>{formatCurrency(order.priceSnapshot?.taxAmount || 0)}</span>
-                        </div>
+                        {order.priceSnapshot?.taxAmount > 0 && (
+                          <div className="flex justify-between text-slate-400">
+                            <span>GST:</span>
+                            <span>{formatCurrency(order.priceSnapshot.taxAmount)}</span>
+                          </div>
+                        )}
 
                         <div className="pt-2 border-t border-slate-200 flex justify-between font-bold text-slate-900 text-base">
                           <span>Total Amount:</span>
                           <span className="text-brand-600 font-display">
-                            {formatCurrency(order.priceSnapshot?.finalTotal || order.totalAmount)}
+                            {formatCurrency(order.finalPrice || order.priceSnapshot?.finalTotal || order.totalAmount)}
                           </span>
                         </div>
+
+                        {order.receivedAmount !== undefined && order.receivedAmount > 0 && (
+                          <div className="flex justify-between font-medium text-emerald-700 text-sm">
+                            <span>Amount Received:</span>
+                            <span className="font-mono font-bold">
+                              {formatCurrency(order.receivedAmount)}
+                            </span>
+                          </div>
+                        )}
+
+                        {(order.balanceAmount !== undefined || order.paymentStatus !== 'PAID') && (
+                          <div className="flex justify-between font-bold text-sm pt-1 border-t border-slate-100">
+                            <span className="text-slate-700">Balance Due:</span>
+                            <span className={`font-mono font-black ${(order.balanceAmount > 0 || (order.balanceAmount === undefined && order.paymentStatus !== 'PAID')) ? 'text-rose-600' : 'text-emerald-600'}`}>
+                              {formatCurrency(order.balanceAmount !== undefined ? order.balanceAmount : (order.paymentStatus === 'PAID' ? 0 : (order.finalPrice || order.totalAmount)))}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </Card>
 
                     {/* Instant UPI Scan & Pay Card for Pending Balance */}
-                    {order.paymentStatus !== 'PAID' && (
+                    {order.paymentStatus !== 'PAID' && (order.balanceAmount === undefined || order.balanceAmount > 0) && (
                       <div className="mt-4 animate-fade-in">
                         <UpiPaymentCard
                           upiConfig={paymentConfig?.upi}
-                          amount={order.priceSnapshot?.finalTotal || order.totalAmount}
+                          amount={order.balanceAmount !== undefined && order.balanceAmount > 0 ? order.balanceAmount : (order.finalPrice || order.priceSnapshot?.finalTotal || order.totalAmount)}
                           orderNumber={order.orderNumber}
                           customerName={order.customer?.name}
-                          title="Settle Bill via UPI QR"
+                          title="Settle Outstanding Balance via UPI QR"
                           description="Instant scan & pay for this order with Google Pay, PhonePe, Paytm or BHIM"
                         />
                       </div>
