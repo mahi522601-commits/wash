@@ -96,7 +96,7 @@ export const PrintReceipt = ({
           <div className="text-[8.5px] text-slate-500 pt-0.5 space-y-0.5 leading-tight">
             <p className="font-medium text-slate-700">{config.address || 'Doorstep Pickup & Delivery Hub, Hyderabad'}</p>
             <div className="flex flex-wrap items-center gap-x-2 text-slate-600 font-semibold text-[8px]">
-              <span>Tel: {config.phone || '+91 89777 69866'}</span>
+              <span>Tel: {config.phone || '+91 63048 45567'}</span>
               <span>•</span>
               <span>{config.email || 'care@techwash.in'}</span>
               <span>•</span>
@@ -176,46 +176,60 @@ export const PrintReceipt = ({
       </div>
 
       {/* ─────────────────────────────────────────────────────────
-          3. GARMENTS & SERVICES LINE ITEM TABLE
+          3. GARMENTS & SERVICES LINE ITEM TABLE (SERVICE & SUB-SERVICE)
       ───────────────────────────────────────────────────────── */}
       <div className="pt-0.5">
-        <table className="w-full text-left border-collapse text-[10px]">
+        <table className="w-full text-left border-collapse text-[10px] print:text-black">
           <thead>
-            <tr className="bg-slate-900 text-white text-[8.5px] font-bold uppercase tracking-wider">
-              <th className="py-1 px-2 rounded-l-md w-7 text-center">#</th>
-              <th className="py-1 px-2">Garment / Service Description</th>
+            <tr className="bg-slate-900 text-white print:bg-slate-100 print:text-black text-[8.5px] font-bold uppercase tracking-wider border-b-2 border-slate-900 print:border-black">
+              <th className="py-1 px-2 rounded-l-md print:rounded-none w-7 text-center">#</th>
+              <th className="py-1 px-2 w-32">Service Name</th>
+              <th className="py-1 px-2">Sub-Service / Garment Description</th>
               <th className="py-1 px-2 text-center w-12">Qty</th>
               <th className="py-1 px-2 text-right w-16">Rate (₹)</th>
-              <th className="py-1 px-2 rounded-r-md text-right w-20">Amount (₹)</th>
+              <th className="py-1 px-2 rounded-r-md print:rounded-none text-right w-20">Amount (₹)</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100 text-slate-800">
-            {items.map((item, idx) => (
-              <tr key={item.id || idx} className="hover:bg-slate-50/80">
-                <td className="py-1 px-2 text-center text-slate-400 font-mono text-[9px]">
-                  {String(idx + 1).padStart(2, '0')}
-                </td>
-                <td className="py-1 px-2">
-                  <span className="font-bold text-slate-900">
-                    {item.name || item.title || serviceName}
-                  </span>
-                  {item.category && (
-                    <span className="text-[8.5px] text-slate-400 ml-1 font-medium">
-                      ({item.category})
+          <tbody className="divide-y divide-slate-200 print:divide-slate-400 text-slate-900 print:text-black">
+            {items.map((item, idx) => {
+              const itemServiceName = item.serviceName || item.service || serviceName || 'Garment Care';
+              const itemSubServiceName = item.name || item.title || item.subServiceName || 'Standard Item';
+              const isSameName = itemServiceName.toLowerCase() === itemSubServiceName.toLowerCase();
+
+              return (
+                <tr key={item.id || idx} className="hover:bg-slate-50/80 print:hover:bg-transparent border-b border-slate-100 print:border-slate-300">
+                  <td className="py-1.5 px-2 text-center text-slate-500 print:text-black font-mono text-[9px]">
+                    {String(idx + 1).padStart(2, '0')}
+                  </td>
+                  <td className="py-1.5 px-2 font-bold text-slate-800 print:text-black text-[9.5px] align-top">
+                    <span className="inline-block px-1.5 py-0.5 rounded bg-orange-50 print:bg-transparent print:p-0 text-orange-900 print:text-black font-semibold text-[9px] border border-orange-200 print:border-none">
+                      {itemServiceName}
                     </span>
-                  )}
-                </td>
-                <td className="py-1 px-2 text-center font-bold text-slate-900">
-                  {item.quantity || 1}
-                </td>
-                <td className="py-1 px-2 text-right font-mono text-slate-700">
-                  {formatCurrency(item.unitPrice !== undefined ? item.unitPrice : (item.price || 0))}
-                </td>
-                <td className="py-1 px-2 text-right font-bold font-mono text-slate-900">
-                  {formatCurrency(item.lineTotal !== undefined ? item.lineTotal : (item.totalPrice || ((item.quantity || 1) * (item.unitPrice || item.price || 0))))}
-                </td>
-              </tr>
-            ))}
+                  </td>
+                  <td className="py-1.5 px-2 align-top">
+                    <div className="font-bold text-slate-900 print:text-black text-[10px]">
+                      {itemSubServiceName}
+                    </div>
+                    {(item.category || item.weightKg || item.isWeightItem) && (
+                      <div className="text-[8px] text-slate-500 print:text-slate-800 font-medium mt-0.5">
+                        {item.category && <span>Category: {item.category}</span>}
+                        {item.weightKg && <span className="ml-1">• Weight: {item.weightKg} Kg</span>}
+                        {item.dimensions && <span className="ml-1">• Size: {item.dimensions}</span>}
+                      </div>
+                    )}
+                  </td>
+                  <td className="py-1.5 px-2 text-center font-bold text-slate-900 print:text-black align-top font-mono">
+                    {item.quantity || 1}
+                  </td>
+                  <td className="py-1.5 px-2 text-right font-mono text-slate-800 print:text-black align-top">
+                    {formatCurrency(item.unitPrice !== undefined ? item.unitPrice : (item.price || 0))}
+                  </td>
+                  <td className="py-1.5 px-2 text-right font-bold font-mono text-slate-900 print:text-black align-top">
+                    {formatCurrency(item.lineTotal !== undefined ? item.lineTotal : (item.totalPrice || ((item.quantity || 1) * (item.unitPrice || item.price || 0))))}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -422,7 +436,7 @@ export const PrintReceipt = ({
             {config.thankYouMessage || 'Thank you for choosing Tech Wash Laundry Services.'}
           </p>
           <p className="text-[7.5px] text-slate-400">
-            {config.footerContactNote || 'Customer Concierge: +91 89777 69866 • care@techwash.in • https://techwash.in'}
+            {config.footerContactNote || 'Customer Concierge: +91 63048 45567 • care@techwash.in • https://techwash.in'}
           </p>
         </div>
 

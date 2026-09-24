@@ -7,7 +7,7 @@ import { Phone, MessageSquare, Calendar } from 'lucide-react';
 export const StickyBookingBar = () => {
   const { settings } = useSettings();
   const general = settings?.general || {};
-  const phone = general.primaryPhone || '+91 89777 69866';
+  const phone = general.primaryPhone || '+91 63048 45567';
   const whatsapp = (general.whatsappNumber || phone).replace(/\D/g, '');
   const message = encodeURIComponent(general.whatsappDefaultMessage || 'Hello Tech Wash, I want to book a pickup.');
 
@@ -61,7 +61,7 @@ export const WhatsAppFloatingBtn = () => {
 
   if (!website.floatingWhatsAppEnabled) return null;
 
-  const rawNumber = general.whatsappNumber || general.primaryPhone || '+91 89777 69866';
+  const rawNumber = general.whatsappNumber || general.primaryPhone || '+91 63048 45567';
   const whatsapp = rawNumber.replace(/\D/g, '');
   const message = encodeURIComponent(general.whatsappDefaultMessage || 'Hello Tech Wash, I would like to schedule a premium garment pickup.');
 

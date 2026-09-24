@@ -222,13 +222,13 @@ export const AdminLocationsPage = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Branch Phone Number"
-              placeholder="+91 89777 69866"
+              placeholder="+91 63048 45567"
               value={currentLocation.phone}
               onChange={(e) => setCurrentLocation({ ...currentLocation, phone: e.target.value })}
             />
             <Input
               label="WhatsApp Support Number"
-              placeholder="+91 89777 69866"
+              placeholder="+91 63048 45567"
               value={currentLocation.whatsapp}
               onChange={(e) => setCurrentLocation({ ...currentLocation, whatsapp: e.target.value })}
             />

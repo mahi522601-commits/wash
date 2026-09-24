@@ -629,7 +629,7 @@ Role: ${staff.role || 'Delivery Executive'}`;
 
             <Input
               label="Store Contact Phone"
-              placeholder="+91 89777 69866"
+              placeholder="+91 63048 45567"
               value={currentTerminal.phone || ''}
               onChange={(e) => setCurrentTerminal({ ...currentTerminal, phone: e.target.value })}
             />
@@ -688,7 +688,7 @@ Role: ${staff.role || 'Delivery Executive'}`;
               label="Contact Phone *"
               required
               type="tel"
-              placeholder="e.g. 8977769866"
+              placeholder="e.g. 6304845567"
               value={currentStaff.phone}
               onChange={(e) => setCurrentStaff({ ...currentStaff, phone: e.target.value })}
             />

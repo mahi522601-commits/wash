@@ -126,7 +126,7 @@ export const ReceiptModal = ({
             <div className="flex items-center gap-1.5 bg-emerald-50 p-1 rounded-xl border border-emerald-300">
               <input
                 type="tel"
-                placeholder="Mobile (e.g. 9398724704)"
+                placeholder="Mobile (e.g. 6304845567)"
                 value={whatsappPhone}
                 onChange={(e) => setWhatsappPhone(e.target.value)}
                 className="w-32 sm:w-36 px-2.5 py-1 text-xs font-mono font-bold text-emerald-950 bg-white border border-emerald-300 rounded-lg outline-none"

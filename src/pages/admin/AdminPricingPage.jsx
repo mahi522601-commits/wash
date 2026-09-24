@@ -560,82 +560,174 @@ export const AdminPricingPage = () => {
       {/* 4. SPECIAL SERVICES (CURTAINS, SHOES, CARPETS, SAREES)        */}
       {/* ============================================================ */}
       {activeTab === 'special' && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+        <div className="space-y-6">
           
-          {/* Curtains */}
+          {/* Curtains 4 Sub-Services */}
           <Card className="p-6 bg-white border border-slate-200 rounded-3xl space-y-4">
-            <div className="flex items-center gap-2.5 pb-2 border-b border-slate-100">
-              <span className="text-2xl">🪟</span>
-              <div>
-                <h3 className="text-sm font-bold text-slate-900">Curtain Washing</h3>
-                <p className="text-[11px] text-slate-400">Per Square Foot</p>
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <span className="text-2xl">🪟</span>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">Curtain Service (4 Official Sub-Services)</h3>
+                  <p className="text-xs text-slate-500">Live per-panel rates across all 4 curtain care treatments</p>
+                </div>
               </div>
+              <Badge variant="brand">4 Sub-Services</Badge>
             </div>
 
-            <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-200">
-              <span className="text-xs font-bold text-slate-700">Rate / Sq. Ft:</span>
-              <div className="flex items-center bg-white rounded-xl border border-slate-200 px-3 py-1">
-                <span className="text-xs font-bold text-slate-400 mr-1">₹</span>
-                <input
-                  type="number"
-                  min="1"
-                  value={pricingConfig.curtains?.ratePerSqFt || 30}
-                  onChange={(e) => handleSpecialRateChange('curtains', 'ratePerSqFt', e.target.value)}
-                  className="w-14 text-xs font-bold text-slate-900 text-right focus:outline-none"
-                />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              
+              {/* 1. Dry Cleaning */}
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">🧺</span>
+                    <span className="text-xs font-bold text-slate-900">Dry Cleaning</span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 mt-1">Delicate hydrocarbon solvent cleaning for sheer & blackout curtains</p>
+                </div>
+                <div className="flex items-center justify-between pt-2 border-t border-slate-200/80">
+                  <span className="text-xs font-semibold text-slate-600">Rate / Panel:</span>
+                  <div className="flex items-center bg-white rounded-xl border border-slate-200 px-3 py-1.5">
+                    <span className="text-xs font-bold text-slate-400 mr-1">₹</span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={pricingConfig.curtains?.dryCleaning !== undefined ? pricingConfig.curtains.dryCleaning : 200}
+                      onChange={(e) => handleSpecialRateChange('curtains', 'dryCleaning', e.target.value)}
+                      className="w-16 text-xs font-black text-slate-900 text-right focus:outline-none"
+                    />
+                  </div>
+                </div>
               </div>
+
+              {/* 2. Wash & Iron */}
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">🫧</span>
+                    <span className="text-xs font-bold text-slate-900">Wash & Iron</span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 mt-1">Demineralized RO wash + vertical steam hanging press</p>
+                </div>
+                <div className="flex items-center justify-between pt-2 border-t border-slate-200/80">
+                  <span className="text-xs font-semibold text-slate-600">Rate / Panel:</span>
+                  <div className="flex items-center bg-white rounded-xl border border-slate-200 px-3 py-1.5">
+                    <span className="text-xs font-bold text-slate-400 mr-1">₹</span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={pricingConfig.curtains?.washAndIron !== undefined ? pricingConfig.curtains.washAndIron : 150}
+                      onChange={(e) => handleSpecialRateChange('curtains', 'washAndIron', e.target.value)}
+                      className="w-16 text-xs font-black text-slate-900 text-right focus:outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. Iron */}
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">✨</span>
+                    <span className="text-xs font-bold text-slate-900">Iron</span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 mt-1">High-pressure vertical steam press & crease removal</p>
+                </div>
+                <div className="flex items-center justify-between pt-2 border-t border-slate-200/80">
+                  <span className="text-xs font-semibold text-slate-600">Rate / Panel:</span>
+                  <div className="flex items-center bg-white rounded-xl border border-slate-200 px-3 py-1.5">
+                    <span className="text-xs font-bold text-slate-400 mr-1">₹</span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={pricingConfig.curtains?.iron !== undefined ? pricingConfig.curtains.iron : 60}
+                      onChange={(e) => handleSpecialRateChange('curtains', 'iron', e.target.value)}
+                      className="w-16 text-xs font-black text-slate-900 text-right focus:outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 4. Wash & Fold */}
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">👕</span>
+                    <span className="text-xs font-bold text-slate-900">Wash & Fold</span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 mt-1">Hygienic drum laundry wash, drying & precision fold</p>
+                </div>
+                <div className="flex items-center justify-between pt-2 border-t border-slate-200/80">
+                  <span className="text-xs font-semibold text-slate-600">Rate / Panel:</span>
+                  <div className="flex items-center bg-white rounded-xl border border-slate-200 px-3 py-1.5">
+                    <span className="text-xs font-bold text-slate-400 mr-1">₹</span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={pricingConfig.curtains?.washAndFold !== undefined ? pricingConfig.curtains.washAndFold : 100}
+                      onChange={(e) => handleSpecialRateChange('curtains', 'washAndFold', e.target.value)}
+                      className="w-16 text-xs font-black text-slate-900 text-right focus:outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
             </div>
           </Card>
 
-          {/* Shoes */}
-          <Card className="p-6 bg-white border border-slate-200 rounded-3xl space-y-4">
-            <div className="flex items-center gap-2.5 pb-2 border-b border-slate-100">
-              <span className="text-2xl">👟</span>
-              <div>
-                <h3 className="text-sm font-bold text-slate-900">Shoe Washing</h3>
-                <p className="text-[11px] text-slate-400">Per Pair Rate</p>
+          {/* Shoes & Carpets */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            {/* Shoes */}
+            <Card className="p-6 bg-white border border-slate-200 rounded-3xl space-y-4">
+              <div className="flex items-center gap-2.5 pb-2 border-b border-slate-100">
+                <span className="text-2xl">👟</span>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">Shoe Washing</h3>
+                  <p className="text-[11px] text-slate-400">Per Pair Rate</p>
+                </div>
               </div>
-            </div>
 
-            <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-200">
-              <span className="text-xs font-bold text-slate-700">Rate / Pair:</span>
-              <div className="flex items-center bg-white rounded-xl border border-slate-200 px-3 py-1">
-                <span className="text-xs font-bold text-slate-400 mr-1">₹</span>
-                <input
-                  type="number"
-                  min="1"
-                  value={pricingConfig.shoes?.ratePerPair || 350}
-                  onChange={(e) => handleSpecialRateChange('shoes', 'ratePerPair', e.target.value)}
-                  className="w-14 text-xs font-bold text-slate-900 text-right focus:outline-none"
-                />
+              <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-200">
+                <span className="text-xs font-bold text-slate-700">Rate / Pair:</span>
+                <div className="flex items-center bg-white rounded-xl border border-slate-200 px-3 py-1">
+                  <span className="text-xs font-bold text-slate-400 mr-1">₹</span>
+                  <input
+                    type="number"
+                    min="1"
+                    value={pricingConfig.shoes?.ratePerPair || 350}
+                    onChange={(e) => handleSpecialRateChange('shoes', 'ratePerPair', e.target.value)}
+                    className="w-14 text-xs font-bold text-slate-900 text-right focus:outline-none"
+                  />
+                </div>
               </div>
-            </div>
-          </Card>
+            </Card>
 
-          {/* Carpets */}
-          <Card className="p-6 bg-white border border-slate-200 rounded-3xl space-y-4">
-            <div className="flex items-center gap-2.5 pb-2 border-b border-slate-100">
-              <span className="text-2xl">🧶</span>
-              <div>
-                <h3 className="text-sm font-bold text-slate-900">Carpet Washing</h3>
-                <p className="text-[11px] text-slate-400">Per Square Foot</p>
+            {/* Carpets */}
+            <Card className="p-6 bg-white border border-slate-200 rounded-3xl space-y-4">
+              <div className="flex items-center gap-2.5 pb-2 border-b border-slate-100">
+                <span className="text-2xl">🧶</span>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">Carpet Washing</h3>
+                  <p className="text-[11px] text-slate-400">Per Square Foot</p>
+                </div>
               </div>
-            </div>
 
-            <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-200">
-              <span className="text-xs font-bold text-slate-700">Rate / Sq. Ft:</span>
-              <div className="flex items-center bg-white rounded-xl border border-slate-200 px-3 py-1">
-                <span className="text-xs font-bold text-slate-400 mr-1">₹</span>
-                <input
-                  type="number"
-                  min="1"
-                  value={pricingConfig.carpets?.ratePerSqFt || 45}
-                  onChange={(e) => handleSpecialRateChange('carpets', 'ratePerSqFt', e.target.value)}
-                  className="w-14 text-xs font-bold text-slate-900 text-right focus:outline-none"
-                />
+              <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-200">
+                <span className="text-xs font-bold text-slate-700">Rate / Sq. Ft:</span>
+                <div className="flex items-center bg-white rounded-xl border border-slate-200 px-3 py-1">
+                  <span className="text-xs font-bold text-slate-400 mr-1">₹</span>
+                  <input
+                    type="number"
+                    min="1"
+                    value={pricingConfig.carpets?.ratePerSqFt || 45}
+                    onChange={(e) => handleSpecialRateChange('carpets', 'ratePerSqFt', e.target.value)}
+                    className="w-14 text-xs font-bold text-slate-900 text-right focus:outline-none"
+                  />
+                </div>
               </div>
-            </div>
-          </Card>
+            </Card>
+          </div>
 
         </div>
       )}

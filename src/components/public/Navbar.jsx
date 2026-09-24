@@ -48,8 +48,8 @@ export const Navbar = () => {
     { label: 'Track Order', path: '/track-order' },
   ];
 
-  const primaryPhone = settings?.general?.primaryPhone || '+91 89777 69866';
-  const whatsappNumber = settings?.general?.whatsappNumber || '+91 89777 69866';
+  const primaryPhone = settings?.general?.primaryPhone || '+91 63048 45567';
+  const whatsappNumber = settings?.general?.whatsappNumber || '+91 63048 45567';
   const supportEmail = settings?.general?.supportEmail || 'support@techwash.in';
   const businessAddress = settings?.general?.businessAddress || 'Road No. 36, Jubilee Hills, Hyderabad';
 

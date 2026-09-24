@@ -157,8 +157,8 @@ export const ConciergeWindow = ({ isOpen, onClose }) => {
           componentType: 'CONTACT_CARD',
           text: "I'm experiencing a brief network pause. You can book online anytime or connect with our concierge team:",
           payload: {
-            phone: '+91 89777 69866',
-            whatsapp: '+91 89777 69866',
+            phone: '+91 63048 45567',
+            whatsapp: '+91 63048 45567',
           },
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         }

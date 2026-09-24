@@ -55,6 +55,7 @@ import { AdminPaymentsPage } from './pages/admin/AdminPaymentsPage';
 import { AdminStaffPage } from './pages/admin/AdminStaffPage';
 import { AdminBalanceDuePage } from './pages/admin/AdminBalanceDuePage';
 import { AdminReportsPage } from './pages/admin/AdminReportsPage';
+import { AdminSettingsPage } from './pages/admin/AdminSettingsPage';
 
 // Worker & Delivery Executive Portal
 import { WorkerLoginPage } from './pages/worker/WorkerLoginPage';
@@ -64,6 +65,9 @@ import { WorkerDashboardPage } from './pages/worker/WorkerDashboardPage';
 // In-Store POS Billing Machines
 import { BillingHubPage } from './pages/billing/BillingHubPage';
 import { BillingMachinePage } from './pages/billing/BillingMachinePage';
+
+// Background Automated 9:30 PM WhatsApp Dispatcher Scheduler
+import { dailyReportScheduler } from './services/dailyReportScheduler';
 
 // Scroll to top helper with instant jump on route change
 const ScrollToTop = () => {
@@ -166,6 +170,7 @@ export function App() {
               <Route path="history" element={<AdminReportsPage />} />
               <Route path="settlements" element={<AdminReportsPage />} />
               <Route path="staff" element={<AdminStaffPage />} />
+              <Route path="settings" element={<AdminSettingsPage />} />
             </Route>
 
             {/* WORKER & DELIVERY EXECUTIVE PORTAL */}

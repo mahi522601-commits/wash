@@ -86,16 +86,16 @@ export const PricingPage = () => {
 
   // Curated Home & Curtains Tariffs
   const householdItems = [
-    { name: 'Curtains (Sheers / Blackouts / Drapes)', method: 'Width (ft) × Height (ft) × ₹30', price: 30, unit: 'per sq. ft.', emoji: '🪟', tag: 'Curtains' },
+    { name: 'Curtain Dry Cleaning', method: 'Per-panel hydrocarbon solvent wash for delicate / blackout drapes', price: 200, unit: 'per panel', emoji: '🧺', tag: 'Curtains' },
+    { name: 'Curtain Wash & Iron', method: 'Per-panel RO softened wash + vertical steam hanging press', price: 150, unit: 'per panel', emoji: '🫧', tag: 'Curtains' },
+    { name: 'Curtain Iron (Steam Press)', method: 'Per-panel vertical tension steam press & wrinkle release', price: 60, unit: 'per panel', emoji: '✨', tag: 'Curtains' },
+    { name: 'Curtain Wash & Fold', method: 'Per-panel hygienic drum wash, drying & precision fold', price: 100, unit: 'per panel', emoji: '👕', tag: 'Curtains' },
     { name: 'Living Room Carpets & Wool Rugs', method: 'Length (ft) × Width (ft) × ₹45', price: 45, unit: 'per sq. ft.', emoji: '🧶', tag: 'Carpets' },
     { name: 'Single Blanket / Comforter', method: 'Per-piece anti-mite thermal wash', price: 200, unit: 'per piece', emoji: '🛋️', tag: 'Blankets' },
     { name: 'Double / Heavy Quilt (Razai)', method: 'Per-piece deep hygiene & fluffing', price: 300, unit: 'per piece', emoji: '🛋️', tag: 'Quilts' },
     { name: 'Single Bedsheet (Steam Press)', method: 'Per-piece precision steam iron', price: 30, unit: 'per piece', emoji: '🛏️', tag: 'Bedding' },
     { name: 'King / Double Bedsheet (Steam Press)', method: 'Per-piece precision steam iron', price: 35, unit: 'per piece', emoji: '🛏️', tag: 'Bedding' },
     { name: 'Pillow Cover (Steam Press)', method: 'Per-piece precision steam iron', price: 15, unit: 'per piece', emoji: '🛋️', tag: 'Bedding' },
-    { name: 'Half Curtain Steam Press', method: 'Per-piece vertical tension steam', price: 100, unit: 'per piece', emoji: '🪟', tag: 'Curtains' },
-    { name: 'Medium Curtain Steam Press', method: 'Per-piece vertical tension steam', price: 150, unit: 'per piece', emoji: '🪟', tag: 'Curtains' },
-    { name: 'Full Long Curtain Steam Press', method: 'Per-piece vertical tension steam', price: 300, unit: 'per piece', emoji: '🪟', tag: 'Curtains' },
   ];
 
   const structuredData = {

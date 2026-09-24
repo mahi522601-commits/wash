@@ -259,7 +259,7 @@ export const WorkerDashboardPage = () => {
     }
 
     const customerName = order.customerName || order.customer?.name || 'Customer';
-    const message = `Hello ${customerName}! 👋\n\nI am *${currentWorker.name}*, your Tech Wash delivery executive for order *#${order.orderNumber}* (${order.service || order.serviceName}).\n\nI am en route to your doorstep (${order.address || 'Address'}). Please let me know if you have any landmark directions!\n\n📞 Tech Wash Hotline: 8977769866`;
+    const message = `Hello ${customerName}! 👋\n\nI am *${currentWorker.name}*, your Tech Wash delivery executive for order *#${order.orderNumber}* (${order.service || order.serviceName}).\n\nI am en route to your doorstep (${order.address || 'Address'}). Please let me know if you have any landmark directions!\n\n📞 Tech Wash Hotline: 6304845567`;
 
     const url = `https://wa.me/91${cleanPhone}?text=${encodeURIComponent(message)}`;
     window.open(url, '_blank');

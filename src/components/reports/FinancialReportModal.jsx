@@ -1,6 +1,9 @@
-import React, { useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { PrintFinancialReport } from './PrintFinancialReport';
 import { reportService } from '../../services/reportService';
+import { whatsappNotificationService } from '../../services/whatsappNotificationService';
+import { dailyReportScheduler } from '../../services/dailyReportScheduler';
+import { useSettings } from '../../context/SettingsContext';
 import { useToast } from '../../context/ToastContext';
 import { 
   X, 
@@ -11,16 +14,26 @@ import {
   Check, 
   Copy,
   Calendar,
-  Sparkles
+  Sparkles,
+  MessageSquare,
+  Send,
+  Phone
 } from 'lucide-react';
 
 export const FinancialReportModal = ({
   isOpen,
   reportData,
   onClose,
+  onDateChange,
 }) => {
-  const { success, info } = useToast();
+  const { success, error, info } = useToast();
+  const { settings } = useSettings();
   const reportRef = useRef(null);
+
+  const defaultPhone = settings?.general?.primaryPhone || '6304845567';
+  const [whatsappPhone, setWhatsappPhone] = useState(defaultPhone);
+  const [isCopied, setIsCopied] = useState(false);
+  const [isSendingWa, setIsSendingWa] = useState(false);
 
   if (!isOpen || !reportData) return null;
 
@@ -45,9 +58,27 @@ export const FinancialReportModal = ({
 
   const handleCopySharableLink = () => {
     const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
-    const link = `${origin}/admin/reports?preset=${reportData.datePreset || '30days'}&branch=${reportData.branchFilter || 'ALL'}`;
+    const link = `${origin}/admin/reports?preset=${reportData.datePreset || 'today'}&branch=${reportData.branchFilter || 'ALL'}`;
     navigator.clipboard.writeText(link);
     success('Link Copied!', 'Sharable report URL copied to clipboard.');
+  };
+
+  const handleCopySummary = async () => {
+    const text = dailyReportScheduler.buildDailyReportWhatsAppDocument(reportData, 'Management');
+    await whatsappNotificationService.copyMessageToClipboard(text);
+    setIsCopied(true);
+    success('Summary Copied!', `Full billing history for ${reportData.dateRangeLabel || 'Today'} copied.`);
+    setTimeout(() => setIsCopied(false), 2500);
+  };
+
+  const handleSendWhatsAppReport = () => {
+    if (!whatsappPhone.trim()) {
+      error('Phone Required', 'Please enter a valid WhatsApp mobile number.');
+      return;
+    }
+    const message = dailyReportScheduler.buildDailyReportWhatsAppDocument(reportData, 'Management');
+    whatsappNotificationService.openWhatsAppManual(whatsappPhone, message);
+    success('WhatsApp Opened', `Prepared ${reportData.dateRangeLabel || "Today's"} billing report for ${whatsappPhone}.`);
   };
 
   return (
@@ -73,15 +104,46 @@ export const FinancialReportModal = ({
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            
+            {/* Quick WhatsApp Send Bar */}
+            <div className="flex items-center gap-1.5 bg-emerald-950/80 p-1 rounded-xl border border-emerald-500/40">
+              <input
+                type="tel"
+                placeholder="WhatsApp (e.g. 6304845567)"
+                value={whatsappPhone}
+                onChange={(e) => setWhatsappPhone(e.target.value)}
+                className="w-32 sm:w-36 px-2.5 py-1 text-xs font-mono font-bold text-white bg-slate-900 border border-emerald-500/50 rounded-lg outline-none placeholder:text-slate-400"
+              />
+              <button
+                type="button"
+                onClick={handleSendWhatsAppReport}
+                className="px-2.5 py-1 rounded-lg bg-[#25D366] hover:bg-[#1EBE5D] text-white text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-xs"
+                title="Send today's complete billing report to this WhatsApp"
+              >
+                <Send className="w-3 h-3" />
+                <span className="hidden sm:inline">Send WhatsApp</span>
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleCopySummary}
+              className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+              title="Copy formatted text report of this day"
+            >
+              {isCopied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+              <span>{isCopied ? 'Copied' : 'Copy Text'}</span>
+            </button>
+
             <button
               type="button"
               onClick={handleCopySharableLink}
               className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
               title="Copy link to this report"
             >
-              <Copy className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Copy Link</span>
+              <Share2 className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Share Link</span>
             </button>
 
             <button
@@ -106,7 +168,7 @@ export const FinancialReportModal = ({
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition cursor-pointer"
+              className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition cursor-pointer ml-1"
               title="Close modal"
             >
               <X className="w-5 h-5" />

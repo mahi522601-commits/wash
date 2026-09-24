@@ -7,8 +7,8 @@ import { settingsService } from './settingsService.js';
 export const DEFAULT_RECEIPT_CONFIG = {
   businessName: 'Tech Wash Laundry Services',
   tagline: 'Next-Generation Premium Fabric Care & Couture Spa',
-  phone: '+91 89777 69866',
-  whatsapp: '+91 89777 69866',
+  phone: '+91 63048 45567',
+  whatsapp: '+91 63048 45567',
   email: 'care@techwash.in',
   website: 'https://techwash.in',
   address: 'Main Road, Jubilee Hills, Hyderabad, Telangana - 500033',
@@ -16,7 +16,7 @@ export const DEFAULT_RECEIPT_CONFIG = {
   fssaiOrReg: 'REG-TW-2026-HYD',
   prefixPattern: 'TW-{YEAR}-{NUMBER}',
   thankYouMessage: 'Thank you for trusting Tech Wash with your garments. Fresh clothes. Professional care.',
-  footerContactNote: 'For queries, scheduling changes or feedback, contact our concierge at +91 89777 69866.',
+  footerContactNote: 'For queries, scheduling changes or feedback, contact our concierge at +91 63048 45567.',
   termsAndConditions: '1. Garments are inspected and processed according to international textile care standards.\n2. Please report any discrepancy within 24 hours of delivery.\n3. Digital invoices are GST compliant and stored securely.',
   
   // Visibility toggles
@@ -101,8 +101,11 @@ export const receiptService = {
           const qty = Number(it.quantity) || 1;
           const uPrice = Number(it.unitPrice !== undefined ? it.unitPrice : (it.price !== undefined ? it.price : 0));
           const lTotal = Number(it.lineTotal !== undefined ? it.lineTotal : (it.totalPrice !== undefined ? it.totalPrice : (qty * uPrice)));
+          const itemServiceName = it.serviceName || order.serviceName || 'Garment Care';
           return {
             ...it,
+            serviceName: itemServiceName,
+            subServiceName: it.name || 'Garment Item',
             name: it.name || 'Garment Item',
             category: it.category || 'General',
             quantity: qty,
@@ -122,12 +125,15 @@ export const receiptService = {
       if (!hasWeightItem) {
         items.unshift({
           id: 'wt-base-line',
+          serviceName: order.serviceName || 'Weighed Laundry',
+          subServiceName: `Batch Weight (${weightVal} Kg @ ₹${perKgRate}/Kg)`,
           name: `${order.serviceName || 'Laundry'} (${weightVal} Kg @ ₹${perKgRate}/Kg)`,
           category: 'Weighed Laundry',
           quantity: weightVal,
           unitPrice: perKgRate,
           lineTotal: Math.round(weightVal * perKgRate),
           isWeightItem: true,
+          weightKg: weightVal,
         });
       }
     }
@@ -136,6 +142,8 @@ export const receiptService = {
       items = [
         {
           id: 'item-1',
+          serviceName: order.serviceName || 'Premium Garment Care',
+          subServiceName: order.serviceName || 'Standard Care Package',
           name: order.serviceName || 'Premium Garment Care Service',
           category: 'Care Service',
           quantity: 1,

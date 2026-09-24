@@ -54,6 +54,7 @@ export const AdminSidebar = ({ isOpen, onClose, isCollapsed, onToggleCollapse })
         { name: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
         { name: 'Analytics & BI', path: '/admin/analytics', icon: BarChart3, badge: 'Insights' },
         { name: 'Financial Reports & PDFs', path: '/admin/reports', icon: FileText, badge: '30-Day PDF', badgeColor: 'bg-orange-500/20 text-orange-300 border-orange-500/30' },
+        { name: 'Business Settings', path: '/admin/settings', icon: Sliders, badge: 'Phone & WA', badgeColor: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30' },
       ]
     },
     {

@@ -18,7 +18,7 @@ export const DEFAULT_CHATBOT_CONFIG = {
   botName: 'Tech Wash Concierge',
   welcomeMessage: "Hello! I am your Tech Wash Concierge. How can I assist with your garment care today?",
   workingHoursText: 'Available 24/7 for instant assistance & bookings',
-  whatsappFallbackPhone: '+91 89777 69866',
+  whatsappFallbackPhone: '+91 63048 45567',
 };
 
 export const QUICK_ITEMS_CATALOG = [
@@ -47,7 +47,10 @@ export const QUICK_ITEMS_CATALOG = [
   { id: 'qi-kg4', name: "Wash & Fold (Women's Clothes)", category: 'Per-Kg', unitPrice: 130, unit: 'per Kg', emoji: '👕', desc: 'Hypoallergenic bio-enzyme wash' },
 
   // Household & Furnishings
-  { id: 'qi-h1', name: 'Curtains (Standard / Blackout)', category: 'Household', unitPrice: 30, unit: 'per sq. ft.', emoji: '🪟', desc: 'Ultrasonic dust extraction & steam press' },
+  { id: 'qi-h1-dc', name: 'Curtain Dry Cleaning', category: 'Household', unitPrice: 200, unit: 'per panel', emoji: '🧺', desc: 'Hydrocarbon solvent wash for delicate/blackout curtains' },
+  { id: 'qi-h1-wi', name: 'Curtain Wash & Iron', category: 'Household', unitPrice: 150, unit: 'per panel', emoji: '🫧', desc: 'RO water wash + vertical steam hanging press' },
+  { id: 'qi-h1-ir', name: 'Curtain Iron (Steam Press)', category: 'Household', unitPrice: 60, unit: 'per panel', emoji: '✨', desc: 'Vertical steam pressing & crease removal' },
+  { id: 'qi-h1-wf', name: 'Curtain Wash & Fold', category: 'Household', unitPrice: 100, unit: 'per panel', emoji: '👕', desc: 'Hygienic drum wash, drying & precision fold' },
   { id: 'qi-h2', name: 'Carpet / Rug Shampoo', category: 'Household', unitPrice: 45, unit: 'per sq. ft.', emoji: '🧶', desc: 'Deep rotary shampoo & moisture lift' },
   { id: 'qi-h3', name: 'Single Bedsheet & Pillow Covers', category: 'Household', unitPrice: 80, ironingPrice: 25, emoji: '🛏️', desc: 'High-temp sanitization & flat iron' },
   { id: 'qi-h4', name: 'Double Bedsheet Set', category: 'Household', unitPrice: 120, ironingPrice: 40, emoji: '🛏️', desc: 'Deep hygiene wash & hotel-grade press' },
@@ -518,8 +521,8 @@ export const chatbotService = {
         type: 'CONTACT_CARD',
         text: "Our fabric care specialists are available for bespoke garment inquiries, stain consultations, and instant booking help:",
         payload: {
-          phone: settings?.general?.primaryPhone || '+91 89777 69866',
-          whatsapp: settings?.general?.whatsappNumber || '+91 89777 69866',
+          phone: settings?.general?.primaryPhone || '+91 63048 45567',
+          whatsapp: settings?.general?.whatsappNumber || '+91 63048 45567',
           email: settings?.general?.supportEmail || 'care@techwash.in',
         },
         contextPills: [

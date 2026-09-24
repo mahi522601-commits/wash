@@ -12,7 +12,7 @@ export const BUSINESS_INFO = {
   url: BASE_URL,
   logo: `${BASE_URL}/techwashlogo.webp`,
   image: `${BASE_URL}/techwashlogo.webp`,
-  telephone: '+91 89777 69866',
+  telephone: '+91 63048 45567',
   email: 'support@techwash.in',
   priceRange: '₹12 - ₹350',
   currenciesAccepted: 'INR',

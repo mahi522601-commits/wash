@@ -1,22 +1,52 @@
 import React, { useState, useEffect } from 'react';
 import { customerService, CUSTOMER_SEGMENTS } from '../../services/customerService';
+import { useToast } from '../../context/ToastContext';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import { AdminPageHeader } from '../../components/admin/AdminPageHeader';
 import { Table } from '../../components/ui/Table';
 import { Badge } from '../../components/ui/Badge';
 import { Card } from '../../components/ui/Card';
-import { Users, Search, Phone, Mail, ShoppingBag } from 'lucide-react';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
+import { Users, Search, Phone, Mail, ShoppingBag, Trash2 } from 'lucide-react';
 
 export const AdminCustomersPage = () => {
+  const { success, error } = useToast();
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [deleteTargetCustomer, setDeleteTargetCustomer] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const loadCustomers = async () => {
+    try {
+      setLoading(true);
+      const data = await customerService.getCustomers();
+      setCustomers(data);
+    } catch (e) {
+      console.warn('Failed to load customers:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    customerService.getCustomers()
-      .then(setCustomers)
-      .finally(() => setLoading(false));
+    loadCustomers();
   }, []);
+
+  const handleDeleteCustomer = async () => {
+    if (!deleteTargetCustomer) return;
+    setIsDeleting(true);
+    try {
+      await customerService.deleteCustomer(deleteTargetCustomer.phone || deleteTargetCustomer.id);
+      success('Customer Profile Deleted', `Profile for "${deleteTargetCustomer.name}" was removed.`);
+      setDeleteTargetCustomer(null);
+      loadCustomers();
+    } catch (err) {
+      error('Delete Failed', err.message || 'Failed to delete customer.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const filtered = customers.filter(
     (c) =>
@@ -99,6 +129,22 @@ export const AdminCustomersPage = () => {
         </div>
       ),
     },
+    {
+      title: 'Actions',
+      key: 'actions',
+      render: (_, row) => (
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setDeleteTargetCustomer(row)}
+            title="Delete Customer Profile"
+            className="w-8 h-8 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200/80 flex items-center justify-center shadow-2xs active:scale-95 transition-all cursor-pointer"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      ),
+    },
   ];
 
   return (
@@ -127,6 +173,18 @@ export const AdminCustomersPage = () => {
         isLoading={loading}
         emptyMessage="Customer records are generated automatically as orders are placed."
       />
+
+      {/* Delete Customer Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={!!deleteTargetCustomer}
+        onClose={() => setDeleteTargetCustomer(null)}
+        onConfirm={handleDeleteCustomer}
+        title={`Delete Customer Profile "${deleteTargetCustomer?.name}"?`}
+        message={`Are you sure you want to remove the customer record for ${deleteTargetCustomer?.name} (${deleteTargetCustomer?.phone})? This will remove their saved CRM profile.`}
+        confirmText="Delete Customer"
+        isLoading={isDeleting}
+      />
     </div>
   );
 };
+

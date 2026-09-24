@@ -95,15 +95,20 @@ export const INITIAL_PRICING_CONFIG = {
     {
       id: 'curtain-washing',
       slug: 'curtain-washing',
-      name: 'Curtain Washing',
+      name: 'Curtain Service',
       icon: '🪟',
       emoji: '🪟',
-      tagline: 'Deep cleaning for curtains',
-      description: 'Deep dust extraction, gentle washing, and wrinkle-free steam hanging for all curtain sizes.',
-      startingPriceDisplay: '₹30 / sq. ft.',
-      pricingType: 'DIMENSIONAL_AREA',
-      unit: 'sq. ft.',
-      ratePerSqFt: 30,
+      tagline: 'Deep cleaning & care for curtains',
+      description: 'Comprehensive curtain care: Dry Cleaning, Wash & Iron, Steam Ironing, and Wash & Fold for all curtains.',
+      startingPriceDisplay: 'Starts at ₹60',
+      pricingType: 'ITEMIZED',
+      unit: 'piece',
+      subServices: [
+        { id: 'curtain-dc', key: 'dryCleaning', name: 'Curtain Dry Cleaning', price: 200, emoji: '🧺' },
+        { id: 'curtain-wi', key: 'washAndIron', name: 'Curtain Wash & Iron', price: 150, emoji: '🫧' },
+        { id: 'curtain-ir', key: 'iron', name: 'Curtain Iron', price: 60, emoji: '✨' },
+        { id: 'curtain-wf', key: 'washAndFold', name: 'Curtain Wash & Fold', price: 100, emoji: '👕' },
+      ]
     },
     {
       id: 'shoe-washing',
@@ -221,10 +226,7 @@ export const INITIAL_PRICING_CONFIG = {
       { id: 'ir-m-27', name: 'Aprons White', price: 20, emoji: '🥼', gender: 'men', category: 'Workwear', subCategory: 'jackets' },
       { id: 'ir-m-21', name: 'Single Bedsheet', price: 30, emoji: '🛏️', gender: 'common', category: 'Household', subCategory: 'household' },
       { id: 'ir-m-22', name: 'King Bedsheet', price: 35, emoji: '🛏️', gender: 'common', category: 'Household', subCategory: 'household' },
-      { id: 'ir-m-23', name: 'Pillow Cover', price: 15, emoji: '🛋️', gender: 'common', category: 'Household', subCategory: 'household' },
-      { id: 'ir-m-24', name: 'Curtains Half', price: 100, emoji: '🪟', gender: 'common', category: 'Curtains', subCategory: 'household' },
-      { id: 'ir-m-25', name: 'Curtains Medium', price: 150, emoji: '🪟', gender: 'common', category: 'Curtains', subCategory: 'household' },
-      { id: 'ir-m-26', name: 'Curtains Full', price: 300, emoji: '🪟', gender: 'common', category: 'Curtains', subCategory: 'household' },
+      { id: 'ir-m-24', name: 'Curtain Steam Iron', price: 60, emoji: '🪟', gender: 'common', category: 'Curtains', subCategory: 'household' },
       { id: 'ir-m-28', name: 'Gowns', price: 17, emoji: '👗', gender: 'women', category: 'Couture', subCategory: 'dresses' },
     ],
     women: [
@@ -298,16 +300,18 @@ export const INITIAL_PRICING_CONFIG = {
     ]
   },
 
-  // 4. Dimensional and Per-Unit Services
+  // 4. Special and Per-Unit Services
   curtains: {
-    ratePerSqFt: 30,
-    unit: 'sq. ft.',
-    defaultPresets: [
-      { label: 'Small Window (3ft × 5ft)', width: 3, height: 5 },
-      { label: 'Standard Window (4ft × 6ft)', width: 4, height: 6 },
-      { label: 'Large Window (6ft × 7ft)', width: 6, height: 7 },
-      { label: 'Balcony Door (9ft × 6ft)', width: 9, height: 6 },
-      { label: 'Full Wall (10ft × 9ft)', width: 10, height: 9 },
+    dryCleaning: 200,
+    washAndIron: 150,
+    iron: 60,
+    washAndFold: 100,
+    unit: 'panel',
+    subServices: [
+      { id: 'curtain-dc', key: 'dryCleaning', name: 'Curtain Dry Cleaning', price: 200, emoji: '🧺', desc: 'Single-batch delicate solvent cleaning for blackout, silk & jacquard curtains' },
+      { id: 'curtain-wi', key: 'washAndIron', name: 'Curtain Wash & Iron', price: 150, emoji: '🫧', desc: 'Demineralized RO wash with vertical tension steam hanging press' },
+      { id: 'curtain-ir', key: 'iron', name: 'Curtain Iron', price: 60, emoji: '✨', desc: 'Precision steam ironing & deep wrinkle removal' },
+      { id: 'curtain-wf', key: 'washAndFold', name: 'Curtain Wash & Fold', price: 100, emoji: '👕', desc: 'Isolated drum wash, moisture control drying & neat fold' },
     ]
   },
 

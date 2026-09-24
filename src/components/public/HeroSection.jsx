@@ -103,7 +103,7 @@ export const HeroSection = ({ slides = [] }) => {
               </Link>
 
               <a 
-                href="https://wa.me/918977769866?text=Hello%20Tech%20Wash%2C%20I%20would%20like%20to%20connect%20with%20your%20fabric%20care%20specialist."
+                href={`https://wa.me/${(settings?.general?.whatsappNumber || '6304845567').replace(/[^0-9]/g, '')}?text=${encodeURIComponent(settings?.general?.whatsappDefaultMessage || 'Hello Tech Wash, I would like to connect with your fabric care specialist.')}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="px-5 sm:px-6 py-4 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-2 border-emerald-300 hover:border-emerald-500 font-bold text-sm sm:text-base flex items-center gap-2 shadow-sm hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 cursor-pointer"

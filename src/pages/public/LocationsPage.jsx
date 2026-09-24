@@ -101,7 +101,7 @@ export const LocationsPage = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {locations.map((loc) => {
-              const rawPhone = loc.phone || '+91 89777 69866';
+              const rawPhone = loc.phone || '+91 63048 45567';
               const rawWhatsapp = loc.whatsapp || rawPhone;
               const cleanWhatsapp = rawWhatsapp.replace(/\D/g, '');
 

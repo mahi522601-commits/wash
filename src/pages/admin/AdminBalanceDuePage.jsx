@@ -11,6 +11,7 @@ import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { Badge } from '../../components/ui/Badge';
 import { ReceiptModal } from '../../components/receipt/ReceiptModal';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { 
   DollarSign, 
   Search, 
@@ -32,7 +33,8 @@ import {
   RefreshCw,
   Wallet,
   ArrowRight,
-  Receipt
+  Receipt,
+  Trash2
 } from 'lucide-react';
 
 export const AdminBalanceDuePage = () => {
@@ -44,6 +46,8 @@ export const AdminBalanceDuePage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [channelFilter, setChannelFilter] = useState('ALL'); // 'ALL' | 'OFFLINE_POS' | 'ONLINE_WEBSITE'
   const [statusFilter, setStatusFilter] = useState('ALL'); // 'ALL' | 'PARTIAL' | 'UNPAID'
+  const [deleteTargetOrder, setDeleteTargetOrder] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Payment Collection Modal State
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -232,10 +236,35 @@ ${trackingLink}
 • Scan UPI QR upon delivery / counter
 • Cash / UPI on delivery
 
-For queries or assistance, contact our concierge at *+91 89777 69866*. Thank you!`;
+For queries or assistance, contact our concierge at *+91 63048 45567*. Thank you!`;
 
     whatsappNotificationService.openWhatsAppManual(phone, message);
     success('WhatsApp Opened', `Payment reminder prepared for ${order.customerName}.`);
+  };
+
+  const handleDeleteOrder = async () => {
+    if (!deleteTargetOrder) return;
+    setIsDeleting(true);
+    try {
+      await orderService.deleteOrder(deleteTargetOrder.id);
+      try {
+        await auditService.logAction({
+          action: 'DELETE',
+          entity: 'Order',
+          entityId: deleteTargetOrder.id,
+          entityName: `Order #${deleteTargetOrder.orderNumber || deleteTargetOrder.id}`,
+          user: currentUser,
+        });
+      } catch (e) {}
+
+      success('Order Deleted', `Order #${deleteTargetOrder.orderNumber || deleteTargetOrder.id} was permanently removed.`);
+      setDeleteTargetOrder(null);
+      loadOrders();
+    } catch (err) {
+      error('Delete Failed', err.message || 'Failed to delete order.');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const columns = [
@@ -383,13 +412,22 @@ For queries or assistance, contact our concierge at *+91 89777 69866*. Thank you
           >
             <Printer className="w-4 h-4" />
           </button>
+
+          <button
+            type="button"
+            onClick={() => setDeleteTargetOrder(row)}
+            className="p-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 transition cursor-pointer"
+            title="Delete / Dismiss Order"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
         </div>
       ),
     },
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pos-workspace-screen print:hidden no-print">
       
       {/* 1. Header Banner */}
       <div className="bg-gradient-to-br from-slate-900 via-[#0B0A1C] to-slate-950 p-6 sm:p-7 rounded-3xl border border-rose-500/20 shadow-xl text-white space-y-4">
@@ -702,8 +740,20 @@ For queries or assistance, contact our concierge at *+91 89777 69866*. Thank you
         />
       )}
 
+      {/* 6. Delete / Dismiss Order Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={!!deleteTargetOrder}
+        onClose={() => setDeleteTargetOrder(null)}
+        onConfirm={handleDeleteOrder}
+        title={`Delete Order #${deleteTargetOrder?.orderNumber || deleteTargetOrder?.id || ''}?`}
+        message="This order will be permanently deleted from Firebase Firestore and removed from all due balance records. This action cannot be undone."
+        confirmText="Delete Order"
+        isLoading={isDeleting}
+      />
+
     </div>
   );
 };
 
 export default AdminBalanceDuePage;
+

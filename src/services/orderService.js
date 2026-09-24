@@ -908,6 +908,50 @@ export const orderService = {
     }
 
     return updatedOrder;
+  },
+
+  /**
+   * Permanently delete an order from Firebase Firestore and local storage
+   */
+  async deleteOrder(orderId) {
+    if (!orderId) throw new Error('Order ID required for deletion.');
+
+    // 1. Delete from Firebase Firestore
+    if (isFirebaseConfigured && db) {
+      try {
+        await Promise.all([
+          deleteDoc(doc(db, 'orders', orderId)),
+          deleteDoc(doc(db, 'bookings', orderId))
+        ]);
+      } catch (e) {
+        console.warn('Firestore delete order error (continuing local clean):', e);
+      }
+    }
+
+    // 2. Remove from local storage cache
+    try {
+      const orders = (await this.getOrders({ limitCount: 2000 })).filter(
+        o => o.id !== orderId && o.orderNumber !== orderId && o.bookingId !== orderId
+      );
+      localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(orders));
+    } catch (e) {}
+
+    // 3. Dispatch global broadcast to refresh all components
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('techwash-orders-updated', { detail: { deletedId: orderId } }));
+      try {
+        if ('BroadcastChannel' in window) {
+          const channel = new BroadcastChannel('techwash_orders_channel');
+          channel.postMessage({ type: 'ORDER_DELETED', orderId });
+          setTimeout(() => {
+            try { channel.close(); } catch (e) {}
+          }, 200);
+        }
+      } catch (e) {}
+    }
+
+    return true;
   }
 };
+
 

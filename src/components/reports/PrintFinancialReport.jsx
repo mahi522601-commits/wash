@@ -1,4 +1,5 @@
 import React from 'react';
+import { useSettings } from '../../context/SettingsContext';
 import { formatCurrency } from '../../utils/formatters';
 import { 
   Store, 
@@ -21,6 +22,7 @@ export const PrintFinancialReport = ({
   reportData,
   className = '',
 }) => {
+  const { settings } = useSettings();
   if (!reportData) return null;
 
   const {
@@ -42,15 +44,19 @@ export const PrintFinancialReport = ({
     serviceBreakdown = {},
   } = metrics;
 
-  const branchTitle = branchFilter === 'ALL' 
-    ? 'All Branches & Processing Hubs' 
+  const branchTitle = (branchFilter === 'POS_ONLY' || branchFilter === 'ALL_POS')
+    ? 'All Offline POS Counters (Walk-in Billing)'
+    : branchFilter === 'ALL' 
+    ? 'All Branches & Processing Hubs (POS + Online)' 
     : branchFilter === 'counter-1'
-    ? 'Jubilee Hills Flagship (Counter 1)'
+    ? 'Jubilee Hills Flagship (POS-01 Counter)'
     : branchFilter === 'counter-2'
-    ? 'Hitec City Processing Hub (Counter 2)'
+    ? 'Hitec City Processing Hub (POS-02 Counter)'
     : branchFilter === 'counter-3'
-    ? 'Banjara Hills Express (Counter 3)'
-    : 'Online Website Orders';
+    ? 'Banjara Hills Express (POS-03 Counter)'
+    : branchFilter === 'ONLINE_WEBSITE'
+    ? 'Online Website Orders Only'
+    : 'Offline POS Counter Machine';
 
   return (
     <div
@@ -81,7 +87,7 @@ export const PrintFinancialReport = ({
               Official Financial Settlement & Pin-to-Pin Operations Report
             </p>
             <p className="text-[10px] text-slate-500 font-medium">
-              Hyderabad, Telangana • Tel: +91 89777 69866 • care@techwash.in
+              Hyderabad, Telangana • Tel: {settings?.general?.primaryPhone || '+91 63048 45567'} • {settings?.general?.supportEmail || 'care@techwash.in'}
             </p>
           </div>
         </div>

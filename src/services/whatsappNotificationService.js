@@ -23,7 +23,7 @@ export const DEFAULT_GATEWAY_CONFIG = {
     url: '',
     secretKey: '',
   },
-  senderPhone: '+91 89777 69866',
+  senderPhone: '+91 63048 45567',
   businessName: 'Tech Wash Laundry Services',
   autoNotifyOnNewOrder: true,
   autoNotifyOnStageChange: true,
@@ -98,7 +98,7 @@ export const whatsappNotificationService = {
       return `91${digits}`;
     }
 
-    // If user provided with leading 0 (e.g. 08977769866)
+    // If user provided with leading 0 (e.g. 06304845567)
     if (digits.startsWith('0') && digits.length === 11) {
       return `91${digits.slice(1)}`;
     }
@@ -203,8 +203,8 @@ ${deliveryFee > 0 ? `• *Doorstep Logistics:* ₹${deliveryFee}\n` : '• *Door
 👉 ${trackingUrl}
 
 📞 *NEED ASSISTANCE / RESCHEDULE:*
-• Hotline: +91 89777 69866
-• WhatsApp: +91 89777 69866
+• Hotline: +91 63048 45567
+• WhatsApp: +91 63048 45567
 • Web: https://techwash.in
 
 _Fresh clothes. Professional care. Thank you for choosing Tech Wash!_`;
@@ -242,8 +242,7 @@ ${customNote ? `📝 *Update Note:* ${customNote}\n` : ''}${actualWeight ? `⚖�
 📲 *TRACK LIVE MILESTONES:*
 👉 ${trackingUrl}
 
-📞 *Questions?* Reply to this WhatsApp or call +91 89777 69866.`;
-
+📞 *Questions?* Reply to this WhatsApp or call +91 63048 45567.`;
     return message;
   },
 
@@ -302,7 +301,7 @@ ${itemsText}
 📲 *VIEW & DOWNLOAD FULL INVOICE / TRACK STATUS:*
 👉 ${invoiceUrl}
 
-📞 *Support Helpline:* +91 89777 69866
+📞 *Support Helpline:* +91 63048 45567
 🌐 *Website:* https://techwash.in
 
 _Thank you for trusting Tech Wash for your garment care!_`;

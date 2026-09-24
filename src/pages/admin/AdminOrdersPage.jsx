@@ -61,7 +61,7 @@ export const WALK_IN_SERVICES = [
   { id: 'srv-steam-ironing', name: 'Steam Ironing Only', emoji: '✨', defaultPrice: 25 },
   { id: 'srv-saree-spa', name: 'Sarees & Ethnic Spa', emoji: '🥻', defaultPrice: 60 },
   { id: 'srv-shoe-spa', name: 'Shoe & Sneaker Spa', emoji: '👟', defaultPrice: 350 },
-  { id: 'srv-curtain-spa', name: 'Curtain & Home Care', emoji: '🧼', defaultPrice: 100 },
+  { id: 'srv-curtain-spa', name: 'Curtain Service', emoji: '🪟', defaultPrice: 200 },
   { id: 'srv-starch-and-iron', name: 'Starch & Finishing', emoji: '🌾', defaultPrice: 45 },
 ];
 
@@ -175,10 +175,10 @@ export const MASTER_CATALOG_ITEMS = [
   { id: 'h-4', name: 'Single Blanket / Dohar / Comforter', price: 200, emoji: '🛋️', categoryKey: 'HOUSEHOLD', categoryName: "Blankets" },
   { id: 'h-5', name: 'Double Heavy Quilt / Razai', price: 350, emoji: '🛋️', categoryKey: 'HOUSEHOLD', categoryName: "Quilts" },
   { id: 'h-6', name: 'Cotton Table Cloth', price: 80, emoji: '🍽️', categoryKey: 'HOUSEHOLD', categoryName: "Linens" },
-  { id: 'h-7', name: 'Bath Towel / Large Hand Towel', price: 50, emoji: '🧖', categoryKey: 'HOUSEHOLD', categoryName: "Linens" },
-  { id: 'h-8', name: 'Curtains - Half Window (per panel)', price: 100, emoji: '🪟', categoryKey: 'HOUSEHOLD', categoryName: "Curtains" },
-  { id: 'h-9', name: 'Curtains - Medium Window (per panel)', price: 150, emoji: '🪟', categoryKey: 'HOUSEHOLD', categoryName: "Curtains" },
-  { id: 'h-10', name: 'Curtains - Full Length (per panel)', price: 300, emoji: '🪟', categoryKey: 'HOUSEHOLD', categoryName: "Curtains" },
+  { id: 'c-dc', name: 'Curtain Dry Cleaning', price: 200, emoji: '🧺', categoryKey: 'HOUSEHOLD', categoryName: "Curtains", serviceName: "Curtain Service", subServiceName: "Dry Cleaning" },
+  { id: 'c-wi', name: 'Curtain Wash & Iron', price: 150, emoji: '🫧', categoryKey: 'HOUSEHOLD', categoryName: "Curtains", serviceName: "Curtain Service", subServiceName: "Wash and Iron" },
+  { id: 'c-ir', name: 'Curtain Iron', price: 60, emoji: '✨', categoryKey: 'HOUSEHOLD', categoryName: "Curtains", serviceName: "Curtain Service", subServiceName: "Iron" },
+  { id: 'c-wf', name: 'Curtain Wash & Fold', price: 100, emoji: '👕', categoryKey: 'HOUSEHOLD', categoryName: "Curtains", serviceName: "Curtain Service", subServiceName: "Wash and Fold" },
   { id: 'h-11', name: 'Living Room Carpet / Wool Rug Spa', price: 450, emoji: '🧶', categoryKey: 'HOUSEHOLD', categoryName: "Carpets" },
 
   // ── FOOTWEAR & BAGS ──
@@ -222,6 +222,7 @@ const INITIAL_WALK_IN_FORM = {
   pricingType: 'per_item', // 'per_item' | 'per_kg'
   weightKg: '',
   pricePerKg: 100,
+  customGrandTotal: '', // Admin override for total bill amount
   items: [],
   expressOption: 'STANDARD', // 'STANDARD' | 'EXPRESS_24' | 'SAME_DAY'
   receivedAmount: '', // empty defaults to full or custom entered
@@ -356,7 +357,10 @@ export const AdminOrdersPage = () => {
 
   const walkInSubtotal = getWalkInSubtotal();
   const walkInExpressFee = getWalkInExpressFee(walkInSubtotal);
-  const walkInFinalTotal = Math.max(0, walkInSubtotal + walkInExpressFee);
+  const walkInCalculatedTotal = Math.max(0, walkInSubtotal + walkInExpressFee);
+  const hasWalkInCustomTotal = walkInForm.customGrandTotal !== '' && walkInForm.customGrandTotal !== undefined && !isNaN(Number(walkInForm.customGrandTotal));
+  const walkInFinalTotal = hasWalkInCustomTotal ? Math.max(0, Number(walkInForm.customGrandTotal)) : walkInCalculatedTotal;
+
   const walkInReceived = walkInForm.receivedAmount !== '' 
     ? Number(walkInForm.receivedAmount) 
     : (walkInForm.paymentStatus === 'PAID' ? walkInFinalTotal : 0);
@@ -481,6 +485,19 @@ export const AdminOrdersPage = () => {
         ...updated[index],
         quantity: newQty,
         lineTotal: newQty * updated[index].unitPrice
+      };
+      return { ...prev, items: updated };
+    });
+  };
+
+  const handleUpdateWalkInItemName = (index, newName) => {
+    setWalkInForm(prev => {
+      const updated = [...prev.items];
+      if (!updated[index]) return prev;
+      updated[index] = {
+        ...updated[index],
+        name: newName,
+        subServiceName: newName
       };
       return { ...prev, items: updated };
     });
@@ -1078,7 +1095,7 @@ export const AdminOrdersPage = () => {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pos-workspace-screen print:hidden no-print">
       <AdminPageHeader
         title="Order Lifecycle & Pickup Management"
         subtitle="Manage 10-stage customer milestones, record verified actual weights, assign delivery staff, and track offline POS & online channels."
@@ -1914,7 +1931,7 @@ export const AdminOrdersPage = () => {
               <div className="font-bold text-amber-950 text-xs">Test Live WhatsApp Dispatch</div>
               <div className="flex gap-2">
                 <Input
-                  placeholder="Enter 10-digit mobile number (e.g. 9398724704)"
+                  placeholder="Enter 10-digit mobile number (e.g. 6304845567)"
                   value={testPhone}
                   onChange={(e) => setTestPhone(e.target.value)}
                   className="flex-1 bg-white"
@@ -2085,17 +2102,29 @@ export const AdminOrdersPage = () => {
               </div>
 
               {walkInForm.pricingType === 'per_kg' && (
-                <div className="flex items-center gap-2 bg-purple-50 px-3 py-1.5 rounded-xl border border-purple-200">
-                  <span className="font-bold text-purple-900">Total Weighed Laundry:</span>
-                  <input
-                    type="number"
-                    step="0.1"
-                    placeholder="Weight (Kg)"
-                    value={walkInForm.weightKg}
-                    onChange={(e) => setWalkInForm({ ...walkInForm, weightKg: e.target.value })}
-                    className="w-24 px-2 py-1 bg-white border border-purple-300 rounded-lg text-xs font-bold text-purple-950 outline-none"
-                  />
-                  <span className="font-bold text-purple-700">Kg @ ₹{walkInForm.pricePerKg}/Kg</span>
+                <div className="flex flex-wrap items-center gap-2 bg-purple-50 px-3 py-1.5 rounded-xl border border-purple-200">
+                  <span className="font-bold text-purple-900 text-xs">Weighed Laundry:</span>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      step="0.1"
+                      placeholder="Weight"
+                      value={walkInForm.weightKg}
+                      onChange={(e) => setWalkInForm({ ...walkInForm, weightKg: e.target.value })}
+                      className="w-20 px-2 py-1 bg-white border border-purple-300 rounded-lg text-xs font-bold text-purple-950 outline-none"
+                      title="Edit Weight (Kg)"
+                    />
+                    <span className="font-bold text-purple-700 text-xs">Kg @ ₹</span>
+                    <input
+                      type="number"
+                      min="1"
+                      value={walkInForm.pricePerKg}
+                      onChange={(e) => setWalkInForm({ ...walkInForm, pricePerKg: Number(e.target.value) || 0 })}
+                      className="w-16 px-1.5 py-1 bg-white border border-purple-300 rounded-lg text-xs font-bold text-purple-950 outline-none"
+                      title="Edit Rate per Kg"
+                    />
+                    <span className="font-bold text-purple-700 text-xs">/Kg</span>
+                  </div>
                 </div>
               )}
             </div>
@@ -2322,9 +2351,15 @@ export const AdminOrdersPage = () => {
                   <div key={item.id || idx} className="py-2.5 flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 text-xs">
                     <div className="flex items-center gap-2 min-w-0 sm:w-1/3">
                       <span className="text-base shrink-0">{item.emoji || '👕'}</span>
-                      <div className="min-w-0">
-                        <div className="font-bold text-slate-900 truncate" title={item.name}>{item.name}</div>
-                        <div className="text-[10px] text-slate-400 truncate">{item.category || 'General'}</div>
+                      <div className="min-w-0 flex-1">
+                        <input
+                          type="text"
+                          value={item.name}
+                          onChange={(e) => handleUpdateWalkInItemName(idx, e.target.value)}
+                          className="font-bold text-slate-900 bg-transparent hover:bg-slate-100 focus:bg-white border-b border-transparent hover:border-slate-300 focus:border-orange-500 px-1 py-0.5 rounded outline-none w-full text-xs"
+                          title="Click to edit item / sub-service name"
+                        />
+                        <div className="text-[10px] text-slate-400 truncate pl-1">{item.category || 'General'}</div>
                       </div>
                     </div>
 
@@ -2514,12 +2549,30 @@ export const AdminOrdersPage = () => {
               </div>
             </div>
 
-            <div className="flex items-center gap-6 w-full sm:w-auto justify-between sm:justify-end">
+            <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
               <div className="text-right">
-                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Total Bill</span>
-                <span className="text-xl sm:text-2xl font-black font-mono text-[#F97316]">
-                  {formatCurrency(walkInFinalTotal)}
-                </span>
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Total Bill (Editable)</span>
+                <div className="flex items-center gap-1">
+                  <span className="text-base font-bold text-[#F97316]">₹</span>
+                  <input
+                    type="number"
+                    min="0"
+                    value={walkInForm.customGrandTotal !== '' ? walkInForm.customGrandTotal : walkInCalculatedTotal}
+                    onChange={(e) => setWalkInForm({ ...walkInForm, customGrandTotal: e.target.value })}
+                    className="w-24 px-2 py-1 bg-slate-800 border border-orange-400/50 rounded-lg text-lg font-black font-mono text-[#F97316] text-right outline-none focus:ring-2 focus:ring-orange-500"
+                    title="Click to edit total bill amount"
+                  />
+                  {walkInForm.customGrandTotal !== '' && (
+                    <button
+                      type="button"
+                      onClick={() => setWalkInForm({ ...walkInForm, customGrandTotal: '' })}
+                      className="text-[10px] text-slate-400 hover:text-white px-1.5 py-1 rounded bg-slate-700 font-bold cursor-pointer"
+                      title="Reset to auto-calculated total"
+                    >
+                      ↺
+                    </button>
+                  )}
+                </div>
               </div>
               <div className="text-right border-l border-white/10 pl-4">
                 <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Balance Due</span>

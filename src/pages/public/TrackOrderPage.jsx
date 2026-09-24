@@ -38,6 +38,7 @@ import {
 } from 'lucide-react';
 import { SEOHead } from '../../components/seo/SEOHead';
 import { BASE_URL } from '../../data/seoData';
+import { useSettings } from '../../context/SettingsContext';
 
 const ICON_COMPONENTS = {
   CheckCircle2,
@@ -53,6 +54,7 @@ const ICON_COMPONENTS = {
 };
 
 export const TrackOrderPage = () => {
+  const { settings } = useSettings();
   const [searchParams] = useSearchParams();
   const [orderQuery, setOrderQuery] = useState('');
   const [order, setOrder] = useState(null);
@@ -362,7 +364,7 @@ export const TrackOrderPage = () => {
                       <Button variant="outline" size="sm" icon={Printer} onClick={() => setIsReceiptOpen(true)}>
                         Official Tax Invoice
                       </Button>
-                      <a href={`tel:${order.customer?.phone || '+918977769866'}`}>
+                      <a href={`tel:${order.customer?.phone || (settings?.general?.primaryPhone || '+916304845567').replace(/\s/g, '')}`}>
                         <Button variant="secondary" size="sm" icon={Phone}>
                           Call Rider
                         </Button>

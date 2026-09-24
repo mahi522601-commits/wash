@@ -3,7 +3,7 @@
  * Single Source of Truth in Firebase Firestore `customers` collection with historical order aggregation
  */
 import { db, isFirebaseConfigured } from './firebase.js';
-import { collection, getDocs, doc, setDoc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, setDoc, getDoc, deleteDoc } from 'firebase/firestore';
 import { orderService } from './orderService.js';
 
 export const CUSTOMER_SEGMENTS = {
@@ -125,5 +125,28 @@ export const customerService = {
     });
 
     return customers.sort((a, b) => b.totalSpent - a.totalSpent);
+  },
+
+  /**
+   * Delete customer profile from Firebase Firestore
+   */
+  async deleteCustomer(phoneOrId) {
+    if (!phoneOrId) return false;
+    const cleanPhone = String(phoneOrId).replace(/\D/g, '');
+
+    if (isFirebaseConfigured && db) {
+      try {
+        await Promise.all([
+          deleteDoc(doc(db, 'customers', phoneOrId)),
+          cleanPhone ? deleteDoc(doc(db, 'customers', cleanPhone)) : Promise.resolve(),
+          cleanPhone ? deleteDoc(doc(db, 'customers', `cust-${cleanPhone}`)) : Promise.resolve()
+        ]);
+      } catch (e) {
+        console.warn('Firestore delete customer error:', e);
+      }
+    }
+
+    return true;
   }
 };
+

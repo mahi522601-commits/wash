@@ -9,94 +9,168 @@ import { orderService } from './orderService.js';
 const BACKUP_STORAGE_PREFIX = 'techwash_backup_checkpoint_';
 const LAST_BACKUP_COUNT_KEY = 'techwash_last_backup_order_count';
 
+export const parseOrderDateSafe = (val) => {
+  if (!val) return new Date();
+  if (val instanceof Date) return isNaN(val.getTime()) ? new Date() : val;
+  if (typeof val === 'object' && typeof val.seconds === 'number') {
+    return new Date(val.seconds * 1000);
+  }
+  if (typeof val === 'object' && typeof val.toDate === 'function') {
+    return val.toDate();
+  }
+  if (typeof val === 'string') {
+    // Check format DD/MM/YYYY or DD-MM-YYYY
+    const dmyMatch = val.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+    if (dmyMatch) {
+      return new Date(Number(dmyMatch[3]), Number(dmyMatch[2]) - 1, Number(dmyMatch[1]));
+    }
+    const d = new Date(val);
+    if (!isNaN(d.getTime())) return d;
+  }
+  if (typeof val === 'number') {
+    const d = new Date(val);
+    if (!isNaN(d.getTime())) return d;
+  }
+  return new Date();
+};
+
+export const isSameCalendarDay = (date1, date2) => {
+  if (!date1 || !date2) return false;
+  const d1 = parseOrderDateSafe(date1);
+  const d2 = parseOrderDateSafe(date2);
+  return (
+    d1.getFullYear() === d2.getFullYear() &&
+    d1.getMonth() === d2.getMonth() &&
+    d1.getDate() === d2.getDate()
+  );
+};
+
+export const isPosOrder = (order) => {
+  if (!order) return false;
+  if (order.isWalkIn === true) return true;
+  if (order.orderSource === 'OFFLINE_POS' || order.orderSource === 'POS') return true;
+  if (order.terminalCode || order.terminalId) return true;
+  if (order.manualBillNumber) return true;
+  const storeBranch = (order.storeBranch || '').toLowerCase();
+  if (storeBranch.includes('counter') || storeBranch.includes('pos-') || storeBranch.includes('pos ') || storeBranch.includes('flagship') || storeBranch.includes('express')) return true;
+  return false;
+};
+
 export const reportService = {
   /**
    * Filter and aggregate order data for a specific date range and branch/terminal
    */
   async generateFinancialReport({
-    datePreset = 'today', // 'today' | 'tomorrow' | 'yesterday' | '7days' | '30days' | 'all' | 'custom'
+    datePreset = 'today', // 'today' | 'tomorrow' | 'yesterday' | '7days' | '30days' | 'all' | 'custom' | 'single'
     startDate = null,
     endDate = null,
     targetDate = null,
-    branchFilter = 'ALL', // 'ALL' | 'counter-1' | 'counter-2' | 'counter-3' | 'ONLINE_WEBSITE'
+    branchFilter = 'ALL', // 'ALL' | 'POS_ONLY' | 'ALL_POS' | 'counter-1' | 'counter-2' | 'counter-3' | 'ONLINE_WEBSITE'
+    channelFilter = 'ALL', // 'ALL' | 'POS_ONLY' | 'ONLINE_ONLY'
+    onlyOfflinePos = false,
     searchQuery = '',
   } = {}) {
     const allOrders = await orderService.getOrders({ limitCount: 2000 });
 
     // Determine filter date boundaries
     const now = new Date();
-    const todayStr = now.toISOString().split('T')[0];
-
     let start = null;
     let end = null;
+    let dateRangeLabel = 'Today';
 
     if (datePreset === 'today') {
-      start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+      start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
       end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+      dateRangeLabel = `Today (${now.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })})`;
     } else if (datePreset === 'tomorrow') {
       const tmrw = new Date(now);
       tmrw.setDate(tmrw.getDate() + 1);
-      start = new Date(tmrw.getFullYear(), tmrw.getMonth(), tmrw.getDate(), 0, 0, 0);
+      start = new Date(tmrw.getFullYear(), tmrw.getMonth(), tmrw.getDate(), 0, 0, 0, 0);
       end = new Date(tmrw.getFullYear(), tmrw.getMonth(), tmrw.getDate(), 23, 59, 59, 999);
+      dateRangeLabel = `Tomorrow (${tmrw.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })})`;
     } else if (datePreset === 'yesterday') {
       const yday = new Date(now);
       yday.setDate(yday.getDate() - 1);
-      start = new Date(yday.getFullYear(), yday.getMonth(), yday.getDate(), 0, 0, 0);
+      start = new Date(yday.getFullYear(), yday.getMonth(), yday.getDate(), 0, 0, 0, 0);
       end = new Date(yday.getFullYear(), yday.getMonth(), yday.getDate(), 23, 59, 59, 999);
+      dateRangeLabel = `Yesterday (${yday.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })})`;
     } else if (datePreset === '7days') {
       const past7 = new Date(now);
       past7.setDate(past7.getDate() - 6);
-      start = new Date(past7.getFullYear(), past7.getMonth(), past7.getDate(), 0, 0, 0);
+      start = new Date(past7.getFullYear(), past7.getMonth(), past7.getDate(), 0, 0, 0, 0);
       end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+      dateRangeLabel = `Last 7 Days (${past7.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} – ${now.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })})`;
     } else if (datePreset === '30days') {
       const past30 = new Date(now);
       past30.setDate(past30.getDate() - 29);
-      start = new Date(past30.getFullYear(), past30.getMonth(), past30.getDate(), 0, 0, 0);
+      start = new Date(past30.getFullYear(), past30.getMonth(), past30.getDate(), 0, 0, 0, 0);
       end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+      dateRangeLabel = `Last 30 Days (${past30.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} – ${now.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })})`;
+    } else if (datePreset === 'all') {
+      start = null;
+      end = null;
+      dateRangeLabel = 'All Master History';
+    } else if ((datePreset === 'single' || datePreset === 'specific') && targetDate) {
+      const t = parseOrderDateSafe(targetDate);
+      start = new Date(t.getFullYear(), t.getMonth(), t.getDate(), 0, 0, 0, 0);
+      end = new Date(t.getFullYear(), t.getMonth(), t.getDate(), 23, 59, 59, 999);
+      dateRangeLabel = `Date: ${t.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`;
     } else if (datePreset === 'custom' && (startDate || endDate)) {
       if (startDate) {
-        const s = new Date(startDate);
-        start = new Date(s.getFullYear(), s.getMonth(), s.getDate(), 0, 0, 0);
+        const s = parseOrderDateSafe(startDate);
+        start = new Date(s.getFullYear(), s.getMonth(), s.getDate(), 0, 0, 0, 0);
       }
       if (endDate) {
-        const e = new Date(endDate);
+        const e = parseOrderDateSafe(endDate);
         end = new Date(e.getFullYear(), e.getMonth(), e.getDate(), 23, 59, 59, 999);
       }
-    } else if (datePreset === 'single' && targetDate) {
-      const t = new Date(targetDate);
-      start = new Date(t.getFullYear(), t.getMonth(), t.getDate(), 0, 0, 0);
-      end = new Date(t.getFullYear(), t.getMonth(), t.getDate(), 23, 59, 59, 999);
+      dateRangeLabel = `Custom Range (${startDate || 'Start'} to ${endDate || 'Now'})`;
     }
 
     // Filter orders
     const filteredOrders = allOrders.filter(order => {
-      // 1. Date Check
-      const orderDate = new Date(order.createdAt || Date.now());
-      if (start && orderDate < start) return false;
-      if (end && orderDate > end) return false;
+      // 1. Date Check (Evaluate createdAt and scheduled pickupDate)
+      const orderDate = parseOrderDateSafe(order.createdAt || order.pickupDate || order.schedule?.pickupDate);
+      const scheduleDate = order.schedule?.pickupDate ? parseOrderDateSafe(order.schedule.pickupDate) : null;
+      
+      let matchesDate = true;
+      if (start && end) {
+        const inCreatedRange = orderDate >= start && orderDate <= end;
+        const inScheduleRange = scheduleDate && scheduleDate >= start && scheduleDate <= end;
+        matchesDate = inCreatedRange || inScheduleRange;
+      }
+      if (!matchesDate) return false;
 
-      // 2. Branch / Channel Check
-      if (branchFilter && branchFilter !== 'ALL') {
-        const isPos = Boolean(order.isWalkIn || order.orderSource === 'OFFLINE_POS' || order.terminalCode);
-        if (branchFilter === 'ONLINE_WEBSITE' && isPos) return false;
-        if (branchFilter !== 'ONLINE_WEBSITE') {
-          const tId = order.terminalId || '';
-          const tCode = order.terminalCode || '';
-          const bName = (order.storeBranch || '').toLowerCase();
-          
-          if (branchFilter === 'counter-1' && !tId.includes('counter-1') && !tCode.includes('POS-01') && !bName.includes('jubilee')) {
-            return false;
-          }
-          if (branchFilter === 'counter-2' && !tId.includes('counter-2') && !tCode.includes('POS-02') && !bName.includes('hitec')) {
-            return false;
-          }
-          if (branchFilter === 'counter-3' && !tId.includes('counter-3') && !tCode.includes('POS-03') && !bName.includes('banjara')) {
-            return false;
-          }
+      // 2. Channel & Source Filter (Strict POS Offline vs Online)
+      const isPos = isPosOrder(order);
+      const isExplicitPosOnly = onlyOfflinePos || channelFilter === 'POS_ONLY' || branchFilter === 'POS_ONLY' || branchFilter === 'ALL_POS';
+      const isExplicitOnlineOnly = channelFilter === 'ONLINE_ONLY' || branchFilter === 'ONLINE_WEBSITE';
+
+      if (isExplicitPosOnly && !isPos) return false;
+      if (isExplicitOnlineOnly && isPos) return false;
+
+      // 3. Counter Terminal Specific Branch Check
+      if (branchFilter && branchFilter !== 'ALL' && branchFilter !== 'POS_ONLY' && branchFilter !== 'ALL_POS' && branchFilter !== 'ONLINE_WEBSITE') {
+        if (!isPos) return false;
+
+        const tId = (order.terminalId || '').toLowerCase();
+        const tCode = (order.terminalCode || '').toLowerCase();
+        const bName = (order.storeBranch || '').toLowerCase();
+        const filterLower = branchFilter.toLowerCase();
+        
+        if (filterLower.includes('counter-1') || filterLower.includes('pos-01') || filterLower.includes('jubilee')) {
+          const matchesC1 = tId.includes('counter-1') || tId.includes('pos-01') || tCode.includes('pos-01') || bName.includes('jubilee');
+          if (!matchesC1) return false;
+        } else if (filterLower.includes('counter-2') || filterLower.includes('pos-02') || filterLower.includes('hitec')) {
+          const matchesC2 = tId.includes('counter-2') || tId.includes('pos-02') || tCode.includes('pos-02') || bName.includes('hitec');
+          if (!matchesC2) return false;
+        } else if (filterLower.includes('counter-3') || filterLower.includes('pos-03') || filterLower.includes('banjara')) {
+          const matchesC3 = tId.includes('counter-3') || tId.includes('pos-03') || tCode.includes('pos-03') || bName.includes('banjara');
+          if (!matchesC3) return false;
         }
       }
 
-      // 3. Search Query
+      // 4. Search Query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
         const matchesNum = (order.orderNumber || order.id || '').toLowerCase().includes(q);
@@ -355,6 +429,106 @@ export const reportService = {
     } catch (e) {
       console.warn('File download trigger error:', e);
     }
+  },
+
+  /**
+   * Group and compile all saved POS and order billings date-wise
+   * Returns sorted array of daily shift records with detailed financial breakdowns
+   */
+  async getDateWiseSavedShiftLedger({ 
+    branchFilter = 'ALL', 
+    channelFilter = 'POS_ONLY',
+    onlyOfflinePos = true,
+    limitDays = 90 
+  } = {}) {
+    const allOrders = await orderService.getOrders({ limitCount: 3000 });
+    
+    // Group orders by date (YYYY-MM-DD)
+    const dateGroups = {};
+
+    allOrders.forEach(order => {
+      // 1. Channel & Source Check (Strict POS Offline vs Online)
+      const isPos = isPosOrder(order);
+      const isExplicitPosOnly = onlyOfflinePos || channelFilter === 'POS_ONLY' || branchFilter === 'POS_ONLY' || branchFilter === 'ALL_POS';
+      const isExplicitOnlineOnly = channelFilter === 'ONLINE_ONLY' || branchFilter === 'ONLINE_WEBSITE';
+
+      if (isExplicitPosOnly && !isPos) return;
+      if (isExplicitOnlineOnly && isPos) return;
+
+      // 2. Specific Counter Terminal / Branch Check
+      if (branchFilter && branchFilter !== 'ALL' && branchFilter !== 'POS_ONLY' && branchFilter !== 'ALL_POS' && branchFilter !== 'ONLINE_WEBSITE') {
+        if (!isPos) return;
+
+        const tId = (order.terminalId || '').toLowerCase();
+        const tCode = (order.terminalCode || '').toLowerCase();
+        const bName = (order.storeBranch || '').toLowerCase();
+        const filterLower = branchFilter.toLowerCase();
+        
+        if (filterLower.includes('counter-1') || filterLower.includes('pos-01') || filterLower.includes('jubilee')) {
+          if (!tId.includes('counter-1') && !tId.includes('pos-01') && !tCode.includes('pos-01') && !bName.includes('jubilee')) return;
+        } else if (filterLower.includes('counter-2') || filterLower.includes('pos-02') || filterLower.includes('hitec')) {
+          if (!tId.includes('counter-2') && !tId.includes('pos-02') && !tCode.includes('pos-02') && !bName.includes('hitec')) return;
+        } else if (filterLower.includes('counter-3') || filterLower.includes('pos-03') || filterLower.includes('banjara')) {
+          if (!tId.includes('counter-3') && !tId.includes('pos-03') && !tCode.includes('pos-03') && !bName.includes('banjara')) return;
+        }
+      }
+
+      const orderDateObj = parseOrderDateSafe(order.createdAt || order.pickupDate || order.schedule?.pickupDate);
+      const year = orderDateObj.getFullYear();
+      const month = String(orderDateObj.getMonth() + 1).padStart(2, '0');
+      const day = String(orderDateObj.getDate()).padStart(2, '0');
+      const dateKey = `${year}-${month}-${day}`;
+
+      if (!dateGroups[dateKey]) {
+        dateGroups[dateKey] = {
+          dateKey,
+          dateObj: orderDateObj,
+          dateLabel: orderDateObj.toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' }),
+          orders: [],
+          totalBills: 0,
+          grossBilled: 0,
+          collected: 0,
+          pendingDues: 0,
+          cash: 0,
+          upi: 0,
+          card: 0,
+          online: 0,
+          pieces: 0,
+          weightKg: 0,
+        };
+      }
+
+      const billTotal = Number(order.totalAmount || order.finalPrice || order.priceSnapshot?.finalTotal || 0);
+      const recAmount = Number(order.receivedAmount !== undefined ? order.receivedAmount : (order.paymentStatus === 'PAID' ? billTotal : 0));
+      const balAmount = Number(order.balanceAmount !== undefined ? order.balanceAmount : Math.max(0, billTotal - recAmount));
+
+      const group = dateGroups[dateKey];
+      group.orders.push(order);
+      group.totalBills += 1;
+      group.grossBilled += billTotal;
+      group.collected += recAmount;
+      group.pendingDues += balAmount;
+
+      const pMethod = String(order.paymentMethod || 'CASH').toUpperCase();
+      if (pMethod === 'CASH') group.cash += recAmount;
+      else if (pMethod.includes('UPI') || pMethod.includes('QR')) group.upi += recAmount;
+      else if (pMethod.includes('CARD') || pMethod.includes('POS')) group.card += recAmount;
+      else group.online += recAmount;
+
+      if (order.items && Array.isArray(order.items)) {
+        order.items.forEach(it => {
+          group.pieces += Number(it.quantity) || 1;
+        });
+      }
+      group.weightKg += Number(order.actualWeight || order.estimatedWeightKg || order.weightKg || 0);
+    });
+
+    // Sort by date descending (newest first)
+    const sortedDays = Object.values(dateGroups)
+      .sort((a, b) => b.dateKey.localeCompare(a.dateKey))
+      .slice(0, limitDays);
+
+    return sortedDays;
   },
 
   /**

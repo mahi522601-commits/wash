@@ -107,7 +107,7 @@ export const AdminPaymentsPage = () => {
               <Input
                 label="Merchant UPI ID (VPA) *"
                 required
-                placeholder="e.g. techwash@icici or 8977769866@paytm"
+                placeholder="e.g. techwash@icici or 6304845567@paytm"
                 value={config.upi?.upiId}
                 onChange={(e) => setConfig({
                   ...config,

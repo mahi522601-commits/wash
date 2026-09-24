@@ -3,8 +3,8 @@ import { WhatsAppLogo, PhoneCallLogo } from '../../ui/BrandIcons';
 import { Mail, Sparkles, ArrowRight } from 'lucide-react';
 
 export const ContactSupportCard = ({ contacts = {} }) => {
-  const phone = contacts.phone || '+91 89777 69866';
-  const whatsapp = contacts.whatsapp || '+91 89777 69866';
+  const phone = contacts.phone || '+91 63048 45567';
+  const whatsapp = contacts.whatsapp || '+91 63048 45567';
   const cleanWa = whatsapp.replace(/[^0-9]/g, '');
   const cleanPhone = phone.replace(/[^0-9]/g, '');
 
