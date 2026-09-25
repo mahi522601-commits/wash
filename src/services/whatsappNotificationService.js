@@ -247,64 +247,122 @@ ${customNote ? `📝 *Update Note:* ${customNote}\n` : ''}${actualWeight ? `⚖�
   },
 
   /**
-   * Build Official Tax Invoice WhatsApp message
+   * Build Official Tax Invoice WhatsApp message (In-detail bill without asterisks / star marks)
    */
   buildInvoiceWhatsAppMessage(order, receiptData = {}) {
     if (!order) return '';
 
     const customerName = order.customerName || order.customer?.name || 'Valued Customer';
     const orderNumber = order.orderNumber || order.id || 'TW-ORDER';
-    const invoiceNumber = receiptData.invoiceNumber || `INV-${orderNumber}`;
+    const manualBillNumber = order.manualBillNumber || '';
+    const invoiceNumber = receiptData.invoiceNumber || order.invoiceNumber || `INV-${orderNumber}`;
     const serviceName = order.serviceName || order.service || 'Premium Garment Care';
-    const serviceEmoji = order.serviceEmoji || '🧾';
+    const serviceEmoji = order.serviceEmoji || '👔';
+    const storeBranch = order.storeBranch || 'Tech Wash Flagship Lounge — Jubilee Hills';
+    const terminalCode = order.terminalCode || 'TW-POS-01';
+    const cashierName = order.cashierName || 'Counter Cashier';
 
     const origin = typeof window !== 'undefined' ? window.location.origin : 'https://techwash.in';
     const invoiceUrl = `${origin}/track-order?id=${orderNumber}`;
+
+    const pricingType = order.pricingType || (order.weightKg ? 'per_kg' : 'per_item');
+    const weightKg = order.weightKg || order.actualWeight || order.estimatedWeightKg || null;
+    const pricePerKg = order.pricePerKg || (pricingType === 'per_kg' ? 100 : null);
 
     const items = order.items || receiptData.items || [];
     let itemsText = '';
     if (items.length > 0) {
       const itemsList = items.map((item, idx) => {
         const qty = item.quantity || 1;
-        const name = item.name || 'Garment';
-        const unitPrice = item.unitPrice || item.price;
-        const lineTotal = item.lineTotal || item.totalPrice || (unitPrice ? unitPrice * qty : null);
-        const rateStr = unitPrice ? ` (@ ₹${unitPrice})` : '';
-        const totalStr = lineTotal ? ` = *₹${lineTotal}*` : '';
-        return `  ${idx + 1}. *${name}* × ${qty}${rateStr}${totalStr}`;
+        const name = item.name || item.subServiceName || 'Garment';
+        const category = item.category ? ` [${item.category}]` : '';
+        const unitPrice = item.unitPrice !== undefined ? item.unitPrice : item.price;
+        const lineTotal = item.lineTotal !== undefined ? item.lineTotal : (unitPrice ? unitPrice * qty : null);
+        
+        let itemLine = `  ${idx + 1}. ${name}${category} - Qty: ${qty}`;
+        if (unitPrice && Number(unitPrice) > 0) {
+          itemLine += ` @ Rs.${unitPrice}`;
+        }
+        if (lineTotal && Number(lineTotal) > 0) {
+          itemLine += ` = Rs.${lineTotal}`;
+        }
+        return itemLine;
       }).join('\n');
-      itemsText = `\n📋 *ITEMIZED BILL:*\n${itemsList}\n`;
+
+      const totalPcs = items.reduce((acc, it) => acc + (Number(it.quantity) || 1), 0);
+      itemsText = `\n--- ITEMIZED GARMENTS & SERVICES ---\n${itemsList}\nTotal Garments: ${totalPcs} Pieces\n`;
     }
 
-    const finalTotal = order.finalPrice || order.priceSnapshot?.finalTotal || order.totalAmount || 0;
-    const paymentStatus = order.paymentStatus === 'PAID' ? '✅ PAID' : '⏳ PENDING';
-    const paymentMethod = order.paymentMethod === 'UPI_QR' ? 'UPI' : order.paymentMethod === 'CASH' ? 'Cash' : order.paymentMethod === 'CARD' ? 'Card' : 'Pay on Delivery';
+    let weightSection = '';
+    if (pricingType === 'per_kg' || weightKg) {
+      const wKg = Number(weightKg) || 0;
+      const rate = Number(pricePerKg) || 100;
+      const weighedBase = Math.round(wKg * rate);
+      weightSection = `\n--- WEIGHED SCALE LAUNDRY ---\nScale Weight: ${wKg} Kg\nRate per Kg: Rs.${rate} / Kg\nWeighed Total: Rs.${weighedBase}\n`;
+    }
 
-    return `✨ *TECH WASH LAUNDRY SERVICES* ✨
-_Official Tax Invoice & Garment Receipt_
-----------------------------------------
-👋 Hello *${customerName}*,
+    const snapshot = order.priceSnapshot || {};
+    const itemsSubtotal = snapshot.itemsSubtotal || order.subtotal || 0;
+    const expressFee = snapshot.expressFee || (order.isExpress ? 100 : 0);
+    const discountAmount = snapshot.discountAmount || 0;
+    const finalTotal = Number(order.finalPrice || snapshot.finalTotal || order.totalAmount || 0);
+    const receivedAmount = Number(order.receivedAmount !== undefined ? order.receivedAmount : (order.paymentStatus === 'PAID' ? finalTotal : 0));
+    const balanceAmount = Number(order.balanceAmount !== undefined ? order.balanceAmount : Math.max(0, finalTotal - receivedAmount));
 
-Here is your official invoice for Order *#${orderNumber}*:
+    const paymentMethod = order.paymentMethod || 'CASH';
+    const paymentLabel = paymentMethod === 'UPI_QR' || paymentMethod === 'UPI' 
+      ? 'UPI / QR Scan' 
+      : paymentMethod === 'CASH' 
+      ? 'Cash' 
+      : paymentMethod === 'CARD' 
+      ? 'Card / POS Swipe' 
+      : 'Pay on Delivery';
 
-🧾 *INVOICE DETAILS*
-• *Invoice No:* *${invoiceNumber}*
-• *Order ID:* *#${orderNumber}*
-• *Service:* ${serviceEmoji} *${serviceName}*
-• *Date:* ${order.pickupDate || order.schedule?.pickupDate || 'Today'}
-${itemsText}
-💰 *PAYMENT SUMMARY*
-• *Total Amount:* *₹${finalTotal}*
-• *Payment Status:* ${paymentStatus}
-• *Payment Mode:* ${paymentMethod}
+    const statusLabel = (balanceAmount === 0 || order.paymentStatus === 'PAID') 
+      ? 'PAID (Settled)' 
+      : (receivedAmount > 0 ? 'PARTIALLY PAID (Balance Pending)' : 'PENDING PAYMENT');
 
-📲 *VIEW & DOWNLOAD FULL INVOICE / TRACK STATUS:*
-👉 ${invoiceUrl}
+    const orderDate = order.createdAt 
+      ? new Date(order.createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+      : (order.pickupDate || new Date().toLocaleDateString('en-IN'));
 
-📞 *Support Helpline:* +91 63048 45567
-🌐 *Website:* https://techwash.in
+    return `========================================
+TECH WASH LAUNDRY SERVICES
+Official Tax Invoice & Garment Care Receipt
+========================================
 
-_Thank you for trusting Tech Wash for your garment care!_`;
+Hello ${customerName},
+
+Thank you for choosing Tech Wash. Here is your official detailed bill and receipt for Order #${orderNumber}:
+
+--- STORE & COUNTER INFO ---
+Store Branch: ${storeBranch}
+Counter Terminal: ${terminalCode}
+Cashier Operator: ${cashierName}
+
+--- INVOICE & ORDER DETAILS ---
+Invoice Number: ${invoiceNumber}
+Order Number: #${orderNumber}${manualBillNumber ? `\nManual Slip / Token: #${manualBillNumber}` : ''}
+Booking Date: ${orderDate}
+Primary Service: ${serviceEmoji} ${serviceName}
+${weightSection}${itemsText}
+--- PAYMENT & BILLING SUMMARY ---
+${itemsSubtotal > 0 && (pricingType === 'per_kg' || expressFee > 0 || discountAmount > 0) ? `Items Subtotal: Rs.${itemsSubtotal}\n` : ''}${expressFee > 0 ? `Express 24h Priority: Rs.${expressFee}\n` : ''}${discountAmount > 0 ? `Special Discount: -Rs.${discountAmount}\n` : ''}GRAND TOTAL: Rs.${finalTotal}
+Amount Received: Rs.${receivedAmount}
+Balance Due: Rs.${balanceAmount}
+Payment Status: ${statusLabel}
+Payment Mode: ${paymentLabel}
+
+========================================
+VIEW & DOWNLOAD OFFICIAL PDF / TRACK LIVE STATUS:
+${invoiceUrl}
+
+Store Helpline: +91 63048 45567
+Support Email: care@techwash.in
+Official Website: https://techwash.in
+
+Thank you for trusting Tech Wash for your premium garment care!
+========================================`;
   },
 
   /**
