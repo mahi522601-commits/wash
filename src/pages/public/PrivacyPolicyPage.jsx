@@ -40,7 +40,7 @@ export const PrivacyPolicyPage = () => {
           <h3 className="text-lg font-bold text-slate-900 font-display pt-2">4. Contacting Our Data Concierge</h3>
           <p>
             If you have questions regarding our privacy practices, please contact support at{' '}
-            <strong className="text-slate-900">{settings?.general?.supportEmail || 'support@techwash.in'}</strong>.
+            <strong className="text-slate-900">{settings?.general?.supportEmail || 'support@techwashlaundry.com'}</strong>.
           </p>
         </div>
       </div>

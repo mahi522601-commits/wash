@@ -99,7 +99,7 @@ export const WorkerLoginPage = () => {
                 <input
                   type="email"
                   required
-                  placeholder="name@techwash.in"
+                  placeholder="name@techwashlaundry.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-10 pr-4 text-xs font-medium text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"

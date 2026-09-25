@@ -523,7 +523,7 @@ export const chatbotService = {
         payload: {
           phone: settings?.general?.primaryPhone || '+91 63048 45567',
           whatsapp: settings?.general?.whatsappNumber || '+91 63048 45567',
-          email: settings?.general?.supportEmail || 'care@techwash.in',
+          email: settings?.general?.supportEmail || 'care@techwashlaundry.com',
         },
         contextPills: [
           { label: '📦 Book Online', value: 'Book a Doorstep Pickup' },

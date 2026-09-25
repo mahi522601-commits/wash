@@ -11,7 +11,7 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const BASE_URL = 'https://www.techwashlaundry.com';
+const BASE_URL = 'https://techwashlaundry.com';
 
 const CORE_PAGES = [
   { 

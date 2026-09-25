@@ -134,7 +134,7 @@ export const AdminLoginPage = () => {
                   required
                   autoComplete="email"
                   autoFocus
-                  placeholder="admin@techwash.in"
+                  placeholder="admin@techwashlaundry.com"
                   value={email}
                   onChange={(e) => {
                     setEmail(e.target.value);

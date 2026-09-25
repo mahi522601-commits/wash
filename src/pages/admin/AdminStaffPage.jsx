@@ -186,7 +186,7 @@ Admin Master Unlock: techwashadmin`;
     const text = `🚀 Tech Wash Worker Login Credentials:
 Portal URL: ${origin}/worker/login
 Worker Name: ${staff.name}
-Email / Login: ${staff.email || staff.phone + '@techwash.in'}
+Email / Login: ${staff.email || staff.phone + '@techwashlaundry.com'}
 Password: ${staff.password || '(Contact Administrator)'}
 Hub: ${staff.hub || 'Central Hub'}
 Role: ${staff.role || 'Delivery Executive'}`;
@@ -696,7 +696,7 @@ Role: ${staff.role || 'Delivery Executive'}`;
               label="Worker Email Address *"
               required
               type="email"
-              placeholder="e.g. rider@techwash.in"
+              placeholder="e.g. rider@techwashlaundry.com"
               value={currentStaff.email}
               onChange={(e) => setCurrentStaff({ ...currentStaff, email: e.target.value })}
             />

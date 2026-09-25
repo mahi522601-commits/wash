@@ -77,7 +77,7 @@ export const FloatingActionHub = ({ onOpenAssistant }) => {
     }
   };
 
-  const appOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://techwash.in';
+  const appOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://techwashlaundry.com';
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(appOrigin)}&bgcolor=14122E&color=F97316&format=png`;
 
   return (

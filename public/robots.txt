@@ -1,5 +1,5 @@
 # Tech Wash Laundry Services - Robots.txt
-# Canonical: https://www.techwashlaundry.com
+# Canonical: https://techwashlaundry.com
 
 User-agent: *
 Allow: /
@@ -32,5 +32,5 @@ Disallow: /worker/
 Disallow: /track-order?*
 
 # Sitemaps (XML & TXT)
-Sitemap: https://www.techwashlaundry.com/sitemap.xml
-Sitemap: https://www.techwashlaundry.com/sitemap.txt
+Sitemap: https://techwashlaundry.com/sitemap.xml
+Sitemap: https://techwashlaundry.com/sitemap.txt

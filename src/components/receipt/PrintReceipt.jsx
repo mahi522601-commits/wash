@@ -42,7 +42,7 @@ export const PrintReceipt = ({
   } = receiptData;
 
   // Compute tracking and payment QR URLs
-  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://techwash.in';
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://techwashlaundry.com';
   const trackingUrl = `${origin}/track-order?id=${orderNumber}`;
   const trackingQrUrl = generateQrImageUrl(trackingUrl, 120);
 
@@ -98,9 +98,9 @@ export const PrintReceipt = ({
             <div className="flex flex-wrap items-center gap-x-2 text-slate-600 font-semibold text-[8px]">
               <span>Tel: {config.phone || '+91 63048 45567'}</span>
               <span>•</span>
-              <span>{config.email || 'care@techwash.in'}</span>
+              <span>{config.email || 'care@techwashlaundry.com'}</span>
               <span>•</span>
-              <span>{config.website || 'https://techwash.in'}</span>
+              <span>{config.website || 'https://techwashlaundry.com'}</span>
             </div>
             {config.showGst && config.gstNumber && (
               <p className="font-bold text-slate-800 text-[8px]">
@@ -436,7 +436,7 @@ export const PrintReceipt = ({
             {config.thankYouMessage || 'Thank you for choosing Tech Wash Laundry Services.'}
           </p>
           <p className="text-[7.5px] text-slate-400">
-            {config.footerContactNote || 'Customer Concierge: +91 63048 45567 • care@techwash.in • https://techwash.in'}
+            {config.footerContactNote || 'Customer Concierge: +91 63048 45567 • care@techwashlaundry.com • https://techwashlaundry.com'}
           </p>
         </div>
 

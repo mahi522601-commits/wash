@@ -142,8 +142,8 @@ export const ContactPage = () => {
                   </div>
                   <div>
                     <div className="font-bold text-slate-900">Email Inquiries</div>
-                    <a href={`mailto:${general.supportEmail || 'support@techwash.in'}`} className="text-royal-700 hover:underline">
-                      {general.supportEmail || 'support@techwash.in'}
+                    <a href={`mailto:${general.supportEmail || 'support@techwashlaundry.com'}`} className="text-royal-700 hover:underline">
+                      {general.supportEmail || 'support@techwashlaundry.com'}
                     </a>
                   </div>
                 </div>

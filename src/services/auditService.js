@@ -20,7 +20,7 @@ export const auditService = {
     newValue = null,
     user = null,
   }) {
-    const actor = user || { email: 'admin@techwash.in', displayName: 'Admin User', role: 'admin' };
+    const actor = user || { email: 'admin@techwashlaundry.com', displayName: 'Admin User', role: 'admin' };
     
     const entry = {
       id: `log-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,

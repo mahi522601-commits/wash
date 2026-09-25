@@ -50,7 +50,7 @@ export const Navbar = () => {
 
   const primaryPhone = settings?.general?.primaryPhone || '+91 63048 45567';
   const whatsappNumber = settings?.general?.whatsappNumber || '+91 63048 45567';
-  const supportEmail = settings?.general?.supportEmail || 'support@techwash.in';
+  const supportEmail = settings?.general?.supportEmail || 'support@techwashlaundry.com';
   const businessAddress = settings?.general?.businessAddress || 'Road No. 36, Jubilee Hills, Hyderabad';
 
   const cleanPhone = primaryPhone.replace(/[^0-9]/g, '');

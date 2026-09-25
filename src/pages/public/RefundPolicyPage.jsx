@@ -35,7 +35,7 @@ export const RefundPolicyPage = () => {
           <h3 className="text-lg font-bold text-slate-900 font-display pt-2">3. Dispute Resolution</h3>
           <p>
             For any billing questions or concerns, reach our executive support desk at{' '}
-            <strong className="text-slate-900">{settings?.general?.supportEmail || 'support@techwash.in'}</strong> or via our WhatsApp Concierge.
+            <strong className="text-slate-900">{settings?.general?.supportEmail || 'support@techwashlaundry.com'}</strong> or via our WhatsApp Concierge.
           </p>
         </div>
       </div>

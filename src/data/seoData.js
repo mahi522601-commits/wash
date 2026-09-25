@@ -3,7 +3,7 @@
  * Single source of truth for Hyderabad Local SEO, Service SEO, and Schema.org metadata
  */
 
-export const BASE_URL = 'https://www.techwashlaundry.com';
+export const BASE_URL = 'https://techwashlaundry.com';
 
 export const BUSINESS_INFO = {
   name: 'Tech Wash Laundry Services',
@@ -13,7 +13,7 @@ export const BUSINESS_INFO = {
   logo: `${BASE_URL}/techwashlogo.webp`,
   image: `${BASE_URL}/techwashlogo.webp`,
   telephone: '+91 63048 45567',
-  email: 'support@techwash.in',
+  email: 'support@techwashlaundry.com',
   priceRange: '₹12 - ₹350',
   currenciesAccepted: 'INR',
   paymentAccepted: 'Cash, Credit Card, Debit Card, UPI, Google Pay, PhonePe, Paytm, Net Banking',

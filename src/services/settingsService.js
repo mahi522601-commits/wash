@@ -16,7 +16,7 @@ export const DEFAULT_SETTINGS = {
     tagline: 'Next-Generation Premium Garment Care & Express Doorstep Service',
     logoUrl: '/techwashlogo.webp',
     faviconUrl: '/techwashlogo.webp',
-    supportEmail: 'support@techwash.in',
+    supportEmail: 'support@techwashlaundry.com',
     primaryPhone: '+91 63048 45567',
     whatsappNumber: '+91 63048 45567',
     whatsappDefaultMessage: 'Hello Tech Wash, I would like to schedule a premium garment pickup.',
@@ -48,7 +48,7 @@ export const DEFAULT_SETTINGS = {
     metaDescription: 'Technology-driven laundry, eco-friendly dry cleaning, steam pressing, and shoe care with doorstep pickup and 24-hr express delivery.',
     keywords: 'laundry service, dry cleaning, steam ironing, shoe laundry, garment care, doorstep laundry pickup',
     ogImageUrl: '',
-    canonicalUrl: 'https://techwash.in',
+    canonicalUrl: 'https://techwashlaundry.com',
   },
   social: {
     instagram: 'https://instagram.com/techwashlaundry',

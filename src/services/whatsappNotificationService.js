@@ -158,7 +158,7 @@ export const whatsappNotificationService = {
 
     const paymentStatusBadge = (order.paymentStatus || 'PENDING') === 'PAID' ? '✅ PAID' : '⏳ Pending on Delivery';
 
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://techwash.in';
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://techwashlaundry.com';
     const trackingUrl = `${origin}/track-order?id=${orderNumber}`;
 
     const lat = order.pickupLocation?.latitude;
@@ -205,7 +205,7 @@ ${deliveryFee > 0 ? `• *Doorstep Logistics:* ₹${deliveryFee}\n` : '• *Door
 📞 *NEED ASSISTANCE / RESCHEDULE:*
 • Hotline: +91 63048 45567
 • WhatsApp: +91 63048 45567
-• Web: https://techwash.in
+• Web: https://techwashlaundry.com
 
 _Fresh clothes. Professional care. Thank you for choosing Tech Wash!_`;
 
@@ -225,7 +225,7 @@ _Fresh clothes. Professional care. Thank you for choosing Tech Wash!_`;
     const amount = order.finalPrice || order.priceSnapshot?.finalTotal || order.totalAmount || 0;
     const actualWeight = order.actualWeight;
 
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://techwash.in';
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://techwashlaundry.com';
     const trackingUrl = `${origin}/track-order?id=${orderNumber}`;
 
     const message = 
@@ -262,7 +262,7 @@ ${customNote ? `📝 *Update Note:* ${customNote}\n` : ''}${actualWeight ? `⚖�
     const terminalCode = order.terminalCode || 'TW-POS-01';
     const cashierName = order.cashierName || 'Counter Cashier';
 
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://techwash.in';
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://techwashlaundry.com';
     const invoiceUrl = `${origin}/track-order?id=${orderNumber}`;
 
     const pricingType = order.pricingType || (order.weightKg ? 'per_kg' : 'per_item');
@@ -358,8 +358,8 @@ VIEW & DOWNLOAD OFFICIAL PDF / TRACK LIVE STATUS:
 ${invoiceUrl}
 
 Store Helpline: +91 63048 45567
-Support Email: care@techwash.in
-Official Website: https://techwash.in
+Support Email: care@techwashlaundry.com
+Official Website: https://techwashlaundry.com
 
 Thank you for trusting Tech Wash for your premium garment care!
 ========================================`;
@@ -402,7 +402,7 @@ Hey *${staffMember?.name || 'Rider'}*, you have a new assigned task!
 👉 ${mapsLink}
 
 📱 *WORKER PORTAL:*
-https://techwash.in/worker
+https://techwashlaundry.com/worker
 
 _Please arrive on time, inspect & weigh garments at customer doorstep._`;
   },
