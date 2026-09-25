@@ -4,7 +4,7 @@
  * Two-Category Reconciliation Accounting, and Automated 1,000-Order Backups.
  */
 
-import { orderService } from './orderService.js';
+import { orderService, getOrderBranchKey } from './orderService.js';
 
 const BACKUP_STORAGE_PREFIX = 'techwash_backup_checkpoint_';
 const LAST_BACKUP_COUNT_KEY = 'techwash_last_backup_order_count';
@@ -152,22 +152,8 @@ export const reportService = {
       // 3. Counter Terminal Specific Branch Check
       if (branchFilter && branchFilter !== 'ALL' && branchFilter !== 'POS_ONLY' && branchFilter !== 'ALL_POS' && branchFilter !== 'ONLINE_WEBSITE') {
         if (!isPos) return false;
-
-        const tId = (order.terminalId || '').toLowerCase();
-        const tCode = (order.terminalCode || '').toLowerCase();
-        const bName = (order.storeBranch || '').toLowerCase();
-        const filterLower = branchFilter.toLowerCase();
-        
-        if (filterLower.includes('counter-1') || filterLower.includes('pos-01') || filterLower.includes('jubilee')) {
-          const matchesC1 = tId.includes('counter-1') || tId.includes('pos-01') || tCode.includes('pos-01') || bName.includes('jubilee');
-          if (!matchesC1) return false;
-        } else if (filterLower.includes('counter-2') || filterLower.includes('pos-02') || filterLower.includes('hitec')) {
-          const matchesC2 = tId.includes('counter-2') || tId.includes('pos-02') || tCode.includes('pos-02') || bName.includes('hitec');
-          if (!matchesC2) return false;
-        } else if (filterLower.includes('counter-3') || filterLower.includes('pos-03') || filterLower.includes('banjara')) {
-          const matchesC3 = tId.includes('counter-3') || tId.includes('pos-03') || tCode.includes('pos-03') || bName.includes('banjara');
-          if (!matchesC3) return false;
-        }
+        const bKey = getOrderBranchKey(order);
+        if (bKey !== branchFilter) return false;
       }
 
       // 4. Search Query
@@ -458,19 +444,8 @@ export const reportService = {
       // 2. Specific Counter Terminal / Branch Check
       if (branchFilter && branchFilter !== 'ALL' && branchFilter !== 'POS_ONLY' && branchFilter !== 'ALL_POS' && branchFilter !== 'ONLINE_WEBSITE') {
         if (!isPos) return;
-
-        const tId = (order.terminalId || '').toLowerCase();
-        const tCode = (order.terminalCode || '').toLowerCase();
-        const bName = (order.storeBranch || '').toLowerCase();
-        const filterLower = branchFilter.toLowerCase();
-        
-        if (filterLower.includes('counter-1') || filterLower.includes('pos-01') || filterLower.includes('jubilee')) {
-          if (!tId.includes('counter-1') && !tId.includes('pos-01') && !tCode.includes('pos-01') && !bName.includes('jubilee')) return;
-        } else if (filterLower.includes('counter-2') || filterLower.includes('pos-02') || filterLower.includes('hitec')) {
-          if (!tId.includes('counter-2') && !tId.includes('pos-02') && !tCode.includes('pos-02') && !bName.includes('hitec')) return;
-        } else if (filterLower.includes('counter-3') || filterLower.includes('pos-03') || filterLower.includes('banjara')) {
-          if (!tId.includes('counter-3') && !tId.includes('pos-03') && !tCode.includes('pos-03') && !bName.includes('banjara')) return;
-        }
+        const bKey = getOrderBranchKey(order);
+        if (bKey !== branchFilter) return;
       }
 
       const orderDateObj = parseOrderDateSafe(order.createdAt || order.pickupDate || order.schedule?.pickupDate);

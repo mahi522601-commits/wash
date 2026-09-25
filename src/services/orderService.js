@@ -48,6 +48,45 @@ export const INTERNAL_OPERATIONAL_STAGES = {
 const ORDERS_STORAGE_KEY = 'techwash_orders_store';
 const ORDER_SEQ_KEY = 'techwash_order_sequence_counter';
 
+export const getOrderBranchKey = (order) => {
+  if (!order) return 'ONLINE_WEBSITE';
+  const isPos = Boolean(
+    order.isWalkIn === true || 
+    order.orderSource === 'OFFLINE_POS' || 
+    order.orderSource === 'WALK_IN' || 
+    order.orderSource === 'POS' ||
+    order.terminalId || 
+    order.terminalCode || 
+    order.manualBillNumber
+  );
+  if (!isPos) return 'ONLINE_WEBSITE';
+
+  const tId = String(order.terminalId || '').toLowerCase().trim();
+  const tCode = String(order.terminalCode || '').toLowerCase().trim();
+  const bName = String(order.storeBranch || '').toLowerCase().trim();
+
+  // Explicit Counter 2 checks
+  if (
+    tId === 'counter-2' || tId === '2' || tId.includes('counter-2') || tId.includes('pos-02') || 
+    tCode === 'tw-pos-02' || tCode.includes('pos-02') || tCode.includes('02') ||
+    bName.includes('hitec') || bName.includes('cyber') || bName.includes('express hub')
+  ) {
+    return 'counter-2';
+  }
+
+  // Explicit Counter 3 checks
+  if (
+    tId === 'counter-3' || tId === '3' || tId.includes('counter-3') || tId.includes('pos-03') || 
+    tCode === 'tw-pos-03' || tCode.includes('pos-03') || tCode.includes('03') ||
+    bName.includes('banjara') || bName.includes('care center')
+  ) {
+    return 'counter-3';
+  }
+
+  // Counter 1 or fallback POS
+  return 'counter-1';
+};
+
 export const orderService = {
   /**
    * Generates next sequential 5-digit order number (e.g. 00001 -> 99999, TW-00001)
@@ -270,15 +309,22 @@ export const orderService = {
     }
 
     try {
-      const orders = await this.getOrders();
-      orders.unshift(fullOrder);
-      localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(orders));
+      let localOrders = [];
+      try {
+        localOrders = JSON.parse(localStorage.getItem(ORDERS_STORAGE_KEY) || '[]');
+      } catch (e) {
+        localOrders = [];
+      }
+      // Insert fullOrder at start, deduplicate by id & orderNumber
+      const updatedLocal = [fullOrder, ...localOrders.filter(o => o.id !== fullOrder.id && o.orderNumber !== fullOrder.orderNumber)];
+      localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(updatedLocal));
     } catch (e) {
       console.warn("Local storage order caching error:", e);
     }
 
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('techwash-new-order-placed', { detail: fullOrder }));
+      window.dispatchEvent(new CustomEvent('techwash-order-updated', { detail: fullOrder }));
       try {
         if ('BroadcastChannel' in window) {
           const channel = new BroadcastChannel('techwash_orders_channel');
@@ -296,9 +342,10 @@ export const orderService = {
   /**
    * Get all orders with optional filtering
    */
-  async getOrders({ status = null, search = '', limitCount = 200 } = {}) {
+  async getOrders({ status = null, search = '', limitCount = 2000 } = {}) {
     let ordersList = [];
 
+    // 1. Fetch from Firestore if configured
     if (isFirebaseConfigured && db) {
       try {
         const snap = await getDocs(collection(db, 'orders'));
@@ -316,18 +363,43 @@ export const orderService = {
       }
     }
 
-    if (ordersList.length === 0) {
-      try {
-        ordersList = JSON.parse(localStorage.getItem(ORDERS_STORAGE_KEY) || '[]');
-      } catch (e) {
-        ordersList = [];
-      }
+    // 2. Fetch and merge LocalStorage orders so offline/counter POS orders are never lost
+    let localOrders = [];
+    try {
+      localOrders = JSON.parse(localStorage.getItem(ORDERS_STORAGE_KEY) || '[]');
+    } catch (e) {
+      localOrders = [];
     }
+
+    const orderMap = new Map();
+    // A. Insert Firestore orders
+    ordersList.forEach(o => {
+      const key = o.id || o.orderNumber;
+      if (key) orderMap.set(key, o);
+    });
+    // B. Merge LocalStorage orders (Local overrides or supplements if matching/newer)
+    localOrders.forEach(o => {
+      const key = o.id || o.orderNumber;
+      if (key) {
+        const existing = orderMap.get(key);
+        if (!existing) {
+          orderMap.set(key, o);
+        } else {
+          const localTime = new Date(o.updatedAt || o.createdAt || 0).getTime();
+          const remoteTime = new Date(existing.updatedAt || existing.createdAt || 0).getTime();
+          if (localTime >= remoteTime) {
+            orderMap.set(key, { ...existing, ...o });
+          }
+        }
+      }
+    });
+
+    let mergedList = Array.from(orderMap.values());
 
     // Filter by search query (orderNumber, customer name, phone, address, serviceName)
     if (search) {
       const q = search.toLowerCase();
-      ordersList = ordersList.filter(o => 
+      mergedList = mergedList.filter(o => 
         (o.orderNumber && o.orderNumber.toLowerCase().includes(q)) ||
         (o.id && o.id.toLowerCase().includes(q)) ||
         (o.customerName && o.customerName.toLowerCase().includes(q)) ||
@@ -341,14 +413,14 @@ export const orderService = {
 
     // Filter by status stage
     if (status && status !== 'ALL') {
-      ordersList = ordersList.filter(o => 
+      mergedList = mergedList.filter(o => 
         o.customerStage === status || 
         o.status === status || 
         o.paymentStatus === status
       );
     }
 
-    return ordersList.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)).slice(0, limitCount);
+    return mergedList.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)).slice(0, limitCount);
   },
 
   /**

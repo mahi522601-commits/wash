@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Link } from 'react-router-dom';
-import { orderService, ORDER_CUSTOMER_STAGES, INTERNAL_OPERATIONAL_STAGES } from '../../services/orderService';
+import { Link, useSearchParams } from 'react-router-dom';
+import { orderService, getOrderBranchKey, ORDER_CUSTOMER_STAGES, INTERNAL_OPERATIONAL_STAGES } from '../../services/orderService';
 import { staffService } from '../../services/staffService';
 import { auditService } from '../../services/auditService';
 import { whatsappNotificationService } from '../../services/whatsappNotificationService';
@@ -212,6 +212,63 @@ export const MASTER_CATALOG_ITEMS = [
   { id: 'ex-6', name: 'Antiseptic Fabric Sanitization Surcharge', price: 40, emoji: '🛡️', categoryKey: 'EXTRA_SERVICES', categoryName: "Special Care" },
 ];
 
+export const STORE_BRANCHES = [
+  {
+    id: 'counter-1',
+    code: 'TW-POS-01',
+    name: 'Counter 1 — Jubilee Hills Flagship',
+    shortName: 'Jubilee Hills Flagship',
+    locationName: 'Tech Wash Flagship Lounge — Jubilee Hills',
+    address: 'Road No. 36, CBI Colony, Jubilee Hills, Hyderabad',
+    phone: '+91 63048 45567',
+    cashierName: 'Rahul Verma (Cashier #1)',
+    posUrl: '/billing/counter-1',
+    reportUrl: '/admin/reports?branch=counter-1',
+    themeColor: 'blue',
+    gradient: 'from-blue-600 to-indigo-700',
+    cardBorder: 'border-blue-200 hover:border-blue-400',
+    activeRing: 'ring-2 ring-blue-500 bg-blue-50/70 border-blue-400',
+    badgeClass: 'bg-blue-100 text-blue-900 border-blue-200',
+    iconBg: 'bg-blue-600 text-white',
+  },
+  {
+    id: 'counter-2',
+    code: 'TW-POS-02',
+    name: 'Counter 2 — Hitec City Express Hub',
+    shortName: 'Hitec City Hub',
+    locationName: 'Tech Wash Express Hub — Hitec City',
+    address: 'Near Cyber Towers, Madhapur, Hitec City, Hyderabad',
+    phone: '+91 63048 45567',
+    cashierName: 'Sneha Reddy (Cashier #2)',
+    posUrl: '/billing/counter-2',
+    reportUrl: '/admin/reports?branch=counter-2',
+    themeColor: 'purple',
+    gradient: 'from-purple-600 to-violet-700',
+    cardBorder: 'border-purple-200 hover:border-purple-400',
+    activeRing: 'ring-2 ring-purple-500 bg-purple-50/70 border-purple-400',
+    badgeClass: 'bg-purple-100 text-purple-900 border-purple-200',
+    iconBg: 'bg-purple-600 text-white',
+  },
+  {
+    id: 'counter-3',
+    code: 'TW-POS-03',
+    name: 'Counter 3 — Banjara Hills Care Center',
+    shortName: 'Banjara Hills Express',
+    locationName: 'Tech Wash Care Center — Banjara Hills',
+    address: 'Road No. 12, MLA Colony, Banjara Hills, Hyderabad',
+    phone: '+91 63048 45567',
+    cashierName: 'Vikram Rao (Cashier #3)',
+    posUrl: '/billing/counter-3',
+    reportUrl: '/admin/reports?branch=counter-3',
+    themeColor: 'orange',
+    gradient: 'from-orange-600 to-amber-700',
+    cardBorder: 'border-orange-200 hover:border-orange-400',
+    activeRing: 'ring-2 ring-orange-500 bg-orange-50/70 border-orange-400',
+    badgeClass: 'bg-orange-100 text-orange-900 border-orange-200',
+    iconBg: 'bg-orange-600 text-white',
+  },
+];
+
 const INITIAL_WALK_IN_FORM = {
   customerName: '',
   phone: '',
@@ -230,19 +287,28 @@ const INITIAL_WALK_IN_FORM = {
   paymentMethod: 'CASH', // 'CASH' | 'UPI_QR' | 'CARD' | 'PAY_ON_DELIVERY'
   notes: '',
   internalAdminNotes: 'In-Store Walk-in Customer POS Order',
-  storeBranch: 'Central Flagship Hub (Banjara Hills / Jubilee Hills)',
+  terminalId: 'counter-1',
+  terminalCode: 'TW-POS-01',
+  storeBranch: 'Tech Wash Flagship Lounge — Jubilee Hills',
+  cashierName: 'Rahul Verma (Cashier #1)',
   autoOpenReceipt: true,
   autoSendWhatsApp: true,
 };
 
 export const AdminOrdersPage = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const { currentUser } = useAuth();
   const { success, error } = useToast();
+
+  // Read initial filter from URL parameters if available
+  const initialBranch = searchParams.get('branch') || 'ALL';
+  const initialChannel = searchParams.get('channel') || 'ALL';
 
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedStatus, setSelectedStatus] = useState('ALL');
-  const [channelFilter, setChannelFilter] = useState('ALL'); // 'ALL' | 'ONLINE_WEBSITE' | 'OFFLINE_POS'
+  const [branchFilter, setBranchFilter] = useState(initialBranch); // 'ALL' | 'counter-1' | 'counter-2' | 'counter-3' | 'ONLINE_WEBSITE'
+  const [channelFilter, setChannelFilter] = useState(initialChannel); // 'ALL' | 'ONLINE_WEBSITE' | 'OFFLINE_POS'
   const [searchQuery, setSearchQuery] = useState('');
   const [activeOrder, setActiveOrder] = useState(null);
   const [receiptModalOrder, setReceiptModalOrder] = useState(null);
@@ -257,6 +323,36 @@ export const AdminOrdersPage = () => {
   const [testPhone, setTestPhone] = useState('');
   const [isTestingGateway, setIsTestingGateway] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+
+  // Sync state with URL params
+  const updateBranchFilter = (newBranch) => {
+    setBranchFilter(newBranch);
+    const nextParams = new URLSearchParams(searchParams);
+    if (newBranch && newBranch !== 'ALL') {
+      nextParams.set('branch', newBranch);
+    } else {
+      nextParams.delete('branch');
+    }
+    setSearchParams(nextParams, { replace: true });
+  };
+
+  const updateChannelFilter = (newChannel) => {
+    setChannelFilter(newChannel);
+    const nextParams = new URLSearchParams(searchParams);
+    if (newChannel && newChannel !== 'ALL') {
+      nextParams.set('channel', newChannel);
+    } else {
+      nextParams.delete('channel');
+    }
+    setSearchParams(nextParams, { replace: true });
+  };
+
+  useEffect(() => {
+    const b = searchParams.get('branch') || 'ALL';
+    const c = searchParams.get('channel') || 'ALL';
+    if (b !== branchFilter) setBranchFilter(b);
+    if (c !== channelFilter) setChannelFilter(c);
+  }, [searchParams]);
 
   // Quick payment collection state inside active order modal
   const [collectionAmount, setCollectionAmount] = useState('');
@@ -286,6 +382,53 @@ export const AdminOrdersPage = () => {
   const [finalPrice, setFinalPrice] = useState('');
   const [adminNotes, setAdminNotes] = useState('');
   const [statusNote, setStatusNote] = useState('');
+
+  // Live Multi-Branch & Channel Statistics Calculation
+  const branchStats = useMemo(() => {
+    const stats = {
+      'counter-1': { count: 0, billed: 0, collected: 0, due: 0 },
+      'counter-2': { count: 0, billed: 0, collected: 0, due: 0 },
+      'counter-3': { count: 0, billed: 0, collected: 0, due: 0 },
+      'ONLINE_WEBSITE': { count: 0, billed: 0, collected: 0, due: 0 },
+      'ALL': { count: 0, billed: 0, collected: 0, due: 0 },
+      'POS_ONLY': { count: 0, billed: 0, collected: 0, due: 0 },
+    };
+
+    orders.forEach((ord) => {
+      const isPos = ord.isWalkIn || ord.orderSource === 'OFFLINE_POS' || ord.orderSource === 'WALK_IN' || !!ord.terminalId || !!ord.terminalCode;
+      const bKey = getOrderBranchKey(ord);
+      const total = Number(ord.finalPrice || ord.priceSnapshot?.finalTotal || ord.totalAmount || 0);
+      const received = Number(ord.receivedAmount !== undefined && ord.receivedAmount !== null ? ord.receivedAmount : (ord.paymentStatus === 'PAID' ? total : 0));
+      const balance = Number(ord.balanceAmount !== undefined && ord.balanceAmount !== null ? ord.balanceAmount : Math.max(0, total - received));
+
+      // Consolidated
+      stats.ALL.count += 1;
+      stats.ALL.billed += total;
+      stats.ALL.collected += received;
+      stats.ALL.due += balance;
+
+      if (isPos) {
+        stats.POS_ONLY.count += 1;
+        stats.POS_ONLY.billed += total;
+        stats.POS_ONLY.collected += received;
+        stats.POS_ONLY.due += balance;
+
+        if (stats[bKey]) {
+          stats[bKey].count += 1;
+          stats[bKey].billed += total;
+          stats[bKey].collected += received;
+          stats[bKey].due += balance;
+        }
+      } else {
+        stats.ONLINE_WEBSITE.count += 1;
+        stats.ONLINE_WEBSITE.billed += total;
+        stats.ONLINE_WEBSITE.collected += received;
+        stats.ONLINE_WEBSITE.due += balance;
+      }
+    });
+
+    return stats;
+  }, [orders]);
 
   const handleAssignWorker = async (order, staffMember) => {
     setIsDispatching(true);
@@ -366,25 +509,35 @@ export const AdminOrdersPage = () => {
     : (walkInForm.paymentStatus === 'PAID' ? walkInFinalTotal : 0);
   const walkInBalanceDue = Math.max(0, walkInFinalTotal - (isNaN(walkInReceived) ? 0 : walkInReceived));
 
-  // Channel and status filtering
+  // Comprehensive Multi-Branch & Channel filtering
   const filteredOrders = useMemo(() => {
     return orders.filter(ord => {
-      if (channelFilter === 'ONLINE_WEBSITE') {
-        return !ord.isWalkIn && ord.orderSource !== 'OFFLINE_POS';
+      const isPos = ord.isWalkIn || ord.orderSource === 'OFFLINE_POS' || ord.orderSource === 'WALK_IN' || !!ord.terminalId || !!ord.terminalCode;
+      
+      // 1. Channel Filter
+      if (channelFilter === 'ONLINE_WEBSITE' && isPos) return false;
+      if (channelFilter === 'OFFLINE_POS' && !isPos) return false;
+
+      // 2. Branch Filter
+      if (branchFilter && branchFilter !== 'ALL') {
+        if (branchFilter === 'ONLINE_WEBSITE') {
+          if (isPos) return false;
+        } else {
+          const bKey = getOrderBranchKey(ord);
+          if (bKey !== branchFilter) return false;
+        }
       }
-      if (channelFilter === 'OFFLINE_POS') {
-        return ord.isWalkIn || ord.orderSource === 'OFFLINE_POS';
-      }
+
       return true;
     });
-  }, [orders, channelFilter]);
+  }, [orders, channelFilter, branchFilter]);
 
   const onlineOrdersCount = useMemo(() => {
-    return orders.filter(o => !o.isWalkIn && o.orderSource !== 'OFFLINE_POS').length;
+    return orders.filter(o => !o.isWalkIn && o.orderSource !== 'OFFLINE_POS' && o.orderSource !== 'WALK_IN' && !o.terminalId).length;
   }, [orders]);
 
   const offlinePosOrdersCount = useMemo(() => {
-    return orders.filter(o => o.isWalkIn || o.orderSource === 'OFFLINE_POS').length;
+    return orders.filter(o => o.isWalkIn || o.orderSource === 'OFFLINE_POS' || o.orderSource === 'WALK_IN' || !!o.terminalId || !!o.terminalCode).length;
   }, [orders]);
 
   const filteredCatalogItems = useMemo(() => {
@@ -560,7 +713,10 @@ export const AdminOrdersPage = () => {
       const orderPayload = {
         isWalkIn: true,
         orderSource: 'OFFLINE_POS',
-        storeBranch: walkInForm.storeBranch,
+        terminalId: walkInForm.terminalId || 'counter-1',
+        terminalCode: walkInForm.terminalCode || 'TW-POS-01',
+        storeBranch: walkInForm.storeBranch || 'Tech Wash Flagship Lounge — Jubilee Hills',
+        cashierName: walkInForm.cashierName || 'Rahul Verma (Cashier #1)',
         customer: {
           name: walkInForm.customerName.trim(),
           phone: cleanPhone,
@@ -908,23 +1064,63 @@ export const AdminOrdersPage = () => {
 
   const columns = [
     {
-      title: 'Order ID & Source',
+      title: 'Order ID & Slip',
       key: 'orderNumber',
       className: 'whitespace-nowrap',
+      render: (val, row) => (
+        <div className="space-y-1">
+          <span className="font-mono font-black text-xs text-purple-800 bg-purple-100/80 px-2 py-1 rounded-lg border border-purple-200 shadow-2xs block w-fit">
+            #{val || row.id}
+          </span>
+          {row.manualBillNumber && (
+            <span className="inline-block text-[10px] font-mono font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+              Slip: #{row.manualBillNumber}
+            </span>
+          )}
+        </div>
+      ),
+    },
+    {
+      title: 'Date & Time / Branch',
+      key: 'createdAt',
+      className: 'whitespace-nowrap min-w-[200px]',
       render: (val, row) => {
-        const isOffline = row.isWalkIn || row.orderSource === 'OFFLINE_POS';
+        const isOffline = row.isWalkIn || row.orderSource === 'OFFLINE_POS' || row.orderSource === 'WALK_IN' || !!row.terminalId || !!row.terminalCode;
+        const bKey = getOrderBranchKey(row);
+        const branchObj = STORE_BRANCHES.find(b => b.id === bKey);
+        const formattedDateTime = formatDateTime(row.createdAt || val);
+        const formattedDateOnly = formatDate(row.createdAt || val);
+
         return (
           <div className="space-y-1">
-            <span className="font-mono font-black text-xs text-purple-800 bg-purple-100/80 px-2 py-1 rounded-lg border border-purple-200 shadow-2xs block w-fit">
-              #{val || row.id}
-            </span>
-            {isOffline ? (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black bg-orange-100 text-orange-900 border border-orange-200 shadow-2xs">
-                🏪 IN-STORE (POS)
+            {/* Exact Timestamp */}
+            <div className="flex items-center gap-1.5 text-xs text-slate-900 font-bold">
+              <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              <span className="font-mono text-[11px] text-slate-800">
+                {formattedDateTime !== '—' ? formattedDateTime : (row.pickupDate || formattedDateOnly)}
               </span>
+            </div>
+
+            {/* Branch Identification Badge */}
+            {isOffline ? (
+              <div className="space-y-0.5">
+                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black border shadow-2xs ${
+                  bKey === 'counter-1' ? 'bg-blue-50 text-blue-800 border-blue-200' :
+                  bKey === 'counter-2' ? 'bg-purple-50 text-purple-800 border-purple-200' :
+                  'bg-orange-50 text-orange-800 border-orange-200'
+                }`}>
+                  <span>🏪 {branchObj ? branchObj.shortName : 'Counter POS'}</span>
+                  <span className="font-mono text-[9px] opacity-75">({row.terminalCode || (branchObj ? branchObj.code : 'POS')})</span>
+                </span>
+                {row.cashierName && (
+                  <div className="text-[10px] text-slate-400 pl-0.5">
+                    Cashier: <strong className="text-slate-600">{row.cashierName.split(' ')[0]}</strong>
+                  </div>
+                )}
+              </div>
             ) : (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black bg-blue-100 text-blue-800 border border-blue-200 shadow-2xs">
-                🌐 ONLINE PICKUP
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black bg-blue-50 text-blue-800 border border-blue-200 shadow-2xs">
+                🌐 ONLINE DOORSTEP
               </span>
             )}
           </div>
@@ -937,21 +1133,32 @@ export const AdminOrdersPage = () => {
       render: (_, row) => (
         <div>
           <div className="font-bold text-slate-900 text-xs">{row.customerName || row.customer?.name || 'Customer'}</div>
-          <div className="text-[11px] text-slate-400">{row.phone || row.customer?.phone}</div>
+          <div className="text-[11px] text-slate-400 font-medium">{row.phone || row.customer?.phone}</div>
+          {row.address && (
+            <div className="text-[10px] text-slate-400 truncate max-w-[150px]" title={row.address}>
+              {row.address}
+            </div>
+          )}
         </div>
       ),
     },
     {
-      title: 'Service',
+      title: 'Service & Items',
       key: 'service',
       render: (val, row) => (
         <div>
-          <span className="text-xs font-semibold text-slate-700">{row.serviceEmoji || '🧺'} {row.service || row.serviceName}</span>
-          {(row.actualWeight || row.estimatedWeightKg || row.estimatedWeight) && (
-            <div className="text-[10px] text-slate-400">
-              {row.actualWeight ? `Actual: ${row.actualWeight} Kg` : `Est: ${row.estimatedWeightKg || row.estimatedWeight} Kg`}
-            </div>
-          )}
+          <span className="text-xs font-bold text-slate-800 flex items-center gap-1">
+            <span>{row.serviceEmoji || '🧺'}</span>
+            <span>{row.service || row.serviceName}</span>
+          </span>
+          <div className="flex items-center gap-2 text-[10px] text-slate-400 mt-0.5">
+            {row.items && row.items.length > 0 && (
+              <span>{row.items.length} {row.items.length === 1 ? 'item' : 'items'}</span>
+            )}
+            {(row.actualWeight || row.estimatedWeightKg || row.estimatedWeight) && (
+              <span>• {row.actualWeight ? `Act: ${row.actualWeight} Kg` : `Est: ${row.estimatedWeightKg || row.estimatedWeight} Kg`}</span>
+            )}
+          </div>
         </div>
       ),
     },
@@ -999,7 +1206,7 @@ export const AdminOrdersPage = () => {
       render: (val) => <StatusBadge status={val} />,
     },
     {
-      title: 'Schedule / Date',
+      title: 'Schedule / Slot',
       key: 'pickupDate',
       className: 'whitespace-nowrap',
       render: (val, row) => (
@@ -1123,6 +1330,259 @@ export const AdminOrdersPage = () => {
         </Button>
       </AdminPageHeader>
 
+      {/* ── TOP 3-BRANCH ISOLATION & SALES METRICS CARDS ── */}
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 className="text-sm font-black text-slate-900 font-display flex items-center gap-2">
+              <Store className="w-4 h-4 text-[#F97316]" />
+              <span>3-Branch Store Isolation & Sales Channels</span>
+            </h3>
+            <p className="text-[11px] text-slate-500">
+              Isolate billings and view orders, gross billed, collections, and dues independently for all 3 store branches, online doorstep, or master consolidated.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] text-slate-500 font-medium">Active Branch Filter:</span>
+            <span className="px-2.5 py-1 rounded-lg bg-slate-900 text-white font-bold text-xs">
+              {branchFilter === 'ALL' ? '🏢 All Branches Consolidated' :
+               branchFilter === 'counter-1' ? '🏪 Counter 1 — Jubilee Hills' :
+               branchFilter === 'counter-2' ? '🏪 Counter 2 — Hitec City' :
+               branchFilter === 'counter-3' ? '🏪 Counter 3 — Banjara Hills' :
+               '🌐 Online Website Pickups'}
+            </span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+          {/* 3 Dedicated Physical Branch Cards */}
+          {STORE_BRANCHES.map((br) => {
+            const isSelected = branchFilter === br.id;
+            const stats = branchStats[br.id] || { count: 0, billed: 0, collected: 0, due: 0 };
+            return (
+              <div
+                key={br.id}
+                className={`p-4 rounded-3xl border transition-all duration-200 flex flex-col justify-between gap-3 shadow-xs bg-white ${
+                  isSelected
+                    ? br.activeRing
+                    : `${br.cardBorder} hover:shadow-md`
+                }`}
+              >
+                <div>
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-8 h-8 rounded-xl ${br.iconBg} flex items-center justify-center font-bold text-xs shadow-2xs`}>
+                        <Store className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="text-[10px] font-mono font-black text-slate-500 uppercase">{br.code}</div>
+                        <h4 className="font-black text-xs text-slate-900 leading-tight line-clamp-1" title={br.name}>
+                          {br.shortName}
+                        </h4>
+                      </div>
+                    </div>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black font-mono bg-slate-100 text-slate-800 border border-slate-200">
+                      {stats.count} {stats.count === 1 ? 'Order' : 'Orders'}
+                    </span>
+                  </div>
+
+                  <div className="space-y-1 pt-2 border-t border-slate-100 text-xs">
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-500 text-[11px]">Gross Billed:</span>
+                      <span className="font-mono font-black text-slate-900">{formatCurrency(stats.billed)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-emerald-700">
+                      <span className="text-slate-500 text-[11px]">Collected:</span>
+                      <span className="font-mono font-bold">{formatCurrency(stats.collected)}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-500 text-[11px]">Balance Due:</span>
+                      <span className={`font-mono font-black text-[11px] ${stats.due > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                        {stats.due > 0 ? formatCurrency(stats.due) : '₹0 (Cleared)'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5 pt-2 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => updateBranchFilter(isSelected ? 'ALL' : br.id)}
+                    className={`w-full py-1.5 px-2 rounded-xl font-bold text-xs flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-slate-900 text-white shadow-xs'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-800'
+                    }`}
+                  >
+                    {isSelected ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>Filtering Branch</span>
+                      </>
+                    ) : (
+                      <span>Filter This Branch</span>
+                    )}
+                  </button>
+
+                  <div className="grid grid-cols-2 gap-1 text-[10px]">
+                    <Link
+                      to={br.posUrl}
+                      target="_blank"
+                      className="py-1 px-1.5 rounded-lg bg-orange-50 hover:bg-orange-100 text-orange-800 font-bold border border-orange-200 flex items-center justify-center gap-1 transition-colors text-center"
+                      title={`Open ${br.name} POS Billing Machine`}
+                    >
+                      <span>POS Machine</span>
+                      <ExternalLink className="w-2.5 h-2.5 shrink-0" />
+                    </Link>
+                    <Link
+                      to={br.reportUrl}
+                      target="_blank"
+                      className="py-1 px-1.5 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-800 font-bold border border-purple-200 flex items-center justify-center gap-1 transition-colors text-center"
+                      title={`Open ${br.name} Shift Reports`}
+                    >
+                      <span>Shift Report</span>
+                      <ExternalLink className="w-2.5 h-2.5 shrink-0" />
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Card 4: Online Website Orders */}
+          <div
+            className={`p-4 rounded-3xl border transition-all duration-200 flex flex-col justify-between gap-3 shadow-xs bg-white ${
+              branchFilter === 'ONLINE_WEBSITE'
+                ? 'ring-2 ring-blue-500 bg-blue-50/70 border-blue-400'
+                : 'border-blue-200 hover:border-blue-300 hover:shadow-md'
+            }`}
+          >
+            <div>
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-2xs">
+                    🌐
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-mono font-black text-blue-600 uppercase">WEBSITE</div>
+                    <h4 className="font-black text-xs text-slate-900 leading-tight">
+                      Online Pickups
+                    </h4>
+                  </div>
+                </div>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-black font-mono bg-blue-100 text-blue-900 border border-blue-200">
+                  {branchStats.ONLINE_WEBSITE.count} Orders
+                </span>
+              </div>
+
+              <div className="space-y-1 pt-2 border-t border-slate-100 text-xs">
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500 text-[11px]">Gross Billed:</span>
+                  <span className="font-mono font-black text-slate-900">{formatCurrency(branchStats.ONLINE_WEBSITE.billed)}</span>
+                </div>
+                <div className="flex justify-between items-center text-emerald-700">
+                  <span className="text-slate-500 text-[11px]">Collected:</span>
+                  <span className="font-mono font-bold">{formatCurrency(branchStats.ONLINE_WEBSITE.collected)}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500 text-[11px]">Balance Due:</span>
+                  <span className={`font-mono font-black text-[11px] ${branchStats.ONLINE_WEBSITE.due > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                    {branchStats.ONLINE_WEBSITE.due > 0 ? formatCurrency(branchStats.ONLINE_WEBSITE.due) : '₹0 (Cleared)'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => updateBranchFilter(branchFilter === 'ONLINE_WEBSITE' ? 'ALL' : 'ONLINE_WEBSITE')}
+                className={`w-full py-2 px-2 rounded-xl font-bold text-xs flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                  branchFilter === 'ONLINE_WEBSITE'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'bg-blue-50 hover:bg-blue-100 text-blue-900'
+                }`}
+              >
+                {branchFilter === 'ONLINE_WEBSITE' ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-white" />
+                    <span>Filtering Online</span>
+                  </>
+                ) : (
+                  <span>Filter Online Pickups</span>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Card 5: Master Consolidated */}
+          <div
+            className={`p-4 rounded-3xl border transition-all duration-200 flex flex-col justify-between gap-3 shadow-xs bg-white ${
+              branchFilter === 'ALL'
+                ? 'ring-2 ring-slate-900 bg-slate-50/90 border-slate-900'
+                : 'border-slate-200 hover:border-slate-400 hover:shadow-md'
+            }`}
+          >
+            <div>
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-xs shadow-2xs">
+                    🏢
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-mono font-black text-slate-500 uppercase">ALL STORE</div>
+                    <h4 className="font-black text-xs text-slate-900 leading-tight">
+                      Master Consolidated
+                    </h4>
+                  </div>
+                </div>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-black font-mono bg-slate-900 text-white">
+                  {branchStats.ALL.count} Total
+                </span>
+              </div>
+
+              <div className="space-y-1 pt-2 border-t border-slate-100 text-xs">
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500 text-[11px]">Total Volume:</span>
+                  <span className="font-mono font-black text-slate-900">{formatCurrency(branchStats.ALL.billed)}</span>
+                </div>
+                <div className="flex justify-between items-center text-emerald-700">
+                  <span className="text-slate-500 text-[11px]">Total Recv:</span>
+                  <span className="font-mono font-bold">{formatCurrency(branchStats.ALL.collected)}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500 text-[11px]">Total Due:</span>
+                  <span className={`font-mono font-black text-[11px] ${branchStats.ALL.due > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                    {branchStats.ALL.due > 0 ? formatCurrency(branchStats.ALL.due) : '₹0 (Cleared)'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => updateBranchFilter('ALL')}
+                className={`w-full py-2 px-2 rounded-xl font-bold text-xs flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                  branchFilter === 'ALL'
+                    ? 'bg-slate-900 text-white shadow-xs'
+                    : 'bg-slate-100 hover:bg-slate-200 text-slate-800'
+                }`}
+              >
+                {branchFilter === 'ALL' ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Showing All Branches</span>
+                  </>
+                ) : (
+                  <span>View All Consolidated</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Top Channel Filter Tabs & Quick Link to Balances */}
       <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-xs">
         <div className="flex items-center gap-2">
@@ -1130,7 +1590,7 @@ export const AdminOrdersPage = () => {
           <div className="inline-flex rounded-xl bg-slate-100 p-1 border border-slate-200">
             <button
               type="button"
-              onClick={() => setChannelFilter('ALL')}
+              onClick={() => updateChannelFilter('ALL')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 channelFilter === 'ALL'
                   ? 'bg-slate-900 text-white shadow-xs'
@@ -1141,23 +1601,7 @@ export const AdminOrdersPage = () => {
             </button>
             <button
               type="button"
-              onClick={() => setChannelFilter('ONLINE_WEBSITE')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                channelFilter === 'ONLINE_WEBSITE'
-                  ? 'bg-blue-600 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-blue-700'
-              }`}
-            >
-              <span>🌐 Online Pickups</span>
-              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
-                channelFilter === 'ONLINE_WEBSITE' ? 'bg-white/20 text-white' : 'bg-blue-100 text-blue-800'
-              }`}>
-                {onlineOrdersCount}
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setChannelFilter('OFFLINE_POS')}
+              onClick={() => updateChannelFilter('OFFLINE_POS')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                 channelFilter === 'OFFLINE_POS'
                   ? 'bg-[#F97316] text-white shadow-xs'
@@ -1169,6 +1613,22 @@ export const AdminOrdersPage = () => {
                 channelFilter === 'OFFLINE_POS' ? 'bg-white/20 text-white' : 'bg-orange-100 text-orange-800'
               }`}>
                 {offlinePosOrdersCount}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => updateChannelFilter('ONLINE_WEBSITE')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                channelFilter === 'ONLINE_WEBSITE'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-blue-700'
+              }`}
+            >
+              <span>🌐 Online Pickups</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                channelFilter === 'ONLINE_WEBSITE' ? 'bg-white/20 text-white' : 'bg-blue-100 text-blue-800'
+              }`}>
+                {onlineOrdersCount}
               </span>
             </button>
           </div>
@@ -1974,8 +2434,8 @@ export const AdminOrdersPage = () => {
       >
         <form onSubmit={handleCreateWalkInOrder} className="space-y-6 text-xs max-h-[82vh] overflow-y-auto pr-1">
           
-          {/* Top Banner */}
-          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-orange-50 via-amber-50 to-orange-50 border border-orange-200 flex flex-wrap items-center justify-between gap-2">
+          {/* Top Banner & Branch Selector */}
+          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-orange-50 via-amber-50 to-orange-50 border border-orange-200 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-xl bg-[#F97316] text-white flex items-center justify-center font-black">
                 <Store className="w-4 h-4" />
@@ -1985,10 +2445,29 @@ export const AdminOrdersPage = () => {
                 <div className="text-[11px] text-slate-500">Auto-generates verified Tax Invoice & WhatsApp message upon submission</div>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="px-2.5 py-1 rounded-lg bg-white border border-orange-200 font-bold text-[#EA580C] text-[11px]">
-                📍 {walkInForm.storeBranch}
-              </span>
+            <div className="w-full sm:w-auto flex items-center gap-2">
+              <label className="text-slate-700 font-bold text-[11px] whitespace-nowrap">Counter Machine:</label>
+              <select
+                value={walkInForm.terminalId || 'counter-1'}
+                onChange={(e) => {
+                  const selectedId = e.target.value;
+                  const branch = STORE_BRANCHES.find(b => b.id === selectedId) || STORE_BRANCHES[0];
+                  setWalkInForm({
+                    ...walkInForm,
+                    terminalId: branch.id,
+                    terminalCode: branch.code,
+                    storeBranch: branch.locationName,
+                    cashierName: branch.cashierName,
+                  });
+                }}
+                className="bg-white border border-orange-300 rounded-xl py-1.5 px-3 text-xs font-bold text-slate-900 shadow-2xs outline-none focus:ring-2 focus:ring-[#F97316]"
+              >
+                {STORE_BRANCHES.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    🏪 {b.name} ({b.code}) — {b.cashierName.split(' ')[0]}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 

@@ -142,6 +142,16 @@ export const AdminReportsPage = () => {
     }
   }, [datePreset, branchFilter, channelFilter, customStartDate, customEndDate, specificDate, searchQuery, error]);
 
+  // Sync state when URL params change
+  useEffect(() => {
+    const p = searchParams.get('preset') || searchParams.get('range');
+    const b = searchParams.get('branch');
+    const c = searchParams.get('channel');
+    if (p && p !== datePreset) setDatePreset(p);
+    if (b && b !== branchFilter) setBranchFilter(b);
+    if (c && c !== channelFilter) setChannelFilter(c);
+  }, [searchParams]);
+
   useEffect(() => {
     loadReport();
     loadDateWiseLedger();

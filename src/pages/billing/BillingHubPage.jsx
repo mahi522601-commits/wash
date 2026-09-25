@@ -124,18 +124,29 @@ export const BillingHubPage = () => {
 
                   {/* Launch / Sign In CTA */}
                   <div className="space-y-2 pt-2 border-t border-white/10">
-                    <Link
-                      to={`/billing/${terminal.id}`}
-                      className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-orange-500/20 transition-all cursor-pointer group-hover:shadow-orange-500/40"
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await terminalAuthService.quickUnlockTerminal(terminal.id);
+                        navigate(`/billing/${terminal.id}`);
+                      }}
+                      className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-orange-500/20 transition-all cursor-pointer group-hover:shadow-orange-500/40 active:scale-98"
                     >
-                      <span>{isLoggedIn ? 'Open Active POS Machine' : 'Launch & Sign In'}</span>
+                      <Sparkles className="w-4 h-4 text-orange-200" />
+                      <span>Launch POS Machine ({terminal.code})</span>
                       <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                    </Link>
+                    </button>
 
-                    <div className="text-center">
-                      <span className="text-[11px] text-slate-500">
-                        Dedicated Standalone Billing Terminal
-                      </span>
+                    <div className="flex items-center justify-between text-[11px] text-slate-400 px-1">
+                      <span>Default PIN: <strong className="text-emerald-400 font-mono">{terminal.password || 'techwash1'}</strong></span>
+                      <Link
+                        to={`/admin/orders?branch=${terminal.id}&channel=OFFLINE_POS`}
+                        target="_blank"
+                        className="text-orange-400 hover:text-orange-300 font-bold flex items-center gap-1"
+                      >
+                        <span>Branch Orders</span>
+                        <ExternalLink className="w-2.5 h-2.5" />
+                      </Link>
                     </div>
                   </div>
                 </div>

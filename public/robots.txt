@@ -31,5 +31,6 @@ Disallow: /worker/
 # Private Parameterized Order Tracking
 Disallow: /track-order?*
 
-# XML Sitemap
+# Sitemaps (XML & TXT)
 Sitemap: https://www.techwashlaundry.com/sitemap.xml
+Sitemap: https://www.techwashlaundry.com/sitemap.txt
