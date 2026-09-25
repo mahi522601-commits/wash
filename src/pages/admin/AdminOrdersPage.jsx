@@ -56,8 +56,8 @@ import {
 
 export const WALK_IN_SERVICES = [
   { id: 'srv-dry-cleaning', name: 'Premium Dry Cleaning', emoji: '👔', defaultPrice: 90 },
-  { id: 'srv-wash-and-fold', name: 'Wash & Fold', emoji: '🧺', defaultPrice: 100, perKg: true },
-  { id: 'srv-wash-and-iron', name: 'Wash & Steam Iron', emoji: '👕', defaultPrice: 130, perKg: true },
+  { id: 'srv-wash-and-fold', name: 'Wash & Fold', emoji: '🧺', defaultPrice: 100, perKg: true, menPrice: 100, womenPrice: 130 },
+  { id: 'srv-wash-and-iron', name: 'Wash & Steam Iron', emoji: '🫧', defaultPrice: 130, perKg: true, menPrice: 130, womenPrice: 160 },
   { id: 'srv-steam-ironing', name: 'Steam Ironing Only', emoji: '✨', defaultPrice: 25 },
   { id: 'srv-saree-spa', name: 'Sarees & Ethnic Spa', emoji: '🥻', defaultPrice: 60 },
   { id: 'srv-shoe-spa', name: 'Shoe & Sneaker Spa', emoji: '👟', defaultPrice: 350 },

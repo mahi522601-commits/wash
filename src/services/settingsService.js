@@ -77,6 +77,11 @@ export const DEFAULT_STORE_LOCATIONS = [
     googleMapsUrl: 'https://www.google.com/maps/dir/?api=1&destination=17.4319,78.4073',
     isMain: true,
     active: true,
+    posTerminalId: 'counter-1',
+    posTerminalCode: 'TW-POS-01',
+    assignedOperator: 'Rahul Verma (Cashier #1)',
+    posPassword: 'techwash1',
+    posMachineActive: true,
   },
   {
     id: 'loc-hitec-city',
@@ -91,6 +96,11 @@ export const DEFAULT_STORE_LOCATIONS = [
     googleMapsUrl: 'https://www.google.com/maps/dir/?api=1&destination=17.4504,78.3808',
     isMain: false,
     active: true,
+    posTerminalId: 'counter-2',
+    posTerminalCode: 'TW-POS-02',
+    assignedOperator: 'Sneha Reddy (Cashier #2)',
+    posPassword: 'techwash2',
+    posMachineActive: true,
   },
   {
     id: 'loc-banjara-hills',
@@ -105,6 +115,11 @@ export const DEFAULT_STORE_LOCATIONS = [
     googleMapsUrl: 'https://www.google.com/maps/dir/?api=1&destination=17.4156,78.4350',
     isMain: false,
     active: true,
+    posTerminalId: 'counter-3',
+    posTerminalCode: 'TW-POS-03',
+    assignedOperator: 'Vikram Rao (Cashier #3)',
+    posPassword: 'techwash3',
+    posMachineActive: true,
   }
 ];
 
@@ -191,7 +206,11 @@ export const settingsService = {
    */
   async saveLocation(locationData) {
     const locId = locationData.id || `loc-${Date.now()}`;
-    const payload = { ...locationData, id: locId, updatedAt: new Date().toISOString() };
+    const payload = { 
+      ...locationData, 
+      id: locId, 
+      updatedAt: new Date().toISOString() 
+    };
 
     if (isFirebaseConfigured && db) {
       try {
@@ -209,6 +228,27 @@ export const settingsService = {
       locations.push(payload);
     }
     localStorage.setItem(LOCATIONS_STORAGE_KEY, JSON.stringify(locations));
+
+    // Sync connected POS terminal
+    try {
+      const { terminalAuthService } = await import('./terminalAuthService.js');
+      if (terminalAuthService?.syncTerminalFromLocation) {
+        await terminalAuthService.syncTerminalFromLocation(payload);
+      }
+    } catch (e) {}
+
+    // Dispatch update notifications
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('techwash-locations-updated', { detail: payload }));
+      try {
+        if ('BroadcastChannel' in window) {
+          const ch = new BroadcastChannel('techwash_locations_channel');
+          ch.postMessage({ type: 'LOCATION_UPDATED', location: payload });
+          setTimeout(() => { try { ch.close(); } catch (e) {} }, 200);
+        }
+      } catch (e) {}
+    }
+
     return payload;
   },
 
@@ -226,6 +266,19 @@ export const settingsService = {
 
     const locations = (await this.getLocations()).filter(l => l.id !== locId);
     localStorage.setItem(LOCATIONS_STORAGE_KEY, JSON.stringify(locations));
+
+    // Sync connected POS terminal
+    try {
+      const { terminalAuthService } = await import('./terminalAuthService.js');
+      if (terminalAuthService?.deleteTerminalForLocation) {
+        await terminalAuthService.deleteTerminalForLocation(locId);
+      }
+    } catch (e) {}
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('techwash-locations-updated', { detail: { id: locId, deleted: true } }));
+    }
+
     return true;
   }
 };

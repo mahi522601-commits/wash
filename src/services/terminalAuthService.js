@@ -81,7 +81,7 @@ export const terminalAuthService = {
   },
 
   /**
-   * Retrieve all 3 billing terminals from Firestore or localStorage
+   * Retrieve all billing terminals dynamically synced with Store Locations
    */
   async getTerminals() {
     let list = [];
@@ -92,43 +92,116 @@ export const terminalAuthService = {
         const snap = await getDocs(collection(db, 'billing_terminals'));
         if (!snap.empty) {
           const remoteList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-          // Ensure all 3 default terminals exist
+          // Ensure all default terminals exist or merge with remote
           list = DEFAULT_BILLING_TERMINALS.map(def => {
             const found = remoteList.find(r => r.id === def.id || r.numericId === def.numericId);
             return found ? { ...def, ...found } : def;
           });
-          try {
-            localStorage.setItem(TERMINALS_STORAGE_KEY, JSON.stringify(list));
-          } catch (e) {}
-          return list;
         }
       } catch (e) {
         console.warn('Firestore billing_terminals read error:', e);
       }
     }
 
-    // 2. Try localStorage fallback
+    // 2. Try localStorage fallback if Firestore empty
+    if (list.length === 0) {
+      try {
+        const stored = localStorage.getItem(TERMINALS_STORAGE_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            list = DEFAULT_BILLING_TERMINALS.map(def => {
+              const found = parsed.find(p => p.id === def.id);
+              return found ? { ...def, ...found } : def;
+            });
+          }
+        }
+      } catch (e) {}
+    }
+
+    if (list.length === 0) {
+      list = [...DEFAULT_BILLING_TERMINALS];
+    }
+
+    // 3. Dynamically Merge with Store Locations from settingsService
     try {
-      const stored = localStorage.getItem(TERMINALS_STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          list = DEFAULT_BILLING_TERMINALS.map(def => {
-            const found = parsed.find(p => p.id === def.id);
-            return found ? { ...def, ...found } : def;
+      const locStr = localStorage.getItem('techwash_store_locations');
+      if (locStr) {
+        const savedLocs = JSON.parse(locStr);
+        if (Array.isArray(savedLocs) && savedLocs.length > 0) {
+          list = list.map(t => {
+            const matchedLoc = savedLocs.find(l => 
+              l.posTerminalId === t.id || 
+              l.id === t.locationId || 
+              (l.name && t.locationName && (l.name.toLowerCase().includes(t.id) || t.locationName.toLowerCase().includes(l.name.toLowerCase())))
+            );
+            if (matchedLoc) {
+              return {
+                ...t,
+                name: matchedLoc.name ? `${matchedLoc.posTerminalCode || t.code} — ${matchedLoc.name}` : t.name,
+                locationName: matchedLoc.name || t.locationName,
+                address: matchedLoc.address || t.address,
+                phone: matchedLoc.phone || t.phone,
+                assignedOperator: matchedLoc.assignedOperator || t.assignedOperator,
+                password: matchedLoc.posPassword || t.password,
+                code: matchedLoc.posTerminalCode || t.code,
+                active: matchedLoc.posMachineActive !== undefined ? matchedLoc.posMachineActive : (matchedLoc.active !== undefined ? matchedLoc.active : t.active),
+              };
+            }
+            return t;
           });
-          return list;
         }
       }
     } catch (e) {}
 
-    // 3. Fallback to default
-    list = [...DEFAULT_BILLING_TERMINALS];
     try {
       localStorage.setItem(TERMINALS_STORAGE_KEY, JSON.stringify(list));
     } catch (e) {}
 
     return list;
+  },
+
+  /**
+   * Synchronize or create a billing terminal from a location saved in /admin/locations
+   */
+  async syncTerminalFromLocation(location) {
+    if (!location) return null;
+    const termId = this.normalizeTerminalId(location.posTerminalId || location.id || 'counter-1');
+    const termCode = location.posTerminalCode || (termId === 'counter-2' ? 'TW-POS-02' : termId === 'counter-3' ? 'TW-POS-03' : 'TW-POS-01');
+    const numId = termId.replace(/\D/g, '') || '1';
+
+    const list = await this.getTerminals();
+    const existing = list.find(t => t.id === termId) || {};
+
+    const updatedTerminal = {
+      ...existing,
+      id: termId,
+      numericId: numId,
+      name: `${termCode} — ${location.name}`,
+      code: termCode,
+      locationId: location.id,
+      locationName: location.name,
+      address: location.address,
+      phone: location.phone || '+91 63048 45567',
+      assignedOperator: location.assignedOperator || existing.assignedOperator || `Cashier #${numId}`,
+      password: location.posPassword || existing.password || `techwash${numId}`,
+      active: location.posMachineActive !== undefined ? location.posMachineActive : (location.active !== undefined ? location.active : true),
+      updatedAt: new Date().toISOString()
+    };
+
+    return this.updateTerminal(termId, updatedTerminal);
+  },
+
+  /**
+   * Delete terminal when a location is removed
+   */
+  async deleteTerminalForLocation(locId) {
+    const list = await this.getTerminals();
+    const updated = list.filter(t => t.locationId !== locId && t.id !== locId);
+    try {
+      localStorage.setItem(TERMINALS_STORAGE_KEY, JSON.stringify(updated));
+    } catch (e) {}
+    return true;
   },
 
   /**
