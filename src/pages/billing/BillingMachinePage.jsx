@@ -84,24 +84,24 @@ const INITIAL_BILL_STATE = {
 // Preset weights for 1-click weighed laundry entry
 const QUICK_WEIGHTS = [1.5, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 10.0, 12.0, 15.0];
 
-// Granular sub-services / clothes items for Wash & Fold and Wash & Iron
+// Clothes / Sub-Services for inventory tallying in Weighed Laundry (Wash & Fold and Wash & Iron)
 export const WEIGHED_LAUNDRY_ITEMS = [
-  { id: 'wt-m-1', name: 'Cotton Shirt', weightKg: 0.3, emoji: '👔', category: "Men's Tops" },
-  { id: 'wt-m-2', name: 'Trouser / Pant', weightKg: 0.5, emoji: '👖', category: "Men's Bottoms" },
-  { id: 'wt-m-3', name: 'Jeans / Denim', weightKg: 0.8, emoji: '👖', category: "Men's Bottoms" },
-  { id: 'wt-m-4', name: 'T-Shirt / Polo', weightKg: 0.2, emoji: '👕', category: "Men's Tops" },
-  { id: 'wt-m-5', name: 'Kurta / Ethnic', weightKg: 0.4, emoji: '👘', category: "Men's Ethnic" },
-  { id: 'wt-m-6', name: 'Shorts / Trackpant', weightKg: 0.3, emoji: '🩳', category: "Men's Bottoms" },
-  { id: 'wt-w-1', name: 'Normal Top / Kurti', weightKg: 0.35, emoji: '👚', category: "Women's Tops" },
-  { id: 'wt-w-2', name: 'Medium / Long Top', weightKg: 0.6, emoji: '👚', category: "Women's Tops" },
-  { id: 'wt-w-3', name: 'Leggings / Bottoms', weightKg: 0.25, emoji: '👖', category: "Women's Bottoms" },
-  { id: 'wt-w-4', name: 'Women T-Shirt', weightKg: 0.2, emoji: '👕', category: "Women's Tops" },
-  { id: 'wt-w-5', name: 'Daily Saree / Dress', weightKg: 0.5, emoji: '🥻', category: "Women's Ethnic" },
-  { id: 'wt-w-6', name: 'Nighties / Sleepwear', weightKg: 0.3, emoji: '👗', category: "Women's Wear" },
-  { id: 'wt-h-1', name: 'Single Bedsheet', weightKg: 0.6, emoji: '🛏️', category: 'Household' },
-  { id: 'wt-h-2', name: 'Double / King Bedsheet', weightKg: 1.0, emoji: '🛌', category: 'Household' },
-  { id: 'wt-h-3', name: 'Pillow Cover (Pair)', weightKg: 0.2, emoji: '🛋️', category: 'Household' },
-  { id: 'wt-h-4', name: 'Bath Towel Large', weightKg: 0.4, emoji: '🧖', category: 'Household' },
+  { id: 'wt-m-1', name: 'Cotton Shirt', emoji: '👔', category: "Men's Tops" },
+  { id: 'wt-m-2', name: 'Trouser / Pant', emoji: '👖', category: "Men's Bottoms" },
+  { id: 'wt-m-3', name: 'Jeans / Denim', emoji: '👖', category: "Men's Bottoms" },
+  { id: 'wt-m-4', name: 'T-Shirt / Polo', emoji: '👕', category: "Men's Tops" },
+  { id: 'wt-m-5', name: 'Kurta / Ethnic', emoji: '👘', category: "Men's Ethnic" },
+  { id: 'wt-m-6', name: 'Shorts / Trackpant', emoji: '🩳', category: "Men's Bottoms" },
+  { id: 'wt-w-1', name: 'Normal Top / Kurti', emoji: '👚', category: "Women's Tops" },
+  { id: 'wt-w-2', name: 'Medium / Long Top', emoji: '👚', category: "Women's Tops" },
+  { id: 'wt-w-3', name: 'Leggings / Bottoms', emoji: '👖', category: "Women's Bottoms" },
+  { id: 'wt-w-4', name: 'Women T-Shirt', emoji: '👕', category: "Women's Tops" },
+  { id: 'wt-w-5', name: 'Daily Saree / Dress', emoji: '🥻', category: "Women's Ethnic" },
+  { id: 'wt-w-6', name: 'Nighties / Sleepwear', emoji: '👗', category: "Women's Wear" },
+  { id: 'wt-h-1', name: 'Single Bedsheet', emoji: '🛏️', category: 'Household' },
+  { id: 'wt-h-2', name: 'Double / King Bedsheet', emoji: '🛌', category: 'Household' },
+  { id: 'wt-h-3', name: 'Pillow Cover (Pair)', emoji: '🛋️', category: 'Household' },
+  { id: 'wt-h-4', name: 'Bath Towel Large', emoji: '🧖', category: 'Household' },
 ];
 
 export const BillingMachinePage = () => {
@@ -372,7 +372,7 @@ export const BillingMachinePage = () => {
     });
   };
 
-  // Add Weighed Laundry Garment Item (Auto-calculates item inventory & estimated weight)
+  // Add Weighed Laundry Garment Item (Tallies clothes count for receipt/tagging without modifying weighed scale weight)
   const handleAddWeighedClothesItem = (item) => {
     setBillForm(prev => {
       const existingIdx = prev.items.findIndex(it => it.name === item.name);
@@ -383,7 +383,7 @@ export const BillingMachinePage = () => {
         updatedItems[existingIdx] = {
           ...updatedItems[existingIdx],
           quantity: newQty,
-          lineTotal: updatedItems[existingIdx].unitPrice * newQty,
+          lineTotal: 0,
         };
       } else {
         updatedItems = [
@@ -394,22 +394,16 @@ export const BillingMachinePage = () => {
             subServiceName: item.name,
             emoji: item.emoji || '👕',
             category: item.category || 'Weighed Garment',
-            unitPrice: 0, // Rate billed per-kg
+            unitPrice: 0, // Billed under overall batch weight (₹/Kg)
             quantity: 1,
             lineTotal: 0,
-            weightKg: item.weightKg || 0.35,
           }
         ];
       }
 
-      // Automatically accumulate weight
-      const totalGrams = updatedItems.reduce((acc, it) => acc + ((it.quantity || 1) * ((it.weightKg || 0.35) * 1000)), 0);
-      const newWeight = (totalGrams / 1000).toFixed(1);
-
       return {
         ...prev,
         items: updatedItems,
-        weightKg: Number(newWeight) > 0 ? newWeight : prev.weightKg,
       };
     });
   };
@@ -1302,10 +1296,10 @@ export const BillingMachinePage = () => {
                 <div className="pt-3 border-t border-purple-200 space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-bold text-purple-900 block">
-                      👔 Select Clothes / Sub-Services Breakdown:
+                      👔 Clothes Piece Count (For Tagging & Customer Receipt):
                     </span>
                     <span className="text-[10px] text-purple-700 font-semibold">
-                      Click to tally pieces & auto-estimate weight
+                      Click to tally pieces
                     </span>
                   </div>
 
@@ -1328,13 +1322,13 @@ export const BillingMachinePage = () => {
                             <span className="text-sm">{item.emoji}</span>
                             {isAdded && (
                               <span className="px-1.5 py-0.2 rounded-md bg-purple-700 text-white text-[10px] font-black font-mono">
-                                ×{existing.quantity}
+                                ×{existing.quantity} Pcs
                               </span>
                             )}
                           </div>
                           <div className="mt-1">
                             <div className="text-[11px] font-bold leading-tight truncate">{item.name}</div>
-                            <div className="text-[9px] text-purple-700 truncate">{item.category} • ~{item.weightKg}kg</div>
+                            <div className="text-[9px] text-purple-700 truncate">{item.category}</div>
                           </div>
                         </button>
                       );
