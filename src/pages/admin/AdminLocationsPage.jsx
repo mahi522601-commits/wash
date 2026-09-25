@@ -340,7 +340,7 @@ export const AdminLocationsPage = () => {
             <ShieldCheck className="w-4 h-4 text-purple-500" />
           </div>
           <div className="text-sm font-bold text-slate-900 mt-1 truncate">
-            {locations.find(l => l.isMain)?.name || 'Jubilee Hills Flagship'}
+            {locations.find(l => l.isMain)?.name || 'Tech Wash Laundry Main Branch'}
           </div>
           <div className="text-[11px] text-slate-400 mt-0.5">Central Hub & Garment Spa</div>
         </div>

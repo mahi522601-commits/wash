@@ -42,7 +42,7 @@ export const BillingHubPage = () => {
     <>
       <SEOHead
         title="POS Billing Terminals & Counter Machines | Tech Wash"
-        description="Official in-store POS billing terminals for Tech Wash stores in Jubilee Hills, Hitec City, and Banjara Hills."
+        description="Official in-store POS billing terminals for Tech Wash stores in Manikonda, Tolichowki, and Ambience Courtyard."
         canonicalUrl={`${BASE_URL}/billing`}
       />
 

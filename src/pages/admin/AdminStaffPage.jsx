@@ -575,7 +575,7 @@ Role: ${staff.role || 'Delivery Executive'}`;
             <Input
               label="Counter / Machine Display Name *"
               required
-              placeholder="e.g. Counter 1 — Jubilee Hills Flagship"
+              placeholder="e.g. Counter 1 — Branch 1 (Tolichowki)"
               value={currentTerminal.name}
               onChange={(e) => setCurrentTerminal({ ...currentTerminal, name: e.target.value })}
             />

@@ -120,6 +120,14 @@ export const whatsappNotificationService = {
     const pickupDate = order.schedule?.pickupDate || order.pickupDate || 'Scheduled on Demand';
     const pickupSlot = order.schedule?.pickupSlot || order.pickupSlot || '10:00 AM - 12:00 PM';
     const isExpress = order.isExpress || order.priceSnapshot?.isExpress || false;
+    const storeBranch = order.storeBranch || 'Tech Wash Laundry Main Branch';
+    const storeAddress = order.storeAddress || (
+      storeBranch.includes('Branch 1')
+        ? 'Beside DreamScape Hotel Ward No 8, Block No 1 , Tolichowki , OU Colony, Shaikpet,Hyderabad,Telangana 500008'
+        : storeBranch.includes('Pick Up Point')
+        ? 'Beside Ambience Courtyard,Hyderabad,Telangana,500089'
+        : 'Shaikpet Main Rd,Sri Ram Nagar Colony,Manikonda,Hyderabad,Telangana,500089'
+    );
 
     const address = order.address || order.customer?.address || order.pickupLocation?.formattedAddress || 'Doorstep address on file';
     const landmark = order.landmark || order.customer?.landmark || order.pickupLocation?.landmark || '';
@@ -179,6 +187,8 @@ Thank you for trusting Tech Wash. Here are your complete booking details:
 📋 *BOOKING DETAILS*
 • *Tracking ID:* *#${orderNumber}*
 • *Service:* ${serviceEmoji} *${serviceName}*
+• *Processing Hub:* ${storeBranch}
+• *Store Address:* ${storeAddress}
 • *Processing Speed:* ${isExpress ? '⚡ Express 24-Hours' : '🛡️ Standard 48-Hours'}
 • *Pickup Date:* 📅 *${pickupDate}*
 • *Arrival Slot:* ⏰ *${pickupSlot}*
@@ -258,9 +268,16 @@ ${customNote ? `📝 *Update Note:* ${customNote}\n` : ''}${actualWeight ? `⚖�
     const invoiceNumber = receiptData.invoiceNumber || order.invoiceNumber || `INV-${orderNumber}`;
     const serviceName = order.serviceName || order.service || 'Premium Garment Care';
     const serviceEmoji = order.serviceEmoji || '👔';
-    const storeBranch = order.storeBranch || 'Tech Wash Flagship Lounge — Jubilee Hills';
-    const terminalCode = order.terminalCode || 'TW-POS-01';
-    const cashierName = order.cashierName || 'Counter Cashier';
+    const storeBranch = order.storeBranch || receiptData.storeBranch || 'Tech Wash Laundry Main Branch';
+    const storeAddress = order.storeAddress || receiptData.storeAddress || (
+      storeBranch.includes('Branch 1')
+        ? 'Beside DreamScape Hotel Ward No 8, Block No 1 , Tolichowki , OU Colony, Shaikpet,Hyderabad,Telangana 500008'
+        : storeBranch.includes('Pick Up Point')
+        ? 'Beside Ambience Courtyard,Hyderabad,Telangana,500089'
+        : 'Shaikpet Main Rd,Sri Ram Nagar Colony,Manikonda,Hyderabad,Telangana,500089'
+    );
+    const terminalCode = order.terminalCode || (order.isWalkIn ? 'TW-POS-01' : 'ONLINE-HUB');
+    const cashierName = order.cashierName || 'Tech Wash Operator';
 
     const origin = typeof window !== 'undefined' ? window.location.origin : 'https://techwashlaundry.com';
     const invoiceUrl = `${origin}/track-order?id=${orderNumber}`;
@@ -296,9 +313,11 @@ ${customNote ? `📝 *Update Note:* ${customNote}\n` : ''}${actualWeight ? `⚖�
     let weightSection = '';
     if (pricingType === 'per_kg' || weightKg) {
       const wKg = Number(weightKg) || 0;
-      const rate = Number(pricePerKg) || 100;
+      const isIron = serviceName?.toLowerCase().includes('iron');
+      const rate = Number(pricePerKg) || (isIron ? 130 : 100);
       const weighedBase = Math.round(wKg * rate);
-      weightSection = `\n--- WEIGHED SCALE LAUNDRY ---\nScale Weight: ${wKg} Kg\nRate per Kg: Rs.${rate} / Kg\nWeighed Total: Rs.${weighedBase}\n`;
+      const scaleLabel = isIron ? '🫧 Wash & Steam Iron Scale' : '🧺 Wash & Fold Scale';
+      weightSection = `\n--- WEIGHED SCALE LAUNDRY (${scaleLabel}) ---\nScale Type: ${scaleLabel}\nScale Weight: ${wKg} Kg\nRate per Kg: Rs.${rate} / Kg\nWeighed Total: Rs.${weighedBase}\n`;
     }
 
     const snapshot = order.priceSnapshot || {};
@@ -337,6 +356,7 @@ Thank you for choosing Tech Wash. Here is your official detailed bill and receip
 
 --- STORE & COUNTER INFO ---
 Store Branch: ${storeBranch}
+Store Address: ${storeAddress}
 Counter Terminal: ${terminalCode}
 Cashier Operator: ${cashierName}
 

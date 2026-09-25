@@ -94,7 +94,10 @@ export const PrintReceipt = ({
           </div>
 
           <div className="text-[8.5px] text-slate-500 pt-0.5 space-y-0.5 leading-tight">
-            <p className="font-medium text-slate-700">{config.address || 'Doorstep Pickup & Delivery Hub, Hyderabad'}</p>
+            {receiptData.storeBranch && (
+              <p className="font-bold text-slate-800 text-[9px]">{receiptData.storeBranch}</p>
+            )}
+            <p className="font-medium text-slate-700">{receiptData.storeAddress || config.address || 'Shaikpet Main Rd, Sri Ram Nagar Colony, Manikonda, Hyderabad, Telangana 500089'}</p>
             <div className="flex flex-wrap items-center gap-x-2 text-slate-600 font-semibold text-[8px]">
               <span>Tel: {config.phone || '+91 63048 45567'}</span>
               <span>•</span>
@@ -155,8 +158,20 @@ export const PrintReceipt = ({
         {/* Order Logistics & Schedule */}
         <div className="p-2 rounded-lg bg-slate-50 border border-slate-200 space-y-0.5">
           <span className="text-[8.5px] font-bold text-slate-500 uppercase tracking-wider block">
-            Logistics & Schedule
+            Store Location & Logistics
           </span>
+          {receiptData.storeBranch && (
+            <div className="flex justify-between text-[9.5px]">
+              <span className="text-slate-500">Store Branch:</span>
+              <span className="font-bold text-slate-900 truncate">{receiptData.storeBranch}</span>
+            </div>
+          )}
+          {receiptData.terminalCode && (
+            <div className="flex justify-between text-[9.5px]">
+              <span className="text-slate-500">POS Machine:</span>
+              <span className="font-mono font-bold text-slate-900">{receiptData.terminalCode}</span>
+            </div>
+          )}
           <div className="flex justify-between text-[9.5px]">
             <span className="text-slate-500">Service:</span>
             <span className="font-bold text-slate-900 truncate">{serviceName}</span>

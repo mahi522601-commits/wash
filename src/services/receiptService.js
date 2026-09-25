@@ -11,7 +11,7 @@ export const DEFAULT_RECEIPT_CONFIG = {
   whatsapp: '+91 63048 45567',
   email: 'care@techwashlaundry.com',
   website: 'https://techwashlaundry.com',
-  address: 'Main Road, Jubilee Hills, Hyderabad, Telangana - 500033',
+  address: 'Shaikpet Main Rd, Sri Ram Nagar Colony, Manikonda, Hyderabad, Telangana - 500089',
   gstNumber: '36AAAAA0000A1Z5',
   fssaiOrReg: 'REG-TW-2026-HYD',
   prefixPattern: 'TW-{YEAR}-{NUMBER}',
@@ -120,15 +120,17 @@ export const receiptService = {
     const isPerKgService = order.pricingType === 'per_kg' || (order.serviceName && (order.serviceName.toLowerCase().includes('fold') || order.serviceName.toLowerCase().includes('steam iron') || order.serviceName.toLowerCase().includes('wash & iron')));
 
     if (isPerKgService && weightVal > 0) {
-      const perKgRate = Number(order.pricePerKg || (order.serviceName?.toLowerCase().includes('iron') ? 130 : 100));
+      const isIron = order.serviceName?.toLowerCase().includes('iron');
+      const perKgRate = Number(order.pricePerKg || (isIron ? 130 : 100));
+      const scaleLabel = isIron ? '🫧 Wash & Steam Iron Scale Batch' : '🧺 Wash & Fold Scale Batch';
       const hasWeightItem = items.some(it => it.isWeightItem || it.name?.toLowerCase().includes('kg'));
       if (!hasWeightItem) {
         items.unshift({
           id: 'wt-base-line',
-          serviceName: order.serviceName || 'Weighed Laundry',
+          serviceName: isIron ? 'Wash & Steam Iron Scale' : 'Wash & Fold Scale',
           subServiceName: `Batch Weight (${weightVal} Kg @ ₹${perKgRate}/Kg)`,
-          name: `${order.serviceName || 'Laundry'} (${weightVal} Kg @ ₹${perKgRate}/Kg)`,
-          category: 'Weighed Laundry',
+          name: `${scaleLabel} (${weightVal} Kg @ ₹${perKgRate}/Kg)`,
+          category: isIron ? 'Wash & Steam Iron Scale' : 'Wash & Fold Scale',
           quantity: weightVal,
           unitPrice: perKgRate,
           lineTotal: Math.round(weightVal * perKgRate),
@@ -176,7 +178,15 @@ export const receiptService = {
       },
       pickupLocation: order.pickupLocation || null,
       serviceName: order.serviceName || 'Garment Care',
-      storeBranch: order.storeBranch || null,
+      storeBranch: order.storeBranch || 'Tech Wash Laundry Main Branch',
+      storeAddress: order.storeAddress || (
+        (order.storeBranch && order.storeBranch.includes('Branch 1'))
+          ? 'Beside DreamScape Hotel Ward No 8, Block No 1 , Tolichowki , OU Colony, Shaikpet,Hyderabad,Telangana 500008'
+          : (order.storeBranch && order.storeBranch.includes('Pick Up Point'))
+          ? 'Beside Ambience Courtyard,Hyderabad,Telangana,500089'
+          : 'Shaikpet Main Rd,Sri Ram Nagar Colony,Manikonda,Hyderabad,Telangana,500089'
+      ),
+      terminalCode: order.terminalCode || (order.isWalkIn ? 'TW-POS-01' : null),
       cashierName: order.cashierName || null,
       isWalkIn: Boolean(order.isWalkIn),
       schedule: {

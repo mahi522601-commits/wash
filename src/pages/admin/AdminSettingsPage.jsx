@@ -323,7 +323,7 @@ export const AdminSettingsPage = () => {
                 </label>
                 <input
                   type="text"
-                  value={formData.general?.businessAddress || 'Road No. 36, CBI Colony, Jubilee Hills, Hyderabad'}
+                  value={formData.general?.businessAddress || 'Shaikpet Main Rd, Sri Ram Nagar Colony, Manikonda, Hyderabad, Telangana 500089'}
                   onChange={(e) => handleGeneralChange('businessAddress', e.target.value)}
                   className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-900"
                 />

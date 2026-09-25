@@ -517,9 +517,9 @@ export const AdminReportsPage = () => {
                     className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-800 outline-none focus:border-orange-500"
                   >
                     <option value="POS_ONLY">🏪 All Offline POS Counters (POS-01, 02, 03)</option>
-                    <option value="counter-1">🏪 Counter 1 — Jubilee Hills Flagship (TW-POS-01)</option>
-                    <option value="counter-2">🏪 Counter 2 — Hitec City Processing Hub (TW-POS-02)</option>
-                    <option value="counter-3">🏪 Counter 3 — Banjara Hills Express (TW-POS-03)</option>
+                    <option value="counter-1">🏪 Counter 1 — Branch 1 (Tolichowki / OU Colony) (TW-POS-01)</option>
+                    <option value="counter-2">🏪 Counter 2 — Pick Up Point (Ambience Courtyard) (TW-POS-02)</option>
+                    <option value="counter-3">🏪 Counter 3 — Main Branch (Shaikpet / Manikonda) (TW-POS-03)</option>
                     <option value="ONLINE_WEBSITE">🌐 Online Website Orders Only</option>
                     <option value="ALL">🏢 Master Consolidated (Offline POS + Online)</option>
                   </select>
@@ -918,9 +918,9 @@ export const AdminReportsPage = () => {
                     className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-800 outline-none focus:border-orange-500"
                   >
                     <option value="POS_ONLY">🏪 All Offline POS Counters (POS-01, 02, 03)</option>
-                    <option value="counter-1">🏪 Counter 1 — Jubilee Hills Flagship (TW-POS-01)</option>
-                    <option value="counter-2">🏪 Counter 2 — Hitec City Processing Hub (TW-POS-02)</option>
-                    <option value="counter-3">🏪 Counter 3 — Banjara Hills Express (TW-POS-03)</option>
+                    <option value="counter-1">🏪 Counter 1 — Branch 1 (Tolichowki / OU Colony) (TW-POS-01)</option>
+                    <option value="counter-2">🏪 Counter 2 — Pick Up Point (Ambience Courtyard) (TW-POS-02)</option>
+                    <option value="counter-3">🏪 Counter 3 — Main Branch (Shaikpet / Manikonda) (TW-POS-03)</option>
                     <option value="ONLINE_WEBSITE">🌐 Online Website Orders Only</option>
                     <option value="ALL">🏢 Master Consolidated (Offline POS + Online)</option>
                   </select>

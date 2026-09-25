@@ -19,16 +19,16 @@ export const BUSINESS_INFO = {
   paymentAccepted: 'Cash, Credit Card, Debit Card, UPI, Google Pay, PhonePe, Paytm, Net Banking',
   address: {
     '@type': 'PostalAddress',
-    streetAddress: 'Road No. 36, CBI Colony, Jubilee Hills',
+    streetAddress: 'Shaikpet Main Rd, Sri Ram Nagar Colony, Manikonda',
     addressLocality: 'Hyderabad',
     addressRegion: 'Telangana',
-    postalCode: '500033',
+    postalCode: '500089',
     addressCountry: 'IN',
   },
   geo: {
     '@type': 'GeoCoordinates',
-    latitude: 17.4319,
-    longitude: 78.4073,
+    latitude: 17.4005,
+    longitude: 78.3895,
   },
   openingHoursSpecification: [
     {

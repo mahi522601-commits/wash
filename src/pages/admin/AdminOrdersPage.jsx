@@ -216,12 +216,12 @@ export const STORE_BRANCHES = [
   {
     id: 'counter-1',
     code: 'TW-POS-01',
-    name: 'Counter 1 — Jubilee Hills Flagship',
-    shortName: 'Jubilee Hills Flagship',
-    locationName: 'Tech Wash Flagship Lounge — Jubilee Hills',
-    address: 'Road No. 36, CBI Colony, Jubilee Hills, Hyderabad',
+    name: 'Counter 1 — Branch 1 (Tolichowki / OU Colony)',
+    shortName: 'Branch 1 (Tolichowki)',
+    locationName: 'Tech Wash Laundry Services (Branch 1)',
+    address: 'Beside DreamScape Hotel Ward No 8, Block No 1 , Tolichowki , OU Colony, Shaikpet,Hyderabad,Telangana 500008',
     phone: '+91 63048 45567',
-    cashierName: 'Rahul Verma (Cashier #1)',
+    cashierName: 'Cashier #1',
     posUrl: '/billing/counter-1',
     reportUrl: '/admin/reports?branch=counter-1',
     themeColor: 'blue',
@@ -234,12 +234,12 @@ export const STORE_BRANCHES = [
   {
     id: 'counter-2',
     code: 'TW-POS-02',
-    name: 'Counter 2 — Hitec City Express Hub',
-    shortName: 'Hitec City Hub',
-    locationName: 'Tech Wash Express Hub — Hitec City',
-    address: 'Near Cyber Towers, Madhapur, Hitec City, Hyderabad',
+    name: 'Counter 2 — Pick Up Point (Ambience Courtyard)',
+    shortName: 'Pick Up Point (Ambience Courtyard)',
+    locationName: 'Tech Wash Pick Up Point',
+    address: 'Beside Ambience Courtyard,Hyderabad,Telangana,500089',
     phone: '+91 63048 45567',
-    cashierName: 'Sneha Reddy (Cashier #2)',
+    cashierName: 'Cashier #2',
     posUrl: '/billing/counter-2',
     reportUrl: '/admin/reports?branch=counter-2',
     themeColor: 'purple',
@@ -252,12 +252,12 @@ export const STORE_BRANCHES = [
   {
     id: 'counter-3',
     code: 'TW-POS-03',
-    name: 'Counter 3 — Banjara Hills Care Center',
-    shortName: 'Banjara Hills Express',
-    locationName: 'Tech Wash Care Center — Banjara Hills',
-    address: 'Road No. 12, MLA Colony, Banjara Hills, Hyderabad',
+    name: 'Counter 3 — Main Branch (Shaikpet / Manikonda)',
+    shortName: 'Main Branch (Manikonda)',
+    locationName: 'Tech Wash Laundry Main Branch',
+    address: 'Shaikpet Main Rd,Sri Ram Nagar Colony,Manikonda,Hyderabad,Telangana,500089',
     phone: '+91 63048 45567',
-    cashierName: 'Vikram Rao (Cashier #3)',
+    cashierName: 'Cashier #3',
     posUrl: '/billing/counter-3',
     reportUrl: '/admin/reports?branch=counter-3',
     themeColor: 'orange',
@@ -269,6 +269,22 @@ export const STORE_BRANCHES = [
   },
 ];
 
+export const WALK_IN_FOLD_PRICE_BANDS = [
+  { label: "Men's Regular", price: 100, desc: 'T-Shirts, Jeans, Daily' },
+  { label: "Women's / Delicate", price: 130, desc: 'Kurtis, Tops, Dresses' },
+  { label: "Home Linens", price: 120, desc: 'Bedsheets, Towels' },
+  { label: 'Premium Fabric', price: 150, desc: 'Khadi, Linen, Heavy loads' },
+];
+
+export const WALK_IN_IRON_PRICE_BANDS = [
+  { label: "Men's Standard", price: 130, desc: 'Formals + Steam Iron' },
+  { label: "Women's / Work", price: 160, desc: 'Kurtas + Steam Iron' },
+  { label: "Heavy Linens", price: 180, desc: 'Duvets + Steam Iron' },
+  { label: 'Silk / Form Press', price: 200, desc: 'Silk, Formals Press' },
+];
+
+export const WALK_IN_WEIGHT_PRESETS = [1.5, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 10.0, 12.0, 15.0];
+
 const INITIAL_WALK_IN_FORM = {
   customerName: '',
   phone: '',
@@ -279,6 +295,10 @@ const INITIAL_WALK_IN_FORM = {
   pricingType: 'per_item', // 'per_item' | 'per_kg'
   weightKg: '',
   pricePerKg: 100,
+  foldWeightKg: '',
+  foldPricePerKg: 100,
+  ironWeightKg: '',
+  ironPricePerKg: 130,
   customGrandTotal: '', // Admin override for total bill amount
   items: [],
   expressOption: 'STANDARD', // 'STANDARD' | 'EXPRESS_24' | 'SAME_DAY'
@@ -289,8 +309,9 @@ const INITIAL_WALK_IN_FORM = {
   internalAdminNotes: 'In-Store Walk-in Customer POS Order',
   terminalId: 'counter-1',
   terminalCode: 'TW-POS-01',
-  storeBranch: 'Tech Wash Flagship Lounge — Jubilee Hills',
-  cashierName: 'Rahul Verma (Cashier #1)',
+  storeBranch: 'Tech Wash Laundry Services (Branch 1)',
+  storeAddress: 'Beside DreamScape Hotel Ward No 8, Block No 1 , Tolichowki , OU Colony, Shaikpet,Hyderabad,Telangana 500008',
+  cashierName: 'Cashier #1',
   autoOpenReceipt: true,
   autoSendWhatsApp: true,
 };
@@ -485,9 +506,17 @@ export const AdminOrdersPage = () => {
   // Calculations for Walk-In POS Order
   const getWalkInSubtotal = () => {
     if (walkInForm.pricingType === 'per_kg') {
-      const base = (Number(walkInForm.weightKg) || 0) * (Number(walkInForm.pricePerKg) || 100);
+      const foldCost = (Number(walkInForm.foldWeightKg) || 0) * (Number(walkInForm.foldPricePerKg) || 100);
+      const ironCost = (Number(walkInForm.ironWeightKg) || 0) * (Number(walkInForm.ironPricePerKg) || 130);
+      
+      let scaleBase = 0;
+      if (foldCost > 0 || ironCost > 0) {
+        scaleBase = foldCost + ironCost;
+      } else {
+        scaleBase = (Number(walkInForm.weightKg) || 0) * (Number(walkInForm.pricePerKg) || 100);
+      }
       const itemsAddon = walkInForm.items.reduce((sum, it) => sum + (Number(it.unitPrice) * Number(it.quantity)), 0);
-      return Math.round(base + itemsAddon);
+      return Math.round(scaleBase + itemsAddon);
     }
     return walkInForm.items.reduce((sum, it) => sum + (Number(it.unitPrice) * Number(it.quantity)), 0);
   };
@@ -551,14 +580,49 @@ export const AdminOrdersPage = () => {
   }, [walkInItemCategory, walkInItemSearch]);
 
   const handleSelectWalkInService = (srv) => {
-    setWalkInForm(prev => ({
-      ...prev,
-      serviceId: srv.id,
-      serviceName: srv.name,
-      serviceEmoji: srv.emoji,
-      pricingType: srv.perKg ? 'per_kg' : 'per_item',
-      pricePerKg: srv.perKg ? srv.defaultPrice : prev.pricePerKg,
-    }));
+    setWalkInForm(prev => {
+      const isFold = srv.id === 'srv-wash-and-fold';
+      const isIron = srv.id === 'srv-wash-and-iron';
+      const activeWeight = isFold ? prev.foldWeightKg : isIron ? prev.ironWeightKg : prev.weightKg;
+      const activePrice = isFold ? prev.foldPricePerKg : isIron ? prev.ironPricePerKg : (srv.perKg ? srv.defaultPrice : prev.pricePerKg);
+
+      return {
+        ...prev,
+        serviceId: srv.id,
+        serviceName: srv.name,
+        serviceEmoji: srv.emoji,
+        pricingType: srv.perKg ? 'per_kg' : 'per_item',
+        weightKg: activeWeight,
+        pricePerKg: activePrice,
+      };
+    });
+  };
+
+  const handleUpdateWalkInWeight = (val, explicitServiceId = null) => {
+    setWalkInForm(prev => {
+      const targetService = explicitServiceId || prev.serviceId;
+      const updates = { weightKg: val };
+      if (targetService === 'srv-wash-and-fold') {
+        updates.foldWeightKg = val;
+      } else if (targetService === 'srv-wash-and-iron') {
+        updates.ironWeightKg = val;
+      }
+      return { ...prev, ...updates };
+    });
+  };
+
+  const handleUpdateWalkInPricePerKg = (val, explicitServiceId = null) => {
+    setWalkInForm(prev => {
+      const targetService = explicitServiceId || prev.serviceId;
+      const numVal = Number(val) || 0;
+      const updates = { pricePerKg: numVal };
+      if (targetService === 'srv-wash-and-fold') {
+        updates.foldPricePerKg = numVal;
+      } else if (targetService === 'srv-wash-and-iron') {
+        updates.ironPricePerKg = numVal;
+      }
+      return { ...prev, ...updates };
+    });
   };
 
   const handleAddCatalogItem = (catalogItem) => {
@@ -689,20 +753,26 @@ export const AdminOrdersPage = () => {
       return;
     }
 
-    if (walkInForm.pricingType === 'per_item' && walkInForm.items.length === 0) {
-      error('No Items Added', 'Please add at least 1 garment/item to the invoice.');
+    const isScaleOrder = walkInForm.pricingType === 'per_kg';
+    const foldKg = Number(walkInForm.foldWeightKg) || 0;
+    const ironKg = Number(walkInForm.ironWeightKg) || 0;
+    const fallbackKg = Number(walkInForm.weightKg) || 0;
+
+    if (isScaleOrder && foldKg <= 0 && ironKg <= 0 && fallbackKg <= 0) {
+      error('Weight Required', 'Please enter the weighed laundry weight in Kg.');
       return;
     }
 
-    if (walkInForm.pricingType === 'per_kg' && (!walkInForm.weightKg || Number(walkInForm.weightKg) <= 0)) {
-      error('Weight Required', 'Please enter the weighed laundry weight in Kg.');
+    if (!isScaleOrder && walkInForm.items.length === 0) {
+      error('No Items Added', 'Please add at least 1 garment/item to the invoice.');
       return;
     }
 
     setIsCreatingWalkIn(true);
     try {
+      const totalScaleKg = (foldKg > 0 || ironKg > 0) ? (foldKg + ironKg) : fallbackKg;
       const totalGrams = walkInForm.items.reduce((acc, it) => acc + (it.quantity * 350), 0);
-      const estWeight = walkInForm.pricingType === 'per_kg' ? Number(walkInForm.weightKg) : (totalGrams > 0 ? (totalGrams / 1000) : null);
+      const estWeight = isScaleOrder ? totalScaleKg : (totalGrams > 0 ? (totalGrams / 1000) : null);
 
       const parsedReceived = walkInForm.receivedAmount !== '' 
         ? Math.max(0, Number(walkInForm.receivedAmount) || 0)
@@ -710,37 +780,108 @@ export const AdminOrdersPage = () => {
       const computedBalance = Math.max(0, walkInFinalTotal - parsedReceived);
       const computedPaymentStatus = computedBalance === 0 ? 'PAID' : (parsedReceived > 0 ? 'PARTIAL' : 'PENDING');
 
-      const orderPayload = {
-        isWalkIn: true,
-        orderSource: 'OFFLINE_POS',
-        terminalId: walkInForm.terminalId || 'counter-1',
-        terminalCode: walkInForm.terminalCode || 'TW-POS-01',
-        storeBranch: walkInForm.storeBranch || 'Tech Wash Flagship Lounge — Jubilee Hills',
-        cashierName: walkInForm.cashierName || 'Rahul Verma (Cashier #1)',
-        customer: {
-          name: walkInForm.customerName.trim(),
-          phone: cleanPhone,
-          whatsapp: cleanPhone,
-          email: walkInForm.email.trim(),
-          address: `In-Store Walk-in Drop (${walkInForm.storeBranch})`,
-          city: 'Hyderabad',
-        },
-        customerName: walkInForm.customerName.trim(),
-        phone: cleanPhone,
-        whatsapp: cleanPhone,
-        address: `In-Store Walk-in Drop (${walkInForm.storeBranch})`,
-        serviceId: walkInForm.serviceId,
-        serviceName: walkInForm.serviceName,
-        serviceEmoji: walkInForm.serviceEmoji,
-        pricingType: walkInForm.pricingType,
-        items: walkInForm.items.map(it => ({
+      const matchedBranch = STORE_BRANCHES.find(b => b.id === walkInForm.terminalId) || STORE_BRANCHES[0];
+      const resolvedStoreBranch = walkInForm.storeBranch || matchedBranch.locationName;
+      const resolvedStoreAddress = walkInForm.storeAddress || matchedBranch.address;
+
+      const finalItems = [];
+      if (foldKg > 0) {
+        const foldRate = Number(walkInForm.foldPricePerKg) || 100;
+        const foldCost = Math.round(foldKg * foldRate);
+        finalItems.push({
+          name: `🧺 Wash & Fold Scale Batch (${walkInForm.foldWeightKg} Kg @ ₹${foldRate}/Kg)`,
+          serviceName: 'Wash & Fold',
+          subServiceName: `Wash & Fold Scale (${walkInForm.foldWeightKg} Kg)`,
+          emoji: '🧺',
+          category: 'Wash & Fold Scale',
+          unitPrice: foldCost,
+          quantity: 1,
+          lineTotal: foldCost,
+          weightKg: foldKg,
+          pricePerKg: foldRate,
+          isWeightItem: true,
+        });
+      }
+      if (ironKg > 0) {
+        const ironRate = Number(walkInForm.ironPricePerKg) || 130;
+        const ironCost = Math.round(ironKg * ironRate);
+        finalItems.push({
+          name: `🫧 Wash & Steam Iron Scale Batch (${walkInForm.ironWeightKg} Kg @ ₹${ironRate}/Kg)`,
+          serviceName: 'Wash & Steam Iron',
+          subServiceName: `Wash & Steam Iron Scale (${walkInForm.ironWeightKg} Kg)`,
+          emoji: '🫧',
+          category: 'Wash & Steam Iron Scale',
+          unitPrice: ironCost,
+          quantity: 1,
+          lineTotal: ironCost,
+          weightKg: ironKg,
+          pricePerKg: ironRate,
+          isWeightItem: true,
+        });
+      }
+      if (foldKg <= 0 && ironKg <= 0 && fallbackKg > 0 && isScaleOrder) {
+        const activeRate = Number(walkInForm.pricePerKg) || 100;
+        const activeCost = Math.round(fallbackKg * activeRate);
+        finalItems.push({
+          name: `${walkInForm.serviceEmoji} ${walkInForm.serviceName} Scale Batch (${walkInForm.weightKg} Kg @ ₹${activeRate}/Kg)`,
+          serviceName: walkInForm.serviceName,
+          subServiceName: `${walkInForm.serviceName} Scale (${walkInForm.weightKg} Kg)`,
+          emoji: walkInForm.serviceEmoji,
+          category: `${walkInForm.serviceName} Scale`,
+          unitPrice: activeCost,
+          quantity: 1,
+          lineTotal: activeCost,
+          weightKg: fallbackKg,
+          pricePerKg: activeRate,
+          isWeightItem: true,
+        });
+      }
+
+      walkInForm.items.forEach(it => {
+        finalItems.push({
           name: it.name,
           emoji: it.emoji || '👔',
           category: it.category || 'General',
           unitPrice: Number(it.unitPrice),
           quantity: Number(it.quantity),
           lineTotal: Number(it.unitPrice) * Number(it.quantity),
-        })),
+        });
+      });
+
+      let resolvedServiceName = walkInForm.serviceName;
+      let resolvedServiceEmoji = walkInForm.serviceEmoji;
+      if (foldKg > 0 && ironKg > 0) {
+        resolvedServiceName = '🧺 Wash & Fold + 🫧 Wash & Steam Iron';
+        resolvedServiceEmoji = '🧺🫧';
+      }
+
+      const orderPayload = {
+        isWalkIn: true,
+        orderSource: 'OFFLINE_POS',
+        terminalId: walkInForm.terminalId || matchedBranch.id,
+        terminalCode: walkInForm.terminalCode || matchedBranch.code,
+        storeBranch: resolvedStoreBranch,
+        storeAddress: resolvedStoreAddress,
+        cashierName: walkInForm.cashierName || matchedBranch.cashierName,
+        customer: {
+          name: walkInForm.customerName.trim(),
+          phone: cleanPhone,
+          whatsapp: cleanPhone,
+          email: walkInForm.email.trim(),
+          address: `In-Store Walk-in Drop (${resolvedStoreBranch})`,
+          storeBranch: resolvedStoreBranch,
+          storeAddress: resolvedStoreAddress,
+          city: 'Hyderabad',
+        },
+        customerName: walkInForm.customerName.trim(),
+        phone: cleanPhone,
+        whatsapp: cleanPhone,
+        address: `In-Store Walk-in Drop (${resolvedStoreBranch})`,
+        serviceId: walkInForm.serviceId,
+        serviceName: resolvedServiceName,
+        serviceEmoji: resolvedServiceEmoji,
+        pricingType: walkInForm.pricingType,
+        items: finalItems,
         estimatedWeightKg: estWeight,
         actualWeight: estWeight,
         priceSnapshot: {
@@ -1009,7 +1150,9 @@ export const AdminOrdersPage = () => {
         serviceName: 'Premium Dry Cleaning',
         serviceEmoji: '👔',
         schedule: { pickupDate: 'Tomorrow', pickupSlot: '10:00 AM - 12:00 PM' },
-        address: 'Flagship Lounge, Jubilee Hills, Hyderabad',
+        address: 'Shaikpet Main Rd, Sri Ram Nagar Colony, Manikonda, Hyderabad',
+        storeBranch: 'Tech Wash Laundry Main Branch',
+        storeAddress: 'Shaikpet Main Rd,Sri Ram Nagar Colony,Manikonda,Hyderabad,Telangana,500089',
         totalAmount: 499,
         paymentStatus: 'PAID',
         paymentMethod: 'UPI_QR',
@@ -1346,9 +1489,9 @@ export const AdminOrdersPage = () => {
             <span className="text-[11px] text-slate-500 font-medium">Active Branch Filter:</span>
             <span className="px-2.5 py-1 rounded-lg bg-slate-900 text-white font-bold text-xs">
               {branchFilter === 'ALL' ? '🏢 All Branches Consolidated' :
-               branchFilter === 'counter-1' ? '🏪 Counter 1 — Jubilee Hills' :
-               branchFilter === 'counter-2' ? '🏪 Counter 2 — Hitec City' :
-               branchFilter === 'counter-3' ? '🏪 Counter 3 — Banjara Hills' :
+               branchFilter === 'counter-1' ? '🏪 Counter 1 — Branch 1 (Tolichowki)' :
+               branchFilter === 'counter-2' ? '🏪 Counter 2 — Pick Up Point (Ambience Courtyard)' :
+               branchFilter === 'counter-3' ? '🏪 Counter 3 — Main Branch (Manikonda)' :
                '🌐 Online Website Pickups'}
             </span>
           </div>
@@ -2520,29 +2663,41 @@ export const AdminOrdersPage = () => {
                 <span>Select Core Service</span>
               </div>
               <span className="text-[11px] font-bold text-[#EA580C]">
-                Selected: {walkInForm.serviceEmoji} {walkInForm.serviceName}
+                Selected: {walkInForm.serviceEmoji} {walkInForm.serviceName} {walkInForm.pricingType === 'per_kg' ? `(₹${walkInForm.pricePerKg}/Kg)` : ''}
               </span>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
               {WALK_IN_SERVICES.map((srv) => {
                 const isSelected = walkInForm.serviceId === srv.id;
+                const isFold = srv.id === 'srv-wash-and-fold';
+                const isIron = srv.id === 'srv-wash-and-iron';
                 return (
                   <button
                     key={srv.id}
                     type="button"
                     onClick={() => handleSelectWalkInService(srv)}
-                    className={`p-2.5 rounded-xl border text-left transition-all flex flex-col justify-between gap-1 cursor-pointer ${
+                    className={`p-2.5 rounded-xl border-2 text-left transition-all flex flex-col justify-between gap-1 cursor-pointer ${
                       isSelected
-                        ? 'bg-[#FFF7ED] border-[#F97316] ring-2 ring-[#F97316]/20 shadow-xs'
-                        : 'bg-slate-50 border-slate-200 hover:bg-slate-100/80 hover:border-slate-300'
+                        ? isFold
+                          ? 'bg-emerald-50 border-emerald-500 ring-2 ring-emerald-400/30 shadow-xs'
+                          : isIron
+                          ? 'bg-purple-50 border-purple-500 ring-2 ring-purple-400/30 shadow-xs'
+                          : 'bg-[#FFF7ED] border-[#F97316] ring-2 ring-[#F97316]/20 shadow-xs'
+                        : isFold
+                          ? 'bg-emerald-50/30 hover:bg-emerald-50/70 border-emerald-200 text-slate-800'
+                          : isIron
+                          ? 'bg-purple-50/30 hover:bg-purple-50/70 border-purple-200 text-slate-800'
+                          : 'bg-slate-50 border-slate-200 hover:bg-slate-100/80 hover:border-slate-300'
                     }`}
                   >
                     <div className="text-xl">{srv.emoji}</div>
                     <div className="font-bold text-slate-900 text-[11px] leading-tight line-clamp-2">
                       {srv.name}
                     </div>
-                    <div className="text-[10px] text-slate-500 font-semibold">
+                    <div className={`text-[10px] font-semibold ${
+                      isFold ? 'text-emerald-700' : isIron ? 'text-purple-700' : 'text-slate-500'
+                    }`}>
                       {srv.perKg ? `₹${srv.defaultPrice}/Kg` : `From ₹${srv.defaultPrice}`}
                     </div>
                   </button>
@@ -2581,28 +2736,224 @@ export const AdminOrdersPage = () => {
               </div>
 
               {walkInForm.pricingType === 'per_kg' && (
-                <div className="flex flex-wrap items-center gap-2 bg-purple-50 px-3 py-1.5 rounded-xl border border-purple-200">
-                  <span className="font-bold text-purple-900 text-xs">Weighed Laundry:</span>
-                  <div className="flex items-center gap-1">
-                    <input
-                      type="number"
-                      step="0.1"
-                      placeholder="Weight"
-                      value={walkInForm.weightKg}
-                      onChange={(e) => setWalkInForm({ ...walkInForm, weightKg: e.target.value })}
-                      className="w-20 px-2 py-1 bg-white border border-purple-300 rounded-lg text-xs font-bold text-purple-950 outline-none"
-                      title="Edit Weight (Kg)"
-                    />
-                    <span className="font-bold text-purple-700 text-xs">Kg @ ₹</span>
-                    <input
-                      type="number"
-                      min="1"
-                      value={walkInForm.pricePerKg}
-                      onChange={(e) => setWalkInForm({ ...walkInForm, pricePerKg: Number(e.target.value) || 0 })}
-                      className="w-16 px-1.5 py-1 bg-white border border-purple-300 rounded-lg text-xs font-bold text-purple-950 outline-none"
-                      title="Edit Rate per Kg"
-                    />
-                    <span className="font-bold text-purple-700 text-xs">/Kg</span>
+                <div className="w-full mt-3 pt-3 border-t border-slate-200/80 space-y-3">
+                  {/* Two Service Sub-Cards */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {/* 🧺 Wash & Fold Scale Panel */}
+                    <div className={`p-3 rounded-2xl border transition-all ${
+                      walkInForm.serviceId === 'srv-wash-and-fold'
+                        ? 'bg-emerald-50/90 border-emerald-400 ring-2 ring-emerald-400/20 shadow-xs'
+                        : Number(walkInForm.foldWeightKg) > 0
+                        ? 'bg-emerald-50/40 border-emerald-300'
+                        : 'bg-slate-50/70 border-slate-200'
+                    }`}>
+                      <div className="flex items-center justify-between mb-2">
+                        <button
+                          type="button"
+                          onClick={() => handleSelectWalkInService({ id: 'srv-wash-and-fold', name: 'Wash & Fold', emoji: '🧺', defaultPrice: 100, perKg: true })}
+                          className="flex items-center gap-1.5 text-xs font-black text-emerald-950 hover:underline cursor-pointer"
+                        >
+                          <span>🧺</span>
+                          <span>Wash & Fold Scale</span>
+                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-1.5 py-0.5 rounded-md">
+                            ₹{walkInForm.foldPricePerKg || 100}/Kg
+                          </span>
+                        </button>
+                        {Number(walkInForm.foldWeightKg) > 0 && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-black text-emerald-900 bg-emerald-200/80 px-2 py-0.5 rounded-lg">
+                              = ₹{Math.round((Number(walkInForm.foldWeightKg) || 0) * (Number(walkInForm.foldPricePerKg) || 100))}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateWalkInWeight('', 'srv-wash-and-fold')}
+                              className="text-slate-400 hover:text-rose-600 text-[10px] font-bold"
+                              title="Clear Fold Weight"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Weight and Rate Inputs */}
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="flex-1">
+                          <label className="block text-[10px] font-bold text-slate-600 mb-0.5">Scale Weight (Kg):</label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            placeholder="e.g. 4.5"
+                            value={walkInForm.foldWeightKg}
+                            onChange={(e) => handleUpdateWalkInWeight(e.target.value, 'srv-wash-and-fold')}
+                            className="w-full px-2.5 py-1 bg-white border border-emerald-300 rounded-lg text-xs font-bold text-emerald-950 outline-none focus:ring-2 focus:ring-emerald-400"
+                            title="Wash & Fold Weight in Kg"
+                          />
+                        </div>
+                        <div className="w-24">
+                          <label className="block text-[10px] font-bold text-slate-600 mb-0.5">Rate (₹/Kg):</label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={walkInForm.foldPricePerKg}
+                            onChange={(e) => handleUpdateWalkInPricePerKg(e.target.value, 'srv-wash-and-fold')}
+                            className="w-full px-2 py-1 bg-white border border-emerald-300 rounded-lg text-xs font-bold text-emerald-950 outline-none focus:ring-2 focus:ring-emerald-400"
+                            title="Wash & Fold Rate per Kg"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Persona Rate Bands */}
+                      <div className="grid grid-cols-2 gap-1 mb-2">
+                        {WALK_IN_FOLD_PRICE_BANDS.map((pb) => {
+                          const isBandActive = (Number(walkInForm.foldPricePerKg) || 100) === pb.price;
+                          return (
+                            <button
+                              key={pb.price}
+                              type="button"
+                              onClick={() => handleUpdateWalkInPricePerKg(pb.price, 'srv-wash-and-fold')}
+                              className={`px-1.5 py-1 rounded-lg text-left text-[10px] border transition-all cursor-pointer ${
+                                isBandActive
+                                  ? 'bg-emerald-600 text-white font-bold border-emerald-700 shadow-2xs'
+                                  : 'bg-white text-slate-700 hover:bg-emerald-100/50 border-emerald-200'
+                              }`}
+                            >
+                              <div className="flex justify-between items-center font-bold">
+                                <span className="truncate">{pb.label}</span>
+                                <span>₹{pb.price}</span>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Quick Weight Presets */}
+                      <div className="flex flex-wrap gap-1 items-center">
+                        <span className="text-[9px] font-bold text-slate-500 uppercase mr-1">Presets:</span>
+                        {WALK_IN_WEIGHT_PRESETS.slice(0, 6).map((wt) => (
+                          <button
+                            key={wt}
+                            type="button"
+                            onClick={() => handleUpdateWalkInWeight(wt, 'srv-wash-and-fold')}
+                            className={`px-1.5 py-0.5 rounded text-[10px] font-bold border transition-colors cursor-pointer ${
+                              Number(walkInForm.foldWeightKg) === wt
+                                ? 'bg-emerald-700 text-white border-emerald-800'
+                                : 'bg-white text-slate-700 hover:bg-emerald-100 border-slate-200'
+                            }`}
+                          >
+                            {wt}kg
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 🫧 Wash & Steam Iron Scale Panel */}
+                    <div className={`p-3 rounded-2xl border transition-all ${
+                      walkInForm.serviceId === 'srv-wash-and-iron'
+                        ? 'bg-purple-50/90 border-purple-400 ring-2 ring-purple-400/20 shadow-xs'
+                        : Number(walkInForm.ironWeightKg) > 0
+                        ? 'bg-purple-50/40 border-purple-300'
+                        : 'bg-slate-50/70 border-slate-200'
+                    }`}>
+                      <div className="flex items-center justify-between mb-2">
+                        <button
+                          type="button"
+                          onClick={() => handleSelectWalkInService({ id: 'srv-wash-and-iron', name: 'Wash & Steam Iron', emoji: '🫧', defaultPrice: 130, perKg: true })}
+                          className="flex items-center gap-1.5 text-xs font-black text-purple-950 hover:underline cursor-pointer"
+                        >
+                          <span>🫧</span>
+                          <span>Wash & Steam Iron Scale</span>
+                          <span className="text-[10px] font-bold text-purple-700 bg-purple-100/80 px-1.5 py-0.5 rounded-md">
+                            ₹{walkInForm.ironPricePerKg || 130}/Kg
+                          </span>
+                        </button>
+                        {Number(walkInForm.ironWeightKg) > 0 && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-black text-purple-900 bg-purple-200/80 px-2 py-0.5 rounded-lg">
+                              = ₹{Math.round((Number(walkInForm.ironWeightKg) || 0) * (Number(walkInForm.ironPricePerKg) || 130))}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateWalkInWeight('', 'srv-wash-and-iron')}
+                              className="text-slate-400 hover:text-rose-600 text-[10px] font-bold"
+                              title="Clear Iron Weight"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Weight and Rate Inputs */}
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="flex-1">
+                          <label className="block text-[10px] font-bold text-slate-600 mb-0.5">Scale Weight (Kg):</label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            placeholder="e.g. 4.5"
+                            value={walkInForm.ironWeightKg}
+                            onChange={(e) => handleUpdateWalkInWeight(e.target.value, 'srv-wash-and-iron')}
+                            className="w-full px-2.5 py-1 bg-white border border-purple-300 rounded-lg text-xs font-bold text-purple-950 outline-none focus:ring-2 focus:ring-purple-400"
+                            title="Wash & Steam Iron Weight in Kg"
+                          />
+                        </div>
+                        <div className="w-24">
+                          <label className="block text-[10px] font-bold text-slate-600 mb-0.5">Rate (₹/Kg):</label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={walkInForm.ironPricePerKg}
+                            onChange={(e) => handleUpdateWalkInPricePerKg(e.target.value, 'srv-wash-and-iron')}
+                            className="w-full px-2 py-1 bg-white border border-purple-300 rounded-lg text-xs font-bold text-purple-950 outline-none focus:ring-2 focus:ring-purple-400"
+                            title="Wash & Steam Iron Rate per Kg"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Persona Rate Bands */}
+                      <div className="grid grid-cols-2 gap-1 mb-2">
+                        {WALK_IN_IRON_PRICE_BANDS.map((pb) => {
+                          const isBandActive = (Number(walkInForm.ironPricePerKg) || 130) === pb.price;
+                          return (
+                            <button
+                              key={pb.price}
+                              type="button"
+                              onClick={() => handleUpdateWalkInPricePerKg(pb.price, 'srv-wash-and-iron')}
+                              className={`px-1.5 py-1 rounded-lg text-left text-[10px] border transition-all cursor-pointer ${
+                                isBandActive
+                                  ? 'bg-purple-600 text-white font-bold border-purple-700 shadow-2xs'
+                                  : 'bg-white text-slate-700 hover:bg-purple-100/50 border-purple-200'
+                              }`}
+                            >
+                              <div className="flex justify-between items-center font-bold">
+                                <span className="truncate">{pb.label}</span>
+                                <span>₹{pb.price}</span>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Quick Weight Presets */}
+                      <div className="flex flex-wrap gap-1 items-center">
+                        <span className="text-[9px] font-bold text-slate-500 uppercase mr-1">Presets:</span>
+                        {WALK_IN_WEIGHT_PRESETS.slice(0, 6).map((wt) => (
+                          <button
+                            key={wt}
+                            type="button"
+                            onClick={() => handleUpdateWalkInWeight(wt, 'srv-wash-and-iron')}
+                            className={`px-1.5 py-0.5 rounded text-[10px] font-bold border transition-colors cursor-pointer ${
+                              Number(walkInForm.ironWeightKg) === wt
+                                ? 'bg-purple-700 text-white border-purple-800'
+                                : 'bg-white text-slate-700 hover:bg-purple-100 border-slate-200'
+                            }`}
+                          >
+                            {wt}kg
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}

@@ -735,6 +735,8 @@ export const BookPickupPage = () => {
           isExpress,
         },
         totalAmount: orderBreakdown.finalTotal,
+        storeBranch: 'Tech Wash Laundry Main Branch',
+        storeAddress: 'Shaikpet Main Rd,Sri Ram Nagar Colony,Manikonda,Hyderabad,Telangana,500089',
         paymentMethod,
         paymentStatus: 'PENDING',
         approximateWeightWarningAcknowledged: true,
