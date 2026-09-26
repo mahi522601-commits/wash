@@ -123,10 +123,13 @@ export const whatsappNotificationService = {
     const storeBranch = order.storeBranch || 'Tech Wash Laundry Main Branch';
     const storeAddress = order.storeAddress || (
       storeBranch.includes('Branch 1')
-        ? 'Beside DreamScape Hotel Ward No 8, Block No 1 , Tolichowki , OU Colony, Shaikpet,Hyderabad,Telangana 500008'
+        ? 'Beside Dreamscape hotel Ward No 8, Block No 1 , tolichowki, OU Colony, Shaikpet, Hyderabad, Telangana 500008'
         : storeBranch.includes('Pick Up Point')
         ? 'Beside Ambience Courtyard,Hyderabad,Telangana,500089'
         : 'Shaikpet Main Rd,Sri Ram Nagar Colony,Manikonda,Hyderabad,Telangana,500089'
+    );
+    const storePhone = order.storePhone || (
+      storeBranch.includes('Branch 1') ? '+91 9000813444' : '+91 63048 45567'
     );
 
     const address = order.address || order.customer?.address || order.pickupLocation?.formattedAddress || 'Doorstep address on file';
@@ -271,10 +274,13 @@ ${customNote ? `📝 *Update Note:* ${customNote}\n` : ''}${actualWeight ? `⚖�
     const storeBranch = order.storeBranch || receiptData.storeBranch || 'Tech Wash Laundry Main Branch';
     const storeAddress = order.storeAddress || receiptData.storeAddress || (
       storeBranch.includes('Branch 1')
-        ? 'Beside DreamScape Hotel Ward No 8, Block No 1 , Tolichowki , OU Colony, Shaikpet,Hyderabad,Telangana 500008'
+        ? 'Beside Dreamscape hotel Ward No 8, Block No 1 , tolichowki, OU Colony, Shaikpet, Hyderabad, Telangana 500008'
         : storeBranch.includes('Pick Up Point')
         ? 'Beside Ambience Courtyard,Hyderabad,Telangana,500089'
         : 'Shaikpet Main Rd,Sri Ram Nagar Colony,Manikonda,Hyderabad,Telangana,500089'
+    );
+    const storePhone = order.storePhone || receiptData.storePhone || (
+      storeBranch.includes('Branch 1') ? '+91 9000813444' : '+91 63048 45567'
     );
     const terminalCode = order.terminalCode || (order.isWalkIn ? 'TW-POS-01' : 'ONLINE-HUB');
     const cashierName = order.cashierName || 'Tech Wash Operator';
@@ -377,7 +383,7 @@ Payment Mode: ${paymentLabel}
 VIEW & DOWNLOAD OFFICIAL PDF / TRACK LIVE STATUS:
 ${invoiceUrl}
 
-Store Helpline: +91 63048 45567
+Store Helpline / Phone: ${storePhone}
 Support Email: care@techwashlaundry.com
 Official Website: https://techwashlaundry.com
 

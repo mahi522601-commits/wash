@@ -1,6 +1,6 @@
 import React from 'react';
 import { useSettings } from '../../context/SettingsContext';
-import { formatCurrency } from '../../utils/formatters';
+import { formatCurrency, parsePinToPinItems } from '../../utils/formatters';
 import { 
   Store, 
   MapPin, 
@@ -49,11 +49,11 @@ export const PrintFinancialReport = ({
     : branchFilter === 'ALL' 
     ? 'All Branches & Processing Hubs (POS + Online)' 
     : branchFilter === 'counter-1'
-    ? 'Branch 1 — Tolichowki / OU Colony (POS-01 Counter)'
+    ? 'Tech Wash Laundry Main Branch — Manikonda (POS-01 Counter)'
     : branchFilter === 'counter-2'
-    ? 'Pick Up Point — Ambience Courtyard (POS-02 Counter)'
+    ? 'Tech Wash Laundry Services (Branch 1) — Tolichowki / OU Colony (POS-02 Counter)'
     : branchFilter === 'counter-3'
-    ? 'Main Branch — Manikonda (POS-03 Counter)'
+    ? 'Tech Wash Pick Up Point — Ambience Courtyard (POS-03 Counter)'
     : branchFilter === 'ONLINE_WEBSITE'
     ? 'Online Website Orders Only'
     : 'Offline POS Counter Machine';
@@ -288,11 +288,7 @@ export const PrintFinancialReport = ({
                 const isPaid = balance === 0 || ord.paymentStatus === 'PAID';
                 const isPartial = received > 0 && balance > 0;
 
-                const itemsSummary = (ord.items && ord.items.length > 0)
-                  ? ord.items.map(it => `${it.quantity || 1}x ${it.name} (@₹${it.unitPrice || it.price || 0})`).join(', ')
-                  : (ord.pricingType === 'per_kg' && (ord.actualWeight || ord.estimatedWeightKg || ord.weightKg)
-                      ? `${ord.serviceName || 'Wash & Fold'} (${ord.actualWeight || ord.estimatedWeightKg || ord.weightKg} Kg @ ₹${ord.pricePerKg || 100}/Kg)`
-                      : (ord.serviceName || 'Garment Care'));
+                const pin = parsePinToPinItems(ord);
 
                 const dateDisplay = new Date(ord.createdAt || Date.now()).toLocaleString('en-IN', {
                   day: '2-digit',
@@ -303,16 +299,16 @@ export const PrintFinancialReport = ({
 
                 return (
                   <tr key={ord.id || idx} className="hover:bg-slate-50/80">
-                    <td className="py-1.5 px-2 text-center text-slate-400 font-mono text-[9px]">
+                    <td className="py-2 px-2 text-center text-slate-400 font-mono text-[9px] align-top">
                       {idx + 1}
                     </td>
-                    <td className="py-1.5 px-2 font-mono font-bold text-slate-900">
+                    <td className="py-2 px-2 font-mono font-bold text-slate-900 align-top">
                       {ord.orderNumber || ord.id}
                     </td>
-                    <td className="py-1.5 px-2 text-slate-600 whitespace-nowrap">
+                    <td className="py-2 px-2 text-slate-600 whitespace-nowrap align-top">
                       {dateDisplay}
                     </td>
-                    <td className="py-1.5 px-2">
+                    <td className="py-2 px-2 align-top">
                       <div className="font-bold text-slate-900 truncate max-w-[120px]" title={ord.customerName || ord.customer?.name}>
                         {ord.customerName || ord.customer?.name || 'Valued Customer'}
                       </div>
@@ -320,24 +316,81 @@ export const PrintFinancialReport = ({
                         {ord.phone || ord.customer?.phone || ''}
                       </div>
                     </td>
-                    <td className="py-1.5 px-2 text-slate-600 truncate max-w-[110px]" title={ord.storeBranch || ord.terminalCode || 'Counter'}>
+                    <td className="py-2 px-2 text-slate-600 truncate max-w-[110px] align-top" title={ord.storeBranch || ord.terminalCode || 'Counter'}>
                       {ord.storeBranch ? ord.storeBranch.replace('Tech Wash ', '') : (ord.isWalkIn ? 'POS Counter' : 'Online Website')}
                     </td>
-                    <td className="py-1.5 px-2">
-                      <span className="font-medium text-slate-900 leading-tight block">
-                        {itemsSummary}
-                      </span>
+                    <td className="py-2 px-2.5 align-top min-w-[240px]">
+                      <div className="space-y-1">
+                        {/* 1. Weighed Scale Batches */}
+                        {pin.scales.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {pin.scales.map((sc, scIdx) => (
+                              <span
+                                key={scIdx}
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-950 border border-emerald-300 text-[9px] font-bold print:bg-slate-100 print:text-black print:border-black shadow-2xs"
+                              >
+                                <span>{sc.emoji}</span>
+                                <span>{sc.serviceTitle}:</span>
+                                <span className="font-mono text-emerald-800 print:text-black">{sc.weight}</span>
+                                {sc.rate && <span className="text-[8px] text-slate-500 print:text-black">({sc.rate})</span>}
+                                <span className="font-mono text-[9.5px] text-emerald-950 print:text-black font-black">= ₹{sc.lineTotal}</span>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* 2. Weighed Garments Piece Breakdown (NO @₹0 artifacts) */}
+                        {pin.clothes.length > 0 && (
+                          <div className="text-[9px] text-slate-700 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200 print:bg-white print:border-slate-300 leading-tight">
+                            <span className="font-bold text-slate-900">👔 Weighed Garments ({pin.totalClothesCount} pcs): </span>
+                            <span className="text-slate-700 font-medium">
+                              {pin.clothes.map(c => `${c.quantity}x ${c.name}`).join(', ')}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* 3. Itemized Specialty Services & Garments */}
+                        {pin.specialServices.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {pin.specialServices.map((srv, sIdx) => (
+                              <span
+                                key={sIdx}
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-900 border border-indigo-200 text-[8.5px] font-medium print:bg-white print:text-black print:border-slate-400"
+                              >
+                                <span>{srv.emoji}</span>
+                                <span className="font-bold">{srv.quantity}x</span>
+                                <span>{srv.name}</span>
+                                <span className="font-mono font-bold text-indigo-950 print:text-black">(₹{srv.lineTotal})</span>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* 4. Express 24H Tag */}
+                        {pin.expressFee > 0 && (
+                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 border border-amber-300 text-[8px] font-black uppercase">
+                            ⚡ Express 24H (+₹{pin.expressFee})
+                          </span>
+                        )}
+
+                        {/* 5. Notes if present */}
+                        {ord.notes && (
+                          <div className="text-[8px] text-slate-500 italic truncate max-w-[260px]">
+                            📝 {ord.notes}
+                          </div>
+                        )}
+                      </div>
                     </td>
-                    <td className="py-1.5 px-2 text-right font-mono font-bold text-slate-900">
+                    <td className="py-2 px-2 text-right font-mono font-bold text-slate-900 align-top">
                       {formatCurrency(total)}
                     </td>
-                    <td className="py-1.5 px-2 text-right font-mono font-bold text-emerald-700 print:text-black">
+                    <td className="py-2 px-2 text-right font-mono font-bold text-emerald-700 print:text-black align-top">
                       {formatCurrency(received)}
                     </td>
-                    <td className={`py-1.5 px-2 text-right font-mono font-black ${balance > 0 ? 'text-rose-600 print:text-black' : 'text-slate-400'}`}>
+                    <td className={`py-2 px-2 text-right font-mono font-black align-top ${balance > 0 ? 'text-rose-600 print:text-black' : 'text-slate-400'}`}>
                       {balance > 0 ? formatCurrency(balance) : '₹0'}
                     </td>
-                    <td className="py-1.5 px-2 text-center whitespace-nowrap">
+                    <td className="py-2 px-2 text-center whitespace-nowrap align-top">
                       <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-black uppercase ${
                         isPaid 
                           ? 'bg-emerald-100 text-emerald-800'

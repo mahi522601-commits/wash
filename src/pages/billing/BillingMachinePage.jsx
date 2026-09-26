@@ -14,10 +14,16 @@ import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { 
-  WALK_IN_SERVICES, 
-  POS_CATEGORIES, 
-  MASTER_CATALOG_ITEMS 
+  POS_CATEGORIES 
 } from '../admin/AdminOrdersPage';
+import { 
+  pricingService, 
+  INITIAL_PRICING_CONFIG,
+  buildMasterCatalogFromPricing,
+  buildWalkInServicesFromPricing,
+  buildWeightBandsFromPricing,
+  buildPersonaRateBandsFromPricing
+} from '../../services/pricingConfig';
 import { 
   Store, 
   MapPin, 
@@ -332,6 +338,24 @@ export const BillingMachinePage = () => {
     initTerminal();
   }, [activeTerminalId]);
 
+  // Real-time Master Pricing Configuration Synchronization
+  const [pricingConfig, setPricingConfig] = useState(INITIAL_PRICING_CONFIG);
+
+  useEffect(() => {
+    pricingService.getPricingConfig().then(cfg => {
+      if (cfg) setPricingConfig(cfg);
+    });
+    const unsub = pricingService.subscribeToPricing((newCfg) => {
+      if (newCfg) setPricingConfig(newCfg);
+    });
+    return unsub;
+  }, []);
+
+  const posServices = useMemo(() => buildWalkInServicesFromPricing(pricingConfig), [pricingConfig]);
+  const dynamicMasterCatalog = useMemo(() => buildMasterCatalogFromPricing(pricingConfig), [pricingConfig]);
+  const dynamicWeightBands = useMemo(() => buildWeightBandsFromPricing(pricingConfig), [pricingConfig]);
+  const dynamicPersonaBands = useMemo(() => buildPersonaRateBandsFromPricing(pricingConfig), [pricingConfig]);
+
   // Handle Terminal PIN Sign-in
   const handleTerminalLogin = async (e) => {
     if (e) e.preventDefault();
@@ -380,6 +404,8 @@ export const BillingMachinePage = () => {
     const isPerKg = Boolean(srv.perKg);
     const isFold = srv.id === 'srv-wash-and-fold';
     const isIron = srv.id === 'srv-wash-and-iron';
+    const foldDefault = dynamicWeightBands.foldRate || srv.defaultPrice || 100;
+    const ironDefault = dynamicWeightBands.ironRate || srv.defaultPrice || 130;
 
     setBillForm(prev => {
       let activeWt = '';
@@ -387,10 +413,10 @@ export const BillingMachinePage = () => {
 
       if (isFold) {
         activeWt = prev.foldWeightKg || '';
-        activeRate = prev.foldPricePerKg || 100;
+        activeRate = prev.foldPricePerKg || foldDefault;
       } else if (isIron) {
         activeWt = prev.ironWeightKg || '';
-        activeRate = prev.ironPricePerKg || 130;
+        activeRate = prev.ironPricePerKg || ironDefault;
       }
 
       return {
@@ -401,6 +427,8 @@ export const BillingMachinePage = () => {
         pricingType: isPerKg ? 'per_kg' : 'per_item',
         weightKg: activeWt,
         pricePerKg: activeRate,
+        foldPricePerKg: prev.foldPricePerKg || foldDefault,
+        ironPricePerKg: prev.ironPricePerKg || ironDefault,
       };
     });
 
@@ -464,7 +492,7 @@ export const BillingMachinePage = () => {
   // 1-STEP DYNAMIC CATALOG FILTER:
   // Maps the active selected core service directly to its relevant items
   const activeServiceCatalog = useMemo(() => {
-    let items = MASTER_CATALOG_ITEMS;
+    let items = dynamicMasterCatalog;
     const sId = billForm.serviceId;
 
     if (itemSearch.trim()) {
@@ -477,30 +505,30 @@ export const BillingMachinePage = () => {
 
     if (sId === 'srv-dry-cleaning') {
       if (subCategoryFilter === 'ALL') {
-        items = MASTER_CATALOG_ITEMS.filter(it => ['MEN', 'WOMEN', 'KIDS', 'SAREES_ETHNIC', 'FOOTWEAR_BAGS'].includes(it.categoryKey));
+        items = dynamicMasterCatalog.filter(it => ['MEN', 'WOMEN', 'KIDS', 'SAREES_ETHNIC', 'FOOTWEAR_BAGS'].includes(it.categoryKey));
       } else {
-        items = MASTER_CATALOG_ITEMS.filter(it => it.categoryKey === subCategoryFilter);
+        items = dynamicMasterCatalog.filter(it => it.categoryKey === subCategoryFilter);
       }
     } else if (sId === 'srv-wash-and-fold' || sId === 'srv-wash-and-iron') {
       if (subCategoryFilter === 'ALL') {
-        items = MASTER_CATALOG_ITEMS.filter(it => ['MEN', 'WOMEN', 'KIDS', 'HOUSEHOLD'].includes(it.categoryKey));
+        items = dynamicMasterCatalog.filter(it => ['MEN', 'WOMEN', 'KIDS', 'HOUSEHOLD'].includes(it.categoryKey));
       } else {
-        items = MASTER_CATALOG_ITEMS.filter(it => it.categoryKey === subCategoryFilter);
+        items = dynamicMasterCatalog.filter(it => it.categoryKey === subCategoryFilter);
       }
     } else if (sId === 'srv-steam-ironing') {
-      items = MASTER_CATALOG_ITEMS.filter(it => it.categoryKey === 'STEAM_IRONING' || it.name.toLowerCase().includes('steam') || it.name.toLowerCase().includes('iron'));
+      items = dynamicMasterCatalog.filter(it => it.categoryKey === 'STEAM_IRONING' || it.name.toLowerCase().includes('steam') || it.name.toLowerCase().includes('iron'));
     } else if (sId === 'srv-saree-spa') {
-      items = MASTER_CATALOG_ITEMS.filter(it => it.categoryKey === 'SAREES_ETHNIC' || it.name.toLowerCase().includes('saree') || it.name.toLowerCase().includes('silk') || it.name.toLowerCase().includes('lehanga'));
+      items = dynamicMasterCatalog.filter(it => it.categoryKey === 'SAREES_ETHNIC' || it.name.toLowerCase().includes('saree') || it.name.toLowerCase().includes('silk') || it.name.toLowerCase().includes('lehanga'));
     } else if (sId === 'srv-shoe-spa') {
-      items = MASTER_CATALOG_ITEMS.filter(it => it.categoryKey === 'FOOTWEAR_BAGS' || it.name.toLowerCase().includes('shoe') || it.name.toLowerCase().includes('sneaker'));
+      items = dynamicMasterCatalog.filter(it => it.categoryKey === 'FOOTWEAR_BAGS' || it.name.toLowerCase().includes('shoe') || it.name.toLowerCase().includes('sneaker'));
     } else if (sId === 'srv-curtain-spa') {
-      items = MASTER_CATALOG_ITEMS.filter(it => it.name.toLowerCase().includes('curtain'));
+      items = dynamicMasterCatalog.filter(it => it.name.toLowerCase().includes('curtain'));
     } else if (sId === 'srv-starch-and-iron') {
-      items = MASTER_CATALOG_ITEMS.filter(it => it.categoryKey === 'STARCH_FINISHING' || it.name.toLowerCase().includes('starch'));
+      items = dynamicMasterCatalog.filter(it => it.categoryKey === 'STARCH_FINISHING' || it.name.toLowerCase().includes('starch'));
     }
 
     return items;
-  }, [billForm.serviceId, subCategoryFilter, itemSearch]);
+  }, [billForm.serviceId, subCategoryFilter, itemSearch, dynamicMasterCatalog]);
 
   // Add Item From Catalog (with Service Name & Sub-Service Name explicitly linked)
   const handleAddCatalogItem = (item) => {
@@ -850,6 +878,7 @@ export const BillingMachinePage = () => {
         terminalCode: resolvedTerminalCode,
         storeBranch: resolvedStoreBranch,
         storeAddress: resolvedStoreAddress,
+        storePhone: terminal?.phone || branchDef.phone,
         cashierName: resolvedCashier,
         customer: {
           name: billForm.customerName.trim(),
@@ -1393,7 +1422,7 @@ export const BillingMachinePage = () => {
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                {WALK_IN_SERVICES.map((srv) => {
+                {posServices.map((srv) => {
                   const isSelected = billForm.serviceId === srv.id;
                   const isWeighed = Boolean(srv.perKg);
                   return (
@@ -1462,7 +1491,7 @@ export const BillingMachinePage = () => {
                   <button
                     type="button"
                     onClick={() => {
-                      const waf = WALK_IN_SERVICES.find(s => s.id === 'srv-wash-and-fold');
+                      const waf = posServices.find(s => s.id === 'srv-wash-and-fold');
                       if (waf) handleSelectService(waf);
                     }}
                     className={`flex-1 py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${
@@ -1471,12 +1500,12 @@ export const BillingMachinePage = () => {
                         : 'bg-white text-slate-700 hover:bg-emerald-50 border border-slate-200'
                     }`}
                   >
-                    <span>🧺 Wash & Fold Scale (₹100/Kg)</span>
+                    <span>🧺 Wash & Fold Scale (₹{dynamicWeightBands.foldRate}/Kg)</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => {
-                      const wai = WALK_IN_SERVICES.find(s => s.id === 'srv-wash-and-iron');
+                      const wai = posServices.find(s => s.id === 'srv-wash-and-iron');
                       if (wai) handleSelectService(wai);
                     }}
                     className={`flex-1 py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${
@@ -1485,7 +1514,7 @@ export const BillingMachinePage = () => {
                         : 'bg-white text-slate-700 hover:bg-purple-50 border border-slate-200'
                     }`}
                   >
-                    <span>🫧 Wash & Steam Iron Scale (₹130/Kg)</span>
+                    <span>🫧 Wash & Steam Iron Scale (₹{dynamicWeightBands.ironRate}/Kg)</span>
                   </button>
                 </div>
 
@@ -1511,7 +1540,7 @@ export const BillingMachinePage = () => {
                             ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' 
                             : 'bg-purple-100 text-purple-800 border border-purple-300'
                         }`}>
-                          {billForm.serviceId === 'srv-wash-and-fold' ? '₹100/Kg Base Scale' : '₹130/Kg Base Scale'}
+                          {billForm.serviceId === 'srv-wash-and-fold' ? `₹${dynamicWeightBands.foldRate}/Kg Base Scale` : `₹${dynamicWeightBands.ironRate}/Kg Base Scale`}
                         </span>
                       </div>
                       <p className={`text-[11px] font-medium ${
@@ -1534,8 +1563,8 @@ export const BillingMachinePage = () => {
                       billForm.serviceId === 'srv-wash-and-fold' ? 'text-emerald-900' : 'text-purple-900'
                     }`}>
                       ₹{billForm.serviceId === 'srv-wash-and-fold' 
-                        ? Math.round((Number(billForm.foldWeightKg || billForm.weightKg) || 0) * (Number(billForm.foldPricePerKg || billForm.pricePerKg) || 100))
-                        : Math.round((Number(billForm.ironWeightKg || billForm.weightKg) || 0) * (Number(billForm.ironPricePerKg || billForm.pricePerKg) || 130))}
+                        ? Math.round((Number(billForm.foldWeightKg || billForm.weightKg) || 0) * (Number(billForm.foldPricePerKg || billForm.pricePerKg) || dynamicWeightBands.foldRate))
+                        : Math.round((Number(billForm.ironWeightKg || billForm.weightKg) || 0) * (Number(billForm.ironPricePerKg || billForm.pricePerKg) || dynamicWeightBands.ironRate))}
                     </span>
                   </div>
                 </div>
@@ -1549,114 +1578,47 @@ export const BillingMachinePage = () => {
                       ⚡ Select Rate / Kg by Category Persona:
                     </span>
                     <span className="text-[10px] text-slate-500 font-semibold">
-                      Current Scale Rate: <strong>₹{billForm.serviceId === 'srv-wash-and-fold' ? (billForm.foldPricePerKg || billForm.pricePerKg || 100) : (billForm.ironPricePerKg || billForm.pricePerKg || 130)}/Kg</strong>
+                      Current Scale Rate: <strong>₹{billForm.serviceId === 'srv-wash-and-fold' ? (billForm.foldPricePerKg || billForm.pricePerKg || dynamicWeightBands.foldRate) : (billForm.ironPricePerKg || billForm.pricePerKg || dynamicWeightBands.ironRate)}/Kg</strong>
                     </span>
                   </div>
 
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    {billForm.serviceId === 'srv-wash-and-fold' ? (
-                      <>
+                    {(billForm.serviceId === 'srv-wash-and-fold' 
+                      ? dynamicPersonaBands.foldPriceBands 
+                      : dynamicPersonaBands.ironPriceBands
+                    ).map((persona) => {
+                      const currentSelectedRate = Number(billForm.serviceId === 'srv-wash-and-fold' 
+                        ? (billForm.foldPricePerKg || billForm.pricePerKg || dynamicWeightBands.foldRate) 
+                        : (billForm.ironPricePerKg || billForm.pricePerKg || dynamicWeightBands.ironRate));
+                      const isSelected = currentSelectedRate === persona.rate;
+                      const isFold = billForm.serviceId === 'srv-wash-and-fold';
+
+                      return (
                         <button
+                          key={persona.label}
                           type="button"
-                          onClick={() => handleUpdatePricePerKg(100)}
+                          onClick={() => handleUpdatePricePerKg(persona.rate)}
                           className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                            (billForm.foldPricePerKg || billForm.pricePerKg) === 100
-                              ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                              : 'bg-white hover:bg-emerald-50 text-slate-800 border-emerald-200'
+                            isSelected
+                              ? isFold 
+                                ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                                : 'bg-purple-600 text-white border-purple-600 shadow-xs'
+                              : isFold
+                                ? 'bg-white hover:bg-emerald-50 text-slate-800 border-emerald-200'
+                                : 'bg-white hover:bg-purple-50 text-slate-800 border-purple-200'
                           }`}
                         >
-                          <span className="text-xs font-bold block">👨 Men's Regular</span>
-                          <span className={`text-[11px] font-mono font-black ${(billForm.foldPricePerKg || billForm.pricePerKg) === 100 ? 'text-emerald-100' : 'text-emerald-700'}`}>₹100 / Kg</span>
+                          <span className="text-xs font-bold block">{persona.label}</span>
+                          <span className={`text-[11px] font-mono font-black ${
+                            isSelected 
+                              ? isFold ? 'text-emerald-100' : 'text-purple-100' 
+                              : isFold ? 'text-emerald-700' : 'text-purple-700'
+                          }`}>
+                            ₹{persona.rate} / Kg
+                          </span>
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => handleUpdatePricePerKg(130)}
-                          className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                            (billForm.foldPricePerKg || billForm.pricePerKg) === 130
-                              ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                              : 'bg-white hover:bg-emerald-50 text-slate-800 border-emerald-200'
-                          }`}
-                        >
-                          <span className="text-xs font-bold block">👩 Women's / Delicate</span>
-                          <span className={`text-[11px] font-mono font-black ${(billForm.foldPricePerKg || billForm.pricePerKg) === 130 ? 'text-emerald-100' : 'text-emerald-700'}`}>₹130 / Kg</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleUpdatePricePerKg(120)}
-                          className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                            (billForm.foldPricePerKg || billForm.pricePerKg) === 120
-                              ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                              : 'bg-white hover:bg-emerald-50 text-slate-800 border-emerald-200'
-                          }`}
-                        >
-                          <span className="text-xs font-bold block">🏠 Linens & Towels</span>
-                          <span className={`text-[11px] font-mono font-black ${(billForm.foldPricePerKg || billForm.pricePerKg) === 120 ? 'text-emerald-100' : 'text-emerald-700'}`}>₹120 / Kg</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleUpdatePricePerKg(150)}
-                          className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                            (billForm.foldPricePerKg || billForm.pricePerKg) === 150
-                              ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                              : 'bg-white hover:bg-emerald-50 text-slate-800 border-emerald-200'
-                          }`}
-                        >
-                          <span className="text-xs font-bold block">⚡ Premium Fabric</span>
-                          <span className={`text-[11px] font-mono font-black ${(billForm.foldPricePerKg || billForm.pricePerKg) === 150 ? 'text-emerald-100' : 'text-emerald-700'}`}>₹150 / Kg</span>
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => handleUpdatePricePerKg(130)}
-                          className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                            (billForm.ironPricePerKg || billForm.pricePerKg) === 130
-                              ? 'bg-purple-600 text-white border-purple-600 shadow-xs'
-                              : 'bg-white hover:bg-purple-50 text-slate-800 border-purple-200'
-                          }`}
-                        >
-                          <span className="text-xs font-bold block">👨 Men's Standard</span>
-                          <span className={`text-[11px] font-mono font-black ${(billForm.ironPricePerKg || billForm.pricePerKg) === 130 ? 'text-purple-100' : 'text-purple-700'}`}>₹130 / Kg</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleUpdatePricePerKg(160)}
-                          className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                            (billForm.ironPricePerKg || billForm.pricePerKg) === 160
-                              ? 'bg-purple-600 text-white border-purple-600 shadow-xs'
-                              : 'bg-white hover:bg-purple-50 text-slate-800 border-purple-200'
-                          }`}
-                        >
-                          <span className="text-xs font-bold block">👩 Women's / Delicate</span>
-                          <span className={`text-[11px] font-mono font-black ${(billForm.ironPricePerKg || billForm.pricePerKg) === 160 ? 'text-purple-100' : 'text-purple-700'}`}>₹160 / Kg</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleUpdatePricePerKg(180)}
-                          className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                            (billForm.ironPricePerKg || billForm.pricePerKg) === 180
-                              ? 'bg-purple-600 text-white border-purple-600 shadow-xs'
-                              : 'bg-white hover:bg-purple-50 text-slate-800 border-purple-200'
-                          }`}
-                        >
-                          <span className="text-xs font-bold block">🏠 Heavy Linens</span>
-                          <span className={`text-[11px] font-mono font-black ${(billForm.ironPricePerKg || billForm.pricePerKg) === 180 ? 'text-purple-100' : 'text-purple-700'}`}>₹180 / Kg</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleUpdatePricePerKg(200)}
-                          className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                            (billForm.ironPricePerKg || billForm.pricePerKg) === 200
-                              ? 'bg-purple-600 text-white border-purple-600 shadow-xs'
-                              : 'bg-white hover:bg-purple-50 text-slate-800 border-purple-200'
-                          }`}
-                        >
-                          <span className="text-xs font-bold block">✨ Silk / Form Press</span>
-                          <span className={`text-[11px] font-mono font-black ${(billForm.ironPricePerKg || billForm.pricePerKg) === 200 ? 'text-purple-100' : 'text-purple-700'}`}>₹200 / Kg</span>
-                        </button>
-                      </>
-                    )}
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -1700,8 +1662,8 @@ export const BillingMachinePage = () => {
                       <input
                         type="number"
                         min="0"
-                        placeholder={billForm.serviceId === 'srv-wash-and-fold' ? "100" : "130"}
-                        value={billForm.serviceId === 'srv-wash-and-fold' ? (billForm.foldPricePerKg || billForm.pricePerKg || 100) : (billForm.ironPricePerKg || billForm.pricePerKg || 130)}
+                        placeholder={billForm.serviceId === 'srv-wash-and-fold' ? String(dynamicWeightBands.foldRate) : String(dynamicWeightBands.ironRate)}
+                        value={billForm.serviceId === 'srv-wash-and-fold' ? (billForm.foldPricePerKg || billForm.pricePerKg || dynamicWeightBands.foldRate) : (billForm.ironPricePerKg || billForm.pricePerKg || dynamicWeightBands.ironRate)}
                         onChange={(e) => handleUpdatePricePerKg(e.target.value)}
                         className={`w-full px-4 py-2.5 bg-white border-2 rounded-xl font-mono text-base font-black outline-none ${
                           billForm.serviceId === 'srv-wash-and-fold'
@@ -1732,9 +1694,9 @@ export const BillingMachinePage = () => {
                   </div>
 
                   <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
-                    {(billForm.serviceId === 'srv-wash-and-fold' ? FOLD_WEIGHT_BANDS : IRON_WEIGHT_BANDS).map((band) => {
+                    {(billForm.serviceId === 'srv-wash-and-fold' ? dynamicWeightBands.foldBands : dynamicWeightBands.ironBands).map((band) => {
                       const activeWt = Number(billForm.serviceId === 'srv-wash-and-fold' ? (billForm.foldWeightKg || billForm.weightKg) : (billForm.ironWeightKg || billForm.weightKg));
-                      const activeRate = Number(billForm.serviceId === 'srv-wash-and-fold' ? (billForm.foldPricePerKg || billForm.pricePerKg || 100) : (billForm.ironPricePerKg || billForm.pricePerKg || 130));
+                      const activeRate = Number(billForm.serviceId === 'srv-wash-and-fold' ? (billForm.foldPricePerKg || billForm.pricePerKg || dynamicWeightBands.foldRate) : (billForm.ironPricePerKg || billForm.pricePerKg || dynamicWeightBands.ironRate));
                       const isSelected = activeWt === band.wt;
                       const calculatedBandTotal = Math.round(band.wt * activeRate);
 

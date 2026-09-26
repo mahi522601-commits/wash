@@ -9,16 +9,16 @@ import { collection, doc, getDoc, getDocs, setDoc } from 'firebase/firestore';
 const TERMINALS_STORAGE_KEY = 'techwash_billing_terminals';
 const TERMINAL_SESSION_PREFIX = 'techwash_terminal_session_';
 
-// 3 Default In-Store Billing Terminals mapped to store locations from /locations
+// 3 Default In-Store Billing Terminals mapped to store locations from /admin/locations
 export const DEFAULT_BILLING_TERMINALS = [
   {
     id: 'counter-1',
     numericId: '1',
-    name: 'Counter 1 — Branch 1 (Tolichowki / OU Colony)',
+    name: 'Counter 1 — Main Branch (Shaikpet / Manikonda)',
     code: 'TW-POS-01',
-    locationId: 'loc-branch-1',
-    locationName: 'Tech Wash Laundry Services (Branch 1)',
-    address: 'Beside DreamScape Hotel Ward No 8, Block No 1 , Tolichowki , OU Colony, Shaikpet,Hyderabad,Telangana 500008',
+    locationId: 'loc-main-branch',
+    locationName: 'Tech Wash Laundry Main Branch',
+    address: 'Shaikpet Main Rd,Sri Ram Nagar Colony,Manikonda,Hyderabad,Telangana,500089',
     phone: '+91 63048 45567',
     assignedOperator: 'Cashier #1',
     password: 'techwash1',
@@ -26,35 +26,35 @@ export const DEFAULT_BILLING_TERMINALS = [
     lastLoginAt: null,
     totalOrdersToday: 0,
     totalRevenueToday: 0,
-    themeColor: '#0284c7', // Brand Blue
-    badgeColor: 'bg-blue-50 text-blue-700 border-blue-200',
+    themeColor: '#ea580c', // Orange
+    badgeColor: 'bg-orange-50 text-orange-700 border-orange-200',
   },
   {
     id: 'counter-2',
     numericId: '2',
-    name: 'Counter 2 — Pick Up Point (Ambience Courtyard)',
+    name: 'Counter 2 — Branch 1 (Tolichowki / OU Colony)',
     code: 'TW-POS-02',
-    locationId: 'loc-pickup-point',
-    locationName: 'Tech Wash Pick Up Point',
-    address: 'Beside Ambience Courtyard,Hyderabad,Telangana,500089',
-    phone: '+91 63048 45567',
+    locationId: 'loc-branch-1',
+    locationName: 'Tech Wash Laundry Services (Branch 1)',
+    address: 'Beside Dreamscape hotel Ward No 8, Block No 1 , tolichowki, OU Colony, Shaikpet, Hyderabad, Telangana 500008',
+    phone: '+91 9000813444',
     assignedOperator: 'Cashier #2',
     password: 'techwash2',
     active: true,
     lastLoginAt: null,
     totalOrdersToday: 0,
     totalRevenueToday: 0,
-    themeColor: '#7c3aed', // Purple
-    badgeColor: 'bg-purple-50 text-purple-700 border-purple-200',
+    themeColor: '#0284c7', // Blue
+    badgeColor: 'bg-blue-50 text-blue-700 border-blue-200',
   },
   {
     id: 'counter-3',
     numericId: '3',
-    name: 'Counter 3 — Main Branch (Shaikpet / Manikonda)',
+    name: 'Counter 3 — Pick Up Point (Ambience Courtyard)',
     code: 'TW-POS-03',
-    locationId: 'loc-main-branch',
-    locationName: 'Tech Wash Laundry Main Branch',
-    address: 'Shaikpet Main Rd,Sri Ram Nagar Colony,Manikonda,Hyderabad,Telangana,500089',
+    locationId: 'loc-pickup-point',
+    locationName: 'Tech Wash Pick Up Point',
+    address: 'Beside Ambience Courtyard,Hyderabad,Telangana,500089',
     phone: '+91 63048 45567',
     assignedOperator: 'Cashier #3',
     password: 'techwash3',
@@ -62,8 +62,8 @@ export const DEFAULT_BILLING_TERMINALS = [
     lastLoginAt: null,
     totalOrdersToday: 0,
     totalRevenueToday: 0,
-    themeColor: '#ea580c', // Orange
-    badgeColor: 'bg-orange-50 text-orange-700 border-orange-200',
+    themeColor: '#7c3aed', // Purple
+    badgeColor: 'bg-purple-50 text-purple-700 border-purple-200',
   }
 ];
 

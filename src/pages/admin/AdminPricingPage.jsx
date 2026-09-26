@@ -100,8 +100,9 @@ export const AdminPricingPage = () => {
       return;
     }
 
+    const prefix = activeTab === 'dryCleaning' ? 'dc' : activeTab === 'ironing' ? 'ir' : 'si';
     const itemObj = {
-      id: `${activeTab === 'dryCleaning' ? 'dc' : 'ir'}-${activeCategory[0]}-${Date.now()}`,
+      id: `${prefix}-${activeCategory[0]}-${Date.now()}`,
       name: newItem.name.trim(),
       price: Number(newItem.price),
       emoji: newItem.emoji || '👔',
@@ -193,7 +194,7 @@ export const AdminPricingPage = () => {
         });
       } catch (e) {}
 
-      success('Pricing Saved!', 'All prices, rates, and weights synchronized to Firebase.');
+      success('Pricing Saved & Broadcasted!', 'All prices, rates, and weights synchronized in real-time across website and all POS billing counters.');
     } catch (err) {
       error('Save Failed', err.message || 'Unable to update pricing in Firestore.');
     } finally {
@@ -235,7 +236,7 @@ export const AdminPricingPage = () => {
             Master Pricing & Rate Card
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Manage live prices across Dry Cleaning, Ironing, Per-KG rates, Curtain/Carpet sq.ft. rates, and weights.
+            Manage live prices across Dry Cleaning, Ironing, Starch & Finishing, Per-KG rates, Curtains, Shoes, and Carpets.
           </p>
         </div>
 
@@ -266,9 +267,10 @@ export const AdminPricingPage = () => {
         {[
           { id: 'dryCleaning', label: '🧺 Dry Cleaning (Per-Piece)', desc: 'Men, Women & Common' },
           { id: 'ironing', label: '👔 Ironing (Per-Piece)', desc: 'Steam pressing rates' },
+          { id: 'starch-and-iron', label: '✨ Starch & Iron', desc: 'Starching & form press' },
           { id: 'perKg', label: '🫧 Per-KG Rates', desc: 'Wash & Iron / Fold' },
           { id: 'weights', label: '⚖️ Garment Weights', desc: 'Weight standards (g)' },
-          { id: 'special', label: '🪟 Special Services', desc: 'Curtains, Shoes, Carpets' },
+          { id: 'special', label: '🪟 Special Services', desc: 'Curtains, Shoes, Carpets, Sarees' },
         ].map(tab => (
           <button
             key={tab.id}
@@ -277,7 +279,7 @@ export const AdminPricingPage = () => {
               setActiveCategory('men');
               setSearchFilter('');
             }}
-            className={`px-4 py-3 rounded-2xl text-xs font-bold transition-all whitespace-nowrap text-left border ${
+            className={`px-4 py-3 rounded-2xl text-xs font-bold transition-all whitespace-nowrap text-left border cursor-pointer ${
               activeTab === tab.id
                 ? 'bg-brand-600 text-white border-brand-600 shadow-sm'
                 : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
@@ -292,9 +294,9 @@ export const AdminPricingPage = () => {
       </div>
 
       {/* ============================================================ */}
-      {/* 1. DRY CLEANING & IRONING ITEMIZED RATES                      */}
+      {/* 1. DRY CLEANING, IRONING & STARCH ITEMIZED RATES              */}
       {/* ============================================================ */}
-      {(activeTab === 'dryCleaning' || activeTab === 'ironing') && (
+      {(activeTab === 'dryCleaning' || activeTab === 'ironing' || activeTab === 'starch-and-iron') && (
         <Card className="p-6 bg-white border border-slate-200 rounded-3xl space-y-5">
           
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
@@ -303,12 +305,12 @@ export const AdminPricingPage = () => {
               {[
                 { id: 'men', label: '👨 Men\'s Wear' },
                 { id: 'women', label: '👩 Women\'s & Kids' },
-                ...(activeTab === 'dryCleaning' ? [{ id: 'common', label: '🧸 Common & Accessories' }] : []),
+                ...(activeTab === 'dryCleaning' || activeTab === 'starch-and-iron' ? [{ id: 'common', label: '🧸 Common & Linens' }] : []),
               ].map(cat => (
                 <button
                   key={cat.id}
                   onClick={() => setActiveCategory(cat.id)}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                     activeCategory === cat.id
                       ? 'bg-slate-900 text-white shadow-xs'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -676,8 +678,8 @@ export const AdminPricingPage = () => {
             </div>
           </Card>
 
-          {/* Shoes & Carpets */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          {/* Shoes, Carpets & Sarees */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
             {/* Shoes */}
             <Card className="p-6 bg-white border border-slate-200 rounded-3xl space-y-4">
               <div className="flex items-center gap-2.5 pb-2 border-b border-slate-100">
@@ -727,6 +729,31 @@ export const AdminPricingPage = () => {
                 </div>
               </div>
             </Card>
+
+            {/* Saree Rolling & Polishing */}
+            <Card className="p-6 bg-white border border-slate-200 rounded-3xl space-y-4">
+              <div className="flex items-center gap-2.5 pb-2 border-b border-slate-100">
+                <span className="text-2xl">🥻</span>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">Saree Rolling & Polish</h3>
+                  <p className="text-[11px] text-slate-400">Per Saree Rate</p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-200">
+                <span className="text-xs font-bold text-slate-700">Rate / Saree:</span>
+                <div className="flex items-center bg-white rounded-xl border border-slate-200 px-3 py-1">
+                  <span className="text-xs font-bold text-slate-400 mr-1">₹</span>
+                  <input
+                    type="number"
+                    min="1"
+                    value={pricingConfig.sareeRolling?.rate || 150}
+                    onChange={(e) => handleSpecialRateChange('sareeRolling', 'rate', e.target.value)}
+                    className="w-14 text-xs font-bold text-slate-900 text-right focus:outline-none"
+                  />
+                </div>
+              </div>
+            </Card>
           </div>
 
         </div>
@@ -737,7 +764,7 @@ export const AdminPricingPage = () => {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl">
             <h3 className="text-base font-bold text-slate-900 font-display">
-              Add New Item to {activeTab === 'dryCleaning' ? 'Dry Cleaning' : 'Ironing'} ({activeCategory})
+              Add New Item to {activeTab === 'dryCleaning' ? 'Dry Cleaning' : activeTab === 'ironing' ? 'Ironing' : 'Starch & Iron'} ({activeCategory})
             </h3>
 
             <form onSubmit={handleAddNewItem} className="space-y-3">

@@ -100,9 +100,9 @@ export const AdminLocationsPage = () => {
   };
 
   const handleOpenEdit = (loc) => {
-    const termId = loc.posTerminalId || (loc.id === 'loc-hitec-city' ? 'counter-2' : loc.id === 'loc-banjara-hills' ? 'counter-3' : 'counter-1');
+    const termId = loc.posTerminalId || (loc.id === 'loc-branch-1' || loc.id === 'loc-hitec-city' ? 'counter-2' : loc.id === 'loc-pickup-point' || loc.id === 'loc-banjara-hills' ? 'counter-3' : 'counter-1');
     const termCode = loc.posTerminalCode || (termId === 'counter-2' ? 'TW-POS-02' : termId === 'counter-3' ? 'TW-POS-03' : 'TW-POS-01');
-    const operator = loc.assignedOperator || (termId === 'counter-2' ? 'Sneha Reddy (Cashier #2)' : termId === 'counter-3' ? 'Vikram Rao (Cashier #3)' : 'Rahul Verma (Cashier #1)');
+    const operator = loc.assignedOperator || (termId === 'counter-2' ? 'Cashier #2' : termId === 'counter-3' ? 'Cashier #3' : 'Cashier #1');
     const pin = loc.posPassword || (termId === 'counter-2' ? 'techwash2' : termId === 'counter-3' ? 'techwash3' : 'techwash1');
 
     setCurrentLocation({
@@ -193,9 +193,9 @@ export const AdminLocationsPage = () => {
       title: 'Connected POS Machine & Cashier',
       key: 'posTerminalId',
       render: (val, row) => {
-        const termId = row.posTerminalId || (row.id === 'loc-hitec-city' ? 'counter-2' : row.id === 'loc-banjara-hills' ? 'counter-3' : 'counter-1');
+        const termId = row.posTerminalId || (row.id === 'loc-branch-1' || row.id === 'loc-hitec-city' ? 'counter-2' : row.id === 'loc-pickup-point' || row.id === 'loc-banjara-hills' ? 'counter-3' : 'counter-1');
         const termCode = row.posTerminalCode || (termId === 'counter-2' ? 'TW-POS-02' : termId === 'counter-3' ? 'TW-POS-03' : 'TW-POS-01');
-        const operator = row.assignedOperator || (termId === 'counter-2' ? 'Sneha Reddy (Cashier #2)' : termId === 'counter-3' ? 'Vikram Rao (Cashier #3)' : 'Rahul Verma (Cashier #1)');
+        const operator = row.assignedOperator || (termId === 'counter-2' ? 'Cashier #2' : termId === 'counter-3' ? 'Cashier #3' : 'Cashier #1');
         const pin = row.posPassword || (termId === 'counter-2' ? 'techwash2' : termId === 'counter-3' ? 'techwash3' : 'techwash1');
         const isShow = showPinMap[row.id];
 
@@ -238,7 +238,7 @@ export const AdminLocationsPage = () => {
       title: '1-Click POS & Branch Actions',
       key: 'actions',
       render: (_, row) => {
-        const termId = row.posTerminalId || (row.id === 'loc-hitec-city' ? 'counter-2' : row.id === 'loc-banjara-hills' ? 'counter-3' : 'counter-1');
+        const termId = row.posTerminalId || (row.id === 'loc-branch-1' || row.id === 'loc-hitec-city' ? 'counter-2' : row.id === 'loc-pickup-point' || row.id === 'loc-banjara-hills' ? 'counter-3' : 'counter-1');
 
         return (
           <div className="flex flex-wrap items-center gap-1.5">

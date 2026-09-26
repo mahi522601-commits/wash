@@ -1,16 +1,41 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { formatCurrency } from '../../../utils/formatters';
 import { QUICK_ITEMS_CATALOG } from '../../../services/chatbotService';
+import { pricingService, INITIAL_PRICING_CONFIG } from '../../../services/pricingConfig';
 import { DollarSign, Search, Plus, Sparkles, Tag, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export const PricingTableView = ({ onStartBookingWithItem }) => {
   const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+  const [pricingConfig, setPricingConfig] = useState(INITIAL_PRICING_CONFIG);
+
+  useEffect(() => {
+    pricingService.getPricingConfig().then(cfg => {
+      if (cfg) setPricingConfig(cfg);
+    });
+    const unsub = pricingService.subscribeToPricing(newCfg => {
+      if (newCfg) setPricingConfig(newCfg);
+    });
+    return unsub;
+  }, []);
 
   const categories = ['ALL', 'Men', 'Women', 'Per-Kg', 'Household', 'Footwear'];
 
-  const filteredItems = QUICK_ITEMS_CATALOG.filter((item) => {
+  const foldMenRate = pricingConfig.services?.find(s => s.id === 'wash-and-fold')?.baseRates?.men ?? 100;
+  const foldWomenRate = pricingConfig.services?.find(s => s.id === 'wash-and-fold')?.baseRates?.women ?? 130;
+  const ironMenRate = pricingConfig.services?.find(s => s.id === 'wash-and-iron')?.baseRates?.men ?? 130;
+  const ironWomenRate = pricingConfig.services?.find(s => s.id === 'wash-and-iron')?.baseRates?.women ?? 160;
+
+  const dynamicItems = QUICK_ITEMS_CATALOG.map(item => {
+    if (item.id === 'qi-kg1') return { ...item, unitPrice: ironMenRate };
+    if (item.id === 'qi-kg2') return { ...item, unitPrice: ironWomenRate };
+    if (item.id === 'qi-kg3') return { ...item, unitPrice: foldMenRate };
+    if (item.id === 'qi-kg4') return { ...item, unitPrice: foldWomenRate };
+    return item;
+  });
+
+  const filteredItems = dynamicItems.filter((item) => {
     const matchesCategory = selectedCategory === 'ALL' || item.category.toLowerCase() === selectedCategory.toLowerCase();
     const matchesSearch = !searchQuery || 
       item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 

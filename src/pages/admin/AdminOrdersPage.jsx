@@ -18,6 +18,14 @@ import { OrderMapCard } from '../../components/location/OrderMapCard';
 import { ReceiptModal } from '../../components/receipt/ReceiptModal';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { 
+  pricingService, 
+  INITIAL_PRICING_CONFIG,
+  buildMasterCatalogFromPricing,
+  buildWalkInServicesFromPricing,
+  buildPersonaRateBandsFromPricing,
+  buildWeightBandsFromPricing
+} from '../../services/pricingConfig';
+import { 
   ShoppingBag, 
   Search, 
   Download, 
@@ -216,14 +224,32 @@ export const STORE_BRANCHES = [
   {
     id: 'counter-1',
     code: 'TW-POS-01',
-    name: 'Counter 1 — Branch 1 (Tolichowki / OU Colony)',
-    shortName: 'Branch 1 (Tolichowki)',
-    locationName: 'Tech Wash Laundry Services (Branch 1)',
-    address: 'Beside DreamScape Hotel Ward No 8, Block No 1 , Tolichowki , OU Colony, Shaikpet,Hyderabad,Telangana 500008',
+    name: 'Counter 1 — Main Branch (Shaikpet / Manikonda)',
+    shortName: 'Main Branch (Manikonda)',
+    locationName: 'Tech Wash Laundry Main Branch',
+    address: 'Shaikpet Main Rd,Sri Ram Nagar Colony,Manikonda,Hyderabad,Telangana,500089',
     phone: '+91 63048 45567',
     cashierName: 'Cashier #1',
     posUrl: '/billing/counter-1',
     reportUrl: '/admin/reports?branch=counter-1',
+    themeColor: 'orange',
+    gradient: 'from-orange-600 to-amber-700',
+    cardBorder: 'border-orange-200 hover:border-orange-400',
+    activeRing: 'ring-2 ring-orange-500 bg-orange-50/70 border-orange-400',
+    badgeClass: 'bg-orange-100 text-orange-900 border-orange-200',
+    iconBg: 'bg-orange-600 text-white',
+  },
+  {
+    id: 'counter-2',
+    code: 'TW-POS-02',
+    name: 'Counter 2 — Branch 1 (Tolichowki / OU Colony)',
+    shortName: 'Branch 1 (Tolichowki)',
+    locationName: 'Tech Wash Laundry Services (Branch 1)',
+    address: 'Beside Dreamscape hotel Ward No 8, Block No 1 , tolichowki, OU Colony, Shaikpet, Hyderabad, Telangana 500008',
+    phone: '+91 9000813444',
+    cashierName: 'Cashier #2',
+    posUrl: '/billing/counter-2',
+    reportUrl: '/admin/reports?branch=counter-2',
     themeColor: 'blue',
     gradient: 'from-blue-600 to-indigo-700',
     cardBorder: 'border-blue-200 hover:border-blue-400',
@@ -232,40 +258,22 @@ export const STORE_BRANCHES = [
     iconBg: 'bg-blue-600 text-white',
   },
   {
-    id: 'counter-2',
-    code: 'TW-POS-02',
-    name: 'Counter 2 — Pick Up Point (Ambience Courtyard)',
+    id: 'counter-3',
+    code: 'TW-POS-03',
+    name: 'Counter 3 — Pick Up Point (Ambience Courtyard)',
     shortName: 'Pick Up Point (Ambience Courtyard)',
     locationName: 'Tech Wash Pick Up Point',
     address: 'Beside Ambience Courtyard,Hyderabad,Telangana,500089',
     phone: '+91 63048 45567',
-    cashierName: 'Cashier #2',
-    posUrl: '/billing/counter-2',
-    reportUrl: '/admin/reports?branch=counter-2',
+    cashierName: 'Cashier #3',
+    posUrl: '/billing/counter-3',
+    reportUrl: '/admin/reports?branch=counter-3',
     themeColor: 'purple',
     gradient: 'from-purple-600 to-violet-700',
     cardBorder: 'border-purple-200 hover:border-purple-400',
     activeRing: 'ring-2 ring-purple-500 bg-purple-50/70 border-purple-400',
     badgeClass: 'bg-purple-100 text-purple-900 border-purple-200',
     iconBg: 'bg-purple-600 text-white',
-  },
-  {
-    id: 'counter-3',
-    code: 'TW-POS-03',
-    name: 'Counter 3 — Main Branch (Shaikpet / Manikonda)',
-    shortName: 'Main Branch (Manikonda)',
-    locationName: 'Tech Wash Laundry Main Branch',
-    address: 'Shaikpet Main Rd,Sri Ram Nagar Colony,Manikonda,Hyderabad,Telangana,500089',
-    phone: '+91 63048 45567',
-    cashierName: 'Cashier #3',
-    posUrl: '/billing/counter-3',
-    reportUrl: '/admin/reports?branch=counter-3',
-    themeColor: 'orange',
-    gradient: 'from-orange-600 to-amber-700',
-    cardBorder: 'border-orange-200 hover:border-orange-400',
-    activeRing: 'ring-2 ring-orange-500 bg-orange-50/70 border-orange-400',
-    badgeClass: 'bg-orange-100 text-orange-900 border-orange-200',
-    iconBg: 'bg-orange-600 text-white',
   },
 ];
 
@@ -309,8 +317,8 @@ const INITIAL_WALK_IN_FORM = {
   internalAdminNotes: 'In-Store Walk-in Customer POS Order',
   terminalId: 'counter-1',
   terminalCode: 'TW-POS-01',
-  storeBranch: 'Tech Wash Laundry Services (Branch 1)',
-  storeAddress: 'Beside DreamScape Hotel Ward No 8, Block No 1 , Tolichowki , OU Colony, Shaikpet,Hyderabad,Telangana 500008',
+  storeBranch: 'Tech Wash Laundry Main Branch',
+  storeAddress: 'Shaikpet Main Rd,Sri Ram Nagar Colony,Manikonda,Hyderabad,Telangana,500089',
   cashierName: 'Cashier #1',
   autoOpenReceipt: true,
   autoSendWhatsApp: true,
@@ -393,6 +401,31 @@ export const AdminOrdersPage = () => {
     quantity: 1,
     tag: 'Custom Charge'
   });
+
+  // Dynamic Real-time Pricing Sync
+  const [pricingConfig, setPricingConfig] = useState(() => {
+    try {
+      const cached = localStorage.getItem('techwash_pricing_config_v2');
+      return cached ? JSON.parse(cached) : INITIAL_PRICING_CONFIG;
+    } catch (e) {
+      return INITIAL_PRICING_CONFIG;
+    }
+  });
+
+  useEffect(() => {
+    pricingService.getPricingConfig().then(cfg => {
+      if (cfg) setPricingConfig(cfg);
+    });
+    const unsub = pricingService.subscribeToPricing(newCfg => {
+      if (newCfg) setPricingConfig(newCfg);
+    });
+    return unsub;
+  }, []);
+
+  const walkInServices = useMemo(() => buildWalkInServicesFromPricing(pricingConfig), [pricingConfig]);
+  const dynamicMasterCatalog = useMemo(() => buildMasterCatalogFromPricing(pricingConfig), [pricingConfig]);
+  const dynamicWeightBands = useMemo(() => buildWeightBandsFromPricing(pricingConfig), [pricingConfig]);
+  const dynamicPersonaBands = useMemo(() => buildPersonaRateBandsFromPricing(pricingConfig), [pricingConfig]);
 
   // Status & Weight edit state in modal
   const [newCustomerStage, setNewCustomerStage] = useState('CONFIRMED');
@@ -570,21 +603,24 @@ export const AdminOrdersPage = () => {
   }, [orders]);
 
   const filteredCatalogItems = useMemo(() => {
-    return MASTER_CATALOG_ITEMS.filter((item) => {
+    return dynamicMasterCatalog.filter((item) => {
       const matchesCategory = walkInItemCategory === 'ALL' || item.categoryKey === walkInItemCategory;
       const matchesSearch = !walkInItemSearch || 
         item.name.toLowerCase().includes(walkInItemSearch.toLowerCase()) ||
         (item.categoryName && item.categoryName.toLowerCase().includes(walkInItemSearch.toLowerCase()));
       return matchesCategory && matchesSearch;
     });
-  }, [walkInItemCategory, walkInItemSearch]);
+  }, [walkInItemCategory, walkInItemSearch, dynamicMasterCatalog]);
 
   const handleSelectWalkInService = (srv) => {
+    const isFold = srv.id === 'srv-wash-and-fold';
+    const isIron = srv.id === 'srv-wash-and-iron';
+    const foldDefault = dynamicWeightBands.foldRate || srv.defaultPrice || 100;
+    const ironDefault = dynamicWeightBands.ironRate || srv.defaultPrice || 130;
+
     setWalkInForm(prev => {
-      const isFold = srv.id === 'srv-wash-and-fold';
-      const isIron = srv.id === 'srv-wash-and-iron';
       const activeWeight = isFold ? prev.foldWeightKg : isIron ? prev.ironWeightKg : prev.weightKg;
-      const activePrice = isFold ? prev.foldPricePerKg : isIron ? prev.ironPricePerKg : (srv.perKg ? srv.defaultPrice : prev.pricePerKg);
+      const activePrice = isFold ? (prev.foldPricePerKg || foldDefault) : isIron ? (prev.ironPricePerKg || ironDefault) : (srv.perKg ? srv.defaultPrice : prev.pricePerKg);
 
       return {
         ...prev,
@@ -594,6 +630,8 @@ export const AdminOrdersPage = () => {
         pricingType: srv.perKg ? 'per_kg' : 'per_item',
         weightKg: activeWeight,
         pricePerKg: activePrice,
+        foldPricePerKg: prev.foldPricePerKg || foldDefault,
+        ironPricePerKg: prev.ironPricePerKg || ironDefault,
       };
     });
   };
@@ -862,6 +900,7 @@ export const AdminOrdersPage = () => {
         terminalCode: walkInForm.terminalCode || matchedBranch.code,
         storeBranch: resolvedStoreBranch,
         storeAddress: resolvedStoreAddress,
+        storePhone: matchedBranch.phone,
         cashierName: walkInForm.cashierName || matchedBranch.cashierName,
         customer: {
           name: walkInForm.customerName.trim(),
@@ -2600,6 +2639,7 @@ export const AdminOrdersPage = () => {
                     terminalId: branch.id,
                     terminalCode: branch.code,
                     storeBranch: branch.locationName,
+                    storeAddress: branch.address,
                     cashierName: branch.cashierName,
                   });
                 }}
@@ -2668,7 +2708,7 @@ export const AdminOrdersPage = () => {
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
-              {WALK_IN_SERVICES.map((srv) => {
+              {walkInServices.map((srv) => {
                 const isSelected = walkInForm.serviceId === srv.id;
                 const isFold = srv.id === 'srv-wash-and-fold';
                 const isIron = srv.id === 'srv-wash-and-iron';
@@ -2750,19 +2790,19 @@ export const AdminOrdersPage = () => {
                       <div className="flex items-center justify-between mb-2">
                         <button
                           type="button"
-                          onClick={() => handleSelectWalkInService({ id: 'srv-wash-and-fold', name: 'Wash & Fold', emoji: '🧺', defaultPrice: 100, perKg: true })}
+                          onClick={() => handleSelectWalkInService({ id: 'srv-wash-and-fold', name: 'Wash & Fold', emoji: '🧺', defaultPrice: dynamicWeightBands.foldRate, perKg: true })}
                           className="flex items-center gap-1.5 text-xs font-black text-emerald-950 hover:underline cursor-pointer"
                         >
                           <span>🧺</span>
                           <span>Wash & Fold Scale</span>
                           <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-1.5 py-0.5 rounded-md">
-                            ₹{walkInForm.foldPricePerKg || 100}/Kg
+                            ₹{walkInForm.foldPricePerKg || dynamicWeightBands.foldRate}/Kg
                           </span>
                         </button>
                         {Number(walkInForm.foldWeightKg) > 0 && (
                           <div className="flex items-center gap-2">
                             <span className="text-xs font-black text-emerald-900 bg-emerald-200/80 px-2 py-0.5 rounded-lg">
-                              = ₹{Math.round((Number(walkInForm.foldWeightKg) || 0) * (Number(walkInForm.foldPricePerKg) || 100))}
+                              = ₹{Math.round((Number(walkInForm.foldWeightKg) || 0) * (Number(walkInForm.foldPricePerKg) || dynamicWeightBands.foldRate))}
                             </span>
                             <button
                               type="button"
@@ -2805,13 +2845,13 @@ export const AdminOrdersPage = () => {
 
                       {/* Persona Rate Bands */}
                       <div className="grid grid-cols-2 gap-1 mb-2">
-                        {WALK_IN_FOLD_PRICE_BANDS.map((pb) => {
-                          const isBandActive = (Number(walkInForm.foldPricePerKg) || 100) === pb.price;
+                        {dynamicPersonaBands.foldPriceBands.map((pb) => {
+                          const isBandActive = (Number(walkInForm.foldPricePerKg) || dynamicWeightBands.foldRate) === pb.rate;
                           return (
                             <button
-                              key={pb.price}
+                              key={pb.label}
                               type="button"
-                              onClick={() => handleUpdateWalkInPricePerKg(pb.price, 'srv-wash-and-fold')}
+                              onClick={() => handleUpdateWalkInPricePerKg(pb.rate, 'srv-wash-and-fold')}
                               className={`px-1.5 py-1 rounded-lg text-left text-[10px] border transition-all cursor-pointer ${
                                 isBandActive
                                   ? 'bg-emerald-600 text-white font-bold border-emerald-700 shadow-2xs'
@@ -2820,7 +2860,7 @@ export const AdminOrdersPage = () => {
                             >
                               <div className="flex justify-between items-center font-bold">
                                 <span className="truncate">{pb.label}</span>
-                                <span>₹{pb.price}</span>
+                                <span>₹{pb.rate}</span>
                               </div>
                             </button>
                           );
@@ -2830,18 +2870,18 @@ export const AdminOrdersPage = () => {
                       {/* Quick Weight Presets */}
                       <div className="flex flex-wrap gap-1 items-center">
                         <span className="text-[9px] font-bold text-slate-500 uppercase mr-1">Presets:</span>
-                        {WALK_IN_WEIGHT_PRESETS.slice(0, 6).map((wt) => (
+                        {dynamicWeightBands.foldBands.slice(0, 6).map((band) => (
                           <button
-                            key={wt}
+                            key={band.wt}
                             type="button"
-                            onClick={() => handleUpdateWalkInWeight(wt, 'srv-wash-and-fold')}
+                            onClick={() => handleUpdateWalkInWeight(band.wt, 'srv-wash-and-fold')}
                             className={`px-1.5 py-0.5 rounded text-[10px] font-bold border transition-colors cursor-pointer ${
-                              Number(walkInForm.foldWeightKg) === wt
+                              Number(walkInForm.foldWeightKg) === band.wt
                                 ? 'bg-emerald-700 text-white border-emerald-800'
                                 : 'bg-white text-slate-700 hover:bg-emerald-100 border-slate-200'
                             }`}
                           >
-                            {wt}kg
+                            {band.wt}kg
                           </button>
                         ))}
                       </div>
@@ -2858,19 +2898,19 @@ export const AdminOrdersPage = () => {
                       <div className="flex items-center justify-between mb-2">
                         <button
                           type="button"
-                          onClick={() => handleSelectWalkInService({ id: 'srv-wash-and-iron', name: 'Wash & Steam Iron', emoji: '🫧', defaultPrice: 130, perKg: true })}
+                          onClick={() => handleSelectWalkInService({ id: 'srv-wash-and-iron', name: 'Wash & Steam Iron', emoji: '🫧', defaultPrice: dynamicWeightBands.ironRate, perKg: true })}
                           className="flex items-center gap-1.5 text-xs font-black text-purple-950 hover:underline cursor-pointer"
                         >
                           <span>🫧</span>
                           <span>Wash & Steam Iron Scale</span>
                           <span className="text-[10px] font-bold text-purple-700 bg-purple-100/80 px-1.5 py-0.5 rounded-md">
-                            ₹{walkInForm.ironPricePerKg || 130}/Kg
+                            ₹{walkInForm.ironPricePerKg || dynamicWeightBands.ironRate}/Kg
                           </span>
                         </button>
                         {Number(walkInForm.ironWeightKg) > 0 && (
                           <div className="flex items-center gap-2">
                             <span className="text-xs font-black text-purple-900 bg-purple-200/80 px-2 py-0.5 rounded-lg">
-                              = ₹{Math.round((Number(walkInForm.ironWeightKg) || 0) * (Number(walkInForm.ironPricePerKg) || 130))}
+                              = ₹{Math.round((Number(walkInForm.ironWeightKg) || 0) * (Number(walkInForm.ironPricePerKg) || dynamicWeightBands.ironRate))}
                             </span>
                             <button
                               type="button"
@@ -2913,13 +2953,13 @@ export const AdminOrdersPage = () => {
 
                       {/* Persona Rate Bands */}
                       <div className="grid grid-cols-2 gap-1 mb-2">
-                        {WALK_IN_IRON_PRICE_BANDS.map((pb) => {
-                          const isBandActive = (Number(walkInForm.ironPricePerKg) || 130) === pb.price;
+                        {dynamicPersonaBands.ironPriceBands.map((pb) => {
+                          const isBandActive = (Number(walkInForm.ironPricePerKg) || dynamicWeightBands.ironRate) === pb.rate;
                           return (
                             <button
-                              key={pb.price}
+                              key={pb.label}
                               type="button"
-                              onClick={() => handleUpdateWalkInPricePerKg(pb.price, 'srv-wash-and-iron')}
+                              onClick={() => handleUpdateWalkInPricePerKg(pb.rate, 'srv-wash-and-iron')}
                               className={`px-1.5 py-1 rounded-lg text-left text-[10px] border transition-all cursor-pointer ${
                                 isBandActive
                                   ? 'bg-purple-600 text-white font-bold border-purple-700 shadow-2xs'
@@ -2928,7 +2968,7 @@ export const AdminOrdersPage = () => {
                             >
                               <div className="flex justify-between items-center font-bold">
                                 <span className="truncate">{pb.label}</span>
-                                <span>₹{pb.price}</span>
+                                <span>₹{pb.rate}</span>
                               </div>
                             </button>
                           );
@@ -2938,18 +2978,18 @@ export const AdminOrdersPage = () => {
                       {/* Quick Weight Presets */}
                       <div className="flex flex-wrap gap-1 items-center">
                         <span className="text-[9px] font-bold text-slate-500 uppercase mr-1">Presets:</span>
-                        {WALK_IN_WEIGHT_PRESETS.slice(0, 6).map((wt) => (
+                        {dynamicWeightBands.ironBands.slice(0, 6).map((band) => (
                           <button
-                            key={wt}
+                            key={band.wt}
                             type="button"
-                            onClick={() => handleUpdateWalkInWeight(wt, 'srv-wash-and-iron')}
+                            onClick={() => handleUpdateWalkInWeight(band.wt, 'srv-wash-and-iron')}
                             className={`px-1.5 py-0.5 rounded text-[10px] font-bold border transition-colors cursor-pointer ${
-                              Number(walkInForm.ironWeightKg) === wt
+                              Number(walkInForm.ironWeightKg) === band.wt
                                 ? 'bg-purple-700 text-white border-purple-800'
                                 : 'bg-white text-slate-700 hover:bg-purple-100 border-slate-200'
                             }`}
                           >
-                            {wt}kg
+                            {band.wt}kg
                           </button>
                         ))}
                       </div>
@@ -2965,7 +3005,7 @@ export const AdminOrdersPage = () => {
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2">
               <div className="flex items-center gap-2 font-bold text-slate-900 uppercase tracking-wider text-xs">
                 <Tag className="w-4 h-4 text-[#F97316]" />
-                <span>Garment & Service Master Price Catalog ({MASTER_CATALOG_ITEMS.length} Items)</span>
+                <span>Garment & Service Master Price Catalog ({dynamicMasterCatalog.length} Items)</span>
               </div>
               <span className="text-[11px] text-slate-400">Filter by category or search item name</span>
             </div>
@@ -2975,8 +3015,8 @@ export const AdminOrdersPage = () => {
               {POS_CATEGORIES.map((cat) => {
                 const isActive = walkInItemCategory === cat.key;
                 const count = cat.key === 'ALL' 
-                  ? MASTER_CATALOG_ITEMS.length 
-                  : MASTER_CATALOG_ITEMS.filter(it => it.categoryKey === cat.key).length;
+                  ? dynamicMasterCatalog.length 
+                  : dynamicMasterCatalog.filter(it => it.categoryKey === cat.key).length;
                 return (
                   <button
                     key={cat.key}

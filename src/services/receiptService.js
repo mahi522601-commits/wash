@@ -181,10 +181,15 @@ export const receiptService = {
       storeBranch: order.storeBranch || 'Tech Wash Laundry Main Branch',
       storeAddress: order.storeAddress || (
         (order.storeBranch && order.storeBranch.includes('Branch 1'))
-          ? 'Beside DreamScape Hotel Ward No 8, Block No 1 , Tolichowki , OU Colony, Shaikpet,Hyderabad,Telangana 500008'
+          ? 'Beside Dreamscape hotel Ward No 8, Block No 1 , tolichowki, OU Colony, Shaikpet, Hyderabad, Telangana 500008'
           : (order.storeBranch && order.storeBranch.includes('Pick Up Point'))
           ? 'Beside Ambience Courtyard,Hyderabad,Telangana,500089'
           : 'Shaikpet Main Rd,Sri Ram Nagar Colony,Manikonda,Hyderabad,Telangana,500089'
+      ),
+      storePhone: order.storePhone || (
+        (order.storeBranch && order.storeBranch.includes('Branch 1'))
+          ? '+91 9000813444'
+          : '+91 63048 45567'
       ),
       terminalCode: order.terminalCode || (order.isWalkIn ? 'TW-POS-01' : null),
       cashierName: order.cashierName || null,

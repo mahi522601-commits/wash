@@ -332,13 +332,271 @@ export const INITIAL_PRICING_CONFIG = {
   },
 
   sareeRolling: {
-    rate: null, // Unpriced / Price to be confirmed
-    status: 'TO_BE_CONFIRMED',
-    displayMessage: 'Price to be confirmed at pickup',
+    rate: 150,
+    unit: 'saree',
+    status: 'AVAILABLE',
+    displayMessage: '₹150 / saree',
   }
 };
 
 const PRICING_STORAGE_KEY = 'techwash_pricing_config_v2';
+const PRICING_BROADCAST_CHANNEL = 'techwash_pricing_channel';
+
+/**
+ * Builds the dynamic 8 Walk-In Services list based on current pricingConfig
+ */
+export const buildWalkInServicesFromPricing = (config = INITIAL_PRICING_CONFIG) => {
+  const cfg = config || INITIAL_PRICING_CONFIG;
+  const foldRate = Number(cfg.services?.find(s => s.id === 'wash-and-fold')?.baseRates?.men) || 100;
+  const foldWomenRate = Number(cfg.services?.find(s => s.id === 'wash-and-fold')?.baseRates?.women) || 130;
+  const ironRate = Number(cfg.services?.find(s => s.id === 'wash-and-iron')?.baseRates?.men) || 130;
+  const ironWomenRate = Number(cfg.services?.find(s => s.id === 'wash-and-iron')?.baseRates?.women) || 160;
+  const shoeRate = Number(cfg.shoes?.ratePerPair) || 350;
+  const sareeRate = Number(cfg.sareeRolling?.rate) || 150;
+  const curtainDCRate = Number(cfg.curtains?.dryCleaning) || 200;
+
+  // Calculate lowest dry clean starting price
+  const dcItems = [...(cfg.dryCleaning?.men || []), ...(cfg.dryCleaning?.women || []), ...(cfg.dryCleaning?.common || [])];
+  const dcPrices = dcItems.map(i => Number(i.price)).filter(p => !isNaN(p) && p > 0);
+  const dcMin = dcPrices.length > 0 ? Math.min(...dcPrices) : 40;
+
+  // Calculate lowest steam iron price
+  const irItems = [...(cfg.ironing?.men || []), ...(cfg.ironing?.women || [])];
+  const irPrices = irItems.map(i => Number(i.price)).filter(p => !isNaN(p) && p > 0);
+  const irMin = irPrices.length > 0 ? Math.min(...irPrices) : 12;
+
+  // Calculate lowest starch price
+  const starchList = cfg['starch-and-iron'] || cfg.starchAndIron || {};
+  const starchItems = [...(starchList.men || []), ...(starchList.women || []), ...(starchList.common || [])];
+  const starchPrices = starchItems.map(i => Number(i.price)).filter(p => !isNaN(p) && p > 0);
+  const starchMin = starchPrices.length > 0 ? Math.min(...starchPrices) : 25;
+
+  return [
+    { id: 'srv-dry-cleaning', name: 'Premium Dry Cleaning', emoji: '👔', defaultPrice: 90, startingPrice: dcMin },
+    { id: 'srv-wash-and-fold', name: 'Wash & Fold', emoji: '🧺', defaultPrice: foldRate, perKg: true, menPrice: foldRate, womenPrice: foldWomenRate },
+    { id: 'srv-wash-and-iron', name: 'Wash & Steam Iron', emoji: '🫧', defaultPrice: ironRate, perKg: true, menPrice: ironRate, womenPrice: ironWomenRate },
+    { id: 'srv-steam-ironing', name: 'Steam Ironing Only', emoji: '✨', defaultPrice: irMin || 25 },
+    { id: 'srv-saree-spa', name: 'Sarees & Ethnic Spa', emoji: '🥻', defaultPrice: sareeRate || 60 },
+    { id: 'srv-shoe-spa', name: 'Shoe & Sneaker Spa', emoji: '👟', defaultPrice: shoeRate },
+    { id: 'srv-curtain-spa', name: 'Curtain Service', emoji: '🪟', defaultPrice: curtainDCRate },
+    { id: 'srv-starch-and-iron', name: 'Starch & Finishing', emoji: '🌾', defaultPrice: starchMin || 45 },
+  ];
+};
+
+/**
+ * Builds the dynamic 10-tier Weight Band cards for Wash & Fold and Wash & Steam Iron
+ */
+export const buildWeightBandsFromPricing = (config = INITIAL_PRICING_CONFIG) => {
+  const cfg = config || INITIAL_PRICING_CONFIG;
+  const foldRate = Number(cfg.services?.find(s => s.id === 'wash-and-fold')?.baseRates?.men) || 100;
+  const ironRate = Number(cfg.services?.find(s => s.id === 'wash-and-iron')?.baseRates?.men) || 130;
+
+  const weights = [
+    { wt: 1.5, foldDesc: 'Light Load (~5 pcs)', ironDesc: 'Light Press (~4 pcs)' },
+    { wt: 2.0, foldDesc: 'Daily Load (~7 pcs)', ironDesc: 'Daily Press (~6 pcs)' },
+    { wt: 3.0, foldDesc: 'Standard (~10 pcs)', ironDesc: 'Standard (~9 pcs)' },
+    { wt: 4.0, foldDesc: 'Regular (~14 pcs)', ironDesc: 'Regular (~12 pcs)' },
+    { wt: 5.0, foldDesc: 'Medium (~18 pcs)', ironDesc: 'Executive (~16 pcs)' },
+    { wt: 6.0, foldDesc: 'Family (~22 pcs)', ironDesc: 'Family Steam (~20 pcs)' },
+    { wt: 8.0, foldDesc: 'Heavy Load', ironDesc: 'Heavy Wardrobe' },
+    { wt: 10.0, foldDesc: 'Bulk Wash', ironDesc: 'Bulk Steam Iron' },
+    { wt: 12.0, foldDesc: 'Mega Batch', ironDesc: 'Mega Steam Batch' },
+    { wt: 15.0, foldDesc: 'Commercial', ironDesc: 'Commercial Steam' },
+  ];
+
+  const foldBands = weights.map(w => ({
+    wt: w.wt,
+    label: `${w.wt.toFixed(1)} Kg`,
+    price: Math.round(w.wt * foldRate),
+    desc: w.foldDesc,
+  }));
+
+  const ironBands = weights.map(w => ({
+    wt: w.wt,
+    label: `${w.wt.toFixed(1)} Kg`,
+    price: Math.round(w.wt * ironRate),
+    desc: w.ironDesc,
+  }));
+
+  return { foldBands, ironBands, foldRate, ironRate };
+};
+
+/**
+ * Builds the persona rate band presets (Men, Women, Linens, Silk)
+ */
+export const buildPersonaRateBandsFromPricing = (config = INITIAL_PRICING_CONFIG) => {
+  const cfg = config || INITIAL_PRICING_CONFIG;
+  const foldMen = Number(cfg.services?.find(s => s.id === 'wash-and-fold')?.baseRates?.men) || 100;
+  const foldWomen = Number(cfg.services?.find(s => s.id === 'wash-and-fold')?.baseRates?.women) || 130;
+  const ironMen = Number(cfg.services?.find(s => s.id === 'wash-and-iron')?.baseRates?.men) || 130;
+  const ironWomen = Number(cfg.services?.find(s => s.id === 'wash-and-iron')?.baseRates?.women) || 160;
+
+  return {
+    foldPriceBands: [
+      { label: "Men's Regular", price: foldMen, desc: 'T-Shirts, Jeans, Shorts, Daily Wear' },
+      { label: "Women's / Delicate", price: foldWomen, desc: 'Kurtis, Tops, Dresses, Delicate Wear' },
+      { label: "Home Linens", price: Math.round(foldMen * 1.2), desc: 'Bedsheets, Towels, Pillow Covers' },
+      { label: 'Premium Fabric', price: Math.round(foldMen * 1.5), desc: 'Khadi, Linen, Silk-blend, Heavy loads' },
+    ],
+    ironPriceBands: [
+      { label: "Men's Standard", price: ironMen, desc: 'Formals, Trousers, Polos + Steam Iron' },
+      { label: "Women's / Work", price: ironWomen, desc: 'Kurtas, Salwars, Tops + Steam Iron' },
+      { label: "Heavy Linens", price: Math.round(ironMen * 1.38), desc: 'Duvets, Heavy Curtains + Steam Iron' },
+      { label: 'Silk / Form Press', price: Math.round(ironMen * 1.54), desc: 'Silk, Chiffon, Formal Blazers Press' },
+    ]
+  };
+};
+
+/**
+ * Builds the complete Master Catalog items for POS and Admin Walk-in Orders with live prices
+ */
+export const buildMasterCatalogFromPricing = (config = INITIAL_PRICING_CONFIG) => {
+  const cfg = config || INITIAL_PRICING_CONFIG;
+  const items = [];
+
+  // 1. Men's Dry Cleaning & Care
+  const dcMen = cfg.dryCleaning?.men || [];
+  dcMen.forEach(it => {
+    items.push({
+      id: it.id || `m-dc-${it.name}`,
+      name: it.name,
+      price: Number(it.price) || 90,
+      emoji: it.emoji || '👔',
+      categoryKey: 'MEN',
+      categoryName: it.subCategory === 'bottoms' ? "Men's Bottoms" : it.subCategory === 'jackets' ? "Suits & Outerwear" : it.subCategory === 'traditional' ? "Ethnic" : "Men's Tops",
+    });
+  });
+
+  // 2. Women's Wear
+  const dcWomen = cfg.dryCleaning?.women || [];
+  dcWomen.forEach(it => {
+    if (it.gender === 'kids' || it.category === 'Kids') return;
+    items.push({
+      id: it.id || `w-dc-${it.name}`,
+      name: it.name,
+      price: Number(it.price) || 120,
+      emoji: it.emoji || '👗',
+      categoryKey: 'WOMEN',
+      categoryName: it.subCategory === 'traditional' ? "Sarees & Ethnic" : it.subCategory === 'bottoms' ? "Women's Bottoms" : it.subCategory === 'dresses' ? "Dresses" : "Women's Tops",
+    });
+  });
+
+  // 3. Steam Ironing
+  const irMen = cfg.ironing?.men || [];
+  const irWomen = cfg.ironing?.women || [];
+  [...irMen, ...irWomen].forEach(it => {
+    items.push({
+      id: `ir-${it.id || it.name}`,
+      name: `${it.name} (Steam Iron)`,
+      price: Number(it.price) || 25,
+      emoji: it.emoji || '✨',
+      categoryKey: 'STEAM_IRONING',
+      categoryName: "Steam Press",
+    });
+  });
+
+  // 4. Kids Wear
+  const kidsItems = dcWomen.filter(it => it.gender === 'kids' || it.category === 'Kids');
+  if (kidsItems.length > 0) {
+    kidsItems.forEach(it => {
+      items.push({
+        id: `k-${it.id}`,
+        name: it.name,
+        price: Number(it.price) || 60,
+        emoji: it.emoji || '👶',
+        categoryKey: 'KIDS',
+        categoryName: "Kids",
+      });
+    });
+  } else {
+    items.push(
+      { id: 'k-1', name: 'Kids Frock / Dress', price: 60, emoji: '👗', categoryKey: 'KIDS', categoryName: "Kids" },
+      { id: 'k-2', name: 'Kids Shirt', price: 70, emoji: '👕', categoryKey: 'KIDS', categoryName: "Kids" },
+      { id: 'k-3', name: 'Kids Pant / Shorts', price: 70, emoji: '👖', categoryKey: 'KIDS', categoryName: "Kids" },
+      { id: 'k-4', name: 'Kids Dhoti / Pyjama', price: 90, emoji: '🥻', categoryKey: 'KIDS', categoryName: "Kids" },
+      { id: 'k-5', name: 'Soft Toys - Small', price: 100, emoji: '🧸', categoryKey: 'KIDS', categoryName: "Toys" },
+      { id: 'k-6', name: 'Soft Toys - Medium', price: 150, emoji: '🧸', categoryKey: 'KIDS', categoryName: "Toys" },
+      { id: 'k-7', name: 'Soft Toys - Large Giant', price: 200, emoji: '🧸', categoryKey: 'KIDS', categoryName: "Toys" }
+    );
+  }
+
+  // 5. Sarees & Ethnic Spa
+  const sareeRate = Number(cfg.sareeRolling?.rate) || 150;
+  items.push(
+    { id: 'e-1', name: 'Pattu Saree Original (>10K Hydrocarbon)', price: cfg.dryCleaning?.women?.find(i => i.name.includes('Pattu'))?.price || 900, emoji: '👑', categoryKey: 'SAREES_ETHNIC', categoryName: "Luxury Silk" },
+    { id: 'e-2', name: 'Silk Saree (Kanchipuram / Banarasi / Pattu)', price: cfg.dryCleaning?.women?.find(i => i.name.toLowerCase() === 'saree')?.price || 220, emoji: '🥻', categoryKey: 'SAREES_ETHNIC', categoryName: "Silk Sarees" },
+    { id: 'e-3', name: 'Saree with Heavy Zari / Stone Embroidery', price: cfg.dryCleaning?.women?.find(i => i.name.includes('Worked'))?.price || 250, emoji: '✨', categoryKey: 'SAREES_ETHNIC', categoryName: "Designer Sarees" },
+    { id: 'e-4', name: 'Saree Rolling & Polishing', price: sareeRate, emoji: '🥻', categoryKey: 'SAREES_ETHNIC', categoryName: "Saree Rolling" },
+    { id: 'e-5', name: 'Saree Steam Ironing Only', price: cfg.ironing?.women?.find(i => i.name.toLowerCase() === 'saree')?.price || 60, emoji: '🥻', categoryKey: 'SAREES_ETHNIC', categoryName: "Steam Press" },
+    { id: 'e-6', name: 'Cotton Saree Starch & Steam Iron', price: (cfg['starch-and-iron'] || cfg.starchAndIron)?.women?.find(i => i.name.includes('Saree'))?.price || 80, emoji: '🌾', categoryKey: 'SAREES_ETHNIC', categoryName: "Starch & Iron" },
+    { id: 'e-7', name: 'Designer Saree Blouse (Padded/Worked)', price: cfg.dryCleaning?.women?.find(i => i.name.includes('Blouse'))?.price || 70, emoji: '👚', categoryKey: 'SAREES_ETHNIC', categoryName: "Blouses" },
+    { id: 'e-8', name: 'Silk Dhoti & Kanduva Set', price: 240, emoji: '🥻', categoryKey: 'SAREES_ETHNIC', categoryName: "Men Ethnic" },
+    { id: 'e-9', name: 'Sherwani / Brocade Bandgala', price: cfg.dryCleaning?.men?.find(i => i.name.includes('Sherwani'))?.price || 250, emoji: '🧥', categoryKey: 'SAREES_ETHNIC', categoryName: "Occasion" },
+    { id: 'e-10', name: 'Men Silk / Heavy Kurta', price: cfg.dryCleaning?.men?.find(i => i.name.includes('Kurta'))?.price || 180, emoji: '👘', categoryKey: 'SAREES_ETHNIC', categoryName: "Men Ethnic" },
+    { id: 'e-11', name: 'Bridal Lehanga Set (Heavy Zari)', price: 550, emoji: '👑', categoryKey: 'SAREES_ETHNIC', categoryName: "Bridal" }
+  );
+
+  // 6. Household & Linens
+  const curtainDc = Number(cfg.curtains?.dryCleaning) || 200;
+  const curtainWi = Number(cfg.curtains?.washAndIron) || 150;
+  const curtainIr = Number(cfg.curtains?.iron) || 60;
+  const curtainWf = Number(cfg.curtains?.washAndFold) || 100;
+  const carpetRate = Number(cfg.carpets?.ratePerSqFt) || 45;
+
+  items.push(
+    { id: 'h-1', name: 'Single Bedsheet', price: 150, emoji: '🛏️', categoryKey: 'HOUSEHOLD', categoryName: "Bedding" },
+    { id: 'h-2', name: 'Double / King Bedsheet + 2 Pillow Covers', price: 220, emoji: '🛌', categoryKey: 'HOUSEHOLD', categoryName: "Bedding" },
+    { id: 'h-3', name: 'Pillow Cover (Pair)', price: 40, emoji: '🛋️', categoryKey: 'HOUSEHOLD', categoryName: "Bedding" },
+    { id: 'h-4', name: 'Single Blanket / Dohar / Comforter', price: 200, emoji: '🛋️', categoryKey: 'HOUSEHOLD', categoryName: "Blankets" },
+    { id: 'h-5', name: 'Double Heavy Quilt / Razai', price: 350, emoji: '🛋️', categoryKey: 'HOUSEHOLD', categoryName: "Quilts" },
+    { id: 'h-6', name: 'Cotton Table Cloth', price: 80, emoji: '🍽️', categoryKey: 'HOUSEHOLD', categoryName: "Linens" },
+    { id: 'c-dc', name: 'Curtain Dry Cleaning', price: curtainDc, emoji: '🧺', categoryKey: 'HOUSEHOLD', categoryName: "Curtains", serviceName: "Curtain Service", subServiceName: "Dry Cleaning" },
+    { id: 'c-wi', name: 'Curtain Wash & Iron', price: curtainWi, emoji: '🫧', categoryKey: 'HOUSEHOLD', categoryName: "Curtains", serviceName: "Curtain Service", subServiceName: "Wash and Iron" },
+    { id: 'c-ir', name: 'Curtain Iron', price: curtainIr, emoji: '✨', categoryKey: 'HOUSEHOLD', categoryName: "Curtains", serviceName: "Curtain Service", subServiceName: "Iron" },
+    { id: 'c-wf', name: 'Curtain Wash & Fold', price: curtainWf, emoji: '👕', categoryKey: 'HOUSEHOLD', categoryName: "Curtains", serviceName: "Curtain Service", subServiceName: "Wash and Fold" },
+    { id: 'h-11', name: 'Living Room Carpet / Wool Rug Spa', price: carpetRate * 10, emoji: '🧶', categoryKey: 'HOUSEHOLD', categoryName: "Carpets" }
+  );
+
+  // 7. Footwear & Bags
+  const shoeRate = Number(cfg.shoes?.ratePerPair) || 350;
+  items.push(
+    { id: 'f-1', name: 'Sneakers & Casual Shoes Spa', price: shoeRate, emoji: '👟', categoryKey: 'FOOTWEAR_BAGS', categoryName: "Shoes" },
+    { id: 'f-2', name: 'Sports & Running Shoes Spa', price: shoeRate, emoji: '🏃', categoryKey: 'FOOTWEAR_BAGS', categoryName: "Shoes" },
+    { id: 'f-3', name: 'Formal Leather Shoes Nourish & Shine', price: shoeRate, emoji: '👞', categoryKey: 'FOOTWEAR_BAGS', categoryName: "Shoes" },
+    { id: 'f-4', name: 'Suede Boots & Loafers Restoration', price: shoeRate + 49, emoji: '🥾', categoryKey: 'FOOTWEAR_BAGS', categoryName: "Shoes" },
+    { id: 'f-5', name: 'School / College Backpack Spa', price: 150, emoji: '🎒', categoryKey: 'FOOTWEAR_BAGS', categoryName: "Bags" },
+    { id: 'f-6', name: 'Leather / Designer Handbag Conditioning', price: 250, emoji: '👜', categoryKey: 'FOOTWEAR_BAGS', categoryName: "Bags" },
+    { id: 'f-7', name: 'Travel Duffel / Trolley Bag Cleanse', price: 299, emoji: '🧳', categoryKey: 'FOOTWEAR_BAGS', categoryName: "Bags" }
+  );
+
+  // 8. Starch & Finishing
+  const starchObj = cfg['starch-and-iron'] || cfg.starchAndIron || {};
+  const starchMen = starchObj.men || [];
+  const starchWomen = starchObj.women || [];
+  const starchCommon = starchObj.common || [];
+  [...starchMen, ...starchWomen, ...starchCommon].forEach(it => {
+    items.push({
+      id: `s-${it.id || it.name}`,
+      name: it.name,
+      price: Number(it.price) || 45,
+      emoji: it.emoji || '🌾',
+      categoryKey: 'STARCH_FINISHING',
+      categoryName: "Starch",
+    });
+  });
+
+  // 9. Extra Services & Custom Charges
+  items.push(
+    { id: 'ex-1', name: 'Urgent Heavy Stain Removal Treatment', price: 100, emoji: '🧼', categoryKey: 'EXTRA_SERVICES', categoryName: "Special Care" },
+    { id: 'ex-2', name: 'Gold/Silver Zari Polishing & Shield', price: 150, emoji: '✨', categoryKey: 'EXTRA_SERVICES', categoryName: "Special Care" },
+    { id: 'ex-3', name: 'Zip Replacement & Minor Tailoring Alteration', price: 80, emoji: '🪡', categoryKey: 'EXTRA_SERVICES', categoryName: "Alteration" },
+    { id: 'ex-4', name: 'Button Stitch & Hemming Repair', price: 40, emoji: '🪡', categoryKey: 'EXTRA_SERVICES', categoryName: "Alteration" },
+    { id: 'ex-5', name: 'Luxury Gift Box Packaging & Hanger', price: 50, emoji: '🎁', categoryKey: 'EXTRA_SERVICES', categoryName: "Packing" },
+    { id: 'ex-6', name: 'Antiseptic Fabric Sanitization Surcharge', price: 40, emoji: '🛡️', categoryKey: 'EXTRA_SERVICES', categoryName: "Special Care" }
+  );
+
+  return items;
+};
 
 export const pricingService = {
   /**
@@ -350,10 +608,14 @@ export const pricingService = {
         const snap = await getDoc(doc(db, 'settings', 'pricing'));
         if (snap.exists()) {
           const remoteData = snap.data();
-          return {
+          const merged = {
             ...INITIAL_PRICING_CONFIG,
             ...remoteData,
           };
+          try {
+            localStorage.setItem(PRICING_STORAGE_KEY, JSON.stringify(merged));
+          } catch (e) {}
+          return merged;
         }
       } catch (e) {
         console.warn("Firestore pricing config fetch failed:", e);
@@ -372,6 +634,7 @@ export const pricingService = {
 
   /**
    * Updates pricing configuration in Firestore & local storage (Admin access)
+   * and broadcasts real-time updates across all open tabs and windows.
    */
   async updatePricingConfig(newConfig) {
     if (isFirebaseConfigured && db) {
@@ -381,7 +644,75 @@ export const pricingService = {
         console.warn("Firestore pricing update failed:", e);
       }
     }
-    localStorage.setItem(PRICING_STORAGE_KEY, JSON.stringify(newConfig));
+    try {
+      localStorage.setItem(PRICING_STORAGE_KEY, JSON.stringify(newConfig));
+    } catch (e) {}
+
+    // 1. Dispatch custom DOM event
+    try {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('techwash-pricing-updated', { detail: newConfig }));
+      }
+    } catch (e) {}
+
+    // 2. Broadcast via BroadcastChannel
+    try {
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        const bc = new BroadcastChannel(PRICING_BROADCAST_CHANNEL);
+        bc.postMessage(newConfig);
+        bc.close();
+      }
+    } catch (e) {}
+
     return newConfig;
+  },
+
+  /**
+   * Subscribes to real-time pricing changes across Firestore, BroadcastChannel, and Custom Events
+   */
+  subscribeToPricing(callback) {
+    if (typeof callback !== 'function') return () => {};
+
+    // Custom window event listener
+    const handleCustomEvent = (e) => {
+      if (e.detail) callback(e.detail);
+      else pricingService.getPricingConfig().then(callback);
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('techwash-pricing-updated', handleCustomEvent);
+    }
+
+    // Storage event for cross-window sync
+    const handleStorageEvent = (e) => {
+      if (e.key === PRICING_STORAGE_KEY && e.newValue) {
+        try {
+          callback(JSON.parse(e.newValue));
+        } catch (err) {}
+      }
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('storage', handleStorageEvent);
+    }
+
+    // BroadcastChannel listener
+    let channel = null;
+    try {
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        channel = new BroadcastChannel(PRICING_BROADCAST_CHANNEL);
+        channel.onmessage = (event) => {
+          if (event.data) callback(event.data);
+        };
+      }
+    } catch (err) {}
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('techwash-pricing-updated', handleCustomEvent);
+        window.removeEventListener('storage', handleStorageEvent);
+      }
+      if (channel) {
+        try { channel.close(); } catch (e) {}
+      }
+    };
   }
 };

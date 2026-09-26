@@ -5,13 +5,14 @@
  */
 
 import { orderService, getOrderBranchKey } from './orderService.js';
+import { parsePinToPinItems } from '../utils/formatters.js';
 
 const BACKUP_STORAGE_PREFIX = 'techwash_backup_checkpoint_';
 const LAST_BACKUP_COUNT_KEY = 'techwash_last_backup_order_count';
 
 export const parseOrderDateSafe = (val) => {
-  if (!val) return new Date();
-  if (val instanceof Date) return isNaN(val.getTime()) ? new Date() : val;
+  if (!val) return null;
+  if (val instanceof Date) return isNaN(val.getTime()) ? null : val;
   if (typeof val === 'object' && typeof val.seconds === 'number') {
     return new Date(val.seconds * 1000);
   }
@@ -31,13 +32,13 @@ export const parseOrderDateSafe = (val) => {
     const d = new Date(val);
     if (!isNaN(d.getTime())) return d;
   }
-  return new Date();
+  return null;
 };
 
 export const isSameCalendarDay = (date1, date2) => {
   if (!date1 || !date2) return false;
-  const d1 = parseOrderDateSafe(date1);
-  const d2 = parseOrderDateSafe(date2);
+  const d1 = parseOrderDateSafe(date1) || new Date();
+  const d2 = parseOrderDateSafe(date2) || new Date();
   return (
     d1.getFullYear() === d2.getFullYear() &&
     d1.getMonth() === d2.getMonth() &&
@@ -48,11 +49,11 @@ export const isSameCalendarDay = (date1, date2) => {
 export const isPosOrder = (order) => {
   if (!order) return false;
   if (order.isWalkIn === true) return true;
-  if (order.orderSource === 'OFFLINE_POS' || order.orderSource === 'POS') return true;
+  if (order.orderSource === 'OFFLINE_POS' || order.orderSource === 'POS' || order.orderSource === 'WALK_IN') return true;
   if (order.terminalCode || order.terminalId) return true;
   if (order.manualBillNumber) return true;
   const storeBranch = (order.storeBranch || '').toLowerCase();
-  if (storeBranch.includes('counter') || storeBranch.includes('pos-') || storeBranch.includes('pos ') || storeBranch.includes('flagship') || storeBranch.includes('express')) return true;
+  if (storeBranch.includes('counter') || storeBranch.includes('pos-') || storeBranch.includes('pos ') || storeBranch.includes('flagship') || storeBranch.includes('express') || storeBranch.includes('walk-in')) return true;
   return false;
 };
 
@@ -70,7 +71,7 @@ export const reportService = {
     onlyOfflinePos = false,
     searchQuery = '',
   } = {}) {
-    const allOrders = await orderService.getOrders({ limitCount: 2000 });
+    const allOrders = await orderService.getOrders({ limitCount: 5000 });
 
     // Determine filter date boundaries
     const now = new Date();
@@ -111,17 +112,17 @@ export const reportService = {
       end = null;
       dateRangeLabel = 'All Master History';
     } else if ((datePreset === 'single' || datePreset === 'specific') && targetDate) {
-      const t = parseOrderDateSafe(targetDate);
+      const t = parseOrderDateSafe(targetDate) || new Date();
       start = new Date(t.getFullYear(), t.getMonth(), t.getDate(), 0, 0, 0, 0);
       end = new Date(t.getFullYear(), t.getMonth(), t.getDate(), 23, 59, 59, 999);
       dateRangeLabel = `Date: ${t.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`;
     } else if (datePreset === 'custom' && (startDate || endDate)) {
       if (startDate) {
-        const s = parseOrderDateSafe(startDate);
+        const s = parseOrderDateSafe(startDate) || new Date();
         start = new Date(s.getFullYear(), s.getMonth(), s.getDate(), 0, 0, 0, 0);
       }
       if (endDate) {
-        const e = parseOrderDateSafe(endDate);
+        const e = parseOrderDateSafe(endDate) || new Date();
         end = new Date(e.getFullYear(), e.getMonth(), e.getDate(), 23, 59, 59, 999);
       }
       dateRangeLabel = `Custom Range (${startDate || 'Start'} to ${endDate || 'Now'})`;
@@ -129,17 +130,23 @@ export const reportService = {
 
     // Filter orders
     const filteredOrders = allOrders.filter(order => {
-      // 1. Date Check (Evaluate createdAt and scheduled pickupDate)
-      const orderDate = parseOrderDateSafe(order.createdAt || order.pickupDate || order.schedule?.pickupDate);
-      const scheduleDate = order.schedule?.pickupDate ? parseOrderDateSafe(order.schedule.pickupDate) : null;
-      
-      let matchesDate = true;
+      // 1. Comprehensive Date Check across all potential timestamps
       if (start && end) {
-        const inCreatedRange = orderDate >= start && orderDate <= end;
-        const inScheduleRange = scheduleDate && scheduleDate >= start && scheduleDate <= end;
-        matchesDate = inCreatedRange || inScheduleRange;
+        const dateCandidates = [
+          parseOrderDateSafe(order.createdAt),
+          parseOrderDateSafe(order.created_at),
+          parseOrderDateSafe(order.orderDate),
+          parseOrderDateSafe(order.date),
+          parseOrderDateSafe(order.timestamp),
+          parseOrderDateSafe(order.pickupDate),
+          parseOrderDateSafe(order.schedule?.pickupDate),
+          parseOrderDateSafe(order.updatedAt),
+          parseOrderDateSafe(order.statusTimeline?.[0]?.timestamp),
+        ].filter(Boolean);
+
+        const hasMatchingDate = dateCandidates.length === 0 || dateCandidates.some(d => d >= start && d <= end);
+        if (!hasMatchingDate) return false;
       }
-      if (!matchesDate) return false;
 
       // 2. Channel & Source Filter (Strict POS Offline vs Online)
       const isPos = isPosOrder(order);
@@ -153,7 +160,20 @@ export const reportService = {
       if (branchFilter && branchFilter !== 'ALL' && branchFilter !== 'POS_ONLY' && branchFilter !== 'ALL_POS' && branchFilter !== 'ONLINE_WEBSITE') {
         if (!isPos) return false;
         const bKey = getOrderBranchKey(order);
-        if (bKey !== branchFilter) return false;
+        const tId = String(order.terminalId || '').toLowerCase().trim();
+        const tCode = String(order.terminalCode || '').toLowerCase().trim();
+        const targetKey = String(branchFilter).toLowerCase().trim();
+
+        const isDirectMatch = (
+          bKey === targetKey ||
+          tId === targetKey ||
+          tCode.includes(targetKey) ||
+          (targetKey === 'counter-1' && (tCode.includes('01') || tId.includes('1') || tId === 'counter-1')) ||
+          (targetKey === 'counter-2' && (tCode.includes('02') || tId.includes('2') || tId === 'counter-2')) ||
+          (targetKey === 'counter-3' && (tCode.includes('03') || tId.includes('3') || tId === 'counter-3'))
+        );
+
+        if (!isDirectMatch) return false;
       }
 
       // 4. Search Query
@@ -169,6 +189,7 @@ export const reportService = {
 
       return true;
     });
+
 
     // Compute Comprehensive Financial Aggregations
     let totalGrossBilled = 0;
@@ -534,8 +555,9 @@ export const reportService = {
     ];
 
     const rows = orders.map(ord => {
-      const itemsDetail = (ord.items || [])
-        .map(it => `${it.quantity || 1}x ${it.name} (₹${it.unitPrice || it.price || 0})`)
+      const pin = parsePinToPinItems(ord);
+      const itemsDetail = pin.textSummary || (ord.items || [])
+        .map(it => `${it.quantity || 1}x ${it.name}`)
         .join(' | ');
 
       const total = Number(ord.totalAmount || ord.finalPrice || ord.priceSnapshot?.finalTotal || 0);

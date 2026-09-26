@@ -97,9 +97,9 @@ export const PrintReceipt = ({
             {receiptData.storeBranch && (
               <p className="font-bold text-slate-800 text-[9px]">{receiptData.storeBranch}</p>
             )}
-            <p className="font-medium text-slate-700">{receiptData.storeAddress || config.address || 'Shaikpet Main Rd, Sri Ram Nagar Colony, Manikonda, Hyderabad, Telangana 500089'}</p>
+            <p className="font-medium text-slate-700">{receiptData.storeAddress || config.address || 'Shaikpet Main Rd,Sri Ram Nagar Colony,Manikonda,Hyderabad,Telangana,500089'}</p>
             <div className="flex flex-wrap items-center gap-x-2 text-slate-600 font-semibold text-[8px]">
-              <span>Tel: {config.phone || '+91 63048 45567'}</span>
+              <span>Tel: {receiptData.storePhone || config.phone || '+91 63048 45567'}</span>
               <span>•</span>
               <span>{config.email || 'care@techwashlaundry.com'}</span>
               <span>•</span>

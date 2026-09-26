@@ -395,6 +395,65 @@ const CANONICAL_SERVICE_KEYS = {
   'carpets': 'srv-carpet-washing',
 };
 
+const PRICING_CONFIG_KEY = 'techwash_pricing_config_v2';
+
+function applyPricingConfigToServices(serviceList) {
+  let config = null;
+  try {
+    const cached = localStorage.getItem(PRICING_CONFIG_KEY);
+    if (cached) config = JSON.parse(cached);
+  } catch (e) {}
+
+  if (!config) return serviceList;
+
+  return serviceList.map(srv => {
+    const cleanId = (srv.id || '').replace(/^srv-/, '');
+    const cfgSrv = config.services?.find(s => s.id === cleanId || s.slug === srv.slug || s.id === srv.id);
+
+    let startingPrice = srv.startingPrice;
+    let startingPriceDisplay = srv.startingPriceDisplay;
+
+    if (cfgSrv) {
+      if (cfgSrv.pricingType === 'PER_KG') {
+        startingPrice = cfgSrv.baseRates?.men || cfgSrv.baseRates?.women || srv.startingPrice;
+        startingPriceDisplay = `Starts at ₹${startingPrice} / Kg`;
+      } else if (cfgSrv.pricingType === 'ITEMIZED') {
+        if (cleanId === 'dry-cleaning') {
+          const all = [...(config.dryCleaning?.men || []), ...(config.dryCleaning?.women || []), ...(config.dryCleaning?.common || [])];
+          if (all.length > 0) {
+            startingPrice = Math.min(...all.map(i => Number(i.price) || 40));
+            startingPriceDisplay = `Starts at ₹${startingPrice}`;
+          }
+        } else if (cleanId === 'ironing') {
+          const all = [...(config.ironing?.men || []), ...(config.ironing?.women || [])];
+          if (all.length > 0) {
+            startingPrice = Math.min(...all.map(i => Number(i.price) || 12));
+            startingPriceDisplay = `Starts at ₹${startingPrice}`;
+          }
+        } else if (cleanId === 'starch-and-iron') {
+          const all = config.starchAndIron?.items || [];
+          if (all.length > 0) {
+            startingPrice = Math.min(...all.map(i => Number(i.price) || 25));
+            startingPriceDisplay = `Starts at ₹${startingPrice}`;
+          }
+        } else if (cleanId === 'curtain-washing') {
+          const sub = cfgSrv.subServices || [];
+          if (sub.length > 0) {
+            startingPrice = Math.min(...sub.map(i => Number(i.price) || 60));
+            startingPriceDisplay = `Starts at ₹${startingPrice}`;
+          }
+        }
+      }
+    }
+
+    return {
+      ...srv,
+      startingPrice,
+      startingPriceDisplay: startingPriceDisplay || srv.startingPriceDisplay
+    };
+  });
+}
+
 export const serviceService = {
   /**
    * Fetch all services from Firestore `services` collection
@@ -506,6 +565,9 @@ export const serviceService = {
         result = DEFAULT_SERVICES.filter(s => s.active !== false);
       }
     }
+
+    // Merge live dynamic pricing config from Admin Pricing
+    result = applyPricingConfigToServices(result);
 
     return result.sort((a, b) => (Number(a.displayOrder || a.order || 0) - Number(b.displayOrder || b.order || 0)));
   },

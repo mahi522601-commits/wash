@@ -63,29 +63,32 @@ export const getOrderBranchKey = (order) => {
 
   const tId = String(order.terminalId || '').toLowerCase().trim();
   const tCode = String(order.terminalCode || '').toLowerCase().trim();
-  const bName = String(order.storeBranch || '').toLowerCase().trim();
+  const bName = String(order.storeBranch || order.customer?.storeBranch || order.customer?.address || '').toLowerCase().trim();
 
-  // Explicit Counter 2 checks
+  // Explicit Counter 2 checks (Branch 1 — Tolichowki / OU Colony / DreamScape / POS-02)
   if (
     tId === 'counter-2' || tId === '2' || tId.includes('counter-2') || tId.includes('pos-02') || 
     tCode === 'tw-pos-02' || tCode.includes('pos-02') || tCode.includes('02') ||
-    bName.includes('hitec') || bName.includes('cyber') || bName.includes('express hub')
+    bName.includes('branch 1') || bName.includes('tolichowki') || bName.includes('ou colony') ||
+    bName.includes('dreamscape')
   ) {
     return 'counter-2';
   }
 
-  // Explicit Counter 3 checks
+  // Explicit Counter 3 checks (Pick Up Point — Ambience Courtyard / POS-03)
   if (
     tId === 'counter-3' || tId === '3' || tId.includes('counter-3') || tId.includes('pos-03') || 
     tCode === 'tw-pos-03' || tCode.includes('pos-03') || tCode.includes('03') ||
-    bName.includes('banjara') || bName.includes('care center')
+    bName.includes('ambience') || bName.includes('courtyard') || bName.includes('pick up point') ||
+    bName.includes('pickup')
   ) {
     return 'counter-3';
   }
 
-  // Counter 1 or fallback POS
+  // Counter 1 or fallback POS (Main Branch — Manikonda / Shaikpet Main Rd / POS-01)
   return 'counter-1';
 };
+
 
 export const orderService = {
   /**

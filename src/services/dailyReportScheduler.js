@@ -9,6 +9,7 @@ import { whatsappNotificationService } from './whatsappNotificationService.js';
 import { auditService } from './auditService.js';
 import { db, isFirebaseConfigured } from './firebase.js';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { parsePinToPinItems } from '../utils/formatters.js';
 
 const DAILY_SCHEDULE_STORAGE_KEY = 'techwash_daily_report_schedule_v2';
 
@@ -156,9 +157,9 @@ class DailyReportSchedulerService {
 
     // Branch-wise Sales Computation
     const branchStats = {
-      branch1: { name: 'Branch 1 — Tolichowki (POS-01)', count: 0, billed: 0, received: 0 },
-      pickup: { name: 'Pick Up Point — Ambience Courtyard (POS-02)', count: 0, billed: 0, received: 0 },
-      main: { name: 'Main Branch — Manikonda (POS-03)', count: 0, billed: 0, received: 0 },
+      main: { name: 'Main Branch — Manikonda (POS-01)', count: 0, billed: 0, received: 0 },
+      branch1: { name: 'Branch 1 — Tolichowki (POS-02)', count: 0, billed: 0, received: 0 },
+      pickup: { name: 'Pick Up Point — Ambience Courtyard (POS-03)', count: 0, billed: 0, received: 0 },
       online: { name: 'Website Online Pickup', count: 0, billed: 0, received: 0 },
     };
 
@@ -174,22 +175,22 @@ class DailyReportSchedulerService {
         branchStats.online.count += 1;
         branchStats.online.billed += total;
         branchStats.online.received += rec;
-      } else if (tId.includes('counter-1') || tCode.includes('pos-01') || branchName.includes('branch 1') || branchName.includes('tolichowki') || branchName.includes('jubilee')) {
-        branchStats.branch1.count += 1;
-        branchStats.branch1.billed += total;
-        branchStats.branch1.received += rec;
-      } else if (tId.includes('counter-2') || tCode.includes('pos-02') || branchName.includes('pick up point') || branchName.includes('ambience') || branchName.includes('hitec')) {
-        branchStats.pickup.count += 1;
-        branchStats.pickup.billed += total;
-        branchStats.pickup.received += rec;
-      } else if (tId.includes('counter-3') || tCode.includes('pos-03') || branchName.includes('main branch') || branchName.includes('manikonda') || branchName.includes('banjara')) {
+      } else if (tId === 'counter-1' || tCode.includes('pos-01') || branchName.includes('main branch') || branchName.includes('manikonda') || branchName.includes('shaikpet main')) {
         branchStats.main.count += 1;
         branchStats.main.billed += total;
         branchStats.main.received += rec;
-      } else {
+      } else if (tId === 'counter-2' || tCode.includes('pos-02') || branchName.includes('branch 1') || branchName.includes('tolichowki') || branchName.includes('ou colony') || branchName.includes('dreamscape')) {
         branchStats.branch1.count += 1;
         branchStats.branch1.billed += total;
         branchStats.branch1.received += rec;
+      } else if (tId === 'counter-3' || tCode.includes('pos-03') || branchName.includes('pick up point') || branchName.includes('ambience') || branchName.includes('courtyard')) {
+        branchStats.pickup.count += 1;
+        branchStats.pickup.billed += total;
+        branchStats.pickup.received += rec;
+      } else {
+        branchStats.main.count += 1;
+        branchStats.main.billed += total;
+        branchStats.main.received += rec;
       }
     });
 
@@ -200,8 +201,8 @@ class DailyReportSchedulerService {
       .map(([name, data]) => `  • *${name}:* ${data.count} Orders (₹${(data.revenue || 0).toLocaleString('en-IN')})`)
       .join('\n') || '  • *General Services:* Active';
 
-    // Format top items breakdown
-    const itemsList = orders.slice(0, 10).map((ord, idx) => {
+    // Format top items breakdown with clear pin-to-pin description
+    const itemsList = orders.slice(0, 12).map((ord, idx) => {
       const isPos = Boolean(ord.isWalkIn || ord.orderSource === 'OFFLINE_POS' || ord.terminalCode);
       const prefix = isPos ? '🏪' : '🌐';
       const orderNum = ord.orderNumber || ord.id || `TW-${idx+1}`;
@@ -210,8 +211,9 @@ class DailyReportSchedulerService {
       const bal = Number(ord.balanceAmount !== undefined ? ord.balanceAmount : Math.max(0, total - rec));
       const statusStr = bal === 0 ? '✅ PAID' : `🔴 ₹${bal.toLocaleString('en-IN')} DUE`;
       const cust = ord.customerName || ord.customer?.name || 'Walk-in Customer';
-      const sName = ord.serviceName || ord.service || 'Laundry';
-      return `  ${idx + 1}. ${prefix} *#${orderNum}* (${cust}) • ₹${total.toLocaleString('en-IN')} [${sName}] - ${statusStr}`;
+      const pin = parsePinToPinItems(ord);
+      const itemDesc = pin.textSummary ? ` [${pin.textSummary}]` : '';
+      return `  ${idx + 1}. ${prefix} *#${orderNum}* (${cust}) • ₹${total.toLocaleString('en-IN')}${itemDesc} - ${statusStr}`;
     }).join('\n');
 
     const totalInflow = c1.totalInflowCollections !== undefined ? c1.totalInflowCollections : (c1.cashReceived || 0) + (c1.upiReceived || 0) + (c1.cardReceived || 0) + (c1.onlineReceived || 0);
@@ -242,9 +244,9 @@ class DailyReportSchedulerService {
 ───────────────────────────────
 🏬 *BRANCH-WISE SALES PERFORMANCE*
 ───────────────────────────────
-• 🏪 *Branch 1 — Tolichowki (POS-01):* ${branchStats.branch1.count} Bills • ₹${branchStats.branch1.billed.toLocaleString('en-IN')} (Rec: ₹${branchStats.branch1.received.toLocaleString('en-IN')})
-• 🏪 *Pick Up Point — Ambience (POS-02):* ${branchStats.pickup.count} Bills • ₹${branchStats.pickup.billed.toLocaleString('en-IN')} (Rec: ₹${branchStats.pickup.received.toLocaleString('en-IN')})
-• 🏪 *Main Branch — Manikonda (POS-03):* ${branchStats.main.count} Bills • ₹${branchStats.main.billed.toLocaleString('en-IN')} (Rec: ₹${branchStats.main.received.toLocaleString('en-IN')})
+• 🏪 *Main Branch — Manikonda (POS-01):* ${branchStats.main.count} Bills • ₹${branchStats.main.billed.toLocaleString('en-IN')} (Rec: ₹${branchStats.main.received.toLocaleString('en-IN')})
+• 🏪 *Branch 1 — Tolichowki (POS-02):* ${branchStats.branch1.count} Bills • ₹${branchStats.branch1.billed.toLocaleString('en-IN')} (Rec: ₹${branchStats.branch1.received.toLocaleString('en-IN')})
+• 🏪 *Pick Up Point — Ambience (POS-03):* ${branchStats.pickup.count} Bills • ₹${branchStats.pickup.billed.toLocaleString('en-IN')} (Rec: ₹${branchStats.pickup.received.toLocaleString('en-IN')})
 • 🌐 *Online Website Pickup:* ${branchStats.online.count} Bookings • ₹${branchStats.online.billed.toLocaleString('en-IN')}
 
 ───────────────────────────────

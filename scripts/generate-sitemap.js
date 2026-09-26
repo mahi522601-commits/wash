@@ -135,6 +135,16 @@ const BLOG_SLUGS = [
   'how-to-keep-white-sneakers-pristine',
 ];
 
+function escapeXml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
 function generateSitemaps() {
   const currentDate = new Date().toISOString().split('T')[0];
   const xmlEntries = [];
@@ -142,10 +152,10 @@ function generateSitemaps() {
 
   const addUrl = (fullUrl, priority, changefreq, images = []) => {
     rawUrls.push(fullUrl);
-    let entry = `  <url>\n    <loc>${fullUrl}</loc>\n    <lastmod>${currentDate}</lastmod>\n    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>`;
+    let entry = `  <url>\n    <loc>${escapeXml(fullUrl)}</loc>\n    <lastmod>${currentDate}</lastmod>\n    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>`;
     if (images && images.length > 0) {
       images.forEach((img) => {
-        entry += `\n    <image:image>\n      <image:loc>${img.loc}</image:loc>\n      <image:title>${img.title}</image:title>\n      <image:caption>${img.caption}</image:caption>\n    </image:image>`;
+        entry += `\n    <image:image>\n      <image:loc>${escapeXml(img.loc)}</image:loc>\n      <image:title>${escapeXml(img.title)}</image:title>\n      <image:caption>${escapeXml(img.caption)}</image:caption>\n    </image:image>`;
       });
     }
     entry += `\n  </url>`;
