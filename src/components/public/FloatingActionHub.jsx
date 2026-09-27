@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useSettings } from '../../context/SettingsContext';
 import { cmsService } from '../../services/cmsService';
 import { usePWAInstall } from '../../hooks/usePWAInstall';
@@ -17,11 +18,14 @@ import {
   Compass, 
   Volume2, 
   QrCode,
-  ArrowRight
+  ArrowRight,
+  MessageCircle,
+  Phone
 } from 'lucide-react';
 import { testOrderPlacedSound } from '../../utils/audioNotification';
 
 export const FloatingActionHub = ({ onOpenAssistant }) => {
+  const { pathname } = useLocation();
   const { settings } = useSettings();
   const { 
     isInstallable, 
@@ -37,6 +41,7 @@ export const FloatingActionHub = ({ onOpenAssistant }) => {
   const [installSuccess, setInstallSuccess] = useState(false);
   const [activeTab, setActiveTab] = useState(isIOS ? 'ios' : isAndroid ? 'android' : 'desktop');
   const [showAppTeaser, setShowAppTeaser] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     // Show brief teaser flyout on initial visit if not installed
@@ -48,6 +53,16 @@ export const FloatingActionHub = ({ onOpenAssistant }) => {
       return () => clearTimeout(timer);
     }
   }, [isInstalled]);
+
+  // Close mobile popup on route change
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [pathname]);
+
+  // Suppress on booking page (which has its own mobile checkout flow) and admin/worker consoles
+  if (pathname === '/book-pickup' || pathname.startsWith('/admin') || pathname.startsWith('/worker')) {
+    return null;
+  }
 
   const whatsappNumber = settings?.general?.whatsappNumber || '+91 63048 45567';
   const whatsappMsg = settings?.general?.whatsappDefaultMessage || 'Hi Tech Wash, I would like to inquire about laundry & dry cleaning pickup!';
@@ -83,20 +98,14 @@ export const FloatingActionHub = ({ onOpenAssistant }) => {
   return (
     <>
       {/* ─────────────────────────────────────────────────────────
-          RIGHT SIDE: NEATLY STACKED FLOATING ACTION CONTROLS
-          Stack Order (Bottom to Top):
-          1. AI Chatbot Trigger (Bottom)
-          2. WhatsApp Button
-          3. Phone Call Button
-          4. Mobile App (.apk / iOS / PWA) Download Button (Top)
+          1. DESKTOP ONLY: NEATLY STACKED 4-BUTTON FLOATING CONTROLS
+          Visible on md: and above screens only (>= 768px)
       ───────────────────────────────────────────────────────── */}
-      <div className="fixed right-3 sm:right-6 bottom-20 sm:bottom-24 md:bottom-8 z-40 flex flex-col items-end gap-2.5 sm:gap-3 pointer-events-auto no-print">
+      <div className="hidden md:flex fixed right-6 bottom-8 z-40 flex-col items-end gap-3 pointer-events-auto no-print">
         
         {/* 1. APP DOWNLOAD / .APK / PWA FLOATING BUTTON (Top of Stack) */}
         {!isInstalled && (
           <div className="relative flex items-center">
-            
-            {/* Animated Teaser Pill on load / hover */}
             {showAppTeaser && (
               <div
                 onClick={handleAppInstallClick}
@@ -112,25 +121,19 @@ export const FloatingActionHub = ({ onOpenAssistant }) => {
               </div>
             )}
 
-            {/* Main Floating App Install Button */}
             <button
               type="button"
               onClick={handleAppInstallClick}
-              className="relative w-12 h-12 sm:w-13 sm:h-13 rounded-full bg-gradient-to-tr from-[#EA580C] via-[#F97316] to-[#FB923C] text-slate-950 shadow-[0_10px_30px_rgba(249,115,22,0.45)] hover:shadow-[0_15px_40px_rgba(249,115,22,0.65)] flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-300 group border-2 border-white"
+              className="relative w-12 h-12 rounded-full bg-gradient-to-tr from-[#EA580C] via-[#F97316] to-[#FB923C] text-slate-950 shadow-[0_10px_30px_rgba(249,115,22,0.45)] hover:shadow-[0_15px_40px_rgba(249,115,22,0.65)] flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-300 group border-2 border-white"
               title={isIOS ? 'Install Tech Wash on iPhone' : isAndroid ? 'Download Tech Wash App (.apk)' : 'Install Tech Wash Desktop App'}
               aria-label="Download Tech Wash Mobile App"
             >
-              {/* Subtle Pulsing Beacon Ring */}
               <span className="absolute -inset-1 rounded-full bg-orange-400/40 animate-pulse pointer-events-none" />
-
-              {/* Floating Badge (APK / APP) */}
               <span className="absolute -top-1 -right-1 px-1.5 py-0.2 rounded-full bg-[#0E0C22] text-[#00F0FF] text-[8px] font-black border border-cyan-400 shadow-sm leading-tight uppercase tracking-wider z-20">
                 {isIOS ? 'iOS' : 'APK'}
               </span>
-
-              {/* Icon with Download bounce on hover */}
               <div className="relative z-10 flex items-center justify-center text-slate-950 group-hover:scale-110 transition-transform">
-                <Download className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.5] text-slate-950 group-hover:translate-y-0.5 transition-transform" />
+                <Download className="w-5 h-5 stroke-[2.5] text-slate-950 group-hover:translate-y-0.5 transition-transform" />
               </div>
             </button>
           </div>
@@ -139,48 +142,177 @@ export const FloatingActionHub = ({ onOpenAssistant }) => {
         {/* 2. DIRECT CALL BUTTON (Phone Dialer Green) */}
         <a
           href={`tel:${cleanPhone}`}
-          className="w-12 h-12 sm:w-13 sm:h-13 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-luxury flex items-center justify-center hover:scale-110 transition-all duration-300 group border-2 border-white/80"
+          className="w-12 h-12 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-luxury flex items-center justify-center hover:scale-110 transition-all duration-300 group border-2 border-white/80"
           title={`Call ${primaryPhone}`}
           aria-label="Call concierge"
         >
-          <PhoneCallLogo className="w-5 h-5 sm:w-6 sm:h-6 fill-current text-white group-hover:rotate-12 transition-transform" />
+          <PhoneCallLogo className="w-5 h-5 fill-current text-white group-hover:rotate-12 transition-transform" />
         </a>
 
-        {/* 3. WHATSAPP BUTTON WITH GLOW RING (Official WhatsApp Green) */}
+        {/* 3. WHATSAPP BUTTON WITH GLOW RING */}
         <a
           href={`https://wa.me/${cleanWa}?text=${encodeURIComponent(whatsappMsg)}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="relative w-12 h-12 sm:w-13 sm:h-13 rounded-full bg-[#25D366] hover:bg-[#1EBE5D] text-white shadow-luxury hover:scale-110 transition-all duration-300 flex items-center justify-center group border-2 border-white/80"
+          className="relative w-12 h-12 rounded-full bg-[#25D366] hover:bg-[#1EBE5D] text-white shadow-luxury hover:scale-110 transition-all duration-300 flex items-center justify-center group border-2 border-white/80"
           title="Chat on WhatsApp Concierge"
           aria-label="Chat on WhatsApp"
         >
           <span className="absolute -inset-1 rounded-full bg-[#25D366]/40 animate-ping pointer-events-none" />
-          <WhatsAppLogo className="w-6 h-6 sm:w-7 sm:h-7 fill-current text-white relative z-10" />
+          <WhatsAppLogo className="w-6 h-6 fill-current text-white relative z-10" />
         </a>
 
-        {/* 4. AI CHATBOT TRIGGER BUTTON (Bottom of Stack) */}
+        {/* 4. AI CHATBOT TRIGGER BUTTON */}
         <button
           type="button"
           onClick={onOpenAssistant}
-          className="relative w-[54px] h-[54px] sm:w-[58px] sm:h-[58px] rounded-full bg-[#1F2937] text-white border-2 border-[#F97316] shadow-[0_10px_30px_rgba(249,115,22,0.35)] hover:shadow-[0_15px_35px_rgba(249,115,22,0.5)] hover:scale-110 active:scale-95 transition-all duration-300 flex items-center justify-center group"
+          className="relative w-[54px] h-[54px] rounded-full bg-[#1F2937] text-white border-2 border-[#F97316] shadow-[0_10px_30px_rgba(249,115,22,0.35)] hover:shadow-[0_15px_35px_rgba(249,115,22,0.5)] hover:scale-110 active:scale-95 transition-all duration-300 flex items-center justify-center group"
           title="Open Tech Wash AI Concierge"
           aria-label="Open Tech Wash AI Concierge"
         >
-          {/* Subtle Ambient Glow Ring */}
           <span className="absolute -inset-0.5 rounded-full bg-orange-400/30 animate-pulse pointer-events-none" />
-          
-          <div className="relative z-10 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white p-0.5 flex items-center justify-center overflow-hidden group-hover:scale-105 transition-transform">
+          <div className="relative z-10 w-9 h-9 rounded-full bg-white p-0.5 flex items-center justify-center overflow-hidden group-hover:scale-105 transition-transform">
             <img 
               src="/techwashlogo.webp" 
               alt="Tech Wash" 
-              className="w-full h-full object-contain"
+              className="w-full h-full object-contain" 
               onError={(e) => { e.target.style.display = 'none'; }}
             />
           </div>
-
-          {/* Active Status Dot */}
           <span className="absolute top-1 right-1 w-3 h-3 bg-[#F97316] border-2 border-white rounded-full shadow-sm z-20" />
+        </button>
+      </div>
+
+      {/* ─────────────────────────────────────────────────────────
+          2. MOBILE ONLY: COMPACT SINGLE EXPANDABLE CONCIERGE FAB
+          Replaces the 240px tall stack with a single sleek 48px button
+          Visible on mobile (< md) only
+      ───────────────────────────────────────────────────────── */}
+      <div className="md:hidden fixed right-4 bottom-20 z-40 pointer-events-auto no-print">
+        
+        {/* Expanded Action Menu Sheet */}
+        {mobileMenuOpen && (
+          <>
+            <div 
+              onClick={() => setMobileMenuOpen(false)}
+              className="fixed inset-0 bg-black/40 backdrop-blur-xs z-40 animate-fade-in"
+            />
+            
+            <div className="absolute right-0 bottom-14 z-50 w-64 bg-[#1F2937] border-2 border-[#F97316] rounded-3xl p-3 shadow-2xl text-white space-y-2 animate-scale-up">
+              <div className="flex items-center justify-between px-2 py-1 border-b border-slate-700/80">
+                <span className="text-[11px] font-black uppercase tracking-wider text-[#F97316]">
+                  ✦ Concierge Support
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="p-1 rounded-full text-slate-400 hover:text-white"
+                  aria-label="Close"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {/* WhatsApp Quick Chat */}
+              <a
+                href={`https://wa.me/${cleanWa}?text=${encodeURIComponent(whatsappMsg)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-3 p-2.5 rounded-2xl bg-[#25D366]/15 hover:bg-[#25D366]/25 border border-[#25D366]/30 text-white transition-all active:scale-95"
+              >
+                <div className="w-8 h-8 rounded-xl bg-[#25D366] text-white flex items-center justify-center shrink-0">
+                  <WhatsAppLogo className="w-4 h-4 fill-current text-white" />
+                </div>
+                <div className="text-left min-w-0">
+                  <div className="text-xs font-bold leading-tight">Chat on WhatsApp</div>
+                  <div className="text-[10px] text-emerald-400">Instant pickup booking</div>
+                </div>
+              </a>
+
+              {/* Direct Phone Call */}
+              <a
+                href={`tel:${cleanPhone}`}
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-3 p-2.5 rounded-2xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-white transition-all active:scale-95"
+              >
+                <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                  <PhoneCallLogo className="w-4 h-4 fill-current text-white" />
+                </div>
+                <div className="text-left min-w-0">
+                  <div className="text-xs font-bold leading-tight">Call Concierge</div>
+                  <div className="text-[10px] text-slate-400">{primaryPhone}</div>
+                </div>
+              </a>
+
+              {/* AI Concierge Bot */}
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  onOpenAssistant?.();
+                }}
+                className="w-full flex items-center gap-3 p-2.5 rounded-2xl bg-orange-500/15 hover:bg-orange-500/25 border border-orange-500/30 text-white transition-all active:scale-95"
+              >
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#EA580C] to-[#F97316] text-white flex items-center justify-center shrink-0">
+                  <Sparkles className="w-4 h-4 text-white" />
+                </div>
+                <div className="text-left min-w-0">
+                  <div className="text-xs font-bold leading-tight">Ask AI Concierge</div>
+                  <div className="text-[10px] text-orange-400">Instant rates & answers</div>
+                </div>
+              </button>
+
+              {/* Install App */}
+              {!isInstalled && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    handleAppInstallClick();
+                  }}
+                  className="w-full flex items-center gap-3 p-2.5 rounded-2xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/30 text-white transition-all active:scale-95"
+                >
+                  <div className="w-8 h-8 rounded-xl bg-[#0891B2] text-white flex items-center justify-center shrink-0">
+                    <Download className="w-4 h-4 text-white stroke-[2.5]" />
+                  </div>
+                  <div className="text-left min-w-0">
+                    <div className="text-xs font-bold leading-tight">
+                      {isIOS ? 'Install iOS Web App' : 'Download .APK App'}
+                    </div>
+                    <div className="text-[10px] text-cyan-300">Free 1-tap ordering</div>
+                  </div>
+                </button>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* Compact Concierge FAB Button */}
+        <button
+          type="button"
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="relative w-12 h-12 rounded-full bg-[#1F2937] text-white border-2 border-[#F97316] shadow-[0_8px_25px_rgba(249,115,22,0.4)] flex items-center justify-center active:scale-95 transition-all"
+          title="Concierge Quick Contact"
+          aria-label="Concierge Quick Contact"
+        >
+          <span className="absolute -inset-1 rounded-full bg-orange-400/25 animate-pulse pointer-events-none" />
+          
+          {mobileMenuOpen ? (
+            <X className="w-5 h-5 text-white" />
+          ) : (
+            <div className="relative flex items-center justify-center">
+              <div className="w-7 h-7 rounded-full bg-white p-0.5 flex items-center justify-center overflow-hidden">
+                <img 
+                  src="/techwashlogo.webp" 
+                  alt="Tech Wash" 
+                  className="w-full h-full object-contain" 
+                  onError={(e) => { e.target.style.display = 'none'; }}
+                />
+              </div>
+              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-[#25D366] border-2 border-[#1F2937] rounded-full" />
+            </div>
+          )}
         </button>
 
       </div>

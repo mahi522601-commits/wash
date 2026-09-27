@@ -2,6 +2,7 @@ import { db, isFirebaseConfigured } from './firebase.js';
 import { doc, getDoc, setDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 
 const STORAGE_GATEWAY_KEY = 'techwash_whatsapp_gateway_config';
+export const LIVE_PRODUCTION_DOMAIN = 'https://techwashlaundry.com';
 
 export const DEFAULT_GATEWAY_CONFIG = {
   enabled: true,
@@ -107,29 +108,43 @@ export const whatsappNotificationService = {
   },
 
   /**
+   * Strip non-standard or corruptible Unicode characters from text
+   */
+  cleanTextForWhatsApp(text) {
+    if (!text) return '';
+    return String(text)
+      .replace(/[\uFFFD\u200B-\u200D\uFEFF]/g, '') // remove replacement / zero-width chars
+      .replace(/[—–]/g, '-') // replace em/en dashes with standard hyphen
+      .replace(/[“”]/g, '"')
+      .replace(/[‘’]/g, "'")
+      .trim();
+  },
+
+  /**
    * Build complete, highly detailed WhatsApp order confirmation message
    */
   buildOrderConfirmationMessage(order) {
     if (!order) return '';
 
-    const customerName = order.customerName || order.customer?.name || 'Valued Customer';
-    const orderNumber = order.orderNumber || order.id || 'TW-ORDER';
-    const serviceName = order.serviceName || order.service || 'Premium Laundry Service';
-    const serviceEmoji = order.serviceEmoji || '🧺';
+    const customerName = this.cleanTextForWhatsApp((order.customerName || order.customer?.name || 'Valued Customer').toUpperCase());
+    const orderNumber = this.cleanTextForWhatsApp(order.orderNumber || order.id || 'TW-ORDER');
+    const serviceName = this.cleanTextForWhatsApp(order.serviceName || order.service || 'Premium Laundry Service');
 
     const pickupDate = order.schedule?.pickupDate || order.pickupDate || 'Scheduled on Demand';
-    const pickupSlot = order.schedule?.pickupSlot || order.pickupSlot || '10:00 AM - 12:00 PM';
+    const pickupSlot = order.schedule?.pickupSlot || order.pickupSlot || 'Morning (08:00 AM - 12:00 PM)';
+    const deliveryDate = order.schedule?.deliveryDate || order.deliveryDate || 'Within 48 Hours';
+    const deliverySlot = order.schedule?.deliverySlot || order.deliverySlot || 'Morning (08:00 AM - 12:00 PM)';
     const isExpress = order.isExpress || order.priceSnapshot?.isExpress || false;
     const storeBranch = order.storeBranch || 'Tech Wash Laundry Main Branch';
     const storeAddress = order.storeAddress || (
       storeBranch.includes('Branch 1')
-        ? 'Beside Dreamscape hotel Ward No 8, Block No 1 , tolichowki, OU Colony, Shaikpet, Hyderabad, Telangana 500008'
+        ? 'Beside Dreamscape hotel Ward No 8, Block No 1, tolichowki, OU Colony, Shaikpet, Hyderabad, Telangana 500008'
         : storeBranch.includes('Pick Up Point')
-        ? 'Beside Ambience Courtyard,Hyderabad,Telangana,500089'
-        : 'Shaikpet Main Rd,Sri Ram Nagar Colony,Manikonda,Hyderabad,Telangana,500089'
+        ? 'Beside Ambience Courtyard, Hyderabad, Telangana, 500089'
+        : 'Shaikpet Main Rd, Sri Ram Nagar Colony, Manikonda, Hyderabad, Telangana 500089'
     );
     const storePhone = order.storePhone || (
-      storeBranch.includes('Branch 1') ? '+91 9000813444' : '+91 63048 45567'
+      storeBranch.includes('Branch 1') ? '+91 90008 13444' : '+91 63048 45567'
     );
 
     const address = order.address || order.customer?.address || order.pickupLocation?.formattedAddress || 'Doorstep address on file';
@@ -141,10 +156,10 @@ export const whatsappNotificationService = {
 
     if (items.length > 0) {
       const itemsList = items.map((item, idx) => {
-        const qty = item.quantity || 1;
-        const name = item.name || 'Garment';
+        const qty = Number(item.quantity || 1);
+        const name = this.cleanTextForWhatsApp(item.name || item.subServiceName || 'Garment');
         const price = item.lineTotal || item.totalPrice || (item.unitPrice ? item.unitPrice * qty : null);
-        const priceStr = price ? ` - ₹${price}` : '';
+        const priceStr = price ? ` - Rs.${price}` : '';
         const dims = item.dimensions ? ` (${item.dimensions})` : '';
         return `  ${idx + 1}. *${name}* × ${qty}${dims}${priceStr}`;
       }).join('\n');
@@ -169,8 +184,8 @@ export const whatsappNotificationService = {
 
     const paymentStatusBadge = (order.paymentStatus || 'PENDING') === 'PAID' ? '✅ PAID' : '⏳ Pending on Delivery';
 
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://techwashlaundry.com';
-    const trackingUrl = `${origin}/track-order?id=${orderNumber}`;
+    // ALWAYS use live production domain
+    const trackingUrl = `${LIVE_PRODUCTION_DOMAIN}/track-order?id=${encodeURIComponent(orderNumber)}`;
 
     const lat = order.pickupLocation?.latitude;
     const lng = order.pickupLocation?.longitude;
@@ -187,42 +202,103 @@ _Next-Generation Premium Fabric Care & Couture Spa_
 🎉 *Your Doorstep Pickup is Scheduled Successfully!*
 Thank you for trusting Tech Wash. Here are your complete booking details:
 
-📋 *BOOKING DETAILS*
+📋 *SCHEDULE & BOOKING DETAILS*
 • *Tracking ID:* *#${orderNumber}*
-• *Service:* ${serviceEmoji} *${serviceName}*
+• *Service:* *${serviceName}*
 • *Processing Hub:* ${storeBranch}
 • *Store Address:* ${storeAddress}
 • *Processing Speed:* ${isExpress ? '⚡ Express 24-Hours' : '🛡️ Standard 48-Hours'}
-• *Pickup Date:* 📅 *${pickupDate}*
-• *Arrival Slot:* ⏰ *${pickupSlot}*
+• *Pickup Time:* 📅 *${pickupDate}* (⏰ *${pickupSlot}*)
+• *Estimated Delivery:* 🚚 *${deliveryDate}* (⏰ *${deliverySlot}*)
 ${weightText}
 📍 *DOORSTEP PICKUP LOCATION*
 • *Address:* ${address}${landmark ? `\n• *Landmark:* ${landmark}` : ''}
 • *Navigation:* ${mapsLink}
 ${itemsText}
 💰 *BILLING & PAYMENT SUMMARY*
-• *Items Subtotal:* ₹${subtotal}
-${deliveryFee > 0 ? `• *Doorstep Logistics:* ₹${deliveryFee}\n` : '• *Doorstep Delivery:* FREE (₹0)\n'}${expressFee > 0 ? `• *Express 24h Priority:* ₹${expressFee}\n` : ''}${discountAmount > 0 ? `• *Special Coupon Discount:* -₹${discountAmount}\n` : ''}• *Estimated Total:* *₹${finalTotal}*
+• *Items Subtotal:* Rs.${subtotal}
+${deliveryFee > 0 ? `• *Doorstep Logistics:* Rs.${deliveryFee}\n` : '• *Doorstep Delivery:* FREE (Rs.0)\n'}${expressFee > 0 ? `• *Express 24h Priority:* Rs.${expressFee}\n` : ''}${discountAmount > 0 ? `• *Special Coupon Discount:* -Rs.${discountAmount}\n` : ''}• *Estimated Total:* *Rs.${finalTotal}*
 • *Payment Mode:* ${paymentMethodLabel}
 • *Payment Status:* ${paymentStatusBadge}
 
 ----------------------------------------
 🚚 *WHAT TO EXPECT NEXT?*
-1. Our verified pickup executive will arrive during your scheduled time window.
+1. Our verified pickup executive will arrive during your scheduled pickup window (*${pickupSlot}*).
 2. Clothes will be weighed & inspected at your doorstep with sealed protective bags.
-3. You can track every cleaning milestone in real-time.
+3. Your freshly cleaned & pressed clothes will be delivered on *${deliveryDate}* during *${deliverySlot}*.
 
-📲 *TRACK ORDER IN REAL-TIME:*
+📲 *TRACK ORDER IN REAL-TIME & VIEW DIGITAL INVOICE:*
 👉 ${trackingUrl}
 
 📞 *NEED ASSISTANCE / RESCHEDULE:*
-• Hotline: +91 63048 45567
-• WhatsApp: +91 63048 45567
-• Web: https://techwashlaundry.com
+• Hotline: ${storePhone}
+• WhatsApp: ${storePhone}
+• Web: ${LIVE_PRODUCTION_DOMAIN}
 
 _Fresh clothes. Professional care. Thank you for choosing Tech Wash!_`;
 
     return message;
+  },
+
+  /**
+   * Build Tomorrow / Today Scheduled Delivery Reminder WhatsApp message
+   */
+  buildDeliveryReminderWhatsAppMessage(order, dayLabel = 'Tomorrow') {
+    if (!order) return '';
+
+    const customerName = this.cleanTextForWhatsApp((order.customerName || order.customer?.name || 'Valued Customer').toUpperCase());
+    const orderNumber = this.cleanTextForWhatsApp(order.orderNumber || order.id || 'TW-ORDER');
+    const serviceName = this.cleanTextForWhatsApp(order.serviceName || order.service || 'Premium Garment Care');
+
+    const deliveryDate = order.schedule?.deliveryDate || order.deliveryDate || (dayLabel === 'Today' ? 'Today' : 'Tomorrow');
+    const deliverySlot = order.schedule?.deliverySlot || order.deliverySlot || 'Morning (08:00 AM - 12:00 PM)';
+    const storeBranch = order.storeBranch || 'Tech Wash Laundry Main Branch';
+    const storePhone = order.storePhone || '+91 63048 45567';
+    const address = order.address || order.customer?.address || 'Doorstep address on file';
+
+    const snapshot = order.priceSnapshot || {};
+    const finalTotal = Number(order.finalPrice || snapshot.finalTotal || order.totalAmount || 0);
+    const receivedAmount = Number(order.receivedAmount !== undefined ? order.receivedAmount : (order.paymentStatus === 'PAID' ? finalTotal : 0));
+    const balanceAmount = Number(order.balanceAmount !== undefined ? order.balanceAmount : Math.max(0, finalTotal - receivedAmount));
+    const isPaid = balanceAmount === 0 || order.paymentStatus === 'PAID';
+
+    const items = order.items || [];
+    const totalPcs = items.reduce((sum, it) => sum + (Number(it.quantity) || 1), 0);
+
+    // ALWAYS use live production domain
+    const trackingUrl = `${LIVE_PRODUCTION_DOMAIN}/track-order?id=${encodeURIComponent(orderNumber)}`;
+
+    return `✨ *TECH WASH LAUNDRY SERVICES* ✨
+_Next-Generation Premium Fabric Care & Couture Spa_
+----------------------------------------
+👋 Hello *${customerName}*,
+
+🚚 *YOUR DELIVERY IS SCHEDULED FOR ${dayLabel.toUpperCase()}!*
+Great news! Your garments for *${serviceName}* (Order *#${orderNumber}*) have completed multi-stage eco cleaning & 3D tension steam press.
+
+📋 *DELIVERY SCHEDULE & DETAILS:*
+• *Tracking ID:* *#${orderNumber}*
+• *Total Garments:* *${totalPcs > 0 ? `${totalPcs} Pieces` : 'Ready Batch'}*
+• *Delivery Date:* 📅 *${deliveryDate}* (${dayLabel})
+• *Expected Time Window:* ⏰ *${deliverySlot}*
+• *Drop-off Address:* ${address}
+• *Processing Hub:* ${storeBranch}
+
+💰 *PAYMENT DETAILS:*
+• *Total Order Bill:* Rs.${finalTotal}
+• *Amount Paid:* Rs.${receivedAmount}
+• *Balance Due upon Delivery:* *${isPaid ? '✅ Rs.0 (Fully Paid)' : `Rs.${balanceAmount} (Pay to Delivery Partner / Scan UPI QR)`}*
+
+📲 *LIVE TRACKING & DIGITAL INVOICE:*
+👉 ${trackingUrl}
+
+📞 *NEED TO RESCHEDULE / ADD INSTRUCTIONS?*
+• Call Store: ${storePhone}
+• WhatsApp: ${storePhone}
+
+_Please ensure someone is available at your doorstep during the ${deliverySlot} window to receive your sealed, fresh garments._
+
+Thank you for choosing Tech Wash!`;
   },
 
   /**
@@ -231,18 +307,17 @@ _Fresh clothes. Professional care. Thank you for choosing Tech Wash!_`;
   buildStatusUpdateMessage(order, stageLabel, customNote = '') {
     if (!order) return '';
 
-    const customerName = order.customerName || order.customer?.name || 'Valued Customer';
-    const orderNumber = order.orderNumber || order.id || 'TW-ORDER';
-    const serviceName = order.serviceName || order.service || 'Laundry Service';
+    const customerName = this.cleanTextForWhatsApp((order.customerName || order.customer?.name || 'Valued Customer').toUpperCase());
+    const orderNumber = this.cleanTextForWhatsApp(order.orderNumber || order.id || 'TW-ORDER');
+    const serviceName = this.cleanTextForWhatsApp(order.serviceName || order.service || 'Laundry Service');
     const currentStatus = stageLabel || order.customerStage || order.status || 'Updated';
     const amount = order.finalPrice || order.priceSnapshot?.finalTotal || order.totalAmount || 0;
     const actualWeight = order.actualWeight;
 
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://techwashlaundry.com';
-    const trackingUrl = `${origin}/track-order?id=${orderNumber}`;
+    // ALWAYS use live production domain
+    const trackingUrl = `${LIVE_PRODUCTION_DOMAIN}/track-order?id=${encodeURIComponent(orderNumber)}`;
 
-    const message = 
-`✨ *TECH WASH LAUNDRY SERVICES* ✨
+    return `✨ *TECH WASH LAUNDRY SERVICES* ✨
 ----------------------------------------
 👋 Hello *${customerName}*,
 
@@ -250,80 +325,158 @@ _Fresh clothes. Professional care. Thank you for choosing Tech Wash!_`;
 Your garments for *${serviceName}* are now:
 
 🚀 *CURRENT STAGE:* *${currentStatus.toUpperCase()}*
-${customNote ? `📝 *Update Note:* ${customNote}\n` : ''}${actualWeight ? `⚖️ *Verified Doorstep Weight:* ${actualWeight} kg\n` : ''}💰 *Total Amount:* *₹${amount}*
+${customNote ? `📝 *Update Note:* ${customNote}\n` : ''}${actualWeight ? `⚖️ *Verified Doorstep Weight:* ${actualWeight} kg\n` : ''}💰 *Total Amount:* *Rs.${amount}*
 
 📲 *TRACK LIVE MILESTONES:*
 👉 ${trackingUrl}
 
 📞 *Questions?* Reply to this WhatsApp or call +91 63048 45567.`;
-    return message;
   },
 
   /**
-   * Build Official Tax Invoice WhatsApp message (In-detail bill without asterisks / star marks)
+   * Build Official In-Detail WhatsApp Tax Invoice & Receipt
+   * Crystal-clear itemized breakdown separating Scale Batches, Batch Garments, and Individual Pieces
    */
   buildInvoiceWhatsAppMessage(order, receiptData = {}) {
     if (!order) return '';
 
-    const customerName = order.customerName || order.customer?.name || 'Valued Customer';
-    const orderNumber = order.orderNumber || order.id || 'TW-ORDER';
-    const manualBillNumber = order.manualBillNumber || '';
-    const invoiceNumber = receiptData.invoiceNumber || order.invoiceNumber || `INV-${orderNumber}`;
-    const serviceName = order.serviceName || order.service || 'Premium Garment Care';
-    const serviceEmoji = order.serviceEmoji || '👔';
+    const customerName = this.cleanTextForWhatsApp((order.customerName || order.customer?.name || 'Valued Customer').toUpperCase());
+    const orderNumber = this.cleanTextForWhatsApp(order.orderNumber || order.id || 'TW-ORDER');
+    const manualBillNumber = this.cleanTextForWhatsApp(order.manualBillNumber || '');
+    const invoiceNumber = this.cleanTextForWhatsApp(receiptData.invoiceNumber || order.invoiceNumber || orderNumber);
+    const serviceName = this.cleanTextForWhatsApp(order.serviceName || order.service || 'Premium Garment Care');
+    
     const storeBranch = order.storeBranch || receiptData.storeBranch || 'Tech Wash Laundry Main Branch';
     const storeAddress = order.storeAddress || receiptData.storeAddress || (
       storeBranch.includes('Branch 1')
-        ? 'Beside Dreamscape hotel Ward No 8, Block No 1 , tolichowki, OU Colony, Shaikpet, Hyderabad, Telangana 500008'
+        ? 'Beside Dreamscape hotel Ward No 8, Block No 1, tolichowki, OU Colony, Shaikpet, Hyderabad, Telangana 500008'
         : storeBranch.includes('Pick Up Point')
-        ? 'Beside Ambience Courtyard,Hyderabad,Telangana,500089'
-        : 'Shaikpet Main Rd,Sri Ram Nagar Colony,Manikonda,Hyderabad,Telangana,500089'
+        ? 'Beside Ambience Courtyard, Hyderabad, Telangana, 500089'
+        : 'Shaikpet Main Rd, Sri Ram Nagar Colony, Manikonda, Hyderabad, Telangana 500089'
     );
     const storePhone = order.storePhone || receiptData.storePhone || (
-      storeBranch.includes('Branch 1') ? '+91 9000813444' : '+91 63048 45567'
+      storeBranch.includes('Branch 1') ? '+91 90008 13444' : '+91 63048 45567'
     );
     const terminalCode = order.terminalCode || (order.isWalkIn ? 'TW-POS-01' : 'ONLINE-HUB');
-    const cashierName = order.cashierName || 'Tech Wash Operator';
+    const cashierName = order.cashierName || 'Cashier #1';
 
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://techwashlaundry.com';
-    const invoiceUrl = `${origin}/track-order?id=${orderNumber}`;
+    // ALWAYS use live production domain
+    const invoiceUrl = `${LIVE_PRODUCTION_DOMAIN}/track-order?id=${encodeURIComponent(orderNumber)}`;
 
-    const pricingType = order.pricingType || (order.weightKg ? 'per_kg' : 'per_item');
-    const weightKg = order.weightKg || order.actualWeight || order.estimatedWeightKg || null;
-    const pricePerKg = order.pricePerKg || (pricingType === 'per_kg' ? 100 : null);
+    // Parse Items & Separate into:
+    // 1. Weighed Scale Batches
+    // 2. Individual Priced Garments
+    // 3. Garments Included in Weighed Batches (items with 0 unit price or weight sub-items)
+    const rawItems = order.items || receiptData.items || [];
+    
+    const scaleBatches = [];
+    const individualPriced = [];
+    const batchIncludedGarments = [];
 
-    const items = order.items || receiptData.items || [];
-    let itemsText = '';
-    if (items.length > 0) {
-      const itemsList = items.map((item, idx) => {
-        const qty = item.quantity || 1;
-        const name = item.name || item.subServiceName || 'Garment';
-        const category = item.category ? ` [${item.category}]` : '';
-        const unitPrice = item.unitPrice !== undefined ? item.unitPrice : item.price;
-        const lineTotal = item.lineTotal !== undefined ? item.lineTotal : (unitPrice ? unitPrice * qty : null);
+    let totalWeighedKgFromItems = 0;
+    let totalBatchPcs = 0;
+    let totalIndividualPcs = 0;
+
+    rawItems.forEach((it) => {
+      const qty = Number(it.quantity || 1);
+      const uPrice = Number(it.unitPrice !== undefined ? it.unitPrice : (it.price || 0));
+      const lTotal = Number(it.lineTotal !== undefined ? it.lineTotal : (uPrice * qty));
+      let name = this.cleanTextForWhatsApp(it.name || it.subServiceName || 'Garment');
+      const category = this.cleanTextForWhatsApp(it.category || '');
+      const isWeightItem = Boolean(it.isWeightItem || it.weightKg || name.includes('Scale Batch') || name.includes('Kg @'));
+
+      if (isWeightItem) {
+        const wt = Number(it.weightKg || (name.match(/(\d+(\.\d+)?)\s*Kg/i) ? name.match(/(\d+(\.\d+)?)\s*Kg/i)[1] : 1));
+        const ratePerKg = Number(it.pricePerKg || (name.match(/@\s*₹?Rs\.?\s*(\d+)/i) ? name.match(/@\s*₹?Rs\.?\s*(\d+)/i)[1] : (lTotal / (wt || 1))));
+        totalWeighedKgFromItems += wt;
         
-        let itemLine = `  ${idx + 1}. ${name}${category} - Qty: ${qty}`;
-        if (unitPrice && Number(unitPrice) > 0) {
-          itemLine += ` @ Rs.${unitPrice}`;
-        }
-        if (lineTotal && Number(lineTotal) > 0) {
-          itemLine += ` = Rs.${lineTotal}`;
-        }
-        return itemLine;
-      }).join('\n');
+        // Clean display name
+        let cleanBatchTitle = name.includes('Wash & Steam Iron') ? 'Wash & Steam Iron Scale' : 'Wash & Fold Scale';
+        scaleBatches.push({
+          title: cleanBatchTitle,
+          weightKg: wt,
+          ratePerKg: Math.round(ratePerKg || (cleanBatchTitle.includes('Steam Iron') ? 130 : 100)),
+          total: lTotal > 0 ? lTotal : Math.round(wt * (cleanBatchTitle.includes('Steam Iron') ? 130 : 100)),
+        });
+      } else if (lTotal > 0 || uPrice > 0) {
+        // Individual item with price
+        totalIndividualPcs += qty;
+        individualPriced.push({
+          name,
+          category,
+          qty,
+          unitPrice: uPrice,
+          lineTotal: lTotal > 0 ? lTotal : (uPrice * qty),
+        });
+      } else {
+        // Included in scale batch
+        totalBatchPcs += qty;
+        let cleanName = name
+          .replace(/^(🧺|🫧|👔|👗|✨)\s*/, '')
+          .replace(/^(Wash & Fold|Wash & Steam Iron)\s*[-—:]?\s*/i, '')
+          .trim();
+        let targetBatch = (it.serviceName || category || name).includes('Iron') ? 'Wash & Steam Iron batch' : 'Wash & Fold batch';
+        batchIncludedGarments.push({
+          name: cleanName,
+          qty,
+          targetBatch,
+        });
+      }
+    });
 
-      const totalPcs = items.reduce((acc, it) => acc + (Number(it.quantity) || 1), 0);
-      itemsText = `\n--- ITEMIZED GARMENTS & SERVICES ---\n${itemsList}\nTotal Garments: ${totalPcs} Pieces\n`;
+    // Check top-level weightKg if scaleBatches was empty
+    const orderTopWeight = Number(order.weightKg || order.actualWeight || order.estimatedWeightKg || 0);
+    if (scaleBatches.length === 0 && orderTopWeight > 0) {
+      const isIron = serviceName.toLowerCase().includes('iron');
+      const rate = Number(order.pricePerKg) || (isIron ? 130 : 100);
+      const cost = Math.round(orderTopWeight * rate);
+      scaleBatches.push({
+        title: isIron ? 'Wash & Steam Iron Scale' : 'Wash & Fold Scale',
+        weightKg: orderTopWeight,
+        ratePerKg: rate,
+        total: cost,
+      });
+      totalWeighedKgFromItems = orderTopWeight;
     }
 
-    let weightSection = '';
-    if (pricingType === 'per_kg' || weightKg) {
-      const wKg = Number(weightKg) || 0;
-      const isIron = serviceName?.toLowerCase().includes('iron');
-      const rate = Number(pricePerKg) || (isIron ? 130 : 100);
-      const weighedBase = Math.round(wKg * rate);
-      const scaleLabel = isIron ? '🫧 Wash & Steam Iron Scale' : '🧺 Wash & Fold Scale';
-      weightSection = `\n--- WEIGHED SCALE LAUNDRY (${scaleLabel}) ---\nScale Type: ${scaleLabel}\nScale Weight: ${wKg} Kg\nRate per Kg: Rs.${rate} / Kg\nWeighed Total: Rs.${weighedBase}\n`;
+    // ── Build Scale Section ──
+    let scaleSection = '';
+    if (scaleBatches.length > 0) {
+      const scaleLines = scaleBatches.map(s => 
+        `• ${s.title}: ${s.weightKg} Kg @ Rs.${s.ratePerKg}/Kg = Rs.${s.total}`
+      ).join('\n');
+      const scaleTotalAmt = scaleBatches.reduce((sum, s) => sum + s.total, 0);
+      scaleSection = `\n--- WEIGHED SCALE LAUNDRY (BY WEIGHT) ---\n${scaleLines}\nScale Subtotal: ${totalWeighedKgFromItems} Kg = Rs.${scaleTotalAmt}\n`;
+    }
+
+    // ── Build Batch Included Garments Section ──
+    let batchSection = '';
+    if (batchIncludedGarments.length > 0) {
+      const batchLines = batchIncludedGarments.map(b => 
+        `• ${b.name}: ${b.qty} pcs (Included in ${b.targetBatch})`
+      ).join('\n');
+      batchSection = `\n--- GARMENTS INCLUDED IN WEIGHED BATCHES ---\n${batchLines}\nBatch Garments Count: ${totalBatchPcs} Pieces\n`;
+    }
+
+    // ── Build Individual Garments Section ──
+    let individualSection = '';
+    if (individualPriced.length > 0) {
+      const indLines = individualPriced.map((item, idx) => {
+        const catTag = item.category ? ` [${item.category}]` : '';
+        return `${idx + 1}. ${item.name}${catTag} - Qty: ${item.qty} @ Rs.${item.unitPrice} = Rs.${item.lineTotal}`;
+      }).join('\n');
+      const indSubtotal = individualPriced.reduce((sum, i) => sum + i.lineTotal, 0);
+      individualSection = `\n--- INDIVIDUAL ITEMIZED GARMENTS & SERVICES ---\n${indLines}\nIndividual Items Subtotal: ${totalIndividualPcs} Pieces = Rs.${indSubtotal}\n`;
+    }
+
+    // ── Volume Summary ──
+    const totalAllPieces = totalBatchPcs + totalIndividualPcs;
+    let volumeSummary = `\n--- TOTAL VOLUME SUMMARY ---\n`;
+    if (totalWeighedKgFromItems > 0) {
+      volumeSummary += `Total Weighed Laundry: ${totalWeighedKgFromItems} Kg\n`;
+    }
+    if (totalAllPieces > 0) {
+      volumeSummary += `Total Garments Received: ${totalAllPieces} Pieces${totalBatchPcs > 0 && totalIndividualPcs > 0 ? ` (${totalBatchPcs} in Scale Batches + ${totalIndividualPcs} Individual Pieces)` : ''}\n`;
     }
 
     const snapshot = order.priceSnapshot || {};
@@ -344,16 +497,19 @@ ${customNote ? `📝 *Update Note:* ${customNote}\n` : ''}${actualWeight ? `⚖�
       : 'Pay on Delivery';
 
     const statusLabel = (balanceAmount === 0 || order.paymentStatus === 'PAID') 
-      ? 'PAID (Settled)' 
-      : (receivedAmount > 0 ? 'PARTIALLY PAID (Balance Pending)' : 'PENDING PAYMENT');
+      ? 'PAID (Fully Settled)' 
+      : (receivedAmount > 0 ? `PARTIALLY PAID (Balance Pending: Rs.${balanceAmount})` : `PENDING PAYMENT (Rs.${finalTotal} Due)`);
 
     const orderDate = order.createdAt 
       ? new Date(order.createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
       : (order.pickupDate || new Date().toLocaleDateString('en-IN'));
 
+    const deliveryDate = order.deliveryDate || order.schedule?.deliveryDate || (order.isExpress ? 'Express (24 Hours)' : 'Standard (48 Hours)');
+    const deliverySlot = order.deliverySlot || order.schedule?.deliverySlot || (order.deliveryPeriod ? `${order.deliveryPeriod} Slot` : '');
+
     return `========================================
 TECH WASH LAUNDRY SERVICES
-Official Tax Invoice & Garment Care Receipt
+Official Detailed Tax Invoice & Receipt
 ========================================
 
 Hello ${customerName},
@@ -365,15 +521,18 @@ Store Branch: ${storeBranch}
 Store Address: ${storeAddress}
 Counter Terminal: ${terminalCode}
 Cashier Operator: ${cashierName}
+Store Phone / Support: ${storePhone}
 
 --- INVOICE & ORDER DETAILS ---
 Invoice Number: ${invoiceNumber}
-Order Number: #${orderNumber}${manualBillNumber ? `\nManual Slip / Token: #${manualBillNumber}` : ''}
+Order ID: #${orderNumber}${manualBillNumber ? `\nManual Slip / Token: #${manualBillNumber}` : ''}
 Booking Date: ${orderDate}
-Primary Service: ${serviceEmoji} ${serviceName}
-${weightSection}${itemsText}
+Delivery Schedule: ${deliveryDate}${deliverySlot ? ` (${deliverySlot})` : ''}
+Processing Speed: ${order.isExpress ? 'Express 24-Hours' : 'Standard 48-Hours'}
+Primary Service: ${serviceName}
+${scaleSection}${batchSection}${individualSection}${volumeSummary}
 --- PAYMENT & BILLING SUMMARY ---
-${itemsSubtotal > 0 && (pricingType === 'per_kg' || expressFee > 0 || discountAmount > 0) ? `Items Subtotal: Rs.${itemsSubtotal}\n` : ''}${expressFee > 0 ? `Express 24h Priority: Rs.${expressFee}\n` : ''}${discountAmount > 0 ? `Special Discount: -Rs.${discountAmount}\n` : ''}GRAND TOTAL: Rs.${finalTotal}
+${itemsSubtotal > 0 && (expressFee > 0 || discountAmount > 0) ? `Items Subtotal: Rs.${itemsSubtotal}\n` : ''}${expressFee > 0 ? `Express 24h Priority: Rs.${expressFee}\n` : ''}${discountAmount > 0 ? `Special Discount: -Rs.${discountAmount}\n` : ''}GRAND TOTAL: Rs.${finalTotal}
 Amount Received: Rs.${receivedAmount}
 Balance Due: Rs.${balanceAmount}
 Payment Status: ${statusLabel}
@@ -381,11 +540,11 @@ Payment Mode: ${paymentLabel}
 
 ========================================
 VIEW & DOWNLOAD OFFICIAL PDF / TRACK LIVE STATUS:
-${invoiceUrl}
+👉 ${invoiceUrl}
 
-Store Helpline / Phone: ${storePhone}
+Store Helpline: ${storePhone}
 Support Email: care@techwashlaundry.com
-Official Website: https://techwashlaundry.com
+Official Website: ${LIVE_PRODUCTION_DOMAIN}
 
 Thank you for trusting Tech Wash for your premium garment care!
 ========================================`;
@@ -396,8 +555,8 @@ Thank you for trusting Tech Wash for your premium garment care!
    */
   buildWorkerAssignmentMessage(order, staffMember) {
     if (!order) return '';
-    const orderNumber = order.orderNumber || order.id;
-    const customerName = order.customerName || order.customer?.name || 'Customer';
+    const orderNumber = this.cleanTextForWhatsApp(order.orderNumber || order.id);
+    const customerName = this.cleanTextForWhatsApp((order.customerName || order.customer?.name || 'CUSTOMER').toUpperCase());
     const phone = order.whatsapp || order.phone || order.customer?.whatsapp || order.customer?.phone || 'N/A';
     const address = order.address || order.customer?.address || 'On file';
     const pickupDate = order.pickupDate || order.schedule?.pickupDate || 'Today';
@@ -428,7 +587,7 @@ Hey *${staffMember?.name || 'Rider'}*, you have a new assigned task!
 👉 ${mapsLink}
 
 📱 *WORKER PORTAL:*
-https://techwashlaundry.com/worker
+${LIVE_PRODUCTION_DOMAIN}/worker
 
 _Please arrive on time, inspect & weigh garments at customer doorstep._`;
   },

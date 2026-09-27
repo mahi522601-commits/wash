@@ -22,18 +22,22 @@ import {
   Activity, 
   ArrowRight, 
   X,
-  Plus
+  Plus,
+  Wallet,
+  UserCheck
 } from 'lucide-react';
 
 const SEARCHABLE_ITEMS = [
   // Core & Operations
   { title: 'Dashboard & Command Center', category: 'Navigation', path: '/admin/dashboard', icon: LayoutDashboard, keywords: 'home stats overview kpi' },
   { title: 'Analytics & BI Intelligence', category: 'Intelligence', path: '/admin/analytics', icon: Activity, keywords: 'revenue sales conversion charts telemetry' },
+  { title: 'Expenses & Monthly P&L Ledger', category: 'Intelligence', path: '/admin/expenses', icon: Wallet, keywords: 'expenses profit loss pnl cost electricity water detergent maintenance labour margin' },
+  { title: 'Staff & Daily Attendance Roll Call', category: 'Operations', path: '/admin/attendance', icon: UserCheck, keywords: 'employees attendance roll call daily shift check in check out overtime wages payroll' },
   { title: 'Orders Management', category: 'Operations', path: '/admin/orders', icon: ShoppingBag, keywords: 'bookings pickups deliveries stages' },
   { title: 'Customer CRM', category: 'Operations', path: '/admin/customers', icon: Users, keywords: 'clients spending profiles vip history' },
   { title: 'Store Locations & Hubs', category: 'Operations', path: '/admin/locations', icon: MapPin, keywords: 'branches address geo coordinates' },
   { title: 'Payments & QR Code', category: 'Operations', path: '/admin/payments', icon: CreditCard, keywords: 'upi gateway transactions razorpay rayzon' },
-  { title: 'Operations Staff & Riders', category: 'Operations', path: '/admin/staff', icon: Users, keywords: 'delivery boys riders managers' },
+  { title: 'Operations Staff & Logins', category: 'Operations', path: '/admin/staff', icon: Users, keywords: 'delivery boys riders managers passwords logins' },
   
   // Catalog & Offers
   { title: 'Services Catalog CMS', category: 'Catalog', path: '/admin/services', icon: Sparkles, keywords: 'dry cleaning laundry shoe care steam press' },

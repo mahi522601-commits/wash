@@ -38,14 +38,34 @@ import {
   Bike,
   Store,
   AlertCircle,
-  Wallet
+  Wallet,
+  Truck,
+  Calendar
 } from 'lucide-react';
+import { orderService } from '../../services/orderService';
 
 const SIDEBAR_COLLAPSED_KEY = 'techwash_admin_sidebar_collapsed';
 
 export const AdminSidebar = ({ isOpen, onClose, isCollapsed, onToggleCollapse }) => {
   const { currentUser, logout, hasPermission } = useAuth();
   const { pathname } = useLocation();
+
+  const [taskCount, setTaskCount] = useState(0);
+
+  useEffect(() => {
+    const fetchTasks = async () => {
+      try {
+        const ords = await orderService.getOrders({ limitCount: 500 });
+        const metrics = orderService.getTaskScheduleMetrics(ords);
+        setTaskCount((metrics.todayDeliveries?.length || 0) + (metrics.todayPickups?.length || 0));
+      } catch {}
+    };
+    fetchTasks();
+    const unsub = orderService.subscribeToNewOrders(fetchTasks);
+    return () => {
+      if (typeof unsub === 'function') unsub();
+    };
+  }, []);
 
   const sections = [
     {
@@ -54,19 +74,28 @@ export const AdminSidebar = ({ isOpen, onClose, isCollapsed, onToggleCollapse })
         { name: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
         { name: 'Analytics & BI', path: '/admin/analytics', icon: BarChart3, badge: 'Insights' },
         { name: 'Financial Reports & PDFs', path: '/admin/reports', icon: FileText, badge: '30-Day PDF', badgeColor: 'bg-orange-500/20 text-orange-300 border-orange-500/30' },
+        { name: 'Expenses & Monthly P&L', path: '/admin/expenses', icon: Wallet, badge: 'P&L', badgeColor: 'bg-rose-500/20 text-rose-300 border-rose-500/30' },
         { name: 'Business Settings', path: '/admin/settings', icon: Sliders, badge: 'Phone & WA', badgeColor: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30' },
       ]
     },
     {
       title: 'OPERATIONS & LOGISTICS',
       items: [
+        { 
+          name: "Today's Tasks", 
+          path: '/admin/tasks', 
+          icon: Truck, 
+          badge: taskCount > 0 ? `${taskCount} Today` : 'Schedule', 
+          badgeColor: taskCount > 0 ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' 
+        },
         { name: 'Orders Management', path: '/admin/orders', icon: ShoppingBag, badge: 'Live', badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' },
         { name: 'POS Billing Machines', path: '/billing', icon: Store, badge: '3 Counters', badgeColor: 'bg-orange-500/20 text-orange-300 border-orange-500/30' },
         { name: 'Balance Due Tracker', path: '/admin/balances', icon: AlertCircle, badge: 'Due', badgeColor: 'bg-rose-500/20 text-rose-300 border-rose-500/30' },
         { name: 'Customer CRM', path: '/admin/customers', icon: Users },
         { name: 'Store Locations', path: '/admin/locations', icon: MapPin },
         { name: 'Payments & QR', path: '/admin/payments', icon: CreditCard },
-        { name: 'Operations Staff', path: '/admin/staff', icon: UserCheck },
+        { name: 'Staff & Attendance', path: '/admin/attendance', icon: UserCheck, badge: 'Daily Roll', badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' },
+        { name: 'Operations Staff & Logins', path: '/admin/staff', icon: Users },
         { name: 'Worker / Rider Portal', path: '/worker/login', icon: Bike, badge: 'Fleet', badgeColor: 'bg-purple-500/20 text-purple-300 border-purple-500/30' },
       ]
     },

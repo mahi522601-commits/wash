@@ -45,6 +45,11 @@ export const MobileBottomNav = ({ onOpenAssistant }) => {
     setMoreDrawerOpen(false);
   }, [pathname]);
 
+  // Do not render bottom nav on booking flow (which has its own fixed checkout bar) or admin/worker portals
+  if (pathname === '/book-pickup' || pathname.startsWith('/admin') || pathname.startsWith('/worker')) {
+    return null;
+  }
+
   return (
     <>
       {/* 5-BUTTON FIXED BOTTOM NAVIGATION BAR */}

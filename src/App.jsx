@@ -53,8 +53,11 @@ import { AdminBlogPage } from './pages/admin/AdminBlogPage';
 import { AdminLocationsPage } from './pages/admin/AdminLocationsPage';
 import { AdminPaymentsPage } from './pages/admin/AdminPaymentsPage';
 import { AdminStaffPage } from './pages/admin/AdminStaffPage';
+import { AdminAttendancePage } from './pages/admin/AdminAttendancePage';
 import { AdminBalanceDuePage } from './pages/admin/AdminBalanceDuePage';
+import { AdminTasksPage } from './pages/admin/AdminTasksPage';
 import { AdminReportsPage } from './pages/admin/AdminReportsPage';
+import { AdminExpensesPage } from './pages/admin/AdminExpensesPage';
 import { AdminSettingsPage } from './pages/admin/AdminSettingsPage';
 
 // Worker & Delivery Executive Portal
@@ -153,6 +156,8 @@ export function App() {
               <Route index element={<AdminDashboardPage />} />
               <Route path="dashboard" element={<AdminDashboardPage />} />
               <Route path="analytics" element={<AdminAnalyticsPage />} />
+              <Route path="tasks" element={<AdminTasksPage />} />
+              <Route path="schedule" element={<AdminTasksPage />} />
               <Route path="orders" element={<AdminOrdersPage />} />
               <Route path="customers" element={<AdminCustomersPage />} />
               <Route path="services" element={<AdminServicesPage />} />
@@ -169,6 +174,10 @@ export function App() {
               <Route path="reports/daily" element={<AdminReportsPage />} />
               <Route path="history" element={<AdminReportsPage />} />
               <Route path="settlements" element={<AdminReportsPage />} />
+              <Route path="expenses" element={<AdminExpensesPage />} />
+              <Route path="pnl" element={<AdminExpensesPage />} />
+              <Route path="attendance" element={<AdminAttendancePage />} />
+              <Route path="employees" element={<AdminAttendancePage />} />
               <Route path="staff" element={<AdminStaffPage />} />
               <Route path="settings" element={<AdminSettingsPage />} />
             </Route>

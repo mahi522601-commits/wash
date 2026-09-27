@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { orderService, TIME_SLOTS, normalizePeriod } from '../../services/orderService';
+import { whatsappNotificationService } from '../../services/whatsappNotificationService';
 import { 
   Menu, 
   Search, 
@@ -21,7 +23,11 @@ import {
   MapPin,
   Clock,
   Volume2,
-  VolumeX
+  VolumeX,
+  Truck,
+  Calendar,
+  AlertTriangle,
+  ArrowRight
 } from 'lucide-react';
 import { 
   testOrderPlacedSound, 
@@ -42,6 +48,35 @@ export const AdminHeader = ({ onMenuToggle, onOpenSearch }) => {
   const notifRef = useRef(null);
   const profileRef = useRef(null);
 
+  // Live Task Schedule & Notification State
+  const [taskMetrics, setTaskMetrics] = useState({
+    todayDeliveries: [],
+    tomorrowDeliveries: [],
+    todayPickups: [],
+    overdueDeliveries: [],
+  });
+  const [recentLiveOrders, setRecentLiveOrders] = useState([]);
+  const [dismissedNotifKeys, setDismissedNotifKeys] = useState(new Set());
+
+  const loadHeaderTasks = async () => {
+    try {
+      const ords = await orderService.getOrders({ limitCount: 200 });
+      const metrics = orderService.getTaskScheduleMetrics(ords);
+      setTaskMetrics(metrics);
+      setRecentLiveOrders(ords.slice(0, 5));
+    } catch (e) {
+      console.warn("Failed to load header task notifications:", e);
+    }
+  };
+
+  useEffect(() => {
+    loadHeaderTasks();
+    const unsub = orderService.subscribeToNewOrders(loadHeaderTasks);
+    return () => {
+      if (typeof unsub === 'function') unsub();
+    };
+  }, []);
+
   // Close menus on outside click
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -59,15 +94,104 @@ export const AdminHeader = ({ onMenuToggle, onOpenSearch }) => {
     .replace(/-/g, ' ')
     .replace(/\b\w/g, l => l.toUpperCase());
 
-  // Sample live notifications
-  const [notifications, setNotifications] = useState([
-    { id: 'n1', title: 'New Pickup Order #TW-892401', desc: '₹849 • 3x Pure Silk Sarees • Express', time: '5m ago', icon: ShoppingBag, read: false, path: '/admin/orders' },
-    { id: 'n2', title: 'UPI QR Payment Verified', desc: '₹1,249 credited via PhonePe • Order #TW-891902', time: '22m ago', icon: CreditCard, read: false, path: '/admin/payments' },
-    { id: 'n3', title: 'Scheduled Pickup Alert', desc: 'Doorstep pickup in Banjara Hills (Slot: 4:00 PM)', time: '1h ago', icon: Clock, read: true, path: '/admin/orders' },
-  ]);
+  // Dynamic Live Task Notifications
+  const dynamicNotifications = [];
 
-  const unreadCount = notifications.filter(n => !n.read).length;
-  const markAllAsRead = () => setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  // 1. Overdue Deliveries Alert
+  if (taskMetrics.overdueDeliveries?.length > 0) {
+    dynamicNotifications.push({
+      id: 'task-overdue',
+      title: `⚠️ ${taskMetrics.overdueDeliveries.length} Overdue Deliveries!`,
+      desc: `Scheduled delivery date passed for ${taskMetrics.overdueDeliveries.length} order(s). Please review and dispatch.`,
+      time: 'Urgent Action',
+      icon: AlertTriangle,
+      iconColor: 'text-rose-400 bg-rose-500/20',
+      badge: 'URGENT',
+      badgeColor: 'bg-rose-500/20 text-rose-300 border-rose-500/30',
+      path: '/admin/tasks?tab=overdue_deliveries',
+      read: dismissedNotifKeys.has('task-overdue'),
+    });
+  }
+
+  // 2. Today's Deliveries Alert
+  if (taskMetrics.todayDeliveries?.length > 0) {
+    const morn = taskMetrics.todayDeliveriesMorning?.length || 0;
+    const aft = taskMetrics.todayDeliveriesAfternoon?.length || 0;
+    const eve = taskMetrics.todayDeliveriesEvening?.length || 0;
+    dynamicNotifications.push({
+      id: 'task-today-deliv',
+      title: `🚚 ${taskMetrics.todayDeliveries.length} Deliveries Scheduled Today`,
+      desc: `🌅 Morning: ${morn} • ☀️ Afternoon: ${aft} • 🌙 Evening: ${eve}. Keep riders assigned.`,
+      time: 'Today',
+      icon: Truck,
+      iconColor: 'text-emerald-400 bg-emerald-500/20',
+      badge: 'TODAY',
+      badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+      path: '/admin/tasks?tab=today_deliveries',
+      read: dismissedNotifKeys.has('task-today-deliv'),
+    });
+  }
+
+  // 3. Tomorrow's Deliveries & WhatsApp Reminder Alert
+  if (taskMetrics.tomorrowDeliveries?.length > 0) {
+    dynamicNotifications.push({
+      id: 'task-tomorrow-remind',
+      title: `📲 ${taskMetrics.tomorrowDeliveries.length} Upcoming Deliveries Tomorrow`,
+      desc: `Dispatch 1-Click WhatsApp delivery slot reminders to customers.`,
+      time: 'Tomorrow',
+      icon: Calendar,
+      iconColor: 'text-cyan-400 bg-cyan-500/20',
+      badge: 'REMINDER',
+      badgeColor: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30',
+      path: '/admin/tasks?tab=tomorrow_deliveries',
+      read: dismissedNotifKeys.has('task-tomorrow-remind'),
+      actionBtn: {
+        label: 'Send Reminders',
+        path: '/admin/tasks?tab=tomorrow_deliveries',
+      }
+    });
+  }
+
+  // 4. Today's Pickups Alert
+  if (taskMetrics.todayPickups?.length > 0) {
+    dynamicNotifications.push({
+      id: 'task-today-pick',
+      title: `📦 ${taskMetrics.todayPickups.length} Doorstep Pickups Today`,
+      desc: `Customer laundry pickups scheduled across service zones.`,
+      time: 'Today',
+      icon: Clock,
+      iconColor: 'text-amber-400 bg-amber-500/20',
+      badge: 'PICKUP',
+      badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+      path: '/admin/tasks?tab=today_pickups',
+      read: dismissedNotifKeys.has('task-today-pick'),
+    });
+  }
+
+  // 5. Recent Live Customer Orders
+  recentLiveOrders.slice(0, 3).forEach((ord, idx) => {
+    const isWalkIn = ord.isWalkIn || ord.orderSource === 'OFFLINE_POS';
+    dynamicNotifications.push({
+      id: `ord-${ord.id || idx}`,
+      title: `Order #${ord.orderNumber || ord.id?.substring(0, 8)} • ${ord.customerName || 'Customer'}`,
+      desc: `${isWalkIn ? '🏪 Shop POS' : '🌐 Online Pickup'} • ${ord.serviceName || ord.service || 'Laundry'} • ₹${ord.finalPrice || ord.totalAmount || 0}`,
+      time: ord.createdAt ? new Date(ord.createdAt?.toDate ? ord.createdAt.toDate() : ord.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recent',
+      icon: ShoppingBag,
+      iconColor: 'text-purple-400 bg-purple-500/20',
+      badge: isWalkIn ? 'POS' : 'ONLINE',
+      badgeColor: isWalkIn ? 'bg-orange-500/20 text-orange-300 border-orange-500/30' : 'bg-blue-500/20 text-blue-300 border-blue-500/30',
+      path: '/admin/orders',
+      read: dismissedNotifKeys.has(`ord-${ord.id || idx}`),
+    });
+  });
+
+  const unreadCount = dynamicNotifications.filter(n => !n.read).length;
+  const markAllAsRead = () => {
+    const allKeys = new Set(dynamicNotifications.map(n => n.id));
+    setDismissedNotifKeys(allKeys);
+  };
+
+  const todayTaskCount = (taskMetrics.todayDeliveries?.length || 0) + (taskMetrics.todayPickups?.length || 0);
 
   // Sound notification state & live chime pulse
   const [soundEnabled, setSoundEnabled] = useState(() => isAudioNotificationEnabled());
@@ -146,7 +270,7 @@ export const AdminHeader = ({ onMenuToggle, onOpenSearch }) => {
         </button>
       </div>
 
-      {/* 3. RIGHT ACTIONS: QUICK ADD + NOTIFICATIONS + USER PROFILE */}
+      {/* 3. RIGHT ACTIONS: TODAY'S TASKS + QUICK ADD + NOTIFICATIONS + USER PROFILE */}
       <div className="flex items-center gap-2 sm:gap-3">
         
         {/* Mobile Search Icon */}
@@ -158,6 +282,21 @@ export const AdminHeader = ({ onMenuToggle, onOpenSearch }) => {
         >
           <Search className="w-4 h-4" />
         </button>
+
+        {/* Dedicated "Today's Tasks" Header Button with Live Badge */}
+        <Link
+          to="/admin/tasks"
+          className="px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-emerald-950/40 hover:scale-105 active:scale-95 transition-all"
+          title="Open Today's Deliveries, Pickups & Reminders Hub"
+        >
+          <Truck className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Today's Tasks</span>
+          {todayTaskCount > 0 && (
+            <span className="px-1.5 py-0.2 rounded-full bg-white/20 text-white text-[10px] font-mono font-black">
+              {todayTaskCount}
+            </span>
+          )}
+        </Link>
 
         {/* Quick Add Dropdown */}
         <div className="relative" ref={quickAddRef}>
@@ -230,12 +369,12 @@ export const AdminHeader = ({ onMenuToggle, onOpenSearch }) => {
           <button
             type="button"
             onClick={() => setNotificationsOpen(!notificationsOpen)}
-            className={`relative p-2 sm:p-2.5 rounded-2xl border transition-all ${
+            className={`relative p-2 sm:p-2.5 rounded-2xl border transition-all cursor-pointer ${
               isChiming 
                 ? 'bg-purple-600 text-white border-cyan-400 shadow-[0_0_20px_rgba(0,240,255,0.6)] animate-pulse' 
                 : 'bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border-white/10'
             }`}
-            title="Notifications & Sound Chime"
+            title="Notifications & Tasks"
           >
             <Bell className={`w-4 h-4 ${isChiming ? 'animate-bounce text-cyan-300' : ''}`} />
             {isChiming && (
@@ -255,17 +394,17 @@ export const AdminHeader = ({ onMenuToggle, onOpenSearch }) => {
             <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-[#161333] border border-purple-500/30 rounded-3xl shadow-2xl p-4 z-50 text-xs animate-scale-up">
               <div className="flex items-center justify-between pb-3 border-b border-white/10">
                 <div className="flex items-center gap-2">
-                  <span className="font-bold text-white text-sm">Notifications</span>
+                  <span className="font-bold text-white text-sm">Notifications & Tasks</span>
                   {unreadCount > 0 && (
                     <span className="px-2 py-0.5 rounded-full bg-cyan-400/20 text-cyan-300 text-[10px] font-black">
-                      {unreadCount} new
+                      {unreadCount} pending
                     </span>
                   )}
                 </div>
                 {unreadCount > 0 && (
                   <button
                     onClick={markAllAsRead}
-                    className="text-[11px] text-purple-300 hover:text-white font-medium transition-colors"
+                    className="text-[11px] text-purple-300 hover:text-white font-medium transition-colors cursor-pointer"
                   >
                     Mark all read
                   </button>
@@ -277,7 +416,7 @@ export const AdminHeader = ({ onMenuToggle, onOpenSearch }) => {
                 <button
                   type="button"
                   onClick={handleToggleSound}
-                  className="flex items-center gap-2 text-[11px] text-slate-300 hover:text-white transition-colors"
+                  className="flex items-center gap-2 text-[11px] text-slate-300 hover:text-white transition-colors cursor-pointer"
                 >
                   {soundEnabled ? (
                     <Volume2 className="w-4 h-4 text-emerald-400" />
@@ -292,51 +431,75 @@ export const AdminHeader = ({ onMenuToggle, onOpenSearch }) => {
                 <button
                   type="button"
                   onClick={handleTestChime}
-                  className="px-2.5 py-1 rounded-xl bg-purple-600/30 hover:bg-purple-600/50 text-[10px] font-bold text-cyan-300 border border-purple-400/30 transition-all active:scale-95 flex items-center gap-1"
+                  className="px-2.5 py-1 rounded-xl bg-purple-600/30 hover:bg-purple-600/50 text-[10px] font-bold text-cyan-300 border border-purple-400/30 transition-all active:scale-95 flex items-center gap-1 cursor-pointer"
                   title="Test notification chime (/1.mp4)"
                 >
                   <span>🔊 Test Chime</span>
                 </button>
               </div>
 
-              <div className="divide-y divide-white/5 max-h-72 overflow-y-auto py-1">
-                {notifications.map((n) => {
-                  const Icon = n.icon;
-                  return (
-                    <Link
-                      key={n.id}
-                      to={n.path}
-                      onClick={() => setNotificationsOpen(false)}
-                      className={`flex items-start gap-3 p-2.5 rounded-2xl transition-colors ${
-                        n.read ? 'text-slate-400 hover:bg-white/5' : 'text-slate-200 bg-white/5 hover:bg-white/10'
-                      }`}
-                    >
-                      <div className="w-8 h-8 rounded-xl bg-purple-500/20 text-cyan-400 flex items-center justify-center shrink-0 mt-0.5">
-                        <Icon className="w-4 h-4" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-bold text-white text-xs leading-tight truncate">
-                          {n.title}
+              {/* Dynamic Live Notification & Tasks Feed */}
+              <div className="divide-y divide-white/5 max-h-80 overflow-y-auto py-1 space-y-1">
+                {dynamicNotifications.length === 0 ? (
+                  <div className="py-6 text-center text-slate-400 text-xs">
+                    No active task notifications right now.
+                  </div>
+                ) : (
+                  dynamicNotifications.map((n) => {
+                    const Icon = n.icon;
+                    return (
+                      <Link
+                        key={n.id}
+                        to={n.path}
+                        onClick={() => setNotificationsOpen(false)}
+                        className={`flex items-start gap-3 p-2.5 rounded-2xl transition-colors ${
+                          n.read ? 'text-slate-400 hover:bg-white/5' : 'text-slate-200 bg-white/5 hover:bg-white/10'
+                        }`}
+                      >
+                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${n.iconColor || 'bg-purple-500/20 text-cyan-400'}`}>
+                          <Icon className="w-4 h-4" />
                         </div>
-                        <div className="text-[11px] text-slate-300 mt-0.5 leading-snug">
-                          {n.desc}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-1">
+                            <div className="font-bold text-white text-xs leading-tight truncate">
+                              {n.title}
+                            </div>
+                            {n.badge && (
+                              <span className={`px-1.5 py-0.2 rounded text-[9px] font-mono font-black border ${n.badgeColor}`}>
+                                {n.badge}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-[11px] text-slate-300 mt-0.5 leading-snug">
+                            {n.desc}
+                          </div>
+                          <div className="flex items-center justify-between mt-1 text-[9px] text-purple-300/70">
+                            <span>{n.time}</span>
+                            <span className="text-cyan-400 font-bold flex items-center gap-0.5">
+                              Open ➔
+                            </span>
+                          </div>
                         </div>
-                        <div className="text-[9px] text-purple-300/70 mt-1">
-                          {n.time}
-                        </div>
-                      </div>
-                    </Link>
-                  );
-                })}
+                      </Link>
+                    );
+                  })
+                )}
               </div>
 
-              <div className="pt-2 border-t border-white/10 text-center">
+              <div className="pt-2.5 border-t border-white/10 flex items-center justify-between text-[11px]">
+                <Link
+                  to="/admin/tasks"
+                  onClick={() => setNotificationsOpen(false)}
+                  className="text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1"
+                >
+                  <span>📋 Today's Tasks Hub</span>
+                </Link>
                 <Link
                   to="/admin/orders"
                   onClick={() => setNotificationsOpen(false)}
-                  className="text-[11px] text-cyan-400 hover:text-cyan-300 font-bold"
+                  className="text-cyan-400 hover:text-cyan-300 font-bold"
                 >
-                  View All Operations →
+                  All Orders →
                 </Link>
               </div>
             </div>

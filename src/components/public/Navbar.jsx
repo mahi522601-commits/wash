@@ -122,8 +122,8 @@ export const Navbar = () => {
         }`}>
           
           {/* Brand Logo (Substantially Bigger) */}
-          <Link to="/" className="flex items-center gap-3 group shrink-0 py-0.5">
-            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white flex items-center justify-center p-1 shadow-md border border-[#FED7AA] group-hover:scale-105 transition-transform overflow-hidden">
+          <Link to="/" className="flex items-center gap-2 sm:gap-3 group shrink-0 py-0.5">
+            <div className="w-11 h-11 sm:w-14 sm:h-14 lg:w-16 lg:h-16 rounded-xl sm:rounded-2xl bg-white flex items-center justify-center p-1 shadow-md border border-[#FED7AA] group-hover:scale-105 transition-transform overflow-hidden">
               <img 
                 src="/techwashlogo.webp" 
                 alt="Tech Wash Laundry Services" 
@@ -132,10 +132,10 @@ export const Navbar = () => {
               />
             </div>
             <div className="flex flex-col">
-              <span className="font-black font-display text-lg sm:text-2xl tracking-tight leading-none text-[#1F2937]">
+              <span className="font-black font-display text-base sm:text-xl lg:text-2xl tracking-tight leading-none text-[#1F2937]">
                 TECH <span className="text-[#F97316]">WASH</span>
               </span>
-              <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-[#F97316] leading-none mt-1">
+              <span className="text-[8px] sm:text-[9px] lg:text-[10px] font-black uppercase tracking-widest text-[#F97316] leading-none mt-0.5 sm:mt-1">
                 LAUNDRY SERVICES
               </span>
             </div>
@@ -164,7 +164,7 @@ export const Navbar = () => {
           </nav>
 
           {/* Right Call & Booking Button */}
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-3">
             
             {/* WhatsApp Quick Chat Button (Desktop) */}
             <a
@@ -194,9 +194,9 @@ export const Navbar = () => {
             <Link to="/book-pickup">
               <button
                 type="button"
-                className="px-4 sm:px-5 py-2 sm:py-2.5 rounded-full bg-[#F97316] hover:bg-[#EA580C] text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-brand-500/20 hover:shadow-lg hover:scale-105 active:scale-95 transition-all"
+                className="px-3 sm:px-5 py-1.5 sm:py-2.5 rounded-full bg-[#F97316] hover:bg-[#EA580C] text-white text-[11px] sm:text-xs font-bold flex items-center gap-1 sm:gap-1.5 shadow-md shadow-brand-500/20 hover:shadow-lg hover:scale-105 active:scale-95 transition-all"
               >
-                <Calendar className="w-3.5 h-3.5 text-white" />
+                <Calendar className="w-3 sm:w-3.5 h-3 sm:h-3.5 text-white" />
                 <span>Book Pickup</span>
               </button>
             </Link>
@@ -204,7 +204,7 @@ export const Navbar = () => {
             {/* Mobile Menu Toggle */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 rounded-xl text-[#1F2937] hover:bg-[#FFF7ED] lg:hidden transition-colors"
+              className="p-1.5 sm:p-2 rounded-xl text-[#1F2937] hover:bg-[#FFF7ED] lg:hidden transition-colors"
               aria-label="Toggle navigation menu"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}

@@ -2,7 +2,13 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import confetti from 'canvas-confetti';
 import { INITIAL_PRICING_CONFIG, pricingService } from '../../services/pricingConfig';
-import { orderService } from '../../services/orderService';
+import { 
+  orderService, 
+  TIME_PERIODS, 
+  TIME_SLOTS, 
+  calculateDefaultDelivery, 
+  normalizeDateString 
+} from '../../services/orderService';
 import { paymentService, PAYMENT_METHODS } from '../../services/paymentService';
 import { UpiPaymentCard } from '../../components/payment/UpiPaymentCard';
 import { UpiAppLogosRow } from '../../components/payment/UpiLogos';
@@ -83,6 +89,14 @@ const SUBCATEGORY_TABS = {
     { id: 'dresses', label: 'Dresses & Couture', emoji: '👗' },
     { id: 'household', label: 'Home & Curtains', emoji: '🏠' },
     { id: 'kids', label: 'Kids', emoji: '🧸' },
+  ],
+  'starch-and-iron': [
+    { id: 'all', label: 'All Items', emoji: '✨' },
+    { id: 'tops', label: 'Tops & Shirts', emoji: '👔' },
+    { id: 'traditional', label: 'Sarees & Ethnic', emoji: '🥻' },
+    { id: 'bottoms', label: 'Pants & Bottoms', emoji: '👖' },
+    { id: 'household', label: 'Home & Linens', emoji: '🏠' },
+    { id: 'jackets', label: 'Workwear & Aprons', emoji: '🥼' },
   ]
 };
 
@@ -163,6 +177,9 @@ export const BookPickupPage = () => {
   const [clothingFor, setClothingFor] = useState('men');
   const [activeSubCategory, setActiveSubCategory] = useState('all');
   const [searchFilter, setSearchFilter] = useState('');
+  const [perKgMode, setPerKgMode] = useState('preset'); // 'preset' | 'doorstep' | 'manual'
+  const [bagSize, setBagSize] = useState(5); // kg (3, 5, 8)
+  const [showManualPerKg, setShowManualPerKg] = useState(false);
 
   // Quantities for Itemized Services (Dry Cleaning & Ironing)
   const [itemizedQuantities, setItemizedQuantities] = useState({});
@@ -212,10 +229,18 @@ export const BookPickupPage = () => {
     landmark: '',
   });
 
-  const [schedule, setSchedule] = useState({
-    pickupDate: new Date(Date.now() + 86400000).toISOString().split('T')[0],
-    pickupSlot: '10:00 AM - 12:00 PM',
-    instructions: '',
+  const [schedule, setSchedule] = useState(() => {
+    const pickupDate = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+    const defDelivery = calculateDefaultDelivery(pickupDate, false, 'MORNING');
+    return {
+      pickupDate,
+      pickupPeriod: 'MORNING',
+      pickupSlot: 'Morning (08:00 AM - 12:00 PM)',
+      deliveryDate: defDelivery.deliveryDate,
+      deliveryPeriod: 'MORNING',
+      deliverySlot: defDelivery.deliverySlot,
+      instructions: '',
+    };
   });
 
   // Turnaround & Coupon & Payment State
@@ -234,6 +259,10 @@ export const BookPickupPage = () => {
   useEffect(() => {
     pricingService.getPricingConfig().then(cfg => {
       if (cfg) setPricingConfig(cfg);
+    });
+
+    const unsubPricing = pricingService.subscribeToPricing((newCfg) => {
+      if (newCfg) setPricingConfig(newCfg);
     });
 
     paymentService.getPaymentConfig().then(setPaymentConfig);
@@ -269,14 +298,36 @@ export const BookPickupPage = () => {
     analyticsService.trackEvent('booking_start');
 
     return () => {
+      unsubPricing();
       window.removeEventListener('techwash-payment-config-updated', handlePaymentConfigUpdate);
     };
   }, [searchParams]);
 
+  // All services including dynamic custom services
+  const allAvailableServices = useMemo(() => {
+    const base = pricingConfig.services || INITIAL_PRICING_CONFIG.services;
+    const custom = Array.isArray(pricingConfig.customServices) ? pricingConfig.customServices : [];
+    const formattedCustom = custom.map(cs => ({
+      id: cs.id,
+      slug: cs.slug || cs.id,
+      name: cs.name || cs.title,
+      title: cs.name || cs.title,
+      emoji: cs.emoji || cs.icon || '✨',
+      icon: cs.emoji || cs.icon || '✨',
+      tagline: cs.category || 'Specialized Care',
+      description: cs.shortDescription || 'Bespoke garment care treatment',
+      startingPriceDisplay: `Starts at ₹${cs.startingPrice || cs.defaultPrice || 99}`,
+      pricingType: cs.pricingType === 'per_kg' ? 'PER_KG' : 'ITEMIZED',
+      subServices: cs.subServices || [],
+      isCustom: true,
+    }));
+    return [...base, ...formattedCustom];
+  }, [pricingConfig.services, pricingConfig.customServices]);
+
   // Current active service definition
   const currentService = useMemo(() => {
-    return pricingConfig.services.find(s => s.id === selectedServiceId) || pricingConfig.services[0];
-  }, [pricingConfig, selectedServiceId]);
+    return allAvailableServices.find(s => s.id === selectedServiceId || s.slug === selectedServiceId) || allAvailableServices[0];
+  }, [allAvailableServices, selectedServiceId]);
 
   // ----------------------------------------------------
   // ITEM QUANTITY HANDLERS
@@ -366,10 +417,12 @@ export const BookPickupPage = () => {
     let totalItemCount = 0;
 
     if (currentService.pricingType === 'ITEMIZED') {
-      // Dry Cleaning or Ironing
+      // Dry Cleaning, Ironing, or Starch & Iron
       const catalog = currentService.id === 'dry-cleaning' 
         ? pricingConfig.dryCleaning 
-        : pricingConfig.ironing;
+        : ((currentService.id === 'starch-and-iron' || currentService.id === 'srv-starch-and-iron')
+            ? (pricingConfig['starch-and-iron'] || pricingConfig.starchAndIron || {})
+            : pricingConfig.ironing);
 
       const allCatalogItems = [
         ...(catalog.men || []),
@@ -398,89 +451,151 @@ export const BookPickupPage = () => {
           }
         }
       });
+
+      // If user selected 0 items, treat as Doorstep Tally
+      if (totalItemCount === 0) {
+        hasUnpricedItems = true;
+        unpricedMessage = 'Garments will be counted and tagged at doorstep';
+        totalItemCount = 1;
+        lineItems.push({
+          id: 'itemized-doorstep-count',
+          name: `${currentService.name} (Tally at Doorstep)`,
+          emoji: currentService.emoji || '🧺',
+          quantity: 1,
+          unconfirmed: true,
+          unit: 'bundle',
+        });
+      }
     } else if (currentService.pricingType === 'PER_KG') {
       // Wash & Iron OR Wash & Fold
       const menRate = currentService.baseRates.men;
       const womenRate = currentService.baseRates.women;
+      const effectiveRate = clothingFor === 'women' ? womenRate : menRate;
 
-      const menStandards = pricingConfig.weightStandards.men || [];
-      const womenStandards = pricingConfig.weightStandards.women || [];
-
-      let menGrams = 0;
-      let womenGrams = 0;
-
-      // Include Men's items if 'men' or 'mixed'
-      if (clothingFor === 'men' || clothingFor === 'mixed') {
-        menStandards.forEach(std => {
-          const qty = perKgCounts.men?.[std.id] || 0;
-          if (qty > 0) {
-            totalItemCount += qty;
-            if (std.weightGrams) {
-              menGrams += std.weightGrams * qty;
-            }
-            lineItems.push({
-              id: std.id,
-              name: std.name,
-              persona: "Men's",
-              emoji: std.emoji,
-              quantity: qty,
-              weightGramsEach: std.weightGrams,
-              totalGrams: std.weightGrams ? std.weightGrams * qty : null,
-              unconfirmed: std.unconfirmed || false,
-              unit: 'piece',
-            });
-          }
+      if (perKgMode === 'doorstep') {
+        hasUnpricedItems = true;
+        unpricedMessage = 'Weighed with digital scale during doorstep pickup';
+        totalItemCount = 1;
+        lineItems.push({
+          id: 'per-kg-doorstep-scale',
+          name: `${currentService.name} (Doorstep Scale Weighing)`,
+          persona: clothingFor === 'women' ? "Women's" : clothingFor === 'men' ? "Men's" : "Mixed",
+          emoji: '⚖️',
+          quantity: 1,
+          unconfirmed: true,
+          unit: 'load',
         });
-      }
-
-      // Include Women's items if 'women' or 'mixed'
-      if (clothingFor === 'women' || clothingFor === 'mixed') {
-        womenStandards.forEach(std => {
-          const qty = perKgCounts.women?.[std.id] || 0;
-          if (qty > 0) {
-            totalItemCount += qty;
-            if (std.weightGrams) {
-              womenGrams += std.weightGrams * qty;
-            }
-            lineItems.push({
-              id: std.id,
-              name: std.name,
-              persona: "Women's",
-              emoji: std.emoji,
-              quantity: qty,
-              weightGramsEach: std.weightGrams,
-              totalGrams: std.weightGrams ? std.weightGrams * qty : null,
-              unconfirmed: std.unconfirmed || false,
-              unit: 'piece',
-            });
-          }
+      } else if (perKgMode === 'preset') {
+        const weight = bagSize || 5;
+        estimatedWeightKg = weight;
+        estimatedWeightGrams = weight * 1000;
+        itemsSubtotal = Math.round(weight * effectiveRate);
+        totalItemCount = 1;
+        lineItems.push({
+          id: `per-kg-bag-${weight}kg`,
+          name: `${currentService.name} (~${weight} Kg Load)`,
+          persona: clothingFor === 'women' ? "Women's" : clothingFor === 'men' ? "Men's" : "Mixed",
+          emoji: '🧺',
+          quantity: 1,
+          weightGramsEach: weight * 1000,
+          totalGrams: weight * 1000,
+          unitPrice: effectiveRate,
+          lineTotal: itemsSubtotal,
+          unit: 'load',
         });
+      } else {
+        // Manual item counting
+        const menStandards = pricingConfig.weightStandards.men || [];
+        const womenStandards = pricingConfig.weightStandards.women || [];
+
+        let menGrams = 0;
+        let womenGrams = 0;
+
+        if (clothingFor === 'men' || clothingFor === 'mixed') {
+          menStandards.forEach(std => {
+            const qty = perKgCounts.men?.[std.id] || 0;
+            if (qty > 0) {
+              totalItemCount += qty;
+              if (std.weightGrams) {
+                menGrams += std.weightGrams * qty;
+              }
+              lineItems.push({
+                id: std.id,
+                name: std.name,
+                persona: "Men's",
+                emoji: std.emoji,
+                quantity: qty,
+                weightGramsEach: std.weightGrams,
+                totalGrams: std.weightGrams ? std.weightGrams * qty : null,
+                unconfirmed: std.unconfirmed || false,
+                unit: 'piece',
+              });
+            }
+          });
+        }
+
+        if (clothingFor === 'women' || clothingFor === 'mixed') {
+          womenStandards.forEach(std => {
+            const qty = perKgCounts.women?.[std.id] || 0;
+            if (qty > 0) {
+              totalItemCount += qty;
+              if (std.weightGrams) {
+                womenGrams += std.weightGrams * qty;
+              }
+              lineItems.push({
+                id: std.id,
+                name: std.name,
+                persona: "Women's",
+                emoji: std.emoji,
+                quantity: qty,
+                weightGramsEach: std.weightGrams,
+                totalGrams: std.weightGrams ? std.weightGrams * qty : null,
+                unconfirmed: std.unconfirmed || false,
+                unit: 'piece',
+              });
+            }
+          });
+        }
+
+        const totalGrams = menGrams + womenGrams;
+        estimatedWeightGrams = totalGrams;
+        estimatedWeightKg = Number((totalGrams / 1000).toFixed(2));
+
+        const menKg = menGrams / 1000;
+        const womenKg = womenGrams / 1000;
+        itemsSubtotal = Math.round((menKg * menRate) + (womenKg * womenRate));
       }
-
-      const totalGrams = menGrams + womenGrams;
-      estimatedWeightGrams = totalGrams;
-      estimatedWeightKg = Number((totalGrams / 1000).toFixed(2));
-
-      // Calculate cost per gender segment
-      const menKg = menGrams / 1000;
-      const womenKg = womenGrams / 1000;
-      itemsSubtotal = Math.round((menKg * menRate) + (womenKg * womenRate));
-
-    } else if (currentService.pricingType === 'UNPRICED') {
+    } else if (currentService.pricingType === 'UNPRICED' || currentService.id === 'saree-rolling' || currentService.id === 'srv-saree-rolling') {
       // Saree Rolling
-      hasUnpricedItems = true;
-      unpricedMessage = 'Price to be confirmed at pickup';
-      totalItemCount = sareeCount;
-      lineItems.push({
-        id: 'saree-rolling-item',
-        name: 'Saree Rolling',
-        emoji: '🥻',
-        quantity: sareeCount,
-        unit: 'saree',
-        unitPrice: null,
-        lineTotal: null,
-        note: 'Price to be confirmed by pickup executive after fabric inspection',
-      });
+      const sareeRate = Number(pricingConfig.sareeRolling?.rate) || null;
+      if (sareeRate) {
+        const lineTotal = sareeCount * sareeRate;
+        itemsSubtotal += lineTotal;
+        totalItemCount = sareeCount;
+        lineItems.push({
+          id: 'saree-rolling-item',
+          name: 'Saree Rolling & Polishing',
+          emoji: '🥻',
+          quantity: sareeCount,
+          unit: 'saree',
+          unitPrice: sareeRate,
+          lineTotal,
+        });
+      } else {
+        hasUnpricedItems = true;
+        unpricedMessage = 'Price to be confirmed at pickup';
+        totalItemCount = sareeCount;
+        lineItems.push({
+          id: 'saree-rolling-item',
+          name: 'Saree Rolling',
+          emoji: '🥻',
+          quantity: sareeCount,
+          unit: 'saree',
+          unitPrice: null,
+          lineTotal: null,
+          note: 'Price to be confirmed by pickup executive after fabric inspection',
+        });
+      }
     } else if (currentService.id === 'curtain-washing' || currentService.id === 'srv-curtain-spa') {
       // Curtains (4 Official Sub-Services: Dry Cleaning, Wash & Iron, Iron, Wash & Fold)
       const curtainPricing = pricingConfig.curtains || {
@@ -551,6 +666,46 @@ export const BookPickupPage = () => {
         lineTotal,
         unit: 'pair',
       });
+    } else if (currentService.isCustom) {
+      // Dynamic Custom Service
+      const subItems = Array.isArray(currentService.subServices) && currentService.subServices.length > 0
+        ? currentService.subServices
+        : [{ id: `${currentService.id}-base`, name: currentService.name, price: currentService.startingPrice || currentService.defaultPrice || 99, emoji: currentService.emoji || '✨' }];
+
+      subItems.forEach(item => {
+        const qty = itemizedQuantities[item.id] || 0;
+        if (qty > 0) {
+          const lineTotal = Number(item.price || 0) * qty;
+          itemsSubtotal += lineTotal;
+          totalItemCount += qty;
+          lineItems.push({
+            id: item.id,
+            name: `${currentService.name} — ${item.name}`,
+            serviceName: currentService.name,
+            subServiceName: item.name,
+            category: currentService.tagline || 'Custom Care',
+            emoji: item.emoji || currentService.emoji || '✨',
+            quantity: qty,
+            unitPrice: item.price,
+            lineTotal,
+            unit: currentService.pricingType === 'PER_KG' ? 'kg' : 'piece',
+          });
+        }
+      });
+
+      if (totalItemCount === 0) {
+        hasUnpricedItems = true;
+        unpricedMessage = 'Garments will be counted and tagged at doorstep';
+        totalItemCount = 1;
+        lineItems.push({
+          id: `${currentService.id}-doorstep-count`,
+          name: `${currentService.name} (Tally at Doorstep)`,
+          emoji: currentService.emoji || '✨',
+          quantity: 1,
+          unconfirmed: true,
+          unit: 'bundle',
+        });
+      }
     }
 
     // Additional calculation rules
@@ -593,6 +748,8 @@ export const BookPickupPage = () => {
     clothingFor,
     itemizedQuantities,
     perKgCounts,
+    perKgMode,
+    bagSize,
     sareeCount,
     curtainCounts,
     shoePairs,
@@ -715,9 +872,19 @@ export const BookPickupPage = () => {
         items: orderBreakdown.lineItems,
         estimatedWeightKg: orderBreakdown.estimatedWeightKg,
         isExpress,
+        pickupDate: schedule.pickupDate,
+        pickupPeriod: schedule.pickupPeriod || 'MORNING',
+        pickupSlot: schedule.pickupSlot,
+        deliveryDate: schedule.deliveryDate || calculateDefaultDelivery(schedule.pickupDate, isExpress, schedule.deliveryPeriod).deliveryDate,
+        deliveryPeriod: schedule.deliveryPeriod || 'MORNING',
+        deliverySlot: schedule.deliverySlot || calculateDefaultDelivery(schedule.pickupDate, isExpress, schedule.deliveryPeriod).deliverySlot,
         schedule: {
           pickupDate: schedule.pickupDate,
+          pickupPeriod: schedule.pickupPeriod || 'MORNING',
           pickupSlot: schedule.pickupSlot,
+          deliveryDate: schedule.deliveryDate || calculateDefaultDelivery(schedule.pickupDate, isExpress, schedule.deliveryPeriod).deliveryDate,
+          deliveryPeriod: schedule.deliveryPeriod || 'MORNING',
+          deliverySlot: schedule.deliverySlot || calculateDefaultDelivery(schedule.pickupDate, isExpress, schedule.deliveryPeriod).deliverySlot,
           instructions: schedule.instructions,
         },
         priceSnapshot: {
@@ -851,10 +1018,11 @@ export const BookPickupPage = () => {
                   <span>Tracking ID: #{confirmedOrder.orderNumber}</span>
                   <span>{confirmedOrder.serviceEmoji} {confirmedOrder.serviceName}</span>
                 </div>
-                <div className="text-[10px] text-slate-500 pt-0.5">
-                  ✓ Schedule: {confirmedOrder.schedule.pickupDate} ({confirmedOrder.schedule.pickupSlot})<br />
-                  ✓ Doorstep Address: {confirmedOrder.customer.address}<br />
-                  ✓ Total Tariff: {confirmedOrder.priceSnapshot.hasUnpricedItems && confirmedOrder.priceSnapshot.itemsSubtotal === 0 ? 'To be verified at doorstep' : formatCurrency(confirmedOrder.priceSnapshot.finalTotal)}
+                <div className="text-[10px] text-slate-500 pt-0.5 space-y-0.5">
+                  <div>📅 <strong>Pickup:</strong> {confirmedOrder.schedule?.pickupDate || confirmedOrder.pickupDate} ({confirmedOrder.schedule?.pickupSlot || confirmedOrder.pickupSlot})</div>
+                  <div>🚚 <strong>Delivery:</strong> {confirmedOrder.schedule?.deliveryDate || confirmedOrder.deliveryDate} ({confirmedOrder.schedule?.deliverySlot || confirmedOrder.deliverySlot})</div>
+                  <div>📍 <strong>Address:</strong> {confirmedOrder.customer.address}</div>
+                  <div>💰 <strong>Total Tariff:</strong> {confirmedOrder.priceSnapshot.hasUnpricedItems && confirmedOrder.priceSnapshot.itemsSubtotal === 0 ? 'To be verified at doorstep' : formatCurrency(confirmedOrder.priceSnapshot.finalTotal)}</div>
                 </div>
               </div>
             </div>
@@ -879,6 +1047,14 @@ export const BookPickupPage = () => {
               <div className="flex justify-between">
                 <span className="text-slate-500">Service:</span>
                 <span className="font-semibold text-slate-900">{confirmedOrder.serviceEmoji} {confirmedOrder.serviceName}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Pickup Window:</span>
+                <span className="font-semibold text-slate-900">{confirmedOrder.schedule?.pickupDate || confirmedOrder.pickupDate} ({confirmedOrder.schedule?.pickupSlot || confirmedOrder.pickupSlot})</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Delivery Window:</span>
+                <span className="font-bold text-orange-700">{confirmedOrder.schedule?.deliveryDate || confirmedOrder.deliveryDate} ({confirmedOrder.schedule?.deliverySlot || confirmedOrder.deliverySlot})</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Estimated Total:</span>
@@ -989,21 +1165,37 @@ export const BookPickupPage = () => {
             <Card variant="luxury" className="p-5 sm:p-8 bg-white border border-slate-200 shadow-sm">
               
               {/* ============================================================ */}
-              {/* STEP 1: "WHAT DO YOU NEED?" (8 SERVICE CARDS)               */}
+              {/* STEP 1: "WHAT DO YOU NEED?" (RESPONSIVE 2-COL SERVICE CARDS) */}
               {/* ============================================================ */}
               {currentStep === 1 && (
-                <div className="space-y-6">
-                  <div>
-                    <h1 className="text-2xl sm:text-3xl font-black text-slate-900 font-display tracking-tight">
-                      How can we help you today?
-                    </h1>
-                    <p className="text-xs sm:text-sm text-slate-500 mt-1">
-                      Choose a service to get started
-                    </p>
+                <div className="space-y-4 sm:space-y-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <h1 className="text-xl sm:text-3xl font-black text-slate-900 font-display tracking-tight">
+                        Select a Laundry Service
+                      </h1>
+                      <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+                        Tap a service below to start your order
+                      </p>
+                    </div>
+
+                    {/* Instant Doorstep Pickup Fast-Track */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedServiceId('dry-cleaning');
+                        setCurrentStep(3);
+                        window.scrollTo({ top: 100, behavior: 'smooth' });
+                      }}
+                      className="px-3.5 py-2 rounded-xl bg-orange-50 hover:bg-orange-100 text-[#F97316] border border-orange-200 text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-all self-start sm:self-auto shadow-2xs"
+                    >
+                      <span>⚡ Instant Pickup (Count at Door) ➔</span>
+                    </button>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {pricingConfig.services.map((service) => {
+                  {/* 2-Column Responsive Service Grid */}
+                  <div className="grid grid-cols-2 sm:grid-cols-2 gap-2.5 sm:gap-4">
+                    {allAvailableServices.map((service) => {
                       const isSelected = selectedServiceId === service.id;
                       return (
                         <div
@@ -1013,41 +1205,41 @@ export const BookPickupPage = () => {
                             setCurrentStep(2);
                             window.scrollTo({ top: 100, behavior: 'smooth' });
                           }}
-                          className={`p-5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between relative group ${
+                          className={`p-3.5 sm:p-5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between relative group active:scale-[0.98] ${
                             isSelected
                               ? 'border-brand-600 bg-brand-50/40 shadow-luxury ring-2 ring-brand-400/20'
                               : 'border-slate-200 hover:border-brand-400 hover:bg-slate-50/80 bg-white'
                           }`}
                         >
                           <div>
-                            <div className="flex items-center justify-between mb-3">
-                              <span className="text-3xl p-2.5 rounded-2xl bg-white border border-slate-100 shadow-xs group-hover:scale-105 transition-transform">
+                            <div className="flex items-center justify-between mb-2 sm:mb-3">
+                              <span className="text-2xl sm:text-3xl p-1.5 sm:p-2.5 rounded-xl sm:rounded-2xl bg-white border border-slate-100 shadow-xs group-hover:scale-105 transition-transform">
                                 {service.emoji}
                               </span>
                               {service.startingPriceDisplay && (
-                                <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 group-hover:bg-brand-100 group-hover:text-brand-800 transition-colors">
+                                <span className="text-[10px] sm:text-[11px] font-bold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full bg-orange-50 text-[#F97316] border border-orange-200/60 leading-none">
                                   {service.startingPriceDisplay}
                                 </span>
                               )}
                             </div>
 
-                            <h3 className="text-base font-bold text-slate-900 font-display group-hover:text-brand-700 transition-colors">
+                            <h3 className="text-xs sm:text-base font-bold text-slate-900 font-display group-hover:text-brand-700 transition-colors leading-tight">
                               {service.name}
                             </h3>
-                            <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                            <p className="text-[11px] text-slate-500 mt-1 leading-relaxed hidden sm:block">
                               {service.tagline}
                             </p>
                           </div>
 
-                          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+                          <div className="mt-2.5 sm:mt-4 pt-2 sm:pt-3 border-t border-slate-100 flex items-center justify-between text-[10px] sm:text-xs">
                             <span className="text-brand-600 font-bold group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
-                              Select & customize ➔
+                              Select ➔
                             </span>
                           </div>
 
                           {isSelected && (
-                            <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-brand-600 text-white flex items-center justify-center shadow-xs">
-                              <Check className="w-3.5 h-3.5 stroke-[3]" />
+                            <div className="absolute top-2.5 right-2.5 sm:top-3 sm:right-3 w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-brand-600 text-white flex items-center justify-center shadow-xs">
+                              <Check className="w-3 h-3 sm:w-3.5 sm:h-3.5 stroke-[3]" />
                             </div>
                           )}
                         </div>
@@ -1088,10 +1280,37 @@ export const BookPickupPage = () => {
                     </button>
                   </div>
 
+                  {/* Quick Fast-Track Doorstep Tally Card */}
+                  <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-brand-50 via-indigo-50/50 to-blue-50 border border-brand-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+                    <div className="flex items-start gap-2.5">
+                      <span className="text-2xl shrink-0 mt-0.5">⚡</span>
+                      <div>
+                        <div className="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-2">
+                          <span>In a hurry? Skip selecting items</span>
+                          <span className="text-[10px] uppercase tracking-wider font-extrabold bg-brand-600 text-white px-2 py-0.5 rounded-full">Fastest</span>
+                        </div>
+                        <p className="text-[11px] text-slate-600 mt-0.5 leading-relaxed">
+                          Our rider will count, inspect & weigh your garments right at your doorstep. Zero effort needed!
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCurrentStep(3);
+                        window.scrollTo({ top: 100, behavior: 'smooth' });
+                      }}
+                      className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs shadow-xs transition-colors shrink-0 text-center flex items-center justify-center gap-1.5"
+                    >
+                      <span>Skip to Address & Slot</span>
+                      <span>➔</span>
+                    </button>
+                  </div>
+
                   {/* -------------------------------------------------------- */}
-                  {/* DRY CLEANING & IRONING FLOW                              */}
+                  {/* DRY CLEANING, IRONING & STARCH & IRON FLOW               */}
                   {/* -------------------------------------------------------- */}
-                  {(currentService.id === 'dry-cleaning' || currentService.id === 'ironing') && (
+                  {(currentService.id === 'dry-cleaning' || currentService.id === 'ironing' || currentService.id === 'starch-and-iron' || currentService.id === 'srv-starch-and-iron') && (
                     <div className="space-y-6">
                       
                       {/* Persona Filter: Who are these clothes for? */}
@@ -1132,7 +1351,7 @@ export const BookPickupPage = () => {
                       {/* Category Chips Bar */}
                       <div>
                         <div className="flex items-center gap-1.5 overflow-x-auto pb-2 scrollbar-thin">
-                          {(SUBCATEGORY_TABS[currentService.id === 'dry-cleaning' ? 'dryCleaning' : 'ironing'] || []).map(cat => {
+                          {(SUBCATEGORY_TABS[currentService.id === 'dry-cleaning' ? 'dryCleaning' : (currentService.id === 'starch-and-iron' || currentService.id === 'srv-starch-and-iron' ? 'starch-and-iron' : 'ironing')] || []).map(cat => {
                             const isActive = activeSubCategory === cat.id;
                             return (
                               <button
@@ -1165,12 +1384,14 @@ export const BookPickupPage = () => {
                         <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                       </div>
 
-                      {/* Visual Item Cards Grid */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[460px] overflow-y-auto pr-1">
+                      {/* Visual Item Cards Grid - Free flowing on mobile, no scroll traps */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
                         {(() => {
                           const catalog = currentService.id === 'dry-cleaning' 
                             ? pricingConfig.dryCleaning 
-                            : pricingConfig.ironing;
+                            : ((currentService.id === 'starch-and-iron' || currentService.id === 'srv-starch-and-iron')
+                                ? (pricingConfig['starch-and-iron'] || pricingConfig.starchAndIron || {})
+                                : pricingConfig.ironing);
 
                           let list = [];
                           if (clothingFor === 'men') {
@@ -1204,13 +1425,13 @@ export const BookPickupPage = () => {
                             return (
                               <div
                                 key={item.id}
-                                className={`p-3.5 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
+                                className={`p-3 sm:p-3.5 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
                                   count > 0
                                     ? 'border-brand-500 bg-brand-50/40 shadow-xs ring-1 ring-brand-400/30'
                                     : 'border-slate-200 hover:border-slate-300 bg-white'
                                 }`}
                               >
-                                <div className="flex items-center gap-3 min-w-0">
+                                <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
                                   <span className="text-2xl shrink-0 p-1.5 bg-slate-50 rounded-xl border border-slate-100">
                                     {item.emoji || '👔'}
                                   </span>
@@ -1224,22 +1445,24 @@ export const BookPickupPage = () => {
                                   </div>
                                 </div>
 
-                                <div className="flex items-center gap-2 shrink-0 bg-white rounded-xl p-1 border border-slate-200 shadow-xs">
+                                <div className="flex items-center gap-1.5 shrink-0 bg-white rounded-xl p-1 border border-slate-200 shadow-xs">
                                   <button
                                     type="button"
                                     onClick={() => updateItemizedQty(item.id, -1)}
                                     disabled={count === 0}
-                                    className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 disabled:opacity-30"
+                                    className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 disabled:opacity-30 transition-colors"
+                                    aria-label="Decrease quantity"
                                   >
                                     <Minus className="w-3.5 h-3.5" />
                                   </button>
-                                  <span className="w-6 text-center font-bold text-xs text-slate-900">
+                                  <span className="w-7 text-center font-bold text-xs sm:text-sm text-slate-900">
                                     {count}
                                   </span>
                                   <button
                                     type="button"
                                     onClick={() => updateItemizedQty(item.id, 1)}
-                                    className="w-7 h-7 flex items-center justify-center rounded-lg bg-brand-50 text-brand-700 hover:bg-brand-100"
+                                    className="w-8 h-8 flex items-center justify-center rounded-lg bg-brand-50 text-brand-700 hover:bg-brand-100 transition-colors"
+                                    aria-label="Increase quantity"
                                   >
                                     <Plus className="w-3.5 h-3.5" />
                                   </button>
@@ -1318,162 +1541,301 @@ export const BookPickupPage = () => {
                         </div>
                       </div>
 
-                      {/* Select the clothes you're sending */}
-                      <div className="space-y-4">
+                      {/* Fast Choice: Quick Bag Load Selector or Doorstep Weighing */}
+                      <div className="space-y-3">
                         <div className="flex items-center justify-between">
-                          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                            Select the clothes you're sending
-                          </h4>
-                          <span className="text-[11px] text-slate-400">
-                            Tap + / - to calculate weight
+                          <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                            Select Laundry Load
+                          </label>
+                          <span className="text-[11px] font-bold text-brand-600 bg-brand-50 px-2.5 py-0.5 rounded-full">
+                            1-Tap Booking
                           </span>
                         </div>
 
-                        {/* Men's clothes section */}
-                        {(clothingFor === 'men' || clothingFor === 'mixed') && (
-                          <div className="space-y-2">
-                            {clothingFor === 'mixed' && (
-                              <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5 pt-1">
-                                <span>👨 Men's Clothes ({formatCurrency(currentService.baseRates.men)} / Kg)</span>
-                              </div>
-                            )}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                              {(pricingConfig.weightStandards.men || []).map(std => {
-                                const count = perKgCounts.men?.[std.id] || 0;
-                                return (
-                                  <div
-                                    key={std.id}
-                                    className={`p-3 rounded-2xl border transition-all flex items-center justify-between gap-2.5 ${
-                                      count > 0 ? 'border-brand-500 bg-brand-50/40 shadow-xs' : 'border-slate-200 bg-white'
-                                    }`}
-                                  >
-                                    <div className="flex items-center gap-2.5 min-w-0">
-                                      <span className="text-2xl shrink-0">{std.emoji}</span>
-                                      <div className="min-w-0">
-                                        <div className="text-xs font-bold text-slate-900 truncate">{std.name}</div>
-                                        <div className="text-[10px] text-slate-500 font-medium">
-                                          {std.weightGrams ? `Approx. ${std.weightGrams} g` : 'Weight confirmed at pickup'}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                          {[
+                            {
+                              id: 3,
+                              label: 'Small Bag',
+                              weight: '3 Kg',
+                              approx: '~8-10 daily clothes',
+                              emoji: '🧺',
+                              popular: false,
+                            },
+                            {
+                              id: 5,
+                              label: 'Regular Bag',
+                              weight: '5 Kg',
+                              approx: '~15-18 daily clothes',
+                              emoji: '🧺',
+                              popular: true,
+                            },
+                            {
+                              id: 8,
+                              label: 'Family Bag',
+                              weight: '8 Kg',
+                              approx: '~25-30 clothes',
+                              emoji: '🧺',
+                              popular: false,
+                            },
+                            {
+                              id: 'doorstep',
+                              label: 'Weigh at Door',
+                              weight: 'Scale at Pickup',
+                              approx: 'Rider brings digital scale',
+                              emoji: '⚖️',
+                              popular: false,
+                            },
+                          ].map((bag) => {
+                            const isSelected = bag.id === 'doorstep' 
+                              ? perKgMode === 'doorstep' 
+                              : (perKgMode === 'preset' && bagSize === bag.id);
+
+                            const rate = clothingFor === 'women' 
+                              ? currentService.baseRates.women 
+                              : currentService.baseRates.men;
+
+                            const estCost = typeof bag.id === 'number' ? Math.round(bag.id * rate) : null;
+
+                            return (
+                              <button
+                                key={String(bag.id)}
+                                type="button"
+                                onClick={() => {
+                                  if (bag.id === 'doorstep') {
+                                    setPerKgMode('doorstep');
+                                  } else {
+                                    setPerKgMode('preset');
+                                    setBagSize(bag.id);
+                                  }
+                                }}
+                                className={`p-3 rounded-2xl border-2 text-left relative transition-all flex flex-col justify-between ${
+                                  isSelected
+                                    ? 'border-brand-600 bg-brand-50/50 shadow-xs ring-1 ring-brand-500/20'
+                                    : 'border-slate-200 bg-white hover:border-slate-300'
+                                }`}
+                              >
+                                {bag.popular && (
+                                  <span className="absolute -top-2.5 right-2 px-1.5 py-0.5 bg-brand-600 text-white text-[9px] font-extrabold uppercase rounded-full tracking-wider shadow-xs">
+                                    Popular
+                                  </span>
+                                )}
+                                <div>
+                                  <div className="flex items-center gap-1.5 mb-1">
+                                    <span className="text-xl">{bag.emoji}</span>
+                                    <span className="text-xs font-bold text-slate-900 truncate">{bag.label}</span>
+                                  </div>
+                                  <div className="text-sm font-black text-brand-700 font-display">
+                                    {bag.weight}
+                                  </div>
+                                  <div className="text-[10px] text-slate-500 leading-tight mt-0.5 line-clamp-2">
+                                    {bag.approx}
+                                  </div>
+                                </div>
+
+                                <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] font-bold text-slate-700">
+                                  <span>{estCost ? formatCurrency(estCost) : 'Pay after weighing'}</span>
+                                  {isSelected && <Check className="w-3.5 h-3.5 text-brand-600 stroke-[3]" />}
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Collapsible toggle for piece-by-piece custom counting */}
+                      <div className="pt-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowManualPerKg(!showManualPerKg);
+                            if (!showManualPerKg) {
+                              setPerKgMode('manual');
+                            }
+                          }}
+                          className="w-full py-2.5 px-4 rounded-xl border border-dashed border-slate-300 hover:border-brand-400 bg-slate-50/70 hover:bg-brand-50/30 text-xs font-bold text-slate-700 flex items-center justify-between transition-colors"
+                        >
+                          <span className="flex items-center gap-2">
+                            <span>📋</span>
+                            <span>{showManualPerKg ? 'Hide piece-by-piece counter' : 'Need exact piece breakdown? (Click to count garments)'}</span>
+                          </span>
+                          <span className="text-brand-600 text-[11px]">{showManualPerKg ? '▲ Collapse' : '▼ Expand'}</span>
+                        </button>
+
+                        {/* Optional Detailed Piece-by-Piece Counting Grid */}
+                        {showManualPerKg && (
+                          <div className="space-y-4 pt-4 animate-fade-in">
+                            <div className="flex items-center justify-between">
+                              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                                Customize Clothes Count
+                              </h4>
+                              <span className="text-[11px] text-slate-400">
+                                Tap + / - to calculate weight
+                              </span>
+                            </div>
+
+                            {/* Men's clothes section */}
+                            {(clothingFor === 'men' || clothingFor === 'mixed') && (
+                              <div className="space-y-2">
+                                {clothingFor === 'mixed' && (
+                                  <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5 pt-1">
+                                    <span>👨 Men's Clothes ({formatCurrency(currentService.baseRates.men)} / Kg)</span>
+                                  </div>
+                                )}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                  {(pricingConfig.weightStandards.men || []).map(std => {
+                                    const count = perKgCounts.men?.[std.id] || 0;
+                                    return (
+                                      <div
+                                        key={std.id}
+                                        className={`p-3 rounded-2xl border transition-all flex items-center justify-between gap-2.5 ${
+                                          count > 0 ? 'border-brand-500 bg-brand-50/40 shadow-xs' : 'border-slate-200 bg-white'
+                                        }`}
+                                      >
+                                        <div className="flex items-center gap-2.5 min-w-0">
+                                          <span className="text-2xl shrink-0">{std.emoji}</span>
+                                          <div className="min-w-0">
+                                            <div className="text-xs font-bold text-slate-900 truncate">{std.name}</div>
+                                            <div className="text-[10px] text-slate-500 font-medium">
+                                              {std.weightGrams ? `Approx. ${std.weightGrams} g` : 'Weight confirmed at pickup'}
+                                            </div>
+                                          </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-1.5 shrink-0 bg-slate-50 rounded-xl p-1 border border-slate-200">
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setPerKgMode('manual');
+                                              updatePerKgCount('men', std.id, -1);
+                                            }}
+                                            disabled={count === 0}
+                                            className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-600 hover:bg-slate-200 disabled:opacity-30"
+                                            aria-label="Decrease item"
+                                          >
+                                            <Minus className="w-3.5 h-3.5" />
+                                          </button>
+                                          <span className="w-6 text-center font-bold text-xs">
+                                            {count}
+                                          </span>
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setPerKgMode('manual');
+                                              updatePerKgCount('men', std.id, 1);
+                                            }}
+                                            className="w-7 h-7 flex items-center justify-center rounded-lg bg-brand-100 text-brand-800 hover:bg-brand-200"
+                                            aria-label="Increase item"
+                                          >
+                                            <Plus className="w-3.5 h-3.5" />
+                                          </button>
                                         </div>
                                       </div>
-                                    </div>
-
-                                    <div className="flex items-center gap-1.5 shrink-0 bg-slate-50 rounded-xl p-1 border border-slate-200">
-                                      <button
-                                        type="button"
-                                        onClick={() => updatePerKgCount('men', std.id, -1)}
-                                        disabled={count === 0}
-                                        className="w-6 h-6 flex items-center justify-center rounded text-slate-600 hover:bg-slate-200 disabled:opacity-30"
-                                      >
-                                        <Minus className="w-3 h-3" />
-                                      </button>
-                                      <span className="w-5 text-center font-bold text-xs">
-                                        {count}
-                                      </span>
-                                      <button
-                                        type="button"
-                                        onClick={() => updatePerKgCount('men', std.id, 1)}
-                                        className="w-6 h-6 flex items-center justify-center rounded bg-brand-100 text-brand-800 hover:bg-brand-200"
-                                      >
-                                        <Plus className="w-3 h-3" />
-                                      </button>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Women's clothes section */}
-                        {(clothingFor === 'women' || clothingFor === 'mixed') && (
-                          <div className="space-y-2 pt-2">
-                            {clothingFor === 'mixed' && (
-                              <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5 pt-1">
-                                <span>👩 Women's Clothes ({formatCurrency(currentService.baseRates.women)} / Kg)</span>
+                                    );
+                                  })}
+                                </div>
                               </div>
                             )}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                              {(pricingConfig.weightStandards.women || []).map(std => {
-                                const count = perKgCounts.women?.[std.id] || 0;
-                                return (
-                                  <div
-                                    key={std.id}
-                                    className={`p-3 rounded-2xl border transition-all flex items-center justify-between gap-2.5 ${
-                                      count > 0 ? 'border-brand-500 bg-brand-50/40 shadow-xs' : 'border-slate-200 bg-white'
-                                    }`}
-                                  >
-                                    <div className="flex items-center gap-2.5 min-w-0">
-                                      <span className="text-2xl shrink-0">{std.emoji}</span>
-                                      <div className="min-w-0">
-                                        <div className="text-xs font-bold text-slate-900 truncate">{std.name}</div>
-                                        <div className="text-[10px] text-slate-500 font-medium">
-                                          {std.weightGrams ? `Approx. ${std.weightGrams} g` : 'Weight confirmed at pickup'}
+
+                            {/* Women's clothes section */}
+                            {(clothingFor === 'women' || clothingFor === 'mixed') && (
+                              <div className="space-y-2 pt-2">
+                                {clothingFor === 'mixed' && (
+                                  <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5 pt-1">
+                                    <span>👩 Women's Clothes ({formatCurrency(currentService.baseRates.women)} / Kg)</span>
+                                  </div>
+                                )}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                  {(pricingConfig.weightStandards.women || []).map(std => {
+                                    const count = perKgCounts.women?.[std.id] || 0;
+                                    return (
+                                      <div
+                                        key={std.id}
+                                        className={`p-3 rounded-2xl border transition-all flex items-center justify-between gap-2.5 ${
+                                          count > 0 ? 'border-brand-500 bg-brand-50/40 shadow-xs' : 'border-slate-200 bg-white'
+                                        }`}
+                                      >
+                                        <div className="flex items-center gap-2.5 min-w-0">
+                                          <span className="text-2xl shrink-0">{std.emoji}</span>
+                                          <div className="min-w-0">
+                                            <div className="text-xs font-bold text-slate-900 truncate">{std.name}</div>
+                                            <div className="text-[10px] text-slate-500 font-medium">
+                                              {std.weightGrams ? `Approx. ${std.weightGrams} g` : 'Weight confirmed at pickup'}
+                                            </div>
+                                          </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-1.5 shrink-0 bg-slate-50 rounded-xl p-1 border border-slate-200">
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setPerKgMode('manual');
+                                              updatePerKgCount('women', std.id, -1);
+                                            }}
+                                            disabled={count === 0}
+                                            className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-600 hover:bg-slate-200 disabled:opacity-30"
+                                            aria-label="Decrease item"
+                                          >
+                                            <Minus className="w-3.5 h-3.5" />
+                                          </button>
+                                          <span className="w-6 text-center font-bold text-xs">
+                                            {count}
+                                          </span>
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setPerKgMode('manual');
+                                              updatePerKgCount('women', std.id, 1);
+                                            }}
+                                            className="w-7 h-7 flex items-center justify-center rounded-lg bg-brand-100 text-brand-800 hover:bg-brand-200"
+                                            aria-label="Increase item"
+                                          >
+                                            <Plus className="w-3.5 h-3.5" />
+                                          </button>
                                         </div>
                                       </div>
-                                    </div>
-
-                                    <div className="flex items-center gap-1.5 shrink-0 bg-slate-50 rounded-xl p-1 border border-slate-200">
-                                      <button
-                                        type="button"
-                                        onClick={() => updatePerKgCount('women', std.id, -1)}
-                                        disabled={count === 0}
-                                        className="w-6 h-6 flex items-center justify-center rounded text-slate-600 hover:bg-slate-200 disabled:opacity-30"
-                                      >
-                                        <Minus className="w-3 h-3" />
-                                      </button>
-                                      <span className="w-5 text-center font-bold text-xs">
-                                        {count}
-                                      </span>
-                                      <button
-                                        type="button"
-                                        onClick={() => updatePerKgCount('women', std.id, 1)}
-                                        className="w-6 h-6 flex items-center justify-center rounded bg-brand-100 text-brand-800 hover:bg-brand-200"
-                                      >
-                                        <Plus className="w-3 h-3" />
-                                      </button>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         )}
+                      </div>
 
-                        {/* Live Calculation Display Box */}
-                        <div className="p-4 rounded-2xl bg-brand-50/60 border border-brand-200 space-y-2 text-xs">
-                          <div className="flex justify-between items-center text-slate-700">
-                            <span>Approximate weight:</span>
-                            <span className="font-bold text-slate-900 text-sm">
-                              {orderBreakdown.estimatedWeightKg} Kg ({orderBreakdown.estimatedWeightGrams.toLocaleString()} g)
-                            </span>
-                          </div>
-                          <div className="flex justify-between items-center text-slate-700">
-                            <span>Rate:</span>
-                            <span className="font-semibold text-slate-900">
-                              {clothingFor === 'mixed' 
-                                ? `Men ${formatCurrency(currentService.baseRates.men)}/Kg • Women ${formatCurrency(currentService.baseRates.women)}/Kg`
-                                : `${formatCurrency(currentService.baseRates[clothingFor])} / Kg`}
-                            </span>
-                          </div>
-                          <div className="pt-2 border-t border-brand-200/80 flex justify-between items-baseline font-bold text-slate-900">
-                            <span className="font-display">Estimated subtotal:</span>
-                            <span className="text-lg font-black text-brand-700 font-display">
-                              {formatCurrency(orderBreakdown.itemsSubtotal)}
-                            </span>
-                          </div>
+                      {/* Live Calculation Display Box */}
+                      <div className="p-4 rounded-2xl bg-brand-50/60 border border-brand-200 space-y-2 text-xs">
+                        <div className="flex justify-between items-center text-slate-700">
+                          <span>Approximate weight:</span>
+                          <span className="font-bold text-slate-900 text-sm">
+                            {perKgMode === 'doorstep' ? 'To be weighed at door ⚖️' : `${orderBreakdown.estimatedWeightKg} Kg`}
+                          </span>
                         </div>
-
-                        {/* Prominent Approximate Estimate Warning Banner */}
-                        <div className="p-4 rounded-2xl bg-amber-50/90 border border-amber-300 text-amber-950 text-xs space-y-1">
-                          <div className="flex items-center gap-1.5 font-bold text-amber-900 text-xs">
-                            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-                            <span>⚠️ APPROXIMATE ESTIMATE</span>
-                          </div>
-                          <p className="leading-relaxed text-[11px] text-amber-900">
-                            Weight and price are estimated from the clothes you selected. Our pickup executive will check the actual items and weight during pickup and update the final details to you on WhatsApp.
-                          </p>
+                        <div className="flex justify-between items-center text-slate-700">
+                          <span>Rate:</span>
+                          <span className="font-semibold text-slate-900">
+                            {clothingFor === 'mixed' 
+                              ? `Men ${formatCurrency(currentService.baseRates.men)}/Kg • Women ${formatCurrency(currentService.baseRates.women)}/Kg`
+                              : `${formatCurrency(currentService.baseRates[clothingFor])} / Kg`}
+                          </span>
                         </div>
+                        <div className="pt-2 border-t border-brand-200/80 flex justify-between items-baseline font-bold text-slate-900">
+                          <span className="font-display">Estimated subtotal:</span>
+                          <span className="text-lg font-black text-brand-700 font-display">
+                            {perKgMode === 'doorstep' ? 'Tally at doorstep' : formatCurrency(orderBreakdown.itemsSubtotal)}
+                          </span>
+                        </div>
+                      </div>
 
+                      {/* Prominent Approximate Estimate Warning Banner */}
+                      <div className="p-3.5 sm:p-4 rounded-2xl bg-amber-50/90 border border-amber-300 text-amber-950 text-xs space-y-1">
+                        <div className="flex items-center gap-1.5 font-bold text-amber-900 text-xs">
+                          <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                          <span>⚠️ APPROXIMATE ESTIMATE</span>
+                        </div>
+                        <p className="leading-relaxed text-[11px] text-amber-900">
+                          Weight and price are estimated. Our pickup rider will verify the actual items with a calibrated digital hanging scale at pickup and update your final bill on WhatsApp.
+                        </p>
                       </div>
 
                     </div>
@@ -1822,6 +2184,190 @@ export const BookPickupPage = () => {
                     </div>
                   )}
 
+                  {/* -------------------------------------------------------- */}
+                  {/* DYNAMIC CUSTOM SERVICE FLOW                              */}
+                  {/* -------------------------------------------------------- */}
+                  {currentService.isCustom && (
+                    <div className="space-y-6">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                        <div>
+                          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                            Select {currentService.name} Treatments & Sub-Services
+                          </h3>
+                          <p className="text-[11px] text-slate-500 mt-0.5">
+                            {currentService.description || currentService.tagline || 'Choose items and treatments for bespoke garment care'}
+                          </p>
+                        </div>
+                        <span className="text-[11px] font-bold text-brand-700 bg-brand-50 px-2.5 py-1 rounded-full w-fit">
+                          {currentService.pricingType === 'PER_KG' ? 'Per Kilogram' : 'Per Item'}
+                        </span>
+                      </div>
+
+                      {Array.isArray(currentService.subServices) && currentService.subServices.length > 0 ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                          {currentService.subServices.map((sub) => {
+                            const count = itemizedQuantities[sub.id] || 0;
+                            const subPrice = Number(sub.price || currentService.startingPrice || 0);
+                            return (
+                              <div
+                                key={sub.id}
+                                className={`p-4 rounded-2xl border transition-all flex flex-col justify-between gap-3 ${
+                                  count > 0 
+                                    ? 'border-brand-500 bg-brand-50/40 shadow-xs ring-1 ring-brand-400/30' 
+                                    : 'border-slate-200 bg-white hover:border-slate-300'
+                                }`}
+                              >
+                                <div>
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                      <span className="text-2xl shrink-0 p-2 rounded-xl bg-slate-100/80">
+                                        {sub.emoji || currentService.emoji || '✨'}
+                                      </span>
+                                      <div className="min-w-0">
+                                        <h4 className="text-xs sm:text-sm font-bold text-slate-900 truncate">
+                                          {sub.name}
+                                        </h4>
+                                        <span className="text-[10px] font-bold text-brand-700 bg-brand-50 px-2 py-0.5 rounded-full inline-block mt-0.5">
+                                          {currentService.pricingType === 'PER_KG' ? 'Weight Care' : 'Specialized Care'}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <div className="text-right shrink-0">
+                                      <span className="font-mono font-black text-sm text-slate-900 block">
+                                        {formatCurrency(subPrice)}
+                                      </span>
+                                      <span className="text-[9px] text-slate-400 font-medium">
+                                        {currentService.pricingType === 'PER_KG' ? '/ kg' : '/ piece'}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  {sub.description && (
+                                    <p className="text-[11px] text-slate-500 mt-2 leading-relaxed">
+                                      {sub.description}
+                                    </p>
+                                  )}
+                                </div>
+
+                                <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                                  <span className="text-xs font-semibold text-slate-600">
+                                    {count > 0 ? `${count} ${currentService.pricingType === 'PER_KG' ? 'kg' : 'pc'}${count > 1 ? 's' : ''} (${formatCurrency(count * subPrice)})` : 'Select quantity:'}
+                                  </span>
+                                  <div className="flex items-center gap-1.5 shrink-0 bg-slate-50 rounded-xl p-1 border border-slate-200">
+                                    <button
+                                      type="button"
+                                      onClick={() => updateItemizedQty(sub.id, -1)}
+                                      disabled={count === 0}
+                                      className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-600 hover:bg-slate-200 disabled:opacity-30 transition-colors"
+                                    >
+                                      <Minus className="w-3.5 h-3.5" />
+                                    </button>
+                                    <span className="w-6 text-center font-bold text-xs">
+                                      {count}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => updateItemizedQty(sub.id, 1)}
+                                      className="w-7 h-7 flex items-center justify-center rounded-lg bg-brand-600 text-white hover:bg-brand-700 shadow-xs transition-colors"
+                                    >
+                                      <Plus className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200 space-y-5">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <span className="text-3xl p-2 bg-white rounded-xl border border-slate-200 shadow-2xs">
+                                {currentService.emoji || '✨'}
+                              </span>
+                              <div>
+                                <h3 className="text-sm font-bold text-slate-900">
+                                  {currentService.name} Quantity
+                                </h3>
+                                <span className="text-xs font-bold text-brand-700 bg-brand-50 px-2.5 py-0.5 rounded-full inline-block mt-1">
+                                  {formatCurrency(currentService.startingPrice || 99)} {currentService.pricingType === 'PER_KG' ? '/ kg' : '/ piece'}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 bg-white rounded-xl p-1.5 border border-slate-200 shadow-xs">
+                              {(() => {
+                                const baseId = `${currentService.id}-base`;
+                                const count = itemizedQuantities[baseId] || 1;
+                                return (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => updateItemizedQty(baseId, -1)}
+                                      disabled={count <= 1}
+                                      className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 disabled:opacity-30"
+                                    >
+                                      <Minus className="w-4 h-4" />
+                                    </button>
+                                    <span className="w-8 text-center font-bold text-sm">
+                                      {count}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => updateItemizedQty(baseId, 1)}
+                                      className="w-8 h-8 flex items-center justify-center rounded-lg bg-brand-50 text-brand-700 hover:bg-brand-100"
+                                    >
+                                      <Plus className="w-4 h-4" />
+                                    </button>
+                                  </>
+                                );
+                              })()}
+                            </div>
+                          </div>
+
+                          <div className="p-4 rounded-xl bg-white border border-slate-200 text-xs text-slate-600 leading-relaxed">
+                            {currentService.description || 'Our master fabric specialists will inspect and process your garments with tailored care. Total price will be confirmed at doorstep or pickup.'}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Step 2 Bottom Proceed Bar */}
+                  <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 bg-white">
+                    <div className="text-xs text-slate-500 w-full sm:w-auto text-center sm:text-left">
+                      {orderBreakdown.totalItemCount > 0 ? (
+                        <span>Selected: <strong className="text-slate-800">{orderBreakdown.totalItemCount} {currentService.pricingType === 'PER_KG' ? 'items / load' : 'items'}</strong> • Est: <strong className="text-brand-700">{formatCurrency(orderBreakdown.itemsSubtotal)}</strong></span>
+                      ) : (
+                        <span>✨ Garments will be counted & weighed at your doorstep</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2.5 w-full sm:w-auto">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="md"
+                        onClick={() => {
+                          setCurrentStep(1);
+                          window.scrollTo({ top: 100, behavior: 'smooth' });
+                        }}
+                        className="flex-1 sm:flex-initial"
+                      >
+                        ← Services
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="primary"
+                        size="lg"
+                        icon={ArrowRight}
+                        iconPosition="right"
+                        onClick={handleNextStep}
+                        className="flex-1 sm:flex-initial justify-center shadow-md shadow-brand-500/20"
+                      >
+                        Proceed to Address ➔
+                      </Button>
+                    </div>
+                  </div>
+
                 </div>
               )}
 
@@ -1964,38 +2510,156 @@ export const BookPickupPage = () => {
                     )}
                   </div>
 
-                  {/* Schedule Date & Slot */}
-                  <div className="pt-4 border-t border-slate-100 space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
-                          Preferred Pickup Date *
+                  {/* Schedule Date & Slot (Pickup & Delivery) */}
+                  <div className="pt-4 border-t border-slate-100 space-y-6">
+                    
+                    {/* 1. PICKUP SCHEDULE */}
+                    <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+                          <Calendar className="w-3.5 h-3.5 text-brand-600" />
+                          <span>1. Preferred Pickup Schedule *</span>
                         </label>
-                        <input
-                          type="date"
-                          min={new Date().toISOString().split('T')[0]}
-                          value={schedule.pickupDate}
-                          onChange={(e) => setSchedule({ ...schedule, pickupDate: e.target.value })}
-                          className="w-full p-3 rounded-xl bg-white border border-slate-200 text-xs font-bold focus:ring-2 focus:ring-brand-500"
-                        />
+                        <span className="text-[11px] font-bold text-brand-700 bg-brand-50 px-2.5 py-0.5 rounded-full border border-brand-200">
+                          {schedule.pickupPeriod || 'MORNING'} Slot
+                        </span>
                       </div>
 
-                      <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
-                          Time Slot *
+                      <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
+                        <div className="sm:col-span-5">
+                          <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                            Pickup Date
+                          </label>
+                          <input
+                            type="date"
+                            min={new Date().toISOString().split('T')[0]}
+                            value={schedule.pickupDate}
+                            onChange={(e) => {
+                              const newPDate = e.target.value;
+                              const defDel = calculateDefaultDelivery(newPDate, isExpress, schedule.deliveryPeriod || 'MORNING');
+                              setSchedule(prev => ({
+                                ...prev,
+                                pickupDate: newPDate,
+                                deliveryDate: defDel.deliveryDate,
+                                deliverySlot: defDel.deliverySlot,
+                              }));
+                            }}
+                            className="w-full p-2.5 rounded-xl bg-white border border-slate-200 text-xs font-bold focus:ring-2 focus:ring-brand-500"
+                          />
+                        </div>
+
+                        <div className="sm:col-span-7">
+                          <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                            Pickup Time Window
+                          </label>
+                          <div className="grid grid-cols-3 gap-1.5">
+                            {TIME_SLOTS.map((slot) => {
+                              const isSelected = (schedule.pickupPeriod === slot.period) || (schedule.pickupSlot?.includes(slot.time));
+                              return (
+                                <button
+                                  key={slot.id}
+                                  type="button"
+                                  onClick={() => setSchedule(prev => ({
+                                    ...prev,
+                                    pickupPeriod: slot.period,
+                                    pickupSlot: slot.label,
+                                  }))}
+                                  className={`px-2 py-1.5 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 ${
+                                    isSelected
+                                      ? 'bg-brand-600 text-white border-brand-600 font-bold shadow-xs'
+                                      : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700 font-medium'
+                                  }`}
+                                >
+                                  <span className="text-xs">{slot.icon} {slot.period === 'MORNING' ? 'Morning' : slot.period === 'AFTERNOON' ? 'Afternoon' : 'Evening'}</span>
+                                  <span className={`text-[10px] ${isSelected ? 'text-brand-100' : 'text-slate-500'}`}>
+                                    {slot.shortLabel.split(' ')[1] || slot.time}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 2. EXPECTED DELIVERY SCHEDULE */}
+                    <div className="p-4 rounded-2xl bg-orange-50/50 border border-orange-200 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+                          <Truck className="w-3.5 h-3.5 text-orange-600" />
+                          <span>2. Expected Drop-off / Delivery Schedule *</span>
                         </label>
-                        <select
-                          value={schedule.pickupSlot}
-                          onChange={(e) => setSchedule({ ...schedule, pickupSlot: e.target.value })}
-                          className="w-full p-3 rounded-xl bg-white border border-slate-200 text-xs font-bold focus:ring-2 focus:ring-brand-500"
-                        >
-                          <option value="08:00 AM - 10:00 AM">08:00 AM - 10:00 AM (Morning)</option>
-                          <option value="10:00 AM - 12:00 PM">10:00 AM - 12:00 PM (Mid Morning)</option>
-                          <option value="12:00 PM - 02:00 PM">12:00 PM - 02:00 PM (Afternoon)</option>
-                          <option value="02:00 PM - 04:00 PM">02:00 PM - 04:00 PM (Evening Early)</option>
-                          <option value="04:00 PM - 06:00 PM">04:00 PM - 06:00 PM (Evening)</option>
-                          <option value="06:00 PM - 08:00 PM">06:00 PM - 08:00 PM (Night)</option>
-                        </select>
+                        <div className="flex gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsExpress(true);
+                              const calc = calculateDefaultDelivery(schedule.pickupDate, true, schedule.deliveryPeriod);
+                              setSchedule(prev => ({ ...prev, deliveryDate: calc.deliveryDate, deliverySlot: calc.deliverySlot }));
+                            }}
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full border cursor-pointer ${isExpress ? 'bg-orange-500 text-white border-orange-500' : 'bg-white text-orange-700 border-orange-200 hover:bg-orange-100'}`}
+                          >
+                            ⚡ Express (24h)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsExpress(false);
+                              const calc = calculateDefaultDelivery(schedule.pickupDate, false, schedule.deliveryPeriod);
+                              setSchedule(prev => ({ ...prev, deliveryDate: calc.deliveryDate, deliverySlot: calc.deliverySlot }));
+                            }}
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full border cursor-pointer ${!isExpress ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'}`}
+                          >
+                            🛡️ Standard (48h)
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
+                        <div className="sm:col-span-5">
+                          <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                            Delivery Date
+                          </label>
+                          <input
+                            type="date"
+                            min={schedule.pickupDate || new Date().toISOString().split('T')[0]}
+                            value={schedule.deliveryDate}
+                            onChange={(e) => setSchedule({ ...schedule, deliveryDate: e.target.value })}
+                            className="w-full p-2.5 rounded-xl bg-white border border-slate-200 text-xs font-bold focus:ring-2 focus:ring-brand-500"
+                          />
+                        </div>
+
+                        <div className="sm:col-span-7">
+                          <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                            Delivery Time Window
+                          </label>
+                          <div className="grid grid-cols-3 gap-1.5">
+                            {TIME_SLOTS.map((slot) => {
+                              const isSelected = (schedule.deliveryPeriod === slot.period) || (schedule.deliverySlot?.includes(slot.time));
+                              return (
+                                <button
+                                  key={slot.id}
+                                  type="button"
+                                  onClick={() => setSchedule(prev => ({
+                                    ...prev,
+                                    deliveryPeriod: slot.period,
+                                    deliverySlot: slot.label,
+                                  }))}
+                                  className={`px-2 py-1.5 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 ${
+                                    isSelected
+                                      ? 'bg-orange-500 text-white border-orange-500 font-bold shadow-xs'
+                                      : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700 font-medium'
+                                  }`}
+                                >
+                                  <span className="text-xs">{slot.icon} {slot.period === 'MORNING' ? 'Morning' : slot.period === 'AFTERNOON' ? 'Afternoon' : 'Evening'}</span>
+                                  <span className={`text-[10px] ${isSelected ? 'text-orange-100' : 'text-slate-500'}`}>
+                                    {slot.shortLabel.split(' ')[1] || slot.time}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
                       </div>
                     </div>
 
@@ -2108,9 +2772,15 @@ export const BookPickupPage = () => {
                         <strong className="text-slate-800">Phone:</strong>
                         <span className="text-slate-700 ml-2 font-semibold">{customer.phone}</span>
                       </div>
-                      <div>
-                        <strong className="text-slate-800">Date & Slot:</strong>
-                        <span className="text-slate-700 ml-2 font-semibold">{schedule.pickupDate} ({schedule.pickupSlot})</span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-slate-200">
+                        <div className="p-2.5 rounded-xl bg-slate-100/80">
+                          <span className="text-[10px] font-bold text-slate-500 uppercase block">📅 Doorstep Pickup</span>
+                          <span className="text-slate-900 font-bold text-xs">{schedule.pickupDate} ({schedule.pickupSlot})</span>
+                        </div>
+                        <div className="p-2.5 rounded-xl bg-orange-50 border border-orange-200/70">
+                          <span className="text-[10px] font-bold text-orange-700 uppercase block">🚚 Scheduled Delivery</span>
+                          <span className="text-orange-950 font-bold text-xs">{schedule.deliveryDate} ({schedule.deliverySlot})</span>
+                        </div>
                       </div>
                     </div>
 

@@ -31,15 +31,36 @@ export const AdminPricingPage = () => {
   const { success, error } = useToast();
 
   const [pricingConfig, setPricingConfig] = useState(INITIAL_PRICING_CONFIG);
-  const [activeTab, setActiveTab] = useState('dryCleaning'); // 'dryCleaning' | 'ironing' | 'perKg' | 'weights' | 'special'
+  const [activeTab, setActiveTab] = useState('dryCleaning'); // 'dryCleaning' | 'ironing' | 'starch-and-iron' | 'perKg' | 'weights' | 'special' | 'customServices'
   const [activeCategory, setActiveCategory] = useState('men'); // 'men' | 'women' | 'common'
   const [searchFilter, setSearchFilter] = useState('');
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   // New item draft state
   const [newItem, setNewItem] = useState({ name: '', price: '', emoji: '👔', category: 'Men', subCategory: 'tops' });
   const [showAddModal, setShowAddModal] = useState(false);
+
+  // Custom Service & Sub-Services draft state
+  const [showAddCustomServiceModal, setShowAddCustomServiceModal] = useState(false);
+  const [newCustomService, setNewCustomService] = useState({
+    name: '',
+    emoji: '✨',
+    startingPrice: '',
+    pricingType: 'per_item',
+    category: 'Custom Care',
+    description: '',
+  });
+
+  const [showAddSubServiceModal, setShowAddSubServiceModal] = useState(false);
+  const [targetCustomServiceId, setTargetCustomServiceId] = useState(null);
+  const [newSubService, setNewSubService] = useState({
+    name: '',
+    price: '',
+    emoji: '✨',
+    desc: '',
+  });
 
   const loadPricing = async () => {
     setLoading(true);
@@ -57,10 +78,18 @@ export const AdminPricingPage = () => {
     loadPricing();
   }, []);
 
+  // Helper for resolving starch-and-iron tab key
+  const resolveTabKey = (tab) => {
+    if (tab === 'starch-and-iron' || tab === 'starchAndIron') return 'starch-and-iron';
+    return tab;
+  };
+
   // Update Itemized Price
   const handleItemPriceChange = (serviceType, category, itemId, newPrice) => {
+    setHasUnsavedChanges(true);
+    const tabKey = resolveTabKey(serviceType);
     setPricingConfig(prev => {
-      const currentList = prev[serviceType]?.[category] || [];
+      const currentList = prev[tabKey]?.[category] || prev.starchAndIron?.[category] || [];
       const updatedList = currentList.map(item => {
         if (item.id === itemId) {
           return { ...item, price: Math.max(0, Number(newPrice) || 0) };
@@ -69,8 +98,8 @@ export const AdminPricingPage = () => {
       });
       return {
         ...prev,
-        [serviceType]: {
-          ...prev[serviceType],
+        [tabKey]: {
+          ...(prev[tabKey] || {}),
           [category]: updatedList
         }
       };
@@ -79,13 +108,15 @@ export const AdminPricingPage = () => {
 
   // Delete Itemized Price item
   const handleDeleteItem = (serviceType, category, itemId) => {
+    setHasUnsavedChanges(true);
+    const tabKey = resolveTabKey(serviceType);
     setPricingConfig(prev => {
-      const currentList = prev[serviceType]?.[category] || [];
+      const currentList = prev[tabKey]?.[category] || prev.starchAndIron?.[category] || [];
       const updatedList = currentList.filter(item => item.id !== itemId);
       return {
         ...prev,
-        [serviceType]: {
-          ...prev[serviceType],
+        [tabKey]: {
+          ...(prev[tabKey] || {}),
           [category]: updatedList
         }
       };
@@ -95,37 +126,43 @@ export const AdminPricingPage = () => {
   // Add Itemized Price item
   const handleAddNewItem = (e) => {
     e.preventDefault();
-    if (!newItem.name.trim() || !newItem.price) {
+    if (!newItem.name.trim() || newItem.price === '' || newItem.price === undefined) {
       error('Name & Price Required', 'Please enter both item name and valid price.');
       return;
     }
 
-    const prefix = activeTab === 'dryCleaning' ? 'dc' : activeTab === 'ironing' ? 'ir' : 'si';
+    const tabKey = resolveTabKey(activeTab);
+    const prefix = tabKey === 'dryCleaning' ? 'dc' : tabKey === 'ironing' ? 'ir' : 'si';
     const itemObj = {
       id: `${prefix}-${activeCategory[0]}-${Date.now()}`,
       name: newItem.name.trim(),
-      price: Number(newItem.price),
+      price: Math.max(0, Number(newItem.price) || 0),
       emoji: newItem.emoji || '👔',
       category: activeCategory === 'men' ? 'Men' : activeCategory === 'women' ? 'Women' : 'Common',
       subCategory: newItem.subCategory || 'tops',
       gender: activeCategory,
     };
 
-    setPricingConfig(prev => ({
-      ...prev,
-      [activeTab]: {
-        ...prev[activeTab],
-        [activeCategory]: [...(prev[activeTab]?.[activeCategory] || []), itemObj]
-      }
-    }));
+    setPricingConfig(prev => {
+      const targetCategoryList = prev[tabKey]?.[activeCategory] || (tabKey === 'starch-and-iron' ? (prev.starchAndIron?.[activeCategory] || []) : []);
+      return {
+        ...prev,
+        [tabKey]: {
+          ...(prev[tabKey] || {}),
+          [activeCategory]: [...targetCategoryList, itemObj]
+        }
+      };
+    });
 
+    setHasUnsavedChanges(true);
     setNewItem({ name: '', price: '', emoji: '👔', category: 'Men', subCategory: 'tops' });
     setShowAddModal(false);
-    success('Item Added', `${itemObj.name} added to ${activeTab} (${activeCategory}). Remember to Save Changes.`);
+    success('Item Added', `"${itemObj.name}" added to ${tabKey} (${activeCategory}). Remember to click "Save Changes to Firebase" to broadcast live.`);
   };
 
   // Update KG Base Rates
   const handleKgRateChange = (serviceId, gender, newRate) => {
+    setHasUnsavedChanges(true);
     setPricingConfig(prev => {
       const services = (prev.services || []).map(s => {
         if (s.id === serviceId) {
@@ -145,6 +182,7 @@ export const AdminPricingPage = () => {
 
   // Update Standard Weight
   const handleWeightChange = (gender, itemId, newGrams) => {
+    setHasUnsavedChanges(true);
     setPricingConfig(prev => {
       const list = (prev.weightStandards?.[gender] || []).map(w => {
         if (w.id === itemId) {
@@ -169,6 +207,7 @@ export const AdminPricingPage = () => {
 
   // Update Special Services
   const handleSpecialRateChange = (serviceKey, field, val) => {
+    setHasUnsavedChanges(true);
     setPricingConfig(prev => ({
       ...prev,
       [serviceKey]: {
@@ -178,11 +217,135 @@ export const AdminPricingPage = () => {
     }));
   };
 
+  // Add Custom Service
+  const handleAddCustomService = (e) => {
+    e.preventDefault();
+    if (!newCustomService.name.trim()) {
+      error('Name Required', 'Please enter a name for the custom service.');
+      return;
+    }
+    const cleanId = `srv-${Date.now()}`;
+    const startPrice = Math.max(0, Number(newCustomService.startingPrice) || 0);
+    const serviceObj = {
+      id: cleanId,
+      name: newCustomService.name.trim(),
+      title: newCustomService.name.trim(),
+      emoji: newCustomService.emoji || '✨',
+      icon: newCustomService.emoji || '✨',
+      startingPrice: startPrice,
+      startingPriceDisplay: startPrice > 0 ? `Starts at ₹${startPrice}` : 'Price on request',
+      defaultPrice: startPrice,
+      pricingType: newCustomService.pricingType || 'per_item',
+      category: newCustomService.category || 'Custom Care',
+      shortDescription: newCustomService.description || '',
+      subServices: [],
+      active: true,
+      status: 'published',
+    };
+
+    setPricingConfig(prev => ({
+      ...prev,
+      customServices: [...(Array.isArray(prev.customServices) ? prev.customServices : []), serviceObj]
+    }));
+
+    setHasUnsavedChanges(true);
+    setNewCustomService({ name: '', emoji: '✨', startingPrice: '', pricingType: 'per_item', category: 'Custom Care', description: '' });
+    setShowAddCustomServiceModal(false);
+    success('Custom Service Created', `"${serviceObj.name}" added to Master Rate Card. Click "Save Changes to Firebase" to broadcast live.`);
+  };
+
+  // Delete Custom Service
+  const handleDeleteCustomService = (serviceId) => {
+    if (!window.confirm('Are you sure you want to remove this custom service?')) return;
+    setHasUnsavedChanges(true);
+    setPricingConfig(prev => ({
+      ...prev,
+      customServices: (Array.isArray(prev.customServices) ? prev.customServices : []).filter(s => s.id !== serviceId)
+    }));
+    success('Service Removed', 'Click "Save Changes to Firebase" to commit.');
+  };
+
+  // Add Sub-Service to Custom Service
+  const handleAddSubService = (e) => {
+    e.preventDefault();
+    if (!newSubService.name.trim() || !targetCustomServiceId) {
+      error('Name Required', 'Please enter a sub-service name.');
+      return;
+    }
+    const subObj = {
+      id: `sub-${Date.now()}`,
+      name: newSubService.name.trim(),
+      price: Math.max(0, Number(newSubService.price) || 0),
+      emoji: newSubService.emoji || '✨',
+      desc: newSubService.desc || '',
+    };
+
+    setPricingConfig(prev => {
+      const updated = (Array.isArray(prev.customServices) ? prev.customServices : []).map(s => {
+        if (s.id === targetCustomServiceId) {
+          const subs = Array.isArray(s.subServices) ? s.subServices : [];
+          return {
+            ...s,
+            subServices: [...subs, subObj]
+          };
+        }
+        return s;
+      });
+      return { ...prev, customServices: updated };
+    });
+
+    setHasUnsavedChanges(true);
+    setNewSubService({ name: '', price: '', emoji: '✨', desc: '' });
+    setShowAddSubServiceModal(false);
+    setTargetCustomServiceId(null);
+    success('Sub-Service Added', `"${subObj.name}" added successfully.`);
+  };
+
+  // Delete Sub-Service from Custom Service
+  const handleDeleteSubService = (serviceId, subId) => {
+    setHasUnsavedChanges(true);
+    setPricingConfig(prev => {
+      const updated = (Array.isArray(prev.customServices) ? prev.customServices : []).map(s => {
+        if (s.id === serviceId) {
+          return {
+            ...s,
+            subServices: (Array.isArray(s.subServices) ? s.subServices : []).filter(sub => sub.id !== subId)
+          };
+        }
+        return s;
+      });
+      return { ...prev, customServices: updated };
+    });
+  };
+
+  // Update Sub-Service Price
+  const handleUpdateSubServicePrice = (serviceId, subId, newPrice) => {
+    setHasUnsavedChanges(true);
+    setPricingConfig(prev => {
+      const updated = (Array.isArray(prev.customServices) ? prev.customServices : []).map(s => {
+        if (s.id === serviceId) {
+          return {
+            ...s,
+            subServices: (Array.isArray(s.subServices) ? s.subServices : []).map(sub => {
+              if (sub.id === subId) {
+                return { ...sub, price: Math.max(0, Number(newPrice) || 0) };
+              }
+              return sub;
+            })
+          };
+        }
+        return s;
+      });
+      return { ...prev, customServices: updated };
+    });
+  };
+
   // Save All Changes to Firestore
   const handleSaveToFirestore = async () => {
     setIsSaving(true);
     try {
       await pricingService.updatePricingConfig(pricingConfig);
+      setHasUnsavedChanges(false);
       
       // Log audit
       try {
@@ -194,7 +357,7 @@ export const AdminPricingPage = () => {
         });
       } catch (e) {}
 
-      success('Pricing Saved & Broadcasted!', 'All prices, rates, and weights synchronized in real-time across website and all POS billing counters.');
+      success('Pricing Saved & Broadcasted!', 'All prices, rates, and newly added items synchronized in real-time across website (/pricing, /book-pickup) and all POS counters.');
     } catch (err) {
       error('Save Failed', err.message || 'Unable to update pricing in Firestore.');
     } finally {
@@ -206,6 +369,7 @@ export const AdminPricingPage = () => {
   const handleResetDefaults = () => {
     if (window.confirm('Reset all prices to official initial defaults? This will overwrite changes.')) {
       setPricingConfig(INITIAL_PRICING_CONFIG);
+      setHasUnsavedChanges(true);
       success('Reset Applied', 'Click "Save Changes to Firebase" to commit.');
     }
   };
@@ -218,7 +382,9 @@ export const AdminPricingPage = () => {
     );
   }
 
-  const currentItemList = (pricingConfig[activeTab]?.[activeCategory] || []).filter(i =>
+  const tabKey = resolveTabKey(activeTab);
+  const currentCategoryList = pricingConfig[tabKey]?.[activeCategory] || (tabKey === 'starch-and-iron' ? (pricingConfig.starchAndIron?.[activeCategory] || []) : []);
+  const currentItemList = currentCategoryList.filter(i =>
     !searchFilter || i.name.toLowerCase().includes(searchFilter.toLowerCase())
   );
 
@@ -271,6 +437,7 @@ export const AdminPricingPage = () => {
           { id: 'perKg', label: '🫧 Per-KG Rates', desc: 'Wash & Iron / Fold' },
           { id: 'weights', label: '⚖️ Garment Weights', desc: 'Weight standards (g)' },
           { id: 'special', label: '🪟 Special Services', desc: 'Curtains, Shoes, Carpets, Sarees' },
+          { id: 'customServices', label: '⚡ Custom Services', desc: 'Custom services & sub-items' },
         ].map(tab => (
           <button
             key={tab.id}
@@ -759,6 +926,333 @@ export const AdminPricingPage = () => {
         </div>
       )}
 
+      {/* ============================================================ */}
+      {/* 5. CUSTOM SERVICES & SUB-SERVICES CATALOG                    */}
+      {/* ============================================================ */}
+      {activeTab === 'customServices' && (
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-slate-200">
+            <div>
+              <h3 className="text-base font-bold text-slate-900 font-display flex items-center gap-2">
+                <span>⚡</span> Custom Services & Dynamic Sub-Services
+              </h3>
+              <p className="text-xs text-slate-500 mt-1">
+                Add bespoke services (e.g. VIP Couture, Bag Spa, Embroidery Shield, etc.) with custom pricing and sub-services. Synchronizes in real-time to POS and Website.
+              </p>
+            </div>
+
+            <Button
+              variant="primary"
+              size="sm"
+              icon={Plus}
+              onClick={() => setShowAddCustomServiceModal(true)}
+            >
+              Create Custom Service
+            </Button>
+          </div>
+
+          {/* List of Custom Services */}
+          {(pricingConfig.customServices || []).length === 0 ? (
+            <Card className="p-12 text-center bg-white border border-slate-200 rounded-3xl space-y-4">
+              <div className="w-16 h-16 bg-brand-50 text-brand-600 rounded-3xl flex items-center justify-center mx-auto text-3xl shadow-xs">
+                ✨
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-sm font-bold text-slate-900">No Custom Services Yet</h4>
+                <p className="text-xs text-slate-500 max-w-md mx-auto">
+                  Click the button below to create your first custom service (like "Gopi Care", "Shoe & Sneaker Spa", or "Leather Treatment") and attach its sub-services.
+                </p>
+              </div>
+              <Button
+                variant="primary"
+                size="sm"
+                icon={Plus}
+                onClick={() => setShowAddCustomServiceModal(true)}
+              >
+                Add First Custom Service
+              </Button>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 gap-6">
+              {(pricingConfig.customServices || []).map(service => (
+                <Card key={service.id} className="p-6 bg-white border border-slate-200 rounded-3xl space-y-5">
+                  
+                  {/* Custom Service Header */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+                    <div className="flex items-center gap-3">
+                      <span className="text-3xl p-2.5 bg-slate-50 rounded-2xl border border-slate-200 shrink-0">
+                        {service.emoji || '✨'}
+                      </span>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-base font-bold text-slate-900 font-display">
+                            {service.name || service.title}
+                          </h4>
+                          <Badge variant="brand">
+                            {service.pricingType === 'per_kg' ? 'Per-KG' : 'Itemized'}
+                          </Badge>
+                          <Badge variant="neutral">
+                            {service.category || 'Custom Care'}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          Base rate: <span className="font-bold text-slate-900">₹{service.startingPrice || service.defaultPrice || 0}</span> {service.pricingType === 'per_kg' ? '/ Kg' : ''} • {service.subServices?.length || 0} Sub-Services
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        icon={Plus}
+                        onClick={() => {
+                          setTargetCustomServiceId(service.id);
+                          setShowAddSubServiceModal(true);
+                        }}
+                      >
+                        Add Sub-Service
+                      </Button>
+
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        icon={Trash2}
+                        onClick={() => handleDeleteCustomService(service.id)}
+                        className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Sub-Services Table/Grid */}
+                  <div className="space-y-3">
+                    <div className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      Sub-Services & Tariffs
+                    </div>
+
+                    {(service.subServices || []).length === 0 ? (
+                      <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-center text-xs text-slate-500">
+                        No sub-services attached yet. This service will be billed at its base rate (₹{service.startingPrice || 0}). Click "Add Sub-Service" to add specialized options.
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {service.subServices.map(sub => (
+                          <div
+                            key={sub.id}
+                            className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/90 flex items-center justify-between gap-3"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <span className="text-xl shrink-0">{sub.emoji || service.emoji || '✨'}</span>
+                              <div className="min-w-0">
+                                <div className="text-xs font-bold text-slate-900 truncate">{sub.name}</div>
+                                {sub.desc && <div className="text-[10px] text-slate-400 truncate">{sub.desc}</div>}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0">
+                              <div className="flex items-center bg-white rounded-xl border border-slate-200 px-2.5 py-1">
+                                <span className="text-xs font-bold text-slate-400 mr-1">₹</span>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={sub.price}
+                                  onChange={(e) => handleUpdateSubServicePrice(service.id, sub.id, e.target.value)}
+                                  className="w-16 text-xs font-bold text-slate-900 text-right focus:outline-none"
+                                />
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteSubService(service.id, sub.id)}
+                                className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                </Card>
+              ))}
+            </div>
+          )}
+
+        </div>
+      )}
+
+      {/* Add Custom Service Modal */}
+      {showAddCustomServiceModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl">
+            <h3 className="text-base font-bold text-slate-900 font-display flex items-center gap-2">
+              <span>⚡</span> Create New Custom Service
+            </h3>
+
+            <form onSubmit={handleAddCustomService} className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Service Name *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. VIP Bridal Spa, Gopi Special Care"
+                  value={newCustomService.name}
+                  onChange={(e) => setNewCustomService({ ...newCustomService, name: e.target.value })}
+                  className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Starting Price (₹) *</label>
+                  <input
+                    type="number"
+                    required
+                    min="0"
+                    placeholder="150"
+                    value={newCustomService.startingPrice}
+                    onChange={(e) => setNewCustomService({ ...newCustomService, startingPrice: e.target.value })}
+                    className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Emoji Icon</label>
+                  <input
+                    type="text"
+                    placeholder="✨"
+                    value={newCustomService.emoji}
+                    onChange={(e) => setNewCustomService({ ...newCustomService, emoji: e.target.value })}
+                    className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-center font-bold"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Pricing Model</label>
+                  <select
+                    value={newCustomService.pricingType}
+                    onChange={(e) => setNewCustomService({ ...newCustomService, pricingType: e.target.value })}
+                    className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium"
+                  >
+                    <option value="per_item">Itemized (Per Piece)</option>
+                    <option value="per_kg">Weighed (Per Kg)</option>
+                    <option value="custom">Fixed Treatment</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Category</label>
+                  <input
+                    type="text"
+                    placeholder="Special Care"
+                    value={newCustomService.category}
+                    onChange={(e) => setNewCustomService({ ...newCustomService, category: e.target.value })}
+                    className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Short Description</label>
+                <textarea
+                  rows="2"
+                  placeholder="Specialized treatment for delicate items..."
+                  value={newCustomService.description}
+                  onChange={(e) => setNewCustomService({ ...newCustomService, description: e.target.value })}
+                  className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium"
+                />
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2">
+                <Button variant="ghost" size="sm" onClick={() => setShowAddCustomServiceModal(false)}>
+                  Cancel
+                </Button>
+                <Button variant="primary" size="sm" type="submit">
+                  Create Service
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Sub-Service Modal */}
+      {showAddSubServiceModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl">
+            <h3 className="text-base font-bold text-slate-900 font-display flex items-center gap-2">
+              <span>➕</span> Add Sub-Service / Option
+            </h3>
+
+            <form onSubmit={handleAddSubService} className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Sub-Service Name *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Deep Conditioning, Gold Polish"
+                  value={newSubService.name}
+                  onChange={(e) => setNewSubService({ ...newSubService, name: e.target.value })}
+                  className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Price (₹) *</label>
+                  <input
+                    type="number"
+                    required
+                    min="0"
+                    placeholder="120"
+                    value={newSubService.price}
+                    onChange={(e) => setNewSubService({ ...newSubService, price: e.target.value })}
+                    className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Emoji Icon</label>
+                  <input
+                    type="text"
+                    placeholder="✨"
+                    value={newSubService.emoji}
+                    onChange={(e) => setNewSubService({ ...newSubService, emoji: e.target.value })}
+                    className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-center font-bold"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Description (Optional)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Hand scrub with organic conditioner"
+                  value={newSubService.desc}
+                  onChange={(e) => setNewSubService({ ...newSubService, desc: e.target.value })}
+                  className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium"
+                />
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2">
+                <Button variant="ghost" size="sm" onClick={() => setShowAddSubServiceModal(false)}>
+                  Cancel
+                </Button>
+                <Button variant="primary" size="sm" type="submit">
+                  Add Sub-Service
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Add New Item Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
@@ -815,6 +1309,32 @@ export const AdminPricingPage = () => {
                 </Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Sticky Save Bar on Unsaved Changes */}
+      {hasUnsavedChanges && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 max-w-xl w-full px-4 animate-bounce-subtle">
+          <div className="bg-slate-900/95 backdrop-blur-md text-white p-4 rounded-3xl shadow-2xl border-2 border-brand-500/80 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl animate-pulse">⚠️</span>
+              <div>
+                <div className="text-xs font-black tracking-wide text-amber-400">Unsaved Price Changes</div>
+                <div className="text-[11px] text-slate-300">Click Save to broadcast live across Website & all POS Counters</div>
+              </div>
+            </div>
+
+            <Button
+              variant="primary"
+              size="sm"
+              icon={Save}
+              isLoading={isSaving}
+              onClick={handleSaveToFirestore}
+              className="bg-brand-500 hover:bg-brand-600 text-white font-black shadow-lg shadow-brand-500/30"
+            >
+              Save Now
+            </Button>
           </div>
         </div>
       )}

@@ -214,8 +214,8 @@ export const AdminBalanceDuePage = () => {
       return;
     }
 
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://techwashlaundry.com';
-    const trackingLink = `${origin}/track-order?id=${order.orderNumber || order.id}`;
+    const origin = 'https://techwashlaundry.com';
+    const trackingLink = `${origin}/track-order?id=${encodeURIComponent(order.orderNumber || order.id)}`;
 
     const message = `✨ *Tech Wash Laundry Services — Payment Balance Reminder*
 

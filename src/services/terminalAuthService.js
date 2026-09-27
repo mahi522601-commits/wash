@@ -8,6 +8,7 @@ import { collection, doc, getDoc, getDocs, setDoc } from 'firebase/firestore';
 
 const TERMINALS_STORAGE_KEY = 'techwash_billing_terminals';
 const TERMINAL_SESSION_PREFIX = 'techwash_terminal_session_';
+const ACTIVE_DEVICE_TERMINAL_KEY = 'techwash_active_device_terminal';
 
 // 3 Default In-Store Billing Terminals mapped to store locations from /admin/locations
 export const DEFAULT_BILLING_TERMINALS = [
@@ -86,41 +87,42 @@ export const terminalAuthService = {
   async getTerminals() {
     let list = [];
 
-    // 1. Try Firebase Firestore
+    // 0. Cache-first: immediately check local storage so UI is never blocked
+    try {
+      const stored = localStorage.getItem(TERMINALS_STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          list = DEFAULT_BILLING_TERMINALS.map(def => {
+            const found = parsed.find(p => p.id === def.id);
+            return found ? { ...def, ...found } : def;
+          });
+        }
+      }
+    } catch {}
+
+    if (list.length === 0) {
+      list = [...DEFAULT_BILLING_TERMINALS];
+    }
+
+    // 1. Try Firebase Firestore with strict 1200ms timeout so offline mode never hangs for 10s
     if (isFirebaseConfigured && db) {
       try {
-        const snap = await getDocs(collection(db, 'billing_terminals'));
-        if (!snap.empty) {
+        const fetchPromise = getDocs(collection(db, 'billing_terminals'));
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Firestore timeout')), 1200)
+        );
+        const snap = await Promise.race([fetchPromise, timeoutPromise]);
+        if (snap && !snap.empty) {
           const remoteList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-          // Ensure all default terminals exist or merge with remote
           list = DEFAULT_BILLING_TERMINALS.map(def => {
             const found = remoteList.find(r => r.id === def.id || r.numericId === def.numericId);
             return found ? { ...def, ...found } : def;
           });
         }
       } catch (e) {
-        console.warn('Firestore billing_terminals read error:', e);
+        // Graceful offline fallback — list already has cached/default terminals
       }
-    }
-
-    // 2. Try localStorage fallback if Firestore empty
-    if (list.length === 0) {
-      try {
-        const stored = localStorage.getItem(TERMINALS_STORAGE_KEY);
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            list = DEFAULT_BILLING_TERMINALS.map(def => {
-              const found = parsed.find(p => p.id === def.id);
-              return found ? { ...def, ...found } : def;
-            });
-          }
-        }
-      } catch (e) {}
-    }
-
-    if (list.length === 0) {
-      list = [...DEFAULT_BILLING_TERMINALS];
     }
 
     // 3. Dynamically Merge with Store Locations from settingsService
@@ -283,6 +285,15 @@ export const terminalAuthService = {
       throw new Error(`Incorrect Password. (Default PIN: ${terminal.password || 'techwash' + terminal.numericId})`);
     }
 
+    // STRICT PHYSICAL LOCATION ISOLATION:
+    // A single PC / browser cannot be logged in to two different store counters simultaneously.
+    // When a terminal is logged into, automatically unbind and log out any previous counter
+    // so this computer is dedicated exclusively to the current store branch.
+    const currentBoundId = this.getActiveDeviceTerminalId();
+    if (currentBoundId && currentBoundId !== normId) {
+      this.logoutTerminal(currentBoundId);
+    }
+
     const session = {
       terminalId: terminal.id,
       terminalName: terminal.name,
@@ -297,6 +308,14 @@ export const terminalAuthService = {
     };
 
     try {
+      // 1. Clear any sessions for OTHER terminals on this PC to prevent any cross-store mixing
+      DEFAULT_BILLING_TERMINALS.forEach(t => {
+        if (t.id !== normId) {
+          localStorage.removeItem(`${TERMINAL_SESSION_PREFIX}${t.id}`);
+        }
+      });
+      // 2. Set this counter as the exclusively active terminal for this device
+      localStorage.setItem(ACTIVE_DEVICE_TERMINAL_KEY, normId);
       localStorage.setItem(`${TERMINAL_SESSION_PREFIX}${normId}`, JSON.stringify(session));
     } catch (e) {}
 
@@ -309,10 +328,88 @@ export const terminalAuthService = {
   },
 
   /**
-   * 1-Click Instant Unlock without requiring password entry
+   * Get terminal definition synchronously from cache (0ms)
+   */
+  getTerminalSync(id) {
+    const normId = this.normalizeTerminalId(id);
+    try {
+      const stored = localStorage.getItem(TERMINALS_STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          const found = parsed.find(t => t.id === normId);
+          if (found) return found;
+        }
+      }
+    } catch {}
+    return DEFAULT_BILLING_TERMINALS.find(t => t.id === normId) || DEFAULT_BILLING_TERMINALS[0];
+  },
+
+  /**
+   * 1-Click Instant Unlock without requiring network or Firestore (0ms execution)
+   */
+  quickUnlockSync(id) {
+    const normId = this.normalizeTerminalId(id);
+    const terminal = this.getTerminalSync(normId);
+
+    // Release any previous counter on this PC
+    const currentBoundId = this.getActiveDeviceTerminalId();
+    if (currentBoundId && currentBoundId !== normId) {
+      this.logoutTerminal(currentBoundId);
+    }
+
+    const session = {
+      terminalId: terminal.id,
+      terminalName: terminal.name,
+      terminalCode: terminal.code,
+      locationId: terminal.locationId,
+      locationName: terminal.locationName,
+      address: terminal.address,
+      phone: terminal.phone,
+      assignedOperator: terminal.assignedOperator,
+      loggedInAt: new Date().toISOString(),
+      active: true
+    };
+
+    try {
+      DEFAULT_BILLING_TERMINALS.forEach(t => {
+        if (t.id !== normId) {
+          localStorage.removeItem(`${TERMINAL_SESSION_PREFIX}${t.id}`);
+        }
+      });
+      localStorage.setItem(ACTIVE_DEVICE_TERMINAL_KEY, normId);
+      localStorage.setItem(`${TERMINAL_SESSION_PREFIX}${normId}`, JSON.stringify(session));
+    } catch {}
+
+    return session;
+  },
+
+  /**
+   * 1-Click Instant Unlock
    */
   async quickUnlockTerminal(id) {
-    return this.loginTerminal(id, 'quick_unlock');
+    const syncSession = this.quickUnlockSync(id);
+    return syncSession;
+  },
+
+  /**
+   * Get the terminal ID currently active / bound to this specific PC / browser
+   */
+  getActiveDeviceTerminalId() {
+    try {
+      const boundId = localStorage.getItem(ACTIVE_DEVICE_TERMINAL_KEY);
+      if (!boundId) return null;
+      const norm = this.normalizeTerminalId(boundId);
+      // Validate that this terminal actually has an active session
+      const sessStr = localStorage.getItem(`${TERMINAL_SESSION_PREFIX}${norm}`);
+      if (!sessStr) {
+        localStorage.removeItem(ACTIVE_DEVICE_TERMINAL_KEY);
+        return null;
+      }
+      return norm;
+    } catch {
+      return null;
+    }
   },
 
   /**
@@ -330,12 +427,16 @@ export const terminalAuthService = {
   },
 
   /**
-   * Sign out of billing terminal
+   * Sign out of billing terminal & release this PC from the store counter
    */
   logoutTerminal(id) {
     const normId = this.normalizeTerminalId(id);
     try {
       localStorage.removeItem(`${TERMINAL_SESSION_PREFIX}${normId}`);
+      const activeBound = localStorage.getItem(ACTIVE_DEVICE_TERMINAL_KEY);
+      if (activeBound === normId || !id) {
+        localStorage.removeItem(ACTIVE_DEVICE_TERMINAL_KEY);
+      }
     } catch (e) {}
   },
 

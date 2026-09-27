@@ -85,7 +85,12 @@ export const ReceiptModal = ({
                 <h3 className="text-base font-bold font-display text-navy-800">
                   Official Tax Invoice & Print Receipt
                 </h3>
-                <Badge variant="emerald" size="sm">A4 Verified</Badge>
+                <Badge variant={receiptData.customerStage === 'DELIVERED' ? 'emerald' : receiptData.customerStage === 'OUT_FOR_DELIVERY' ? 'amber' : 'brand'} size="sm">
+                  {receiptData.customerStage ? receiptData.customerStage.replace(/_/g, ' ') : 'CONFIRMED'}
+                </Badge>
+                <Badge variant={(receiptData.balanceAmount || 0) > 0 ? 'red' : 'emerald'} size="sm">
+                  {(receiptData.balanceAmount || 0) > 0 ? `₹${receiptData.balanceAmount} DUE` : 'PAID'}
+                </Badge>
               </div>
               <p className="text-xs text-slate-500 font-mono">
                 {receiptData.invoiceNumber} • Order {receiptData.orderNumber}

@@ -151,7 +151,7 @@ class DailyReportSchedulerService {
     const c2 = metrics.category2 || reportData.category2 || {};
     const orders = reportData.orders || [];
 
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://techwashlaundry.com';
+    const origin = 'https://techwashlaundry.com';
     const documentPdfUrl = `${origin}/admin/reports?preset=today&print=auto`;
     const thirtyDaysUrl = `${origin}/admin/reports?preset=30days`;
 

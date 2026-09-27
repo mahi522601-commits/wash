@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { offerService } from '../../services/offerService';
 import { useToast } from '../../context/ToastContext';
 import { 
@@ -18,6 +18,7 @@ import {
 
 export const FloatingOffersWidget = () => {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const { success } = useToast();
   const popupRef = useRef(null);
 
@@ -26,6 +27,11 @@ export const FloatingOffersWidget = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [copiedCode, setCopiedCode] = useState(null);
   const [showFirstVisitTeaser, setShowFirstVisitTeaser] = useState(false);
+
+  // Suppress on booking page and internal admin/worker consoles
+  if (pathname === '/book-pickup' || pathname.startsWith('/admin') || pathname.startsWith('/worker')) {
+    return null;
+  }
 
   // Load active offers from CMS
   useEffect(() => {
@@ -99,7 +105,7 @@ export const FloatingOffersWidget = () => {
       ───────────────────────────────────────────────────────── */}
       <div
         id="techwash-offers-floating-trigger"
-        className="fixed right-3 sm:right-6 top-[40%] sm:top-[42%] z-40 flex items-center pointer-events-auto no-print"
+        className="hidden md:flex fixed right-6 top-[40%] z-40 items-center pointer-events-auto no-print"
       >
         
         {/* First-Visit Expanding Teaser Pill */}

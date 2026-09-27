@@ -1,9 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { analyticsService } from '../../services/analyticsService';
-import { orderService } from '../../services/orderService';
+import { 
+  orderService, 
+  TIME_PERIODS, 
+  TIME_SLOTS, 
+  normalizePeriod 
+} from '../../services/orderService';
 import { auditService } from '../../services/auditService';
 import { customerService } from '../../services/customerService';
+import { whatsappNotificationService } from '../../services/whatsappNotificationService';
+import { WhatsAppLogo } from '../../components/ui/BrandIcons';
 import { formatCurrency, formatDate, formatDateTime } from '../../utils/formatters';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -35,7 +42,13 @@ import {
   ChevronRight,
   Filter,
   ShieldCheck,
-  RefreshCw
+  RefreshCw,
+  MessageSquare,
+  Send,
+  Navigation,
+  Check,
+  Phone,
+  UserCheck
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -57,26 +70,92 @@ export const AdminDashboardPage = () => {
   const [recentOrders, setRecentOrders] = useState([]);
   const [recentLogs, setRecentLogs] = useState([]);
   const [topCustomers, setTopCustomers] = useState([]);
+  const [allOrders, setAllOrders] = useState([]);
+  const [activeTaskTab, setActiveTaskTab] = useState('today_deliveries'); // 'today_deliveries' | 'today_pickups' | 'tomorrow_deliveries' | 'overdue_deliveries'
+  const [deliverySlotFilter, setDeliverySlotFilter] = useState('ALL'); // 'ALL' | 'MORNING' | 'AFTERNOON' | 'EVENING'
   const [loading, setLoading] = useState(true);
   const [timeFilter, setTimeFilter] = useState('7D'); // 'Today' | '7D' | '30D' | '90D' | 'Year'
 
   const loadDashboardData = async () => {
     try {
-      const [bi, orders, logs, customers] = await Promise.all([
+      const [bi, orders, logs, customers, fullOrderList] = await Promise.all([
         analyticsService.getBusinessIntelligence(),
         orderService.getOrders({ limitCount: 15 }),
         auditService.getLogs(6),
         customerService.getCustomers(),
+        orderService.getOrders({ limitCount: 1000 }),
       ]);
       setBiData(bi);
       setRecentOrders(orders);
       setRecentLogs(logs);
       setTopCustomers(customers.slice(0, 5));
+      setAllOrders(fullOrderList || []);
     } catch (e) {
       console.warn("Failed to load dashboard data:", e);
     } finally {
       setLoading(false);
     }
+  };
+
+  const taskMetrics = useMemo(() => {
+    return orderService.getTaskScheduleMetrics(allOrders);
+  }, [allOrders]);
+
+  const activeTaskList = useMemo(() => {
+    if (activeTaskTab === 'today_pickups') {
+      return taskMetrics.todayPickups || [];
+    }
+    if (activeTaskTab === 'tomorrow_deliveries') {
+      const list = taskMetrics.tomorrowDeliveries || [];
+      if (deliverySlotFilter === 'ALL') return list;
+      return list.filter(o => normalizePeriod(o.deliveryPeriod || o.schedule?.deliveryPeriod || o.deliverySlot || o.schedule?.deliverySlot) === deliverySlotFilter);
+    }
+    if (activeTaskTab === 'overdue_deliveries') {
+      return taskMetrics.overdueDeliveries || [];
+    }
+    // Default: 'today_deliveries'
+    const list = taskMetrics.todayDeliveries || [];
+    if (deliverySlotFilter === 'ALL') return list;
+    return list.filter(o => normalizePeriod(o.deliveryPeriod || o.schedule?.deliveryPeriod || o.deliverySlot || o.schedule?.deliverySlot) === deliverySlotFilter);
+  }, [activeTaskTab, deliverySlotFilter, taskMetrics]);
+
+  const handleSendReminder = (order, dayLabel = 'Tomorrow') => {
+    const phone = order.phone || order.customer?.phone || order.whatsapp || order.customer?.whatsapp;
+    if (!phone) {
+      error('No Phone', 'No customer phone number found for this order.');
+      return;
+    }
+    const msg = whatsappNotificationService.buildDeliveryReminderWhatsAppMessage(order, dayLabel);
+    whatsappNotificationService.openWhatsAppManual(phone, msg);
+    success('WhatsApp Opened', `Delivery reminder loaded for ${order.customerName || 'Customer'}`);
+  };
+
+  const handleSendAllTomorrowReminders = () => {
+    const tomorrowOrders = taskMetrics.tomorrowDeliveries || [];
+    if (tomorrowOrders.length === 0) {
+      error('No Deliveries', 'No deliveries scheduled for tomorrow.');
+      return;
+    }
+    tomorrowOrders.forEach(ord => {
+      const phone = ord.phone || ord.customer?.phone || ord.whatsapp || ord.customer?.whatsapp;
+      if (phone) {
+        const msg = whatsappNotificationService.buildDeliveryReminderWhatsAppMessage(ord, 'Tomorrow');
+        whatsappNotificationService.dispatchAutomatedMessage({
+          phone,
+          message: msg,
+          order: ord,
+          type: 'DELIVERY_REMINDER'
+        });
+      }
+    });
+
+    const first = tomorrowOrders[0];
+    const firstPhone = first?.phone || first?.customer?.phone;
+    if (firstPhone) {
+      const msg = whatsappNotificationService.buildDeliveryReminderWhatsAppMessage(first, 'Tomorrow');
+      whatsappNotificationService.openWhatsAppManual(firstPhone, msg);
+    }
+    success('Reminders Sent', `Automated delivery reminders dispatched for ${tomorrowOrders.length} order(s) scheduled for tomorrow.`);
   };
 
   useEffect(() => {
@@ -160,6 +239,17 @@ export const AdminDashboardPage = () => {
                 className="bg-[#F97316] text-white hover:bg-[#EA580C] shadow-lg"
               >
                 + New Order
+              </Button>
+            </Link>
+
+            <Link to="/admin/attendance">
+              <Button
+                variant="outline"
+                size="md"
+                icon={UserCheck}
+                className="border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/20"
+              >
+                Staff Attendance
               </Button>
             </Link>
 
@@ -313,6 +403,295 @@ export const AdminDashboardPage = () => {
         </div>
 
       </div>
+
+      {/* ─────────────────────────────────────────────────────────
+          2.5. TODAY'S TASKS & SCHEDULE DISPATCHER (MORNING / AFTERNOON / EVENING)
+      ───────────────────────────────────────────────────────── */}
+      <section className="p-6 rounded-[28px] bg-white border border-slate-200/90 shadow-sm space-y-5">
+        
+        {/* Header & Date Indicators */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4 border-b border-slate-100">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-8 h-8 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center font-bold">
+                <Calendar className="w-4 h-4" />
+              </div>
+              <h2 className="text-xl font-black text-slate-900 font-display tracking-tight">
+                Today's Tasks & Delivery Schedule Dispatcher
+              </h2>
+            </div>
+            <p className="text-xs text-slate-500">
+              Live schedule dispatcher across Morning (8AM-12PM), Afternoon (12PM-4PM), and Evening (4PM-8PM) time windows with 1-click WhatsApp customer delivery reminders.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-slate-700 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
+              📅 Today: {taskMetrics.todayStr}
+            </span>
+            <span className="text-xs font-bold text-orange-700 bg-orange-50 px-3 py-1.5 rounded-xl border border-orange-200">
+              🚚 Tomorrow: {taskMetrics.tomorrowStr}
+            </span>
+          </div>
+        </div>
+
+        {/* Primary Task Tabs */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => { setActiveTaskTab('today_deliveries'); setDeliverySlotFilter('ALL'); }}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                activeTaskTab === 'today_deliveries'
+                  ? 'bg-orange-500 text-white shadow-sm ring-2 ring-orange-300'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              <Truck className="w-3.5 h-3.5" />
+              <span>Today's Deliveries</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${activeTaskTab === 'today_deliveries' ? 'bg-white text-orange-600 font-black' : 'bg-slate-200 text-slate-700'}`}>
+                {taskMetrics.counts.todayDeliveries}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => { setActiveTaskTab('tomorrow_deliveries'); setDeliverySlotFilter('ALL'); }}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                activeTaskTab === 'tomorrow_deliveries'
+                  ? 'bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-300'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              <Clock className="w-3.5 h-3.5" />
+              <span>Tomorrow's Deliveries (WhatsApp Reminders)</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${activeTaskTab === 'tomorrow_deliveries' ? 'bg-white text-emerald-700 font-black' : 'bg-slate-200 text-slate-700'}`}>
+                {taskMetrics.counts.tomorrowDeliveries}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => { setActiveTaskTab('today_pickups'); setDeliverySlotFilter('ALL'); }}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                activeTaskTab === 'today_pickups'
+                  ? 'bg-blue-600 text-white shadow-sm ring-2 ring-blue-300'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              <ShoppingBag className="w-3.5 h-3.5" />
+              <span>Today's Pickups</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${activeTaskTab === 'today_pickups' ? 'bg-white text-blue-600 font-black' : 'bg-slate-200 text-slate-700'}`}>
+                {taskMetrics.counts.todayPickups}
+              </span>
+            </button>
+
+            {taskMetrics.counts.overdueDeliveries > 0 && (
+              <button
+                type="button"
+                onClick={() => { setActiveTaskTab('overdue_deliveries'); setDeliverySlotFilter('ALL'); }}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                  activeTaskTab === 'overdue_deliveries'
+                    ? 'bg-rose-600 text-white shadow-sm ring-2 ring-rose-300'
+                    : 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'
+                }`}
+              >
+                <AlertCircle className="w-3.5 h-3.5" />
+                <span>Overdue Deliveries</span>
+                <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-rose-200 text-rose-900 font-black">
+                  {taskMetrics.counts.overdueDeliveries}
+                </span>
+              </button>
+            )}
+          </div>
+
+          {/* Bulk WhatsApp Sender for Tomorrow's Deliveries */}
+          {activeTaskTab === 'tomorrow_deliveries' && taskMetrics.counts.tomorrowDeliveries > 0 && (
+            <button
+              type="button"
+              onClick={handleSendAllTomorrowReminders}
+              className="px-3.5 py-2 rounded-xl bg-[#25D366] hover:bg-[#1EBE5D] text-white text-xs font-black flex items-center gap-1.5 shadow-sm transition-transform active:scale-95 cursor-pointer"
+            >
+              <WhatsAppLogo className="w-3.5 h-3.5 fill-current text-white" />
+              <span>Send All Tomorrow Reminders ({taskMetrics.counts.tomorrowDeliveries})</span>
+            </button>
+          )}
+        </div>
+
+        {/* Time-of-Day Sub-Filters (Morning / Afternoon / Evening) */}
+        {(activeTaskTab === 'today_deliveries' || activeTaskTab === 'tomorrow_deliveries') && (
+          <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider mr-1">
+              Time Window:
+            </span>
+            <button
+              type="button"
+              onClick={() => setDeliverySlotFilter('ALL')}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                deliverySlotFilter === 'ALL'
+                  ? 'bg-slate-900 text-white shadow-2xs'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              All Windows
+            </button>
+            <button
+              type="button"
+              onClick={() => setDeliverySlotFilter('MORNING')}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                deliverySlotFilter === 'MORNING'
+                  ? 'bg-amber-500 text-white shadow-2xs'
+                  : 'bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200'
+              }`}
+            >
+              <span>🌅 Morning (08:00 AM - 12:00 PM)</span>
+              <span className="px-1.5 py-0.2 rounded-md bg-white/30 text-[10px] font-black">
+                {activeTaskTab === 'today_deliveries' ? taskMetrics.counts.todayMorning : taskMetrics.counts.tomorrowMorning}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setDeliverySlotFilter('AFTERNOON')}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                deliverySlotFilter === 'AFTERNOON'
+                  ? 'bg-orange-500 text-white shadow-2xs'
+                  : 'bg-orange-50 text-orange-800 hover:bg-orange-100 border border-orange-200'
+              }`}
+            >
+              <span>☀️ Afternoon (12:00 PM - 04:00 PM)</span>
+              <span className="px-1.5 py-0.2 rounded-md bg-white/30 text-[10px] font-black">
+                {activeTaskTab === 'today_deliveries' ? taskMetrics.counts.todayAfternoon : taskMetrics.counts.tomorrowAfternoon}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setDeliverySlotFilter('EVENING')}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                deliverySlotFilter === 'EVENING'
+                  ? 'bg-indigo-600 text-white shadow-2xs'
+                  : 'bg-indigo-50 text-indigo-800 hover:bg-indigo-100 border border-indigo-200'
+              }`}
+            >
+              <span>🌙 Evening (04:00 PM - 08:00 PM)</span>
+              <span className="px-1.5 py-0.2 rounded-md bg-white/30 text-[10px] font-black">
+                {activeTaskTab === 'today_deliveries' ? taskMetrics.counts.todayEvening : taskMetrics.counts.tomorrowEvening}
+              </span>
+            </button>
+          </div>
+        )}
+
+        {/* Task Cards Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {activeTaskList.length === 0 ? (
+            <div className="col-span-full py-10 text-center rounded-2xl bg-slate-50 border border-slate-200 text-slate-400 space-y-1">
+              <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto" />
+              <div className="font-bold text-slate-700 text-xs">All caught up!</div>
+              <p className="text-[11px] text-slate-400">No active tasks in this schedule filter.</p>
+            </div>
+          ) : (
+            activeTaskList.map((order) => {
+              const periodKey = normalizePeriod(order.deliveryPeriod || order.schedule?.deliveryPeriod || order.deliverySlot || order.schedule?.deliverySlot);
+              const periodObj = TIME_PERIODS[periodKey] || TIME_PERIODS.MORNING;
+              const isPaid = (order.balanceAmount === 0) || order.paymentStatus === 'PAID';
+              const isTomorrow = activeTaskTab === 'tomorrow_deliveries';
+              const phone = order.phone || order.customer?.phone || order.whatsapp || order.customer?.whatsapp;
+              const itemsCount = (order.items || []).reduce((acc, it) => acc + (Number(it.quantity) || 1), 0);
+
+              return (
+                <div
+                  key={order.id || order.orderNumber}
+                  className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs hover:shadow-md transition-shadow flex flex-col justify-between gap-3 text-xs"
+                >
+                  <div className="space-y-2">
+                    {/* Top Row: Order ID & Period Badge */}
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono font-bold text-orange-600 text-xs">
+                        #{order.orderNumber || order.id}
+                      </span>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${periodObj.badgeClass}`}>
+                        {periodObj.icon} {periodObj.label} ({periodObj.timeWindow})
+                      </span>
+                    </div>
+
+                    {/* Customer & Service */}
+                    <div>
+                      <div className="font-bold text-slate-900 text-sm">
+                        {order.customerName || order.customer?.name || 'Valued Customer'}
+                      </div>
+                      <div className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
+                        <span>{order.serviceEmoji || '👔'}</span>
+                        <span className="font-semibold text-slate-700">{order.serviceName || order.service || 'Care Service'}</span>
+                        <span>•</span>
+                        <span>{itemsCount > 0 ? `${itemsCount} pcs` : (order.actualWeight ? `${order.actualWeight} kg` : '1 batch')}</span>
+                      </div>
+                    </div>
+
+                    {/* Address with Navigation */}
+                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-100 text-[11px] text-slate-600 flex items-start justify-between gap-2">
+                      <div className="line-clamp-2">
+                        📍 {order.customer?.address || order.address || 'Address on file'}
+                      </div>
+                      <a
+                        href={order.pickupLocation?.latitude ? `https://www.google.com/maps/dir/?api=1&destination=${order.pickupLocation.latitude},${order.pickupLocation.longitude}` : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(order.customer?.address || order.address || '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-orange-600 hover:text-orange-700 shrink-0"
+                        title="Open in Google Maps"
+                      >
+                        <Navigation className="w-3.5 h-3.5" />
+                      </a>
+                    </div>
+
+                    {/* Financial Summary */}
+                    <div className="flex items-center justify-between pt-1 text-[11px]">
+                      <span className="text-slate-500">
+                        Total: <strong>₹{order.finalPrice || order.totalAmount || 0}</strong>
+                      </span>
+                      <span className={`font-bold px-2 py-0.5 rounded-md ${isPaid ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'}`}>
+                        {isPaid ? '✅ Paid' : `Pending: ₹${order.balanceAmount !== undefined ? order.balanceAmount : order.totalAmount}`}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Action Bar */}
+                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-1.5">
+                    {/* 1-Click WhatsApp Delivery Reminder Button */}
+                    <button
+                      type="button"
+                      onClick={() => handleSendReminder(order, isTomorrow ? 'Tomorrow' : 'Today')}
+                      className="px-2.5 py-1.5 rounded-xl bg-[#25D366] hover:bg-[#1EBE5D] text-white font-bold text-[11px] flex items-center gap-1 shadow-2xs transition-transform active:scale-95 cursor-pointer"
+                      title="Send WhatsApp Delivery Reminder with exact slot and balance due"
+                    >
+                      <WhatsAppLogo className="w-3 h-3 fill-current text-white" />
+                      <span>{isTomorrow ? 'WhatsApp Reminder' : 'Delivery Alert'}</span>
+                    </button>
+
+                    <div className="flex items-center gap-1">
+                      {phone && (
+                        <a
+                          href={`tel:${phone}`}
+                          className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition"
+                          title={`Call +91 ${phone}`}
+                        >
+                          <Phone className="w-3.5 h-3.5" />
+                        </a>
+                      )}
+
+                      <Link
+                        to={`/admin/orders?id=${order.id || order.orderNumber}`}
+                        className="px-2 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] transition"
+                        title="View Full Order Details & Invoice"
+                      >
+                        Details →
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </section>
 
       {/* ─────────────────────────────────────────────────────────
           3. VISUAL ORDER PIPELINE (OPERATIONS TRACKER)

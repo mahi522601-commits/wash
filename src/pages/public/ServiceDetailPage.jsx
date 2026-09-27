@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { serviceService } from '../../services/serviceService';
+import { pricingService } from '../../services/pricingConfig';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Card } from '../../components/ui/Card';
@@ -120,16 +121,26 @@ export const ServiceDetailPage = () => {
   const [isExpress, setIsExpress] = useState(false);
 
   useEffect(() => {
+    const fetchServiceData = () => {
+      serviceService.getServiceBySlug(slug)
+        .then((data) => {
+          setService(data);
+          if (data) {
+            serviceService.getServices({ publishedOnly: true })
+              .then((all) => setRelatedServices(all.filter(s => s.id !== data.id).slice(0, 3)));
+          }
+        })
+        .finally(() => setLoading(false));
+    };
+
     setLoading(true);
-    serviceService.getServiceBySlug(slug)
-      .then((data) => {
-        setService(data);
-        if (data) {
-          serviceService.getServices({ publishedOnly: true })
-            .then((all) => setRelatedServices(all.filter(s => s.id !== data.id).slice(0, 3)));
-        }
-      })
-      .finally(() => setLoading(false));
+    fetchServiceData();
+
+    const unsub = pricingService.subscribeToPricing(() => {
+      fetchServiceData();
+    });
+
+    return unsub;
   }, [slug]);
 
   // Auto-play stage simulator timer

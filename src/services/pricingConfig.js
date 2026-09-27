@@ -336,16 +336,19 @@ export const INITIAL_PRICING_CONFIG = {
     unit: 'saree',
     status: 'AVAILABLE',
     displayMessage: '₹150 / saree',
-  }
+  },
+
+  // 5. Custom Services & Dynamic Sub-Services created in Admin
+  customServices: [],
 };
 
 const PRICING_STORAGE_KEY = 'techwash_pricing_config_v2';
 const PRICING_BROADCAST_CHANNEL = 'techwash_pricing_channel';
 
 /**
- * Builds the dynamic 8 Walk-In Services list based on current pricingConfig
+ * Builds the dynamic Walk-In Services list based on current pricingConfig + any custom services
  */
-export const buildWalkInServicesFromPricing = (config = INITIAL_PRICING_CONFIG) => {
+export const buildWalkInServicesFromPricing = (config = INITIAL_PRICING_CONFIG, extraServices = []) => {
   const cfg = config || INITIAL_PRICING_CONFIG;
   const foldRate = Number(cfg.services?.find(s => s.id === 'wash-and-fold')?.baseRates?.men) || 100;
   const foldWomenRate = Number(cfg.services?.find(s => s.id === 'wash-and-fold')?.baseRates?.women) || 130;
@@ -371,16 +374,42 @@ export const buildWalkInServicesFromPricing = (config = INITIAL_PRICING_CONFIG) 
   const starchPrices = starchItems.map(i => Number(i.price)).filter(p => !isNaN(p) && p > 0);
   const starchMin = starchPrices.length > 0 ? Math.min(...starchPrices) : 25;
 
-  return [
-    { id: 'srv-dry-cleaning', name: 'Premium Dry Cleaning', emoji: '👔', defaultPrice: 90, startingPrice: dcMin },
-    { id: 'srv-wash-and-fold', name: 'Wash & Fold', emoji: '🧺', defaultPrice: foldRate, perKg: true, menPrice: foldRate, womenPrice: foldWomenRate },
+  const baseServices = [
+    { id: 'srv-dry-cleaning', name: 'Premium Dry Cleaning', emoji: '🧺', defaultPrice: 90, startingPrice: dcMin },
+    { id: 'srv-wash-and-fold', name: 'Wash & Fold', emoji: '👕', defaultPrice: foldRate, perKg: true, menPrice: foldRate, womenPrice: foldWomenRate },
     { id: 'srv-wash-and-iron', name: 'Wash & Steam Iron', emoji: '🫧', defaultPrice: ironRate, perKg: true, menPrice: ironRate, womenPrice: ironWomenRate },
-    { id: 'srv-steam-ironing', name: 'Steam Ironing Only', emoji: '✨', defaultPrice: irMin || 25 },
-    { id: 'srv-saree-spa', name: 'Sarees & Ethnic Spa', emoji: '🥻', defaultPrice: sareeRate || 60 },
-    { id: 'srv-shoe-spa', name: 'Shoe & Sneaker Spa', emoji: '👟', defaultPrice: shoeRate },
-    { id: 'srv-curtain-spa', name: 'Curtain Service', emoji: '🪟', defaultPrice: curtainDCRate },
-    { id: 'srv-starch-and-iron', name: 'Starch & Finishing', emoji: '🌾', defaultPrice: starchMin || 45 },
+    { id: 'srv-steam-ironing', name: 'Steam Ironing Only', emoji: '👔', defaultPrice: irMin || 25, startingPrice: irMin },
+    { id: 'srv-saree-spa', name: 'Sarees & Ethnic Care', emoji: '🥻', defaultPrice: sareeRate || 60, startingPrice: sareeRate || 60 },
+    { id: 'srv-shoe-spa', name: 'Shoe & Sneaker Care', emoji: '👟', defaultPrice: shoeRate, startingPrice: shoeRate },
+    { id: 'srv-curtain-spa', name: 'Curtain Service', emoji: '🪟', defaultPrice: curtainDCRate, startingPrice: Math.min(curtainDCRate, Number(cfg.curtains?.iron) || 60) },
+    { id: 'srv-starch-and-iron', name: 'Starch & Finishing', emoji: '✨', defaultPrice: starchMin || 45, startingPrice: starchMin },
   ];
+
+  // Merge custom services stored in pricingConfig or passed from serviceService
+  const customList = Array.isArray(cfg.customServices) ? cfg.customServices : [];
+  const dynamicExtras = Array.isArray(extraServices) ? extraServices : [];
+
+  const standardIds = new Set(baseServices.map(s => s.id));
+  const mergedCustom = [...customList, ...dynamicExtras].filter(s => {
+    if (!s || !s.id) return false;
+    const cleanId = (s.id || '').replace(/^srv-/, '');
+    const standardClean = ['dry-cleaning', 'ironing', 'starch-and-iron', 'wash-and-iron', 'wash-and-fold', 'saree-rolling', 'curtain-washing', 'shoe-washing', 'carpet-washing'];
+    return !standardIds.has(s.id) && !standardClean.includes(cleanId);
+  });
+
+  const formattedCustom = mergedCustom.map(cs => ({
+    id: cs.id.startsWith('srv-') ? cs.id : `srv-${cs.id}`,
+    name: cs.title || cs.name || 'Custom Service',
+    emoji: cs.emoji || cs.icon || '✨',
+    defaultPrice: Number(cs.startingPrice || cs.defaultPrice || cs.price || 99),
+    startingPrice: Number(cs.startingPrice || cs.defaultPrice || cs.price || 99),
+    pricingType: cs.pricingType || 'per_item',
+    perKg: cs.pricingType === 'per_kg' || cs.pricingType === 'PER_KG',
+    subServices: cs.subServices || [],
+    isCustom: true,
+  }));
+
+  return [...baseServices, ...formattedCustom];
 };
 
 /**
@@ -450,9 +479,17 @@ export const buildPersonaRateBandsFromPricing = (config = INITIAL_PRICING_CONFIG
 /**
  * Builds the complete Master Catalog items for POS and Admin Walk-in Orders with live prices
  */
-export const buildMasterCatalogFromPricing = (config = INITIAL_PRICING_CONFIG) => {
+export const buildMasterCatalogFromPricing = (config = INITIAL_PRICING_CONFIG, extraServices = []) => {
   const cfg = config || INITIAL_PRICING_CONFIG;
   const items = [];
+
+  const parsePrice = (val, fallback = 0) => {
+    if (val !== undefined && val !== null && val !== '') {
+      const num = Number(val);
+      if (!isNaN(num)) return num;
+    }
+    return fallback;
+  };
 
   // 1. Men's Dry Cleaning & Care
   const dcMen = cfg.dryCleaning?.men || [];
@@ -460,10 +497,13 @@ export const buildMasterCatalogFromPricing = (config = INITIAL_PRICING_CONFIG) =
     items.push({
       id: it.id || `m-dc-${it.name}`,
       name: it.name,
-      price: Number(it.price) || 90,
+      price: parsePrice(it.price, 90),
       emoji: it.emoji || '👔',
       categoryKey: 'MEN',
       categoryName: it.subCategory === 'bottoms' ? "Men's Bottoms" : it.subCategory === 'jackets' ? "Suits & Outerwear" : it.subCategory === 'traditional' ? "Ethnic" : "Men's Tops",
+      serviceId: 'srv-dry-cleaning',
+      serviceName: 'Premium Dry Cleaning',
+      subServiceName: it.name,
     });
   });
 
@@ -474,102 +514,129 @@ export const buildMasterCatalogFromPricing = (config = INITIAL_PRICING_CONFIG) =
     items.push({
       id: it.id || `w-dc-${it.name}`,
       name: it.name,
-      price: Number(it.price) || 120,
+      price: parsePrice(it.price, 120),
       emoji: it.emoji || '👗',
       categoryKey: 'WOMEN',
       categoryName: it.subCategory === 'traditional' ? "Sarees & Ethnic" : it.subCategory === 'bottoms' ? "Women's Bottoms" : it.subCategory === 'dresses' ? "Dresses" : "Women's Tops",
+      serviceId: 'srv-dry-cleaning',
+      serviceName: 'Premium Dry Cleaning',
+      subServiceName: it.name,
     });
   });
 
-  // 3. Steam Ironing
+  // 3. Common Dry Cleaning & Linens
+  const dcCommon = cfg.dryCleaning?.common || [];
+  dcCommon.forEach(it => {
+    const isFootwearOrBag = it.category === 'Footwear' || it.category === 'Bags' || it.subCategory === 'shoes' || it.subCategory === 'bags';
+    const isKids = it.subCategory === 'kids' || it.category === 'Toys';
+    items.push({
+      id: it.id || `c-dc-${it.name}`,
+      name: it.name,
+      price: parsePrice(it.price, 100),
+      emoji: it.emoji || (isFootwearOrBag ? '👜' : isKids ? '🧸' : '🛋️'),
+      categoryKey: isFootwearOrBag ? 'FOOTWEAR_BAGS' : isKids ? 'KIDS' : 'HOUSEHOLD',
+      categoryName: it.category || "Common & Linens",
+      serviceId: 'srv-dry-cleaning',
+      serviceName: 'Premium Dry Cleaning',
+      subServiceName: it.name,
+    });
+  });
+
+  // 4. Steam Ironing
   const irMen = cfg.ironing?.men || [];
   const irWomen = cfg.ironing?.women || [];
   [...irMen, ...irWomen].forEach(it => {
     items.push({
       id: `ir-${it.id || it.name}`,
       name: `${it.name} (Steam Iron)`,
-      price: Number(it.price) || 25,
+      price: parsePrice(it.price, 25),
       emoji: it.emoji || '✨',
       categoryKey: 'STEAM_IRONING',
       categoryName: "Steam Press",
+      serviceId: 'srv-steam-ironing',
+      serviceName: 'Steam Ironing Only',
+      subServiceName: `${it.name} Steam Iron`,
     });
   });
 
-  // 4. Kids Wear
+  // 5. Kids Wear
   const kidsItems = dcWomen.filter(it => it.gender === 'kids' || it.category === 'Kids');
   if (kidsItems.length > 0) {
     kidsItems.forEach(it => {
       items.push({
         id: `k-${it.id}`,
         name: it.name,
-        price: Number(it.price) || 60,
+        price: parsePrice(it.price, 60),
         emoji: it.emoji || '👶',
         categoryKey: 'KIDS',
         categoryName: "Kids",
+        serviceId: 'srv-dry-cleaning',
+        serviceName: 'Premium Dry Cleaning',
+        subServiceName: it.name,
       });
     });
   } else {
     items.push(
-      { id: 'k-1', name: 'Kids Frock / Dress', price: 60, emoji: '👗', categoryKey: 'KIDS', categoryName: "Kids" },
-      { id: 'k-2', name: 'Kids Shirt', price: 70, emoji: '👕', categoryKey: 'KIDS', categoryName: "Kids" },
-      { id: 'k-3', name: 'Kids Pant / Shorts', price: 70, emoji: '👖', categoryKey: 'KIDS', categoryName: "Kids" },
-      { id: 'k-4', name: 'Kids Dhoti / Pyjama', price: 90, emoji: '🥻', categoryKey: 'KIDS', categoryName: "Kids" },
-      { id: 'k-5', name: 'Soft Toys - Small', price: 100, emoji: '🧸', categoryKey: 'KIDS', categoryName: "Toys" },
-      { id: 'k-6', name: 'Soft Toys - Medium', price: 150, emoji: '🧸', categoryKey: 'KIDS', categoryName: "Toys" },
-      { id: 'k-7', name: 'Soft Toys - Large Giant', price: 200, emoji: '🧸', categoryKey: 'KIDS', categoryName: "Toys" }
+      { id: 'k-1', name: 'Kids Frock / Dress', price: 60, emoji: '👗', categoryKey: 'KIDS', categoryName: "Kids", serviceId: 'srv-dry-cleaning', serviceName: 'Premium Dry Cleaning' },
+      { id: 'k-2', name: 'Kids Shirt', price: 70, emoji: '👕', categoryKey: 'KIDS', categoryName: "Kids", serviceId: 'srv-dry-cleaning', serviceName: 'Premium Dry Cleaning' },
+      { id: 'k-3', name: 'Kids Pant / Shorts', price: 70, emoji: '👖', categoryKey: 'KIDS', categoryName: "Kids", serviceId: 'srv-dry-cleaning', serviceName: 'Premium Dry Cleaning' },
+      { id: 'k-4', name: 'Kids Dhoti / Pyjama', price: 90, emoji: '🥻', categoryKey: 'KIDS', categoryName: "Kids", serviceId: 'srv-dry-cleaning', serviceName: 'Premium Dry Cleaning' },
+      { id: 'k-5', name: 'Soft Toys - Small', price: 100, emoji: '🧸', categoryKey: 'KIDS', categoryName: "Toys", serviceId: 'srv-dry-cleaning', serviceName: 'Premium Dry Cleaning' },
+      { id: 'k-6', name: 'Soft Toys - Medium', price: 150, emoji: '🧸', categoryKey: 'KIDS', categoryName: "Toys", serviceId: 'srv-dry-cleaning', serviceName: 'Premium Dry Cleaning' },
+      { id: 'k-7', name: 'Soft Toys - Large Giant', price: 200, emoji: '🧸', categoryKey: 'KIDS', categoryName: "Toys", serviceId: 'srv-dry-cleaning', serviceName: 'Premium Dry Cleaning' }
     );
   }
 
-  // 5. Sarees & Ethnic Spa
-  const sareeRate = Number(cfg.sareeRolling?.rate) || 150;
+  // 6. Sarees & Ethnic Care
+  const sareeRate = parsePrice(cfg.sareeRolling?.rate, 150);
   items.push(
-    { id: 'e-1', name: 'Pattu Saree Original (>10K Hydrocarbon)', price: cfg.dryCleaning?.women?.find(i => i.name.includes('Pattu'))?.price || 900, emoji: '👑', categoryKey: 'SAREES_ETHNIC', categoryName: "Luxury Silk" },
-    { id: 'e-2', name: 'Silk Saree (Kanchipuram / Banarasi / Pattu)', price: cfg.dryCleaning?.women?.find(i => i.name.toLowerCase() === 'saree')?.price || 220, emoji: '🥻', categoryKey: 'SAREES_ETHNIC', categoryName: "Silk Sarees" },
-    { id: 'e-3', name: 'Saree with Heavy Zari / Stone Embroidery', price: cfg.dryCleaning?.women?.find(i => i.name.includes('Worked'))?.price || 250, emoji: '✨', categoryKey: 'SAREES_ETHNIC', categoryName: "Designer Sarees" },
-    { id: 'e-4', name: 'Saree Rolling & Polishing', price: sareeRate, emoji: '🥻', categoryKey: 'SAREES_ETHNIC', categoryName: "Saree Rolling" },
-    { id: 'e-5', name: 'Saree Steam Ironing Only', price: cfg.ironing?.women?.find(i => i.name.toLowerCase() === 'saree')?.price || 60, emoji: '🥻', categoryKey: 'SAREES_ETHNIC', categoryName: "Steam Press" },
-    { id: 'e-6', name: 'Cotton Saree Starch & Steam Iron', price: (cfg['starch-and-iron'] || cfg.starchAndIron)?.women?.find(i => i.name.includes('Saree'))?.price || 80, emoji: '🌾', categoryKey: 'SAREES_ETHNIC', categoryName: "Starch & Iron" },
-    { id: 'e-7', name: 'Designer Saree Blouse (Padded/Worked)', price: cfg.dryCleaning?.women?.find(i => i.name.includes('Blouse'))?.price || 70, emoji: '👚', categoryKey: 'SAREES_ETHNIC', categoryName: "Blouses" },
-    { id: 'e-8', name: 'Silk Dhoti & Kanduva Set', price: 240, emoji: '🥻', categoryKey: 'SAREES_ETHNIC', categoryName: "Men Ethnic" },
-    { id: 'e-9', name: 'Sherwani / Brocade Bandgala', price: cfg.dryCleaning?.men?.find(i => i.name.includes('Sherwani'))?.price || 250, emoji: '🧥', categoryKey: 'SAREES_ETHNIC', categoryName: "Occasion" },
-    { id: 'e-10', name: 'Men Silk / Heavy Kurta', price: cfg.dryCleaning?.men?.find(i => i.name.includes('Kurta'))?.price || 180, emoji: '👘', categoryKey: 'SAREES_ETHNIC', categoryName: "Men Ethnic" },
-    { id: 'e-11', name: 'Bridal Lehanga Set (Heavy Zari)', price: 550, emoji: '👑', categoryKey: 'SAREES_ETHNIC', categoryName: "Bridal" }
+    { id: 'e-1', name: 'Pattu Saree Original (>10K Hydrocarbon)', price: parsePrice(cfg.dryCleaning?.women?.find(i => i.name.includes('Pattu'))?.price, 900), emoji: '👑', categoryKey: 'SAREES_ETHNIC', categoryName: "Luxury Silk", serviceId: 'srv-saree-spa', serviceName: 'Sarees & Ethnic Care', subServiceName: 'Pattu Saree Care' },
+    { id: 'e-2', name: 'Silk Saree (Kanchipuram / Banarasi / Pattu)', price: parsePrice(cfg.dryCleaning?.women?.find(i => i.name.toLowerCase() === 'saree')?.price, 220), emoji: '🥻', categoryKey: 'SAREES_ETHNIC', categoryName: "Silk Sarees", serviceId: 'srv-saree-spa', serviceName: 'Sarees & Ethnic Care', subServiceName: 'Silk Saree Care' },
+    { id: 'e-3', name: 'Saree with Heavy Zari / Stone Embroidery', price: parsePrice(cfg.dryCleaning?.women?.find(i => i.name.includes('Worked'))?.price, 250), emoji: '✨', categoryKey: 'SAREES_ETHNIC', categoryName: "Designer Sarees", serviceId: 'srv-saree-spa', serviceName: 'Sarees & Ethnic Care', subServiceName: 'Zari / Worked Saree Care' },
+    { id: 'e-4', name: 'Saree Rolling & Polishing', price: sareeRate, emoji: '🥻', categoryKey: 'SAREES_ETHNIC', categoryName: "Saree Rolling", serviceId: 'srv-saree-spa', serviceName: 'Sarees & Ethnic Care', subServiceName: 'Saree Rolling & Polish' },
+    { id: 'e-5', name: 'Saree Steam Ironing Only', price: parsePrice(cfg.ironing?.women?.find(i => i.name.toLowerCase() === 'saree')?.price, 60), emoji: '🥻', categoryKey: 'SAREES_ETHNIC', categoryName: "Steam Press", serviceId: 'srv-saree-spa', serviceName: 'Sarees & Ethnic Care', subServiceName: 'Saree Steam Iron' },
+    { id: 'e-6', name: 'Cotton Saree Starch & Steam Iron', price: parsePrice((cfg['starch-and-iron'] || cfg.starchAndIron)?.women?.find(i => i.name.includes('Saree'))?.price, 80), emoji: '🌾', categoryKey: 'SAREES_ETHNIC', categoryName: "Starch & Iron", serviceId: 'srv-saree-spa', serviceName: 'Sarees & Ethnic Care', subServiceName: 'Saree Starch & Iron' },
+    { id: 'e-7', name: 'Designer Saree Blouse (Padded/Worked)', price: parsePrice(cfg.dryCleaning?.women?.find(i => i.name.includes('Blouse'))?.price, 70), emoji: '👚', categoryKey: 'SAREES_ETHNIC', categoryName: "Blouses", serviceId: 'srv-saree-spa', serviceName: 'Sarees & Ethnic Care', subServiceName: 'Blouse Care' },
+    { id: 'e-8', name: 'Silk Dhoti & Kanduva Set', price: 240, emoji: '🥻', categoryKey: 'SAREES_ETHNIC', categoryName: "Men Ethnic", serviceId: 'srv-saree-spa', serviceName: 'Sarees & Ethnic Care', subServiceName: 'Silk Dhoti Set' },
+    { id: 'e-9', name: 'Sherwani / Brocade Bandgala', price: parsePrice(cfg.dryCleaning?.men?.find(i => i.name.includes('Sherwani'))?.price, 250), emoji: '🧥', categoryKey: 'SAREES_ETHNIC', categoryName: "Occasion", serviceId: 'srv-saree-spa', serviceName: 'Sarees & Ethnic Care', subServiceName: 'Sherwani Care' },
+    { id: 'e-10', name: 'Men Silk / Heavy Kurta', price: parsePrice(cfg.dryCleaning?.men?.find(i => i.name.includes('Kurta'))?.price, 180), emoji: '👘', categoryKey: 'SAREES_ETHNIC', categoryName: "Men Ethnic", serviceId: 'srv-saree-spa', serviceName: 'Sarees & Ethnic Care', subServiceName: 'Silk Kurta Care' },
+    { id: 'e-11', name: 'Bridal Lehanga Set (Heavy Zari)', price: 550, emoji: '👑', categoryKey: 'SAREES_ETHNIC', categoryName: "Bridal", serviceId: 'srv-saree-spa', serviceName: 'Sarees & Ethnic Care', subServiceName: 'Bridal Lehanga Care' }
   );
 
-  // 6. Household & Linens
-  const curtainDc = Number(cfg.curtains?.dryCleaning) || 200;
-  const curtainWi = Number(cfg.curtains?.washAndIron) || 150;
-  const curtainIr = Number(cfg.curtains?.iron) || 60;
-  const curtainWf = Number(cfg.curtains?.washAndFold) || 100;
-  const carpetRate = Number(cfg.carpets?.ratePerSqFt) || 45;
+  // 7. Curtains 4 Sub-Services & Household Linens
+  const curtainDc = parsePrice(cfg.curtains?.dryCleaning, 200);
+  const curtainWi = parsePrice(cfg.curtains?.washAndIron, 150);
+  const curtainIr = parsePrice(cfg.curtains?.iron, 60);
+  const curtainWf = parsePrice(cfg.curtains?.washAndFold, 100);
+  const carpetRate = parsePrice(cfg.carpets?.ratePerSqFt, 45);
 
   items.push(
-    { id: 'h-1', name: 'Single Bedsheet', price: 150, emoji: '🛏️', categoryKey: 'HOUSEHOLD', categoryName: "Bedding" },
-    { id: 'h-2', name: 'Double / King Bedsheet + 2 Pillow Covers', price: 220, emoji: '🛌', categoryKey: 'HOUSEHOLD', categoryName: "Bedding" },
-    { id: 'h-3', name: 'Pillow Cover (Pair)', price: 40, emoji: '🛋️', categoryKey: 'HOUSEHOLD', categoryName: "Bedding" },
-    { id: 'h-4', name: 'Single Blanket / Dohar / Comforter', price: 200, emoji: '🛋️', categoryKey: 'HOUSEHOLD', categoryName: "Blankets" },
-    { id: 'h-5', name: 'Double Heavy Quilt / Razai', price: 350, emoji: '🛋️', categoryKey: 'HOUSEHOLD', categoryName: "Quilts" },
-    { id: 'h-6', name: 'Cotton Table Cloth', price: 80, emoji: '🍽️', categoryKey: 'HOUSEHOLD', categoryName: "Linens" },
-    { id: 'c-dc', name: 'Curtain Dry Cleaning', price: curtainDc, emoji: '🧺', categoryKey: 'HOUSEHOLD', categoryName: "Curtains", serviceName: "Curtain Service", subServiceName: "Dry Cleaning" },
-    { id: 'c-wi', name: 'Curtain Wash & Iron', price: curtainWi, emoji: '🫧', categoryKey: 'HOUSEHOLD', categoryName: "Curtains", serviceName: "Curtain Service", subServiceName: "Wash and Iron" },
-    { id: 'c-ir', name: 'Curtain Iron', price: curtainIr, emoji: '✨', categoryKey: 'HOUSEHOLD', categoryName: "Curtains", serviceName: "Curtain Service", subServiceName: "Iron" },
-    { id: 'c-wf', name: 'Curtain Wash & Fold', price: curtainWf, emoji: '👕', categoryKey: 'HOUSEHOLD', categoryName: "Curtains", serviceName: "Curtain Service", subServiceName: "Wash and Fold" },
-    { id: 'h-11', name: 'Living Room Carpet / Wool Rug Spa', price: carpetRate * 10, emoji: '🧶', categoryKey: 'HOUSEHOLD', categoryName: "Carpets" }
+    { id: 'c-dc', name: 'Curtain Dry Cleaning', price: curtainDc, emoji: '🧺', categoryKey: 'HOUSEHOLD', categoryName: "Curtains", serviceId: 'srv-curtain-spa', serviceName: "Curtain Service", subServiceName: "Curtain Dry Cleaning" },
+    { id: 'c-wi', name: 'Curtain Wash & Iron', price: curtainWi, emoji: '🫧', categoryKey: 'HOUSEHOLD', categoryName: "Curtains", serviceId: 'srv-curtain-spa', serviceName: "Curtain Service", subServiceName: "Curtain Wash & Iron" },
+    { id: 'c-ir', name: 'Curtain Iron (Steam Press)', price: curtainIr, emoji: '✨', categoryKey: 'HOUSEHOLD', categoryName: "Curtains", serviceId: 'srv-curtain-spa', serviceName: "Curtain Service", subServiceName: "Curtain Iron" },
+    { id: 'c-wf', name: 'Curtain Wash & Fold', price: curtainWf, emoji: '👕', categoryKey: 'HOUSEHOLD', categoryName: "Curtains", serviceId: 'srv-curtain-spa', serviceName: "Curtain Service", subServiceName: "Curtain Wash & Fold" },
+    { id: 'h-1', name: 'Single Bedsheet', price: 150, emoji: '🛏️', categoryKey: 'HOUSEHOLD', categoryName: "Bedding", serviceId: 'srv-dry-cleaning', serviceName: "Premium Dry Cleaning" },
+    { id: 'h-2', name: 'Double / King Bedsheet + 2 Pillow Covers', price: 220, emoji: '🛌', categoryKey: 'HOUSEHOLD', categoryName: "Bedding", serviceId: 'srv-dry-cleaning', serviceName: "Premium Dry Cleaning" },
+    { id: 'h-3', name: 'Pillow Cover (Pair)', price: 40, emoji: '🛋️', categoryKey: 'HOUSEHOLD', categoryName: "Bedding", serviceId: 'srv-dry-cleaning', serviceName: "Premium Dry Cleaning" },
+    { id: 'h-4', name: 'Single Blanket / Dohar / Comforter', price: 200, emoji: '🛋️', categoryKey: 'HOUSEHOLD', categoryName: "Blankets", serviceId: 'srv-dry-cleaning', serviceName: "Premium Dry Cleaning" },
+    { id: 'h-5', name: 'Double Heavy Quilt / Razai', price: 350, emoji: '🛋️', categoryKey: 'HOUSEHOLD', categoryName: "Quilts", serviceId: 'srv-dry-cleaning', serviceName: "Premium Dry Cleaning" },
+    { id: 'h-6', name: 'Cotton Table Cloth', price: 80, emoji: '🍽️', categoryKey: 'HOUSEHOLD', categoryName: "Linens", serviceId: 'srv-dry-cleaning', serviceName: "Premium Dry Cleaning" },
+    { id: 'h-11', name: 'Living Room Carpet / Wool Rug Wash', price: carpetRate * 10, emoji: '🧶', categoryKey: 'HOUSEHOLD', categoryName: "Carpets", serviceId: 'srv-dry-cleaning', serviceName: "Premium Dry Cleaning" }
   );
 
-  // 7. Footwear & Bags
-  const shoeRate = Number(cfg.shoes?.ratePerPair) || 350;
+  // 8. Footwear & Bags
+  const shoeRate = parsePrice(cfg.shoes?.ratePerPair, 350);
   items.push(
-    { id: 'f-1', name: 'Sneakers & Casual Shoes Spa', price: shoeRate, emoji: '👟', categoryKey: 'FOOTWEAR_BAGS', categoryName: "Shoes" },
-    { id: 'f-2', name: 'Sports & Running Shoes Spa', price: shoeRate, emoji: '🏃', categoryKey: 'FOOTWEAR_BAGS', categoryName: "Shoes" },
-    { id: 'f-3', name: 'Formal Leather Shoes Nourish & Shine', price: shoeRate, emoji: '👞', categoryKey: 'FOOTWEAR_BAGS', categoryName: "Shoes" },
-    { id: 'f-4', name: 'Suede Boots & Loafers Restoration', price: shoeRate + 49, emoji: '🥾', categoryKey: 'FOOTWEAR_BAGS', categoryName: "Shoes" },
-    { id: 'f-5', name: 'School / College Backpack Spa', price: 150, emoji: '🎒', categoryKey: 'FOOTWEAR_BAGS', categoryName: "Bags" },
-    { id: 'f-6', name: 'Leather / Designer Handbag Conditioning', price: 250, emoji: '👜', categoryKey: 'FOOTWEAR_BAGS', categoryName: "Bags" },
-    { id: 'f-7', name: 'Travel Duffel / Trolley Bag Cleanse', price: 299, emoji: '🧳', categoryKey: 'FOOTWEAR_BAGS', categoryName: "Bags" }
+    { id: 'f-1', name: 'Sneakers & Casual Shoes Cleaning', price: shoeRate, emoji: '👟', categoryKey: 'FOOTWEAR_BAGS', categoryName: "Shoes", serviceId: 'srv-shoe-spa', serviceName: 'Shoe & Sneaker Care', subServiceName: 'Sneakers Cleaning' },
+    { id: 'f-2', name: 'Sports & Running Shoes Cleaning', price: shoeRate, emoji: '🏃', categoryKey: 'FOOTWEAR_BAGS', categoryName: "Shoes", serviceId: 'srv-shoe-spa', serviceName: 'Shoe & Sneaker Care', subServiceName: 'Sports Shoes Cleaning' },
+    { id: 'f-3', name: 'Formal Leather Shoes Nourish & Shine', price: shoeRate, emoji: '👞', categoryKey: 'FOOTWEAR_BAGS', categoryName: "Shoes", serviceId: 'srv-shoe-spa', serviceName: 'Shoe & Sneaker Care', subServiceName: 'Formal Leather Shoes' },
+    { id: 'f-4', name: 'Suede Boots & Loafers Restoration', price: shoeRate + 49, emoji: '🥾', categoryKey: 'FOOTWEAR_BAGS', categoryName: "Shoes", serviceId: 'srv-shoe-spa', serviceName: 'Shoe & Sneaker Care', subServiceName: 'Suede Boots' },
+    { id: 'f-5', name: 'School / College Backpack Cleaning', price: 150, emoji: '🎒', categoryKey: 'FOOTWEAR_BAGS', categoryName: "Bags", serviceId: 'srv-shoe-spa', serviceName: 'Shoe & Sneaker Care', subServiceName: 'Backpack Cleaning' },
+    { id: 'f-6', name: 'Leather / Designer Handbag Conditioning', price: 250, emoji: '👜', categoryKey: 'FOOTWEAR_BAGS', categoryName: "Bags", serviceId: 'srv-shoe-spa', serviceName: 'Shoe & Sneaker Care', subServiceName: 'Handbag Care' },
+    { id: 'f-7', name: 'Travel Duffel / Trolley Bag Cleanse', price: 299, emoji: '🧳', categoryKey: 'FOOTWEAR_BAGS', categoryName: "Bags", serviceId: 'srv-shoe-spa', serviceName: 'Shoe & Sneaker Care', subServiceName: 'Travel Bag Cleaning' }
   );
 
-  // 8. Starch & Finishing
+  // 9. Starch & Finishing
   const starchObj = cfg['starch-and-iron'] || cfg.starchAndIron || {};
   const starchMen = starchObj.men || [];
   const starchWomen = starchObj.women || [];
@@ -578,24 +645,183 @@ export const buildMasterCatalogFromPricing = (config = INITIAL_PRICING_CONFIG) =
     items.push({
       id: `s-${it.id || it.name}`,
       name: it.name,
-      price: Number(it.price) || 45,
+      price: parsePrice(it.price, 45),
       emoji: it.emoji || '🌾',
       categoryKey: 'STARCH_FINISHING',
       categoryName: "Starch",
+      serviceId: 'srv-starch-and-iron',
+      serviceName: 'Starch & Finishing',
+      subServiceName: it.name,
     });
   });
 
-  // 9. Extra Services & Custom Charges
+  // 10. Extra Services & Custom Charges
   items.push(
-    { id: 'ex-1', name: 'Urgent Heavy Stain Removal Treatment', price: 100, emoji: '🧼', categoryKey: 'EXTRA_SERVICES', categoryName: "Special Care" },
-    { id: 'ex-2', name: 'Gold/Silver Zari Polishing & Shield', price: 150, emoji: '✨', categoryKey: 'EXTRA_SERVICES', categoryName: "Special Care" },
-    { id: 'ex-3', name: 'Zip Replacement & Minor Tailoring Alteration', price: 80, emoji: '🪡', categoryKey: 'EXTRA_SERVICES', categoryName: "Alteration" },
-    { id: 'ex-4', name: 'Button Stitch & Hemming Repair', price: 40, emoji: '🪡', categoryKey: 'EXTRA_SERVICES', categoryName: "Alteration" },
-    { id: 'ex-5', name: 'Luxury Gift Box Packaging & Hanger', price: 50, emoji: '🎁', categoryKey: 'EXTRA_SERVICES', categoryName: "Packing" },
-    { id: 'ex-6', name: 'Antiseptic Fabric Sanitization Surcharge', price: 40, emoji: '🛡️', categoryKey: 'EXTRA_SERVICES', categoryName: "Special Care" }
+    { id: 'ex-1', name: 'Urgent Heavy Stain Removal Treatment', price: 100, emoji: '🧼', categoryKey: 'EXTRA_SERVICES', categoryName: "Special Care", serviceId: 'srv-dry-cleaning', serviceName: 'Special Care' },
+    { id: 'ex-2', name: 'Gold/Silver Zari Polishing & Shield', price: 150, emoji: '✨', categoryKey: 'EXTRA_SERVICES', categoryName: "Special Care", serviceId: 'srv-saree-spa', serviceName: 'Special Care' },
+    { id: 'ex-3', name: 'Zip Replacement & Minor Tailoring Alteration', price: 80, emoji: '🪡', categoryKey: 'EXTRA_SERVICES', categoryName: "Alteration", serviceId: 'srv-dry-cleaning', serviceName: 'Alteration' },
+    { id: 'ex-4', name: 'Button Stitch & Hemming Repair', price: 40, emoji: '🪡', categoryKey: 'EXTRA_SERVICES', categoryName: "Alteration", serviceId: 'srv-dry-cleaning', serviceName: 'Alteration' },
+    { id: 'ex-5', name: 'Luxury Gift Box Packaging & Hanger', price: 50, emoji: '🎁', categoryKey: 'EXTRA_SERVICES', categoryName: "Packing", serviceId: 'srv-dry-cleaning', serviceName: 'Packaging' },
+    { id: 'ex-6', name: 'Antiseptic Fabric Sanitization Surcharge', price: 40, emoji: '🛡️', categoryKey: 'EXTRA_SERVICES', categoryName: "Special Care", serviceId: 'srv-wash-and-iron', serviceName: 'Sanitization' }
   );
 
+  // 11. Dynamic Custom Services & Sub-Services (e.g. "Gopi" or any custom service)
+  const customList = Array.isArray(cfg.customServices) ? cfg.customServices : [];
+  const dynamicExtras = Array.isArray(extraServices) ? extraServices : [];
+  const allCustom = [...customList, ...dynamicExtras];
+
+  const processedCustomIds = new Set();
+  allCustom.forEach(cs => {
+    if (!cs || !cs.id || processedCustomIds.has(cs.id)) return;
+    processedCustomIds.add(cs.id);
+
+    const srvId = cs.id.startsWith('srv-') ? cs.id : `srv-${cs.id}`;
+    const srvName = cs.title || cs.name || 'Custom Service';
+    const srvEmoji = cs.emoji || cs.icon || '✨';
+    const srvCategory = cs.category || srvName;
+
+    if (Array.isArray(cs.subServices) && cs.subServices.length > 0) {
+      cs.subServices.forEach((sub, sIdx) => {
+        items.push({
+          id: sub.id || `${srvId}-sub-${sIdx}`,
+          name: `${srvName} — ${sub.name}`,
+          price: parsePrice(sub.price, cs.startingPrice || 99),
+          emoji: sub.emoji || srvEmoji,
+          categoryKey: 'CUSTOM_SERVICES',
+          categoryName: srvCategory,
+          serviceId: srvId,
+          serviceName: srvName,
+          subServiceName: sub.name,
+        });
+      });
+    } else {
+      items.push({
+        id: `${srvId}-item`,
+        name: srvName,
+        price: parsePrice(cs.startingPrice || cs.defaultPrice || cs.price, 99),
+        emoji: srvEmoji,
+        categoryKey: 'CUSTOM_SERVICES',
+        categoryName: srvCategory,
+        serviceId: srvId,
+        serviceName: srvName,
+        subServiceName: srvName,
+      });
+    }
+  });
+
+  // 12. Dynamic Custom Items added to config
+  const customItems = Array.isArray(cfg.customItems) ? cfg.customItems : [];
+  customItems.forEach(ci => {
+    items.push({
+      id: ci.id || `ci-${Date.now()}-${ci.name}`,
+      name: ci.name,
+      price: parsePrice(ci.price, 99),
+      emoji: ci.emoji || '⚡',
+      categoryKey: ci.categoryKey || 'CUSTOM_SERVICES',
+      categoryName: ci.categoryName || ci.category || 'Custom Service',
+      serviceId: ci.serviceId || 'srv-custom',
+      serviceName: ci.serviceName || 'Custom Service',
+      subServiceName: ci.subServiceName || ci.name,
+    });
+  });
+
   return items;
+};
+
+
+
+/**
+ * Synchronizes and recalculates starting prices inside config.services
+ */
+export const recalculateServicesInConfig = (config) => {
+  if (!config) return config;
+  const cfg = { ...config };
+
+  // Lowest dry cleaning
+  const dcItems = [...(cfg.dryCleaning?.men || []), ...(cfg.dryCleaning?.women || []), ...(cfg.dryCleaning?.common || [])];
+  const dcPrices = dcItems.map(i => Number(i.price)).filter(p => !isNaN(p) && p > 0);
+  const dcMin = dcPrices.length > 0 ? Math.min(...dcPrices) : 40;
+
+  // Lowest steam iron
+  const irItems = [...(cfg.ironing?.men || []), ...(cfg.ironing?.women || [])];
+  const irPrices = irItems.map(i => Number(i.price)).filter(p => !isNaN(p) && p > 0);
+  const irMin = irPrices.length > 0 ? Math.min(...irPrices) : 12;
+
+  // Lowest starch and iron
+  const starchList = cfg['starch-and-iron'] || cfg.starchAndIron || {};
+  const starchItems = [...(starchList.men || []), ...(starchList.women || []), ...(starchList.common || [])];
+  const starchPrices = starchItems.map(i => Number(i.price)).filter(p => !isNaN(p) && p > 0);
+  const starchMin = starchPrices.length > 0 ? Math.min(...starchPrices) : 25;
+
+  // Wash and Fold / Wash and Iron per-kg rates
+  const foldRate = Number(cfg.services?.find(s => s.id === 'wash-and-fold')?.baseRates?.men) || 100;
+  const ironRate = Number(cfg.services?.find(s => s.id === 'wash-and-iron')?.baseRates?.men) || 130;
+
+  // Curtains lowest
+  const curtainDCRate = Number(cfg.curtains?.dryCleaning) || 200;
+  const curtainWIRate = Number(cfg.curtains?.washAndIron) || 150;
+  const curtainIRRate = Number(cfg.curtains?.iron) || 60;
+  const curtainWFRate = Number(cfg.curtains?.washAndFold) || 100;
+  const curtainMin = Math.min(curtainDCRate, curtainWIRate, curtainIRRate, curtainWFRate);
+
+  // Shoes, Carpets, Saree rolling
+  const shoeRate = Number(cfg.shoes?.ratePerPair) || 350;
+  const carpetRate = Number(cfg.carpets?.ratePerSqFt) || 45;
+  const sareeRate = Number(cfg.sareeRolling?.rate) || 150;
+
+  if (Array.isArray(cfg.services)) {
+    cfg.services = cfg.services.map(srv => {
+      const cleanId = (srv.id || '').replace(/^srv-/, '');
+      if (cleanId === 'dry-cleaning') {
+        return { ...srv, startingPrice: dcMin, startingPriceDisplay: `Starts at ₹${dcMin}` };
+      }
+      if (cleanId === 'ironing') {
+        return { ...srv, startingPrice: irMin, startingPriceDisplay: `Starts at ₹${irMin}` };
+      }
+      if (cleanId === 'starch-and-iron') {
+        return { ...srv, startingPrice: starchMin, startingPriceDisplay: `Starts at ₹${starchMin}` };
+      }
+      if (cleanId === 'wash-and-fold') {
+        return { ...srv, startingPrice: foldRate, startingPriceDisplay: `Starts at ₹${foldRate} / Kg` };
+      }
+      if (cleanId === 'wash-and-iron') {
+        return { ...srv, startingPrice: ironRate, startingPriceDisplay: `Starts at ₹${ironRate} / Kg` };
+      }
+      if (cleanId === 'saree-rolling') {
+        return {
+          ...srv,
+          rate: sareeRate,
+          startingPrice: sareeRate,
+          startingPriceDisplay: sareeRate ? `Starts at ₹${sareeRate}` : 'Price to be confirmed',
+        };
+      }
+      if (cleanId === 'curtain-washing') {
+        return {
+          ...srv,
+          startingPrice: curtainMin,
+          startingPriceDisplay: `Starts at ₹${curtainMin}`,
+          subServices: [
+            { id: 'curtain-dc', key: 'dryCleaning', name: 'Curtain Dry Cleaning', price: curtainDCRate, emoji: '🧺' },
+            { id: 'curtain-wi', key: 'washAndIron', name: 'Curtain Wash & Iron', price: curtainWIRate, emoji: '🫧' },
+            { id: 'curtain-ir', key: 'iron', name: 'Curtain Iron', price: curtainIRRate, emoji: '✨' },
+            { id: 'curtain-wf', key: 'washAndFold', name: 'Curtain Wash & Fold', price: curtainWFRate, emoji: '👕' },
+          ]
+        };
+      }
+      if (cleanId === 'shoe-washing') {
+        return { ...srv, startingPrice: shoeRate, startingPriceDisplay: `₹${shoeRate} / pair`, ratePerPair: shoeRate };
+      }
+      if (cleanId === 'carpet-washing') {
+        return { ...srv, startingPrice: carpetRate, startingPriceDisplay: `₹${carpetRate} / sq. ft.`, ratePerSqFt: carpetRate };
+      }
+      return srv;
+    });
+  }
+
+  cfg.customServices = Array.isArray(cfg.customServices) ? cfg.customServices : [];
+  cfg.customItems = Array.isArray(cfg.customItems) ? cfg.customItems : [];
+
+  return cfg;
 };
 
 export const pricingService = {
@@ -608,10 +834,10 @@ export const pricingService = {
         const snap = await getDoc(doc(db, 'settings', 'pricing'));
         if (snap.exists()) {
           const remoteData = snap.data();
-          const merged = {
+          const merged = recalculateServicesInConfig({
             ...INITIAL_PRICING_CONFIG,
             ...remoteData,
-          };
+          });
           try {
             localStorage.setItem(PRICING_STORAGE_KEY, JSON.stringify(merged));
           } catch (e) {}
@@ -625,11 +851,11 @@ export const pricingService = {
     try {
       const cached = localStorage.getItem(PRICING_STORAGE_KEY);
       if (cached) {
-        return JSON.parse(cached);
+        return recalculateServicesInConfig(JSON.parse(cached));
       }
     } catch (e) {}
 
-    return INITIAL_PRICING_CONFIG;
+    return recalculateServicesInConfig(INITIAL_PRICING_CONFIG);
   },
 
   /**
@@ -637,21 +863,23 @@ export const pricingService = {
    * and broadcasts real-time updates across all open tabs and windows.
    */
   async updatePricingConfig(newConfig) {
+    const calibratedConfig = recalculateServicesInConfig(newConfig);
+
     if (isFirebaseConfigured && db) {
       try {
-        await setDoc(doc(db, 'settings', 'pricing'), newConfig, { merge: true });
+        await setDoc(doc(db, 'settings', 'pricing'), calibratedConfig, { merge: true });
       } catch (e) {
         console.warn("Firestore pricing update failed:", e);
       }
     }
     try {
-      localStorage.setItem(PRICING_STORAGE_KEY, JSON.stringify(newConfig));
+      localStorage.setItem(PRICING_STORAGE_KEY, JSON.stringify(calibratedConfig));
     } catch (e) {}
 
     // 1. Dispatch custom DOM event
     try {
       if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('techwash-pricing-updated', { detail: newConfig }));
+        window.dispatchEvent(new CustomEvent('techwash-pricing-updated', { detail: calibratedConfig }));
       }
     } catch (e) {}
 
@@ -659,12 +887,12 @@ export const pricingService = {
     try {
       if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
         const bc = new BroadcastChannel(PRICING_BROADCAST_CHANNEL);
-        bc.postMessage(newConfig);
+        bc.postMessage(calibratedConfig);
         bc.close();
       }
     } catch (e) {}
 
-    return newConfig;
+    return calibratedConfig;
   },
 
   /**

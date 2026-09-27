@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { formatCurrency } from '../../../utils/formatters';
-import { QUICK_ITEMS_CATALOG } from '../../../services/chatbotService';
+import { getQuickItemsCatalog, QUICK_ITEMS_CATALOG } from '../../../services/chatbotService';
+import { pricingService, INITIAL_PRICING_CONFIG } from '../../../services/pricingConfig';
 import { locationService } from '../../../services/locationService';
 import { orderService } from '../../../services/orderService';
 import { playOrderPlacedSound } from '../../../utils/audioNotification';
@@ -38,10 +39,24 @@ export const InteractiveBookingStepper = ({
     initialService?.title || 'Laundry'
   );
   
+  const [pricingConfig, setPricingConfig] = useState(INITIAL_PRICING_CONFIG);
+
+  useEffect(() => {
+    pricingService.getPricingConfig().then(cfg => {
+      if (cfg) setPricingConfig(cfg);
+    });
+    const unsub = pricingService.subscribeToPricing(newCfg => {
+      if (newCfg) setPricingConfig(newCfg);
+    });
+    return unsub;
+  }, []);
+
+  const quickCatalog = useMemo(() => getQuickItemsCatalog(pricingConfig), [pricingConfig]);
+  
   const [items, setItems] = useState(
     initialItem
       ? [{ ...initialItem, quantity: 1 }]
-      : [{ id: 'qi-1', name: 'Shirts / T-Shirts', unitPrice: 49, quantity: 2 }]
+      : [{ id: 'qi-m1', name: 'Shirt / T-Shirt', unitPrice: 90, quantity: 2 }]
   );
 
   const [locationSource, setLocationSource] = useState('GPS');
@@ -355,7 +370,7 @@ export const InteractiveBookingStepper = ({
           </div>
 
           <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
-            {QUICK_ITEMS_CATALOG.slice(0, 6).map((qItem) => {
+            {quickCatalog.slice(0, 6).map((qItem) => {
               const currentQty = items.find((i) => i.id === qItem.id)?.quantity || 0;
               return (
                 <div
@@ -527,26 +542,26 @@ export const InteractiveBookingStepper = ({
 
           <div>
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-              Time Window (2-Hour Slot)
+              Time Window (Morning / Afternoon / Evening)
             </span>
-            <div className="grid grid-cols-2 gap-1.5">
+            <div className="grid grid-cols-3 gap-1.5">
               {[
-                '08:00 AM - 10:00 AM',
-                '10:00 AM - 12:00 PM',
-                '02:00 PM - 04:00 PM',
-                '04:00 PM - 06:00 PM',
+                { label: 'Morning (08:00 AM - 12:00 PM)', short: '🌅 Morning', time: '8AM - 12PM' },
+                { label: 'Afternoon (12:00 PM - 04:00 PM)', short: '☀️ Afternoon', time: '12PM - 4PM' },
+                { label: 'Evening (04:00 PM - 08:00 PM)', short: '🌙 Evening', time: '4PM - 8PM' },
               ].map((slot) => (
                 <button
-                  key={slot}
+                  key={slot.label}
                   type="button"
-                  onClick={() => setSchedule({ ...schedule, pickupSlot: slot })}
-                  className={`p-2 rounded-lg border text-center font-semibold text-[10px] transition-all ${
-                    schedule.pickupSlot === slot
-                      ? 'bg-[#FFF7ED] border-[#F97316] text-[#F97316] font-bold'
+                  onClick={() => setSchedule({ ...schedule, pickupSlot: slot.label })}
+                  className={`p-2 rounded-xl border text-center font-semibold text-[10px] transition-all flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
+                    schedule.pickupSlot === slot.label
+                      ? 'bg-[#FFF7ED] border-[#F97316] text-[#F97316] font-bold shadow-xs'
                       : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
                   }`}
                 >
-                  {slot}
+                  <span className="font-bold">{slot.short}</span>
+                  <span className="text-[9px] text-slate-400">{slot.time}</span>
                 </button>
               ))}
             </div>

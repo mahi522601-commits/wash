@@ -101,7 +101,7 @@ export const FinancialReportModal = ({
   };
 
   const handleCopySharableLink = () => {
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+    const origin = 'https://techwashlaundry.com';
     const link = `${origin}/admin/reports?preset=${activeReport.datePreset || 'today'}&branch=${activeReport.branchFilter || 'ALL'}`;
     navigator.clipboard.writeText(link);
     success('Link Copied!', 'Sharable report URL copied to clipboard.');

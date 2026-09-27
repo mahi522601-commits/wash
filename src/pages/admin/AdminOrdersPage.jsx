@@ -1,6 +1,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { orderService, getOrderBranchKey, ORDER_CUSTOMER_STAGES, INTERNAL_OPERATIONAL_STAGES } from '../../services/orderService';
+import { 
+  orderService, 
+  getOrderBranchKey, 
+  ORDER_CUSTOMER_STAGES, 
+  INTERNAL_OPERATIONAL_STAGES,
+  TIME_PERIODS,
+  TIME_SLOTS,
+  calculateDefaultDelivery,
+  normalizePeriod,
+  normalizeDateString
+} from '../../services/orderService';
 import { staffService } from '../../services/staffService';
 import { auditService } from '../../services/auditService';
 import { whatsappNotificationService } from '../../services/whatsappNotificationService';
@@ -59,7 +69,11 @@ import {
   Layers,
   Wrench,
   HelpCircle,
-  FolderPlus
+  FolderPlus,
+  Calendar,
+  Sun,
+  Moon,
+  Bell
 } from 'lucide-react';
 
 export const WALK_IN_SERVICES = [
@@ -67,8 +81,8 @@ export const WALK_IN_SERVICES = [
   { id: 'srv-wash-and-fold', name: 'Wash & Fold', emoji: '🧺', defaultPrice: 100, perKg: true, menPrice: 100, womenPrice: 130 },
   { id: 'srv-wash-and-iron', name: 'Wash & Steam Iron', emoji: '🫧', defaultPrice: 130, perKg: true, menPrice: 130, womenPrice: 160 },
   { id: 'srv-steam-ironing', name: 'Steam Ironing Only', emoji: '✨', defaultPrice: 25 },
-  { id: 'srv-saree-spa', name: 'Sarees & Ethnic Spa', emoji: '🥻', defaultPrice: 60 },
-  { id: 'srv-shoe-spa', name: 'Shoe & Sneaker Spa', emoji: '👟', defaultPrice: 350 },
+  { id: 'srv-saree-spa', name: 'Sarees & Ethnic Care', emoji: '🥻', defaultPrice: 60 },
+  { id: 'srv-shoe-spa', name: 'Shoe & Sneaker Care', emoji: '👟', defaultPrice: 350 },
   { id: 'srv-curtain-spa', name: 'Curtain Service', emoji: '🪟', defaultPrice: 200 },
   { id: 'srv-starch-and-iron', name: 'Starch & Finishing', emoji: '🌾', defaultPrice: 45 },
 ];
@@ -187,14 +201,14 @@ export const MASTER_CATALOG_ITEMS = [
   { id: 'c-wi', name: 'Curtain Wash & Iron', price: 150, emoji: '🫧', categoryKey: 'HOUSEHOLD', categoryName: "Curtains", serviceName: "Curtain Service", subServiceName: "Wash and Iron" },
   { id: 'c-ir', name: 'Curtain Iron', price: 60, emoji: '✨', categoryKey: 'HOUSEHOLD', categoryName: "Curtains", serviceName: "Curtain Service", subServiceName: "Iron" },
   { id: 'c-wf', name: 'Curtain Wash & Fold', price: 100, emoji: '👕', categoryKey: 'HOUSEHOLD', categoryName: "Curtains", serviceName: "Curtain Service", subServiceName: "Wash and Fold" },
-  { id: 'h-11', name: 'Living Room Carpet / Wool Rug Spa', price: 450, emoji: '🧶', categoryKey: 'HOUSEHOLD', categoryName: "Carpets" },
+  { id: 'h-11', name: 'Living Room Carpet / Wool Rug Wash', price: 450, emoji: '🧶', categoryKey: 'HOUSEHOLD', categoryName: "Carpets" },
 
   // ── FOOTWEAR & BAGS ──
-  { id: 'f-1', name: 'Sneakers & Casual Shoes Spa', price: 350, emoji: '👟', categoryKey: 'FOOTWEAR_BAGS', categoryName: "Shoes" },
-  { id: 'f-2', name: 'Sports & Running Shoes Spa', price: 350, emoji: '🏃', categoryKey: 'FOOTWEAR_BAGS', categoryName: "Shoes" },
+  { id: 'f-1', name: 'Sneakers & Casual Shoes Cleaning', price: 350, emoji: '👟', categoryKey: 'FOOTWEAR_BAGS', categoryName: "Shoes" },
+  { id: 'f-2', name: 'Sports & Running Shoes Cleaning', price: 350, emoji: '🏃', categoryKey: 'FOOTWEAR_BAGS', categoryName: "Shoes" },
   { id: 'f-3', name: 'Formal Leather Shoes Nourish & Shine', price: 350, emoji: '👞', categoryKey: 'FOOTWEAR_BAGS', categoryName: "Shoes" },
   { id: 'f-4', name: 'Suede Boots & Loafers Restoration', price: 399, emoji: '🥾', categoryKey: 'FOOTWEAR_BAGS', categoryName: "Shoes" },
-  { id: 'f-5', name: 'School / College Backpack Spa', price: 150, emoji: '🎒', categoryKey: 'FOOTWEAR_BAGS', categoryName: "Bags" },
+  { id: 'f-5', name: 'School / College Backpack Cleaning', price: 150, emoji: '🎒', categoryKey: 'FOOTWEAR_BAGS', categoryName: "Bags" },
   { id: 'f-6', name: 'Leather / Designer Handbag Conditioning', price: 250, emoji: '👜', categoryKey: 'FOOTWEAR_BAGS', categoryName: "Bags" },
   { id: 'f-7', name: 'Travel Duffel / Trolley Bag Cleanse', price: 299, emoji: '🧳', categoryKey: 'FOOTWEAR_BAGS', categoryName: "Bags" },
 
@@ -310,6 +324,12 @@ const INITIAL_WALK_IN_FORM = {
   customGrandTotal: '', // Admin override for total bill amount
   items: [],
   expressOption: 'STANDARD', // 'STANDARD' | 'EXPRESS_24' | 'SAME_DAY'
+  pickupDate: new Date().toISOString().split('T')[0],
+  pickupPeriod: 'MORNING',
+  pickupSlot: '08:00 AM - 12:00 PM',
+  deliveryDate: calculateDefaultDelivery(new Date().toISOString().split('T')[0], 'STANDARD'),
+  deliveryPeriod: 'EVENING',
+  deliverySlot: '04:00 PM - 08:00 PM',
   receivedAmount: '', // empty defaults to full or custom entered
   paymentStatus: 'PAID', // 'PAID' | 'PARTIAL' | 'PENDING'
   paymentMethod: 'CASH', // 'CASH' | 'UPI_QR' | 'CARD' | 'PAY_ON_DELIVERY'
@@ -893,6 +913,13 @@ export const AdminOrdersPage = () => {
         resolvedServiceEmoji = '🧺🫧';
       }
 
+      const pickupDt = walkInForm.pickupDate || new Date().toISOString().split('T')[0];
+      const delivDt = walkInForm.deliveryDate || calculateDefaultDelivery(pickupDt, walkInForm.expressOption || 'STANDARD');
+      const resolvedPickupPeriod = walkInForm.pickupPeriod || 'MORNING';
+      const resolvedPickupSlot = TIME_SLOTS[resolvedPickupPeriod] || walkInForm.pickupSlot || '08:00 AM - 12:00 PM';
+      const resolvedDeliveryPeriod = walkInForm.deliveryPeriod || 'EVENING';
+      const resolvedDeliverySlot = TIME_SLOTS[resolvedDeliveryPeriod] || walkInForm.deliverySlot || '04:00 PM - 08:00 PM';
+
       const orderPayload = {
         isWalkIn: true,
         orderSource: 'OFFLINE_POS',
@@ -903,7 +930,7 @@ export const AdminOrdersPage = () => {
         storePhone: matchedBranch.phone,
         cashierName: walkInForm.cashierName || matchedBranch.cashierName,
         customer: {
-          name: walkInForm.customerName.trim(),
+          name: (walkInForm.customerName || '').trim().toUpperCase(),
           phone: cleanPhone,
           whatsapp: cleanPhone,
           email: walkInForm.email.trim(),
@@ -912,7 +939,7 @@ export const AdminOrdersPage = () => {
           storeAddress: resolvedStoreAddress,
           city: 'Hyderabad',
         },
-        customerName: walkInForm.customerName.trim(),
+        customerName: (walkInForm.customerName || '').trim().toUpperCase(),
         phone: cleanPhone,
         whatsapp: cleanPhone,
         address: `In-Store Walk-in Drop (${resolvedStoreBranch})`,
@@ -944,9 +971,19 @@ export const AdminOrdersPage = () => {
         internalStage: 'RECEIVED_AT_HUB',
         notes: walkInForm.notes || 'In-store counter drop-off',
         adminNotes: walkInForm.internalAdminNotes || 'In-Store Walk-in Customer POS Order',
+        pickupDate: pickupDt,
+        pickupPeriod: resolvedPickupPeriod,
+        pickupSlot: resolvedPickupSlot,
+        deliveryDate: delivDt,
+        deliveryPeriod: resolvedDeliveryPeriod,
+        deliverySlot: resolvedDeliverySlot,
         schedule: {
-          pickupDate: new Date().toLocaleDateString('en-GB'),
-          pickupSlot: 'In-Store Counter',
+          pickupDate: pickupDt,
+          pickupPeriod: resolvedPickupPeriod,
+          pickupSlot: resolvedPickupSlot,
+          deliveryDate: delivDt,
+          deliveryPeriod: resolvedDeliveryPeriod,
+          deliverySlot: resolvedDeliverySlot,
         },
       };
 
@@ -1055,13 +1092,27 @@ export const AdminOrdersPage = () => {
     loadOrders();
   }, [selectedStatus, searchQuery]);
 
-  // Real-time listener for incoming orders to update table instantly
+  // Real-time listener for incoming orders and status updates to update table instantly
   useEffect(() => {
     const unsubscribe = orderService.subscribeToNewOrders(() => {
       loadOrders();
     });
+
+    const handleOrderEvent = () => {
+      loadOrders();
+    };
+
+    window.addEventListener('techwash-new-order-placed', handleOrderEvent);
+    window.addEventListener('techwash-order-updated', handleOrderEvent);
+    window.addEventListener('techwash-orders-updated', handleOrderEvent);
+    window.addEventListener('techwash-order-payment-updated', handleOrderEvent);
+
     return () => {
       if (typeof unsubscribe === 'function') unsubscribe();
+      window.removeEventListener('techwash-new-order-placed', handleOrderEvent);
+      window.removeEventListener('techwash-order-updated', handleOrderEvent);
+      window.removeEventListener('techwash-orders-updated', handleOrderEvent);
+      window.removeEventListener('techwash-order-payment-updated', handleOrderEvent);
     };
   }, [selectedStatus, searchQuery]);
 
@@ -1149,6 +1200,17 @@ export const AdminOrdersPage = () => {
 
     whatsappNotificationService.openWhatsAppManual(phone, msg);
     success('WhatsApp Opened', `Opening WhatsApp for +91 ${phone}`);
+  };
+
+  const handleSendDeliveryReminder = (ord, dayLabel = 'Tomorrow') => {
+    const phone = ord.whatsapp || ord.phone || ord.customer?.whatsapp || ord.customer?.phone;
+    if (!phone) {
+      error('No Phone', 'No customer phone number available.');
+      return;
+    }
+    const msg = whatsappNotificationService.buildDeliveryReminderWhatsAppMessage(ord, dayLabel);
+    whatsappNotificationService.openWhatsAppManual(phone, msg);
+    success('Delivery Reminder', `Opening WhatsApp delivery reminder for +91 ${phone}`);
   };
 
   const handleWhatsAppToWorker = (ord, staffMember) => {
@@ -1388,15 +1450,46 @@ export const AdminOrdersPage = () => {
       render: (val) => <StatusBadge status={val} />,
     },
     {
-      title: 'Schedule / Slot',
+      title: 'Schedule & Slots',
       key: 'pickupDate',
-      className: 'whitespace-nowrap',
-      render: (val, row) => (
-        <div className="text-xs text-slate-600">
-          <div className="font-bold text-slate-800">{val || formatDate(row.createdAt)}</div>
-          <div className="text-[11px] text-slate-400 font-medium">{row.pickupSlot || row.schedule?.pickupSlot || 'Standard Slot'}</div>
-        </div>
-      ),
+      className: 'whitespace-nowrap min-w-[160px]',
+      render: (_, row) => {
+        const pDate = row.pickupDate || row.schedule?.pickupDate || formatDate(row.createdAt);
+        const pSlot = row.pickupSlot || row.schedule?.pickupSlot || 'Standard Slot';
+        const dDate = row.deliveryDate || row.schedule?.deliveryDate;
+        const dSlot = row.deliverySlot || row.schedule?.deliverySlot || (row.deliveryPeriod ? TIME_SLOTS[row.deliveryPeriod] : null);
+
+        const getSlotIcon = (slotStr) => {
+          const s = String(slotStr || '').toLowerCase();
+          if (s.includes('morning') || s.includes('08:00') || s.includes('8am')) return '🌅';
+          if (s.includes('afternoon') || s.includes('12:00') || s.includes('12pm')) return '☀️';
+          if (s.includes('evening') || s.includes('04:00') || s.includes('4pm') || s.includes('08:00 pm')) return '🌙';
+          return '⏱️';
+        };
+
+        return (
+          <div className="text-xs space-y-1">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 border border-amber-200">
+                📦 Pick
+              </span>
+              <span className="font-bold text-slate-800 text-[11px]">{pDate}</span>
+              <span className="text-[10px] text-slate-500 font-medium">({getSlotIcon(pSlot)} {pSlot.split(' ')[0]})</span>
+            </div>
+            {dDate ? (
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-900 border border-emerald-200">
+                  🚚 Deliv
+                </span>
+                <span className="font-black text-emerald-800 text-[11px]">{dDate}</span>
+                <span className="text-[10px] text-emerald-700 font-medium">({getSlotIcon(dSlot)} {dSlot ? dSlot.split(' ')[0] : 'Slot'})</span>
+              </div>
+            ) : (
+              <div className="text-[10px] text-slate-400 italic">No delivery set</div>
+            )}
+          </div>
+        );
+      },
     },
     {
       title: 'Assigned Worker',
@@ -1431,7 +1524,7 @@ export const AdminOrdersPage = () => {
     {
       title: 'Actions',
       key: 'id',
-      className: 'whitespace-nowrap min-w-[210px]',
+      className: 'whitespace-nowrap min-w-[240px]',
       render: (_, row) => (
         <div className="flex items-center gap-1.5">
           <button
@@ -1446,10 +1539,19 @@ export const AdminOrdersPage = () => {
           <button
             type="button"
             onClick={() => handleSendWhatsAppUpdate(row)}
-            title="WhatsApp Customer Update"
+            title="WhatsApp Customer Milestone Update"
             className="w-8 h-8 rounded-xl bg-[#25D366] hover:bg-[#20bd5a] text-white flex items-center justify-center shadow-xs active:scale-95 transition-all"
           >
             <MessageSquare className="w-4 h-4" />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleSendDeliveryReminder(row, 'Tomorrow')}
+            title="1-Click WhatsApp Delivery Reminder (Date & Slot)"
+            className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white flex items-center justify-center shadow-xs active:scale-95 transition-all"
+          >
+            <Truck className="w-4 h-4" />
           </button>
 
           <button
@@ -1946,10 +2048,24 @@ export const AdminOrdersPage = () => {
               </div>
 
               <div className="flex flex-col justify-between space-y-3">
-                <div className="space-y-1">
-                  <span className="text-slate-400 font-bold uppercase tracking-wider block">Service & Pickup Slot</span>
+                <div className="space-y-1.5">
+                  <span className="text-slate-400 font-bold uppercase tracking-wider block">Service & Logistics Schedule</span>
                   <div className="font-bold text-slate-900">{activeOrder.serviceEmoji || '🧺'} {activeOrder.service || activeOrder.serviceName}</div>
-                  <div className="text-slate-600">🗓️ {activeOrder.pickupDate || activeOrder.schedule?.pickupDate} ({activeOrder.pickupSlot || activeOrder.schedule?.pickupSlot})</div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                    <div className="p-2 rounded-lg bg-amber-50 border border-amber-200">
+                      <div className="text-[10px] font-bold text-amber-900 uppercase">📦 Pickup Slot</div>
+                      <div className="font-semibold text-slate-800">{activeOrder.pickupDate || activeOrder.schedule?.pickupDate || 'Standard'}</div>
+                      <div className="text-[10px] text-slate-500">{activeOrder.pickupSlot || activeOrder.schedule?.pickupSlot || 'Standard Slot'}</div>
+                    </div>
+                    
+                    <div className="p-2 rounded-lg bg-emerald-50 border border-emerald-200">
+                      <div className="text-[10px] font-bold text-emerald-900 uppercase">🚚 Delivery Slot</div>
+                      <div className="font-bold text-emerald-900">{activeOrder.deliveryDate || activeOrder.schedule?.deliveryDate || 'Scheduled'}</div>
+                      <div className="text-[10px] text-emerald-700">{activeOrder.deliverySlot || activeOrder.schedule?.deliverySlot || (activeOrder.deliveryPeriod ? TIME_SLOTS[activeOrder.deliveryPeriod] : 'Standard Slot')}</div>
+                    </div>
+                  </div>
+
                   {activeOrder.notes && (
                     <div className="text-amber-800 bg-amber-50 p-2 rounded-lg border border-amber-200 text-[11px] mt-1">
                       <strong>Customer Note:</strong> {activeOrder.notes}
@@ -1957,7 +2073,7 @@ export const AdminOrdersPage = () => {
                   )}
                 </div>
 
-                <div className="flex items-center gap-2 pt-2">
+                <div className="flex flex-wrap items-center gap-2 pt-2">
                   <Button
                     type="button"
                     variant="outline"
@@ -1966,7 +2082,17 @@ export const AdminOrdersPage = () => {
                     onClick={() => handleSendWhatsAppUpdate(activeOrder)}
                     className="flex-1 justify-center bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100"
                   >
-                    WhatsApp Update
+                    Milestone Update
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    icon={Truck}
+                    onClick={() => handleSendDeliveryReminder(activeOrder, 'Tomorrow')}
+                    className="flex-1 justify-center bg-teal-50 border-teal-300 text-teal-800 hover:bg-teal-100"
+                  >
+                    Delivery Reminder
                   </Button>
                   <Button
                     type="button"
@@ -2666,9 +2792,10 @@ export const AdminOrdersPage = () => {
                 <label className="block text-slate-700 font-bold mb-1">Customer Full Name *</label>
                 <Input
                   required
-                  placeholder="e.g. Ramesh Kumar"
+                  placeholder="e.g. RAMESH KUMAR"
                   value={walkInForm.customerName}
-                  onChange={(e) => setWalkInForm({ ...walkInForm, customerName: e.target.value })}
+                  onChange={(e) => setWalkInForm({ ...walkInForm, customerName: e.target.value.toUpperCase() })}
+                  className="uppercase font-bold tracking-wide"
                 />
               </div>
 
@@ -2691,6 +2818,147 @@ export const AdminOrdersPage = () => {
                   value={walkInForm.email}
                   onChange={(e) => setWalkInForm({ ...walkInForm, email: e.target.value })}
                 />
+              </div>
+            </div>
+          </div>
+
+          {/* Logistics & Delivery Schedule Card */}
+          <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+              <div className="flex items-center gap-2 font-bold text-slate-900 uppercase tracking-wider text-xs">
+                <Calendar className="w-4 h-4 text-[#F97316]" />
+                <span>Pickup & Delivery Schedule</span>
+              </div>
+              <span className="text-[11px] font-semibold text-slate-500">
+                Auto-reminders sent before delivery
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Pickup Schedule */}
+              <div className="p-3 bg-amber-50/50 rounded-xl border border-amber-200/70 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-black text-amber-900 uppercase tracking-wider flex items-center gap-1.5">
+                    <span>📦</span> Pickup / Drop Date & Slot
+                  </label>
+                </div>
+                <div>
+                  <Input
+                    type="date"
+                    value={walkInForm.pickupDate}
+                    onChange={(e) => {
+                      const newPickup = e.target.value;
+                      const newDeliv = calculateDefaultDelivery(newPickup, walkInForm.expressOption || 'STANDARD');
+                      setWalkInForm({
+                        ...walkInForm,
+                        pickupDate: newPickup,
+                        deliveryDate: newDeliv
+                      });
+                    }}
+                    className="bg-white text-xs font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-600 mb-1">Pickup Time Window:</label>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {[
+                      { key: 'MORNING', label: 'Morning', time: '8AM - 12PM', icon: '🌅' },
+                      { key: 'AFTERNOON', label: 'Afternoon', time: '12PM - 4PM', icon: '☀️' },
+                      { key: 'EVENING', label: 'Evening', time: '4PM - 8PM', icon: '🌙' },
+                    ].map((slot) => {
+                      const isSelected = walkInForm.pickupPeriod === slot.key;
+                      return (
+                        <button
+                          key={slot.key}
+                          type="button"
+                          onClick={() => setWalkInForm({
+                            ...walkInForm,
+                            pickupPeriod: slot.key,
+                            pickupSlot: TIME_SLOTS[slot.key] || slot.time
+                          })}
+                          className={`py-1.5 px-1 rounded-lg text-center font-bold text-[11px] border transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-2xs'
+                              : 'bg-white text-slate-700 border-slate-200 hover:bg-amber-50'
+                          }`}
+                        >
+                          <div>{slot.icon} {slot.label}</div>
+                          <div className="text-[9px] opacity-80">{slot.time}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Delivery Schedule */}
+              <div className="p-3 bg-emerald-50/50 rounded-xl border border-emerald-200/70 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-black text-emerald-950 uppercase tracking-wider flex items-center gap-1.5">
+                    <span>🚚</span> Delivery Date & Slot
+                  </label>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const d = calculateDefaultDelivery(walkInForm.pickupDate, 'EXPRESS_24');
+                        setWalkInForm({ ...walkInForm, deliveryDate: d });
+                      }}
+                      className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
+                    >
+                      +1D Express
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const d = calculateDefaultDelivery(walkInForm.pickupDate, 'STANDARD');
+                        setWalkInForm({ ...walkInForm, deliveryDate: d });
+                      }}
+                      className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
+                    >
+                      +2D Std
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <Input
+                    type="date"
+                    value={walkInForm.deliveryDate}
+                    onChange={(e) => setWalkInForm({ ...walkInForm, deliveryDate: e.target.value })}
+                    className="bg-white text-xs font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-600 mb-1">Delivery Time Window:</label>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {[
+                      { key: 'MORNING', label: 'Morning', time: '8AM - 12PM', icon: '🌅' },
+                      { key: 'AFTERNOON', label: 'Afternoon', time: '12PM - 4PM', icon: '☀️' },
+                      { key: 'EVENING', label: 'Evening', time: '4PM - 8PM', icon: '🌙' },
+                    ].map((slot) => {
+                      const isSelected = walkInForm.deliveryPeriod === slot.key;
+                      return (
+                        <button
+                          key={slot.key}
+                          type="button"
+                          onClick={() => setWalkInForm({
+                            ...walkInForm,
+                            deliveryPeriod: slot.key,
+                            deliverySlot: TIME_SLOTS[slot.key] || slot.time
+                          })}
+                          className={`py-1.5 px-1 rounded-lg text-center font-bold text-[11px] border transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-emerald-600 text-white border-emerald-700 shadow-2xs'
+                              : 'bg-white text-slate-700 border-slate-200 hover:bg-emerald-50'
+                          }`}
+                        >
+                          <div>{slot.icon} {slot.label}</div>
+                          <div className="text-[9px] opacity-80">{slot.time}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
             </div>
           </div>

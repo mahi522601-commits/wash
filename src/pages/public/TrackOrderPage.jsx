@@ -457,12 +457,34 @@ export const TrackOrderPage = () => {
                         <p className="text-xs text-slate-400">Garment tally conducted upon doorstep pickup.</p>
                       )}
 
-                      {/* Address Summary */}
-                      <div className="mt-6 pt-4 border-t border-slate-100 text-xs text-slate-600 space-y-1">
-                        <span className="font-bold text-slate-800 uppercase tracking-wider block">
-                          Pickup & Delivery Destination:
-                        </span>
-                        <p>{order.customer?.address}</p>
+                      {/* Address & Schedule Summary */}
+                      <div className="mt-6 pt-4 border-t border-slate-100 text-xs text-slate-600 space-y-2.5">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pb-2 border-b border-slate-100">
+                          <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                            <span className="font-bold text-slate-700 text-[10px] uppercase tracking-wider block mb-0.5">
+                              📅 Pickup Schedule:
+                            </span>
+                            <span className="font-bold text-slate-900 text-xs">
+                              {order.schedule?.pickupDate || order.pickupDate || 'Today'} ({order.schedule?.pickupSlot || order.pickupSlot || 'Morning Window'})
+                            </span>
+                          </div>
+                          <div className="p-2.5 rounded-xl bg-orange-50 border border-orange-200">
+                            <span className="font-bold text-orange-800 text-[10px] uppercase tracking-wider block mb-0.5">
+                              🚚 Delivery Schedule:
+                            </span>
+                            <span className="font-bold text-orange-950 text-xs">
+                              {order.deliveryDate || order.schedule?.deliveryDate || (order.isExpress ? 'Express (24h)' : 'Standard (48h)')}{' '}
+                              {order.deliverySlot || order.schedule?.deliverySlot ? `(${order.deliverySlot || order.schedule?.deliverySlot})` : ''}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div>
+                          <span className="font-bold text-slate-800 uppercase tracking-wider block text-[10px]">
+                            Pickup & Delivery Destination:
+                          </span>
+                          <p className="font-medium text-slate-700 mt-0.5">{order.customer?.address || order.address}</p>
+                        </div>
                       </div>
                     </Card>
 

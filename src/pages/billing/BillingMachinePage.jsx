@@ -1,7 +1,13 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { terminalAuthService, DEFAULT_BILLING_TERMINALS } from '../../services/terminalAuthService';
-import { orderService } from '../../services/orderService';
+import { 
+  orderService, 
+  TIME_PERIODS, 
+  TIME_SLOTS, 
+  calculateDefaultDelivery, 
+  normalizeDateString 
+} from '../../services/orderService';
 import { whatsappNotificationService } from '../../services/whatsappNotificationService';
 import { auditService } from '../../services/auditService';
 import { useToast } from '../../context/ToastContext';
@@ -16,6 +22,10 @@ import { Badge } from '../../components/ui/Badge';
 import { 
   POS_CATEGORIES 
 } from '../admin/AdminOrdersPage';
+import { PosQuickNavButtons } from '../../components/billing/PosQuickNavButtons';
+import { PosOrdersModal } from '../../components/billing/PosOrdersModal';
+import { PosTasksModal } from '../../components/billing/PosTasksModal';
+import { PosBalanceDueModal } from '../../components/billing/PosBalanceDueModal';
 import { 
   pricingService, 
   INITIAL_PRICING_CONFIG,
@@ -58,12 +68,26 @@ import {
   Laptop,
   Scale,
   ShieldCheck,
+  ShieldAlert,
   Check,
   AlertCircle,
   Calendar,
   ChevronDown,
   FileText
 } from 'lucide-react';
+
+const getInitialDeliverySchedule = () => {
+  const today = normalizeDateString(new Date());
+  const calc = calculateDefaultDelivery(today, false, 'MORNING');
+  return {
+    pickupDate: today,
+    pickupPeriod: 'MORNING',
+    pickupSlot: 'In-Store Counter Drop',
+    deliveryDate: calc.deliveryDate,
+    deliveryPeriod: 'MORNING',
+    deliverySlot: calc.deliverySlot,
+  };
+};
 
 const INITIAL_BILL_STATE = {
   manualBillNumber: '', // 4-digit manual offline slip/token number (e.g. 1042)
@@ -83,6 +107,7 @@ const INITIAL_BILL_STATE = {
   ironPricePerKg: 130,
   customGrandTotal: '', // Admin override for total bill amount
   items: [],
+  ...getInitialDeliverySchedule(),
   expressOption: 'STANDARD', // 'STANDARD' | 'EXPRESS_24H'
   paymentMethod: 'CASH', // 'CASH' | 'UPI_QR' | 'CARD' | 'PAY_ON_DELIVERY'
   paymentStatus: 'PAID', // 'PAID' | 'PARTIAL' | 'UNPAID'
@@ -200,6 +225,7 @@ export const WASH_AND_IRON_SUB_SERVICES = RAW_CLOTHES_ITEMS.map(it => ({
 export const BillingMachinePage = () => {
   const { terminalId } = useParams();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { success, error, info } = useToast();
 
   const activeTerminalId = terminalAuthService.normalizeTerminalId(terminalId);
@@ -240,6 +266,64 @@ export const BillingMachinePage = () => {
   const [showShiftReportModal, setShowShiftReportModal] = useState(false);
   const [shiftReportData, setShiftReportData] = useState(null);
   const [isLoadingReport, setIsLoadingReport] = useState(false);
+
+  // In-POS Orders, Tasks & Balance Due Modals (Deep-Linked via URL query parameters)
+  const [isOrdersModalOpen, setIsOrdersModalOpen] = useState(false);
+  const [isTasksModalOpen, setIsTasksModalOpen] = useState(false);
+  const [isBalancesModalOpen, setIsBalancesModalOpen] = useState(false);
+
+  useEffect(() => {
+    const view = searchParams.get('view') || searchParams.get('tab') || searchParams.get('modal');
+    if (view === 'orders' || view === 'order') {
+      setIsOrdersModalOpen(true);
+      setIsTasksModalOpen(false);
+      setIsBalancesModalOpen(false);
+    } else if (view === 'tasks' || view === 'task') {
+      setIsTasksModalOpen(true);
+      setIsOrdersModalOpen(false);
+      setIsBalancesModalOpen(false);
+    } else if (view === 'balances' || view === 'balance' || view === 'due') {
+      setIsBalancesModalOpen(true);
+      setIsOrdersModalOpen(false);
+      setIsTasksModalOpen(false);
+    }
+  }, [searchParams]);
+
+  const openModalWithUrl = useCallback((viewName) => {
+    if (viewName === 'orders') {
+      setIsOrdersModalOpen(true);
+      setIsTasksModalOpen(false);
+      setIsBalancesModalOpen(false);
+    } else if (viewName === 'tasks') {
+      setIsTasksModalOpen(true);
+      setIsOrdersModalOpen(false);
+      setIsBalancesModalOpen(false);
+    } else if (viewName === 'balances') {
+      setIsBalancesModalOpen(true);
+      setIsOrdersModalOpen(false);
+      setIsTasksModalOpen(false);
+    }
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set('view', viewName);
+    setSearchParams(newParams, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  const closeModalWithUrl = useCallback((viewName) => {
+    if (viewName === 'orders') setIsOrdersModalOpen(false);
+    if (viewName === 'tasks') setIsTasksModalOpen(false);
+    if (viewName === 'balances') setIsBalancesModalOpen(false);
+    const newParams = new URLSearchParams(searchParams);
+    if (
+      newParams.get('view') === viewName || 
+      newParams.get('tab') === viewName || 
+      newParams.get('modal') === viewName
+    ) {
+      newParams.delete('view');
+      newParams.delete('tab');
+      newParams.delete('modal');
+      setSearchParams(newParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   // Load Real-time Daily Shift Stats for This Counter (Strictly Offline POS Walk-In Orders)
   const loadRealtimeShiftStats = useCallback(async () => {
@@ -327,11 +411,25 @@ export const BillingMachinePage = () => {
     };
   }, [loadRealtimeShiftStats]);
 
-  // Load Terminal and Session
+  // Physical Device & Store Location Conflict State
+  const [deviceConflict, setDeviceConflict] = useState(null);
+
+  // Load Terminal and Session with Physical Store Isolation Check
   useEffect(() => {
     const initTerminal = async () => {
       const termData = await terminalAuthService.getTerminalById(activeTerminalId);
       setTerminal(termData);
+
+      // Check if this computer is already logged into a DIFFERENT store counter
+      const activeBound = terminalAuthService.getActiveDeviceTerminalId();
+      if (activeBound && activeBound !== activeTerminalId) {
+        const boundTerm = await terminalAuthService.getTerminalById(activeBound);
+        setDeviceConflict(boundTerm);
+        setSession(null);
+        return;
+      }
+
+      setDeviceConflict(null);
       const activeSession = terminalAuthService.getTerminalSession(activeTerminalId);
       setSession(activeSession);
     };
@@ -367,6 +465,7 @@ export const BillingMachinePage = () => {
     try {
       const activeSession = await terminalAuthService.loginTerminal(activeTerminalId, loginPassword);
       setSession(activeSession);
+      setDeviceConflict(null);
       setLoginPassword('');
       success('Counter Unlocked', `Signed in to ${activeSession.terminalName}`);
     } catch (err) {
@@ -382,6 +481,7 @@ export const BillingMachinePage = () => {
     try {
       const activeSession = await terminalAuthService.quickUnlockTerminal(activeTerminalId);
       setSession(activeSession);
+      setDeviceConflict(null);
       setLoginPassword('');
       success('Counter Unlocked!', `Ready for billing at ${activeSession.terminalName}`);
     } catch (err) {
@@ -391,10 +491,11 @@ export const BillingMachinePage = () => {
     }
   };
 
-  // Handle Terminal Sign-out
+  // Handle Terminal Sign-out & Release PC
   const handleTerminalLogout = () => {
     terminalAuthService.logoutTerminal(activeTerminalId);
     setSession(null);
+    setDeviceConflict(null);
     info('Counter Locked', `Signed out of ${terminal?.name || 'Counter'}`);
   };
 
@@ -498,8 +599,10 @@ export const BillingMachinePage = () => {
     if (itemSearch.trim()) {
       const q = itemSearch.toLowerCase();
       return items.filter(it => 
-        it.name.toLowerCase().includes(q) || 
-        (it.categoryName && it.categoryName.toLowerCase().includes(q))
+        (it.name && it.name.toLowerCase().includes(q)) || 
+        (it.categoryName && it.categoryName.toLowerCase().includes(q)) ||
+        (it.subServiceName && it.subServiceName.toLowerCase().includes(q)) ||
+        (it.serviceName && it.serviceName.toLowerCase().includes(q))
       );
     }
 
@@ -516,24 +619,66 @@ export const BillingMachinePage = () => {
         items = dynamicMasterCatalog.filter(it => it.categoryKey === subCategoryFilter);
       }
     } else if (sId === 'srv-steam-ironing') {
-      items = dynamicMasterCatalog.filter(it => it.categoryKey === 'STEAM_IRONING' || it.name.toLowerCase().includes('steam') || it.name.toLowerCase().includes('iron'));
+      items = dynamicMasterCatalog.filter(it => it.categoryKey === 'STEAM_IRONING' || (it.serviceId === 'srv-steam-ironing') || (it.name && it.name.toLowerCase().includes('steam iron')));
     } else if (sId === 'srv-saree-spa') {
-      items = dynamicMasterCatalog.filter(it => it.categoryKey === 'SAREES_ETHNIC' || it.name.toLowerCase().includes('saree') || it.name.toLowerCase().includes('silk') || it.name.toLowerCase().includes('lehanga'));
+      items = dynamicMasterCatalog.filter(it => it.categoryKey === 'SAREES_ETHNIC' || it.serviceId === 'srv-saree-spa' || (it.name && (it.name.toLowerCase().includes('saree') || it.name.toLowerCase().includes('silk') || it.name.toLowerCase().includes('lehanga'))));
     } else if (sId === 'srv-shoe-spa') {
-      items = dynamicMasterCatalog.filter(it => it.categoryKey === 'FOOTWEAR_BAGS' || it.name.toLowerCase().includes('shoe') || it.name.toLowerCase().includes('sneaker'));
+      items = dynamicMasterCatalog.filter(it => it.categoryKey === 'FOOTWEAR_BAGS' || it.serviceId === 'srv-shoe-spa' || (it.name && (it.name.toLowerCase().includes('shoe') || it.name.toLowerCase().includes('sneaker') || it.name.toLowerCase().includes('bag'))));
     } else if (sId === 'srv-curtain-spa') {
-      items = dynamicMasterCatalog.filter(it => it.name.toLowerCase().includes('curtain'));
+      items = dynamicMasterCatalog.filter(it => it.serviceId === 'srv-curtain-spa' || (it.name && it.name.toLowerCase().includes('curtain')));
     } else if (sId === 'srv-starch-and-iron') {
-      items = dynamicMasterCatalog.filter(it => it.categoryKey === 'STARCH_FINISHING' || it.name.toLowerCase().includes('starch'));
+      items = dynamicMasterCatalog.filter(it => it.categoryKey === 'STARCH_FINISHING' || it.serviceId === 'srv-starch-and-iron' || (it.name && it.name.toLowerCase().includes('starch')));
+    } else {
+      // Dynamic Custom Service (e.g. "Gopi" or any admin created service)
+      const customMatches = dynamicMasterCatalog.filter(it => 
+        it.serviceId === sId || 
+        (it.serviceName && it.serviceName.toLowerCase() === (billForm.serviceName || '').toLowerCase())
+      );
+      if (customMatches.length > 0) {
+        items = customMatches;
+      } else {
+        // Fallback from customServices configuration if not in master list
+        const customDef = (pricingConfig.customServices || []).find(s => s.id === sId || s.name === billForm.serviceName);
+        if (customDef && Array.isArray(customDef.subServices) && customDef.subServices.length > 0) {
+          items = customDef.subServices.map((sub, idx) => ({
+            id: sub.id || `${sId}-sub-${idx}`,
+            name: `${customDef.name} — ${sub.name}`,
+            price: Number(sub.price || customDef.startingPrice || 99),
+            emoji: sub.emoji || customDef.emoji || '✨',
+            categoryKey: 'CUSTOM_SERVICES',
+            categoryName: customDef.category || customDef.name,
+            serviceId: sId,
+            serviceName: customDef.name,
+            subServiceName: sub.name,
+          }));
+        } else {
+          items = [{
+            id: `${sId}-item`,
+            name: billForm.serviceName,
+            price: Number(billForm.pricePerKg || (customDef?.startingPrice) || 99),
+            emoji: billForm.serviceEmoji || '✨',
+            categoryKey: 'CUSTOM_SERVICES',
+            categoryName: billForm.serviceName,
+            serviceId: sId,
+            serviceName: billForm.serviceName,
+            subServiceName: billForm.serviceName,
+          }];
+        }
+      }
+    }
+
+    if (subCategoryFilter !== 'ALL' && sId !== 'srv-dry-cleaning' && sId !== 'srv-wash-and-fold' && sId !== 'srv-wash-and-iron') {
+      items = items.filter(it => it.categoryKey === subCategoryFilter || it.categoryName === subCategoryFilter);
     }
 
     return items;
-  }, [billForm.serviceId, subCategoryFilter, itemSearch, dynamicMasterCatalog]);
+  }, [billForm.serviceId, billForm.serviceName, billForm.serviceEmoji, billForm.pricePerKg, subCategoryFilter, itemSearch, dynamicMasterCatalog, pricingConfig.customServices]);
 
   // Add Item From Catalog (with Service Name & Sub-Service Name explicitly linked)
   const handleAddCatalogItem = (item) => {
     setBillForm(prev => {
-      const existingIdx = prev.items.findIndex(it => it.name === item.name);
+      const targetName = item.name;
+      const existingIdx = prev.items.findIndex(it => it.name === targetName);
       if (existingIdx >= 0) {
         const updated = [...prev.items];
         const newQty = updated[existingIdx].quantity + 1;
@@ -549,10 +694,10 @@ export const BillingMachinePage = () => {
         items: [
           ...prev.items,
           {
-            name: item.name,
-            serviceName: prev.serviceName,
-            subServiceName: item.name,
-            emoji: item.emoji || '👔',
+            name: targetName,
+            serviceName: item.serviceName || prev.serviceName,
+            subServiceName: item.subServiceName || item.name,
+            emoji: item.emoji || prev.serviceEmoji || '👔',
             category: item.categoryName || item.category || 'Garment',
             unitPrice: Number(item.price !== undefined ? item.price : (item.defaultPrice || 0)),
             quantity: 1,
@@ -881,7 +1026,7 @@ export const BillingMachinePage = () => {
         storePhone: terminal?.phone || branchDef.phone,
         cashierName: resolvedCashier,
         customer: {
-          name: billForm.customerName.trim(),
+          name: (billForm.customerName || '').trim().toUpperCase(),
           phone: cleanPhone,
           whatsapp: cleanPhone,
           email: billForm.email.trim(),
@@ -890,7 +1035,7 @@ export const BillingMachinePage = () => {
           storeAddress: resolvedStoreAddress,
           city: 'Hyderabad',
         },
-        customerName: billForm.customerName.trim(),
+        customerName: (billForm.customerName || '').trim().toUpperCase(),
         phone: cleanPhone,
         whatsapp: cleanPhone,
         address: `In-Store Walk-in Drop (${resolvedStoreBranch})`,
@@ -923,11 +1068,22 @@ export const BillingMachinePage = () => {
         paymentMethod: billForm.paymentMethod,
         customerStage: 'INSPECTION',
         internalStage: 'RECEIVED_AT_HUB',
+        pickupDate: billForm.pickupDate || normalizeDateString(new Date()),
+        pickupPeriod: billForm.pickupPeriod || 'MORNING',
+        pickupSlot: billForm.pickupSlot || 'In-Store Counter Drop',
+        deliveryDate: billForm.deliveryDate || calculateDefaultDelivery(new Date(), billForm.expressOption === 'EXPRESS_24H', billForm.deliveryPeriod).deliveryDate,
+        deliveryPeriod: billForm.deliveryPeriod || 'MORNING',
+        deliverySlot: billForm.deliverySlot || (TIME_PERIODS[billForm.deliveryPeriod || 'MORNING']?.timeWindow ? `${TIME_PERIODS[billForm.deliveryPeriod || 'MORNING'].label} (${TIME_PERIODS[billForm.deliveryPeriod || 'MORNING'].timeWindow})` : 'Morning (08:00 AM - 12:00 PM)'),
         notes: billForm.notes || 'In-store counter drop-off',
         adminNotes: `POS Order from ${terminal?.name} (Cashier: ${terminal?.assignedOperator})`,
         schedule: {
-          pickupDate: new Date().toLocaleDateString('en-GB'),
-          pickupSlot: 'In-Store Counter',
+          pickupDate: billForm.pickupDate || normalizeDateString(new Date()),
+          pickupPeriod: billForm.pickupPeriod || 'MORNING',
+          pickupSlot: billForm.pickupSlot || 'In-Store Counter Drop',
+          deliveryDate: billForm.deliveryDate || calculateDefaultDelivery(new Date(), billForm.expressOption === 'EXPRESS_24H', billForm.deliveryPeriod).deliveryDate,
+          deliveryPeriod: billForm.deliveryPeriod || 'MORNING',
+          deliverySlot: billForm.deliverySlot || (TIME_PERIODS[billForm.deliveryPeriod || 'MORNING']?.timeWindow ? `${TIME_PERIODS[billForm.deliveryPeriod || 'MORNING'].label} (${TIME_PERIODS[billForm.deliveryPeriod || 'MORNING'].timeWindow})` : 'Morning (08:00 AM - 12:00 PM)'),
+          instructions: billForm.notes || 'In-store counter drop-off',
         },
       };
 
@@ -958,6 +1114,89 @@ export const BillingMachinePage = () => {
   };
 
   // ─────────────────────────────────────────────────────────────
+  // 0. DEVICE CONFLICT GATE (IF THIS PC IS ALREADY SIGNED IN TO A DIFFERENT STORE)
+  if (deviceConflict) {
+    return (
+      <>
+        <SEOHead
+          title="Different Store Counter Conflict | Tech Wash"
+          description="Physical device is currently bound to another store location."
+          canonicalUrl={`${BASE_URL}/billing/${activeTerminalId}`}
+        />
+
+        <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 sm:p-6 text-slate-100 pos-workspace-screen">
+          <div className="w-full max-w-md p-6 sm:p-8 rounded-3xl bg-slate-900 border border-amber-500/40 shadow-2xl text-center space-y-6">
+            <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto shadow-lg shadow-amber-500/20">
+              <ShieldAlert className="w-8 h-8" />
+            </div>
+
+            <div className="space-y-2">
+              <span className="px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 text-[11px] font-bold uppercase tracking-wider border border-amber-500/30 inline-block">
+                Physical Store Isolation
+              </span>
+              <h1 className="text-xl sm:text-2xl font-black text-white font-display">
+                Different Store Detected
+              </h1>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                This computer is currently signed in to <strong>{deviceConflict.name}</strong>. Stores are at different physical locations and cannot be mixed on the same computer to prevent bill and inventory confusion.
+              </p>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-white/5 border border-white/10 text-xs text-left space-y-2 font-medium">
+              <div className="flex justify-between items-center">
+                <span className="text-slate-400">Current Active Counter:</span>
+                <span className="font-mono font-bold text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded-lg border border-orange-500/30">
+                  {deviceConflict.code}
+                </span>
+              </div>
+              <div className="flex justify-between items-start">
+                <span className="text-slate-400 shrink-0">Store Branch:</span>
+                <span className="font-semibold text-white text-right truncate max-w-[200px] ml-2">
+                  {deviceConflict.locationName}
+                </span>
+              </div>
+              <div className="flex justify-between items-center pt-2 border-t border-white/5">
+                <span className="text-slate-400">Attempted Counter:</span>
+                <span className="font-mono font-bold text-slate-400">{terminal?.code}</span>
+              </div>
+            </div>
+
+            <div className="space-y-2 pt-1">
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    const newSession = await terminalAuthService.quickUnlockTerminal(activeTerminalId);
+                    setSession(newSession);
+                    setDeviceConflict(null);
+                    success('Counter Activated', `Now operating ${newSession.terminalName}`);
+                  } catch (err) {
+                    terminalAuthService.logoutTerminal(deviceConflict.id);
+                    setDeviceConflict(null);
+                    setSession(null);
+                  }
+                }}
+                className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold text-xs shadow-lg shadow-orange-500/25 flex items-center justify-center gap-2 cursor-pointer transition-colors"
+              >
+                <Sparkles className="w-4 h-4 text-orange-200" />
+                <span>Switch to {terminal?.code} & Unlock Now</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => navigate(`/billing/${deviceConflict.id}`)}
+                className="w-full py-2.5 px-4 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white font-semibold text-xs transition border border-white/10 flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Store className="w-4 h-4 text-slate-400" />
+                <span>Return to {deviceConflict.code} ({deviceConflict.locationName?.replace('Tech Wash ', '')})</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
   // 1. UNLOCK / SIGN-IN GATE (IF NOT LOGGED IN ON THIS TERMINAL)
   // ─────────────────────────────────────────────────────────────
   if (!session) {
@@ -969,14 +1208,23 @@ export const BillingMachinePage = () => {
           canonicalUrl={`${BASE_URL}/billing/${activeTerminalId}`}
         />
 
-        <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 sm:p-6 text-slate-100">
+        <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 sm:p-6 text-slate-100 pos-workspace-screen">
           <div className="w-full max-w-lg space-y-6">
             
-            {/* Header Brand */}
-            <div className="text-center space-y-2">
-              <Link to="/billing" className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs text-slate-400 hover:text-white transition">
-                <span>← All Billing Terminals</span>
-              </Link>
+            {/* Header Brand & Quick Admin Actions */}
+            <div className="text-center space-y-3">
+              <div className="flex items-center justify-center gap-2 flex-wrap pb-1">
+                <Link to="/billing" className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-slate-300 hover:text-white transition">
+                  <span>← All Billing Terminals</span>
+                </Link>
+                <PosQuickNavButtons 
+                  branchId={activeTerminalId}
+                  showLabelOnMobile={true} 
+                  onOpenOrders={() => openModalWithUrl('orders')}
+                  onOpenTasks={() => openModalWithUrl('tasks')}
+                  onOpenBalances={() => openModalWithUrl('balances')}
+                />
+              </div>
 
               <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-orange-500 to-amber-500 flex items-center justify-center mx-auto text-white shadow-xl shadow-orange-500/20">
                 <Store className="w-8 h-8" />
@@ -990,26 +1238,15 @@ export const BillingMachinePage = () => {
               </p>
             </div>
 
-            {/* Quick Switch Counter Bar */}
-            <div className="flex items-center justify-center gap-2 p-1.5 rounded-2xl bg-white/5 border border-white/10">
-              <span className="text-[11px] text-slate-400 font-bold px-2">Switch Machine:</span>
-              {DEFAULT_BILLING_TERMINALS.map((t) => {
-                const isCur = t.id === activeTerminalId;
-                return (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => navigate(`/billing/${t.id}`)}
-                    className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                      isCur 
-                        ? 'bg-orange-500 text-white shadow-xs'
-                        : 'bg-white/5 hover:bg-white/10 text-slate-300'
-                    }`}
-                  >
-                    {t.code}
-                  </button>
-                );
-              })}
+            {/* Dedicated Machine Indicator (No cross-switching) */}
+            <div className="flex items-center justify-center gap-2 p-2.5 rounded-2xl bg-white/5 border border-white/10 text-xs">
+              <span className="text-slate-400 font-medium">Store Counter:</span>
+              <span className="px-2.5 py-0.5 rounded-lg bg-orange-500/20 text-orange-300 font-bold font-mono border border-orange-500/30">
+                {terminal?.code || 'TW-POS'}
+              </span>
+              <span className="text-slate-300 text-[11px] truncate max-w-[220px]">
+                {terminal?.locationName?.replace('Tech Wash ', '')}
+              </span>
             </div>
 
             {/* Login Box */}
@@ -1156,6 +1393,15 @@ export const BillingMachinePage = () => {
 
             {/* Right: Shift Stats & Counter Actions */}
             <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+              {/* Direct Quick-Access to Orders, Tasks & Balances with Live Notification Numbering */}
+              <PosQuickNavButtons 
+                branchId={activeTerminalId}
+                showLabelOnMobile={true} 
+                onOpenOrders={() => openModalWithUrl('orders')}
+                onOpenTasks={() => openModalWithUrl('tasks')}
+                onOpenBalances={() => openModalWithUrl('balances')}
+              />
+
               <div className="hidden md:flex items-center gap-3 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-xs">
                 <div>
                   <span className="text-slate-400 block text-[10px]">Today's Shift</span>
@@ -1284,32 +1530,16 @@ export const BillingMachinePage = () => {
                 <ExternalLink className="w-3 h-3" />
               </Link>
 
-              {/* 1-Click Instant Counter Switcher */}
-              <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl border border-white/10">
-                <span className="hidden xl:inline text-[10px] text-slate-400 font-bold px-1.5 uppercase">Counter:</span>
-                {DEFAULT_BILLING_TERMINALS.map((t) => {
-                  const isCur = t.id === activeTerminalId;
-                  return (
-                    <button
-                      key={t.id}
-                      type="button"
-                      onClick={async () => {
-                        if (!isCur) {
-                          await terminalAuthService.quickUnlockTerminal(t.id);
-                          navigate(`/billing/${t.id}`);
-                        }
-                      }}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                        isCur
-                          ? 'bg-orange-500 text-white shadow-xs'
-                          : 'text-slate-300 hover:text-white hover:bg-white/10'
-                      }`}
-                      title={`Switch to ${t.name}`}
-                    >
-                      <span>{t.code}</span>
-                    </button>
-                  );
-                })}
+              {/* Dedicated Store Counter Identity (Locked & Isolated to this physical branch) */}
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-orange-500/15 border border-orange-500/30 text-xs font-bold text-orange-300">
+                <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
+                <span className="text-[10px] uppercase font-bold text-slate-400">Counter:</span>
+                <span className="px-2 py-0.5 rounded-md bg-orange-500 text-white font-mono font-black text-xs shadow-xs">
+                  {terminal?.code || 'TW-POS'}
+                </span>
+                <span className="text-[10px] text-slate-300 font-medium hidden 2xl:inline truncate max-w-[160px]">
+                  {terminal?.locationName?.replace('Tech Wash ', '')}
+                </span>
               </div>
 
               <Link
@@ -1352,14 +1582,21 @@ export const BillingMachinePage = () => {
              ══════════════════════════════════════════════════════════ */}
           <div className="lg:col-span-7 space-y-4">
             
-            {/* 1. CUSTOMER & BILL NUMBER CARD */}
+            {/* 1. CUSTOMER & DELIVERY SCHEDULE CARD */}
             <section className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-3">
               <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                 <div className="flex items-center gap-2 font-bold text-slate-900 uppercase tracking-wider text-xs">
                   <User className="w-4 h-4 text-orange-600" />
-                  <span>Customer & Bill Details</span>
+                  <span>Customer & Delivery Schedule</span>
                 </div>
-                <span className="text-[11px] text-slate-400">Offline Counter Walk-in</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
+                    Drop: Today Counter
+                  </span>
+                  <span className="text-[11px] font-bold text-orange-700 bg-orange-100 px-2.5 py-0.5 rounded-md border border-orange-200">
+                    🚚 Delivery: {billForm.deliveryDate || 'Select Date'} ({billForm.deliveryPeriod || 'MORNING'})
+                  </span>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
@@ -1380,9 +1617,10 @@ export const BillingMachinePage = () => {
                   <label className="block text-slate-700 font-bold mb-1 text-xs">Customer Name *</label>
                   <Input
                     required
-                    placeholder="e.g. Ramesh Kumar"
+                    placeholder="e.g. RAMESH KUMAR"
                     value={billForm.customerName}
-                    onChange={(e) => setBillForm({ ...billForm, customerName: e.target.value })}
+                    onChange={(e) => setBillForm({ ...billForm, customerName: e.target.value.toUpperCase() })}
+                    className="uppercase font-bold tracking-wide"
                   />
                 </div>
 
@@ -1405,6 +1643,82 @@ export const BillingMachinePage = () => {
                     value={billForm.email}
                     onChange={(e) => setBillForm({ ...billForm, email: e.target.value })}
                   />
+                </div>
+              </div>
+
+              {/* Delivery Date & Time-of-Day Slots */}
+              <div className="pt-2 border-t border-slate-100 grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+                <div className="md:col-span-5 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-slate-700 font-bold text-xs flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5 text-orange-600" />
+                      <span>Expected Delivery Date *</span>
+                    </label>
+                    <div className="flex gap-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const calc = calculateDefaultDelivery(billForm.pickupDate, true, billForm.deliveryPeriod);
+                          setBillForm(prev => ({ ...prev, deliveryDate: calc.deliveryDate, expressOption: 'EXPRESS_24H' }));
+                        }}
+                        className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200 cursor-pointer"
+                        title="Set 24-hour express delivery"
+                      >
+                        ⚡ +1 Day (Express)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const calc = calculateDefaultDelivery(billForm.pickupDate, false, billForm.deliveryPeriod);
+                          setBillForm(prev => ({ ...prev, deliveryDate: calc.deliveryDate, expressOption: 'STANDARD' }));
+                        }}
+                        className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer"
+                        title="Set 48-hour standard delivery"
+                      >
+                        🛡️ +2 Days
+                      </button>
+                    </div>
+                  </div>
+                  <Input
+                    type="date"
+                    value={billForm.deliveryDate}
+                    min={new Date().toISOString().split('T')[0]}
+                    onChange={(e) => setBillForm({ ...billForm, deliveryDate: e.target.value })}
+                    className="font-medium text-xs py-1.5"
+                  />
+                </div>
+
+                <div className="md:col-span-7 space-y-1.5">
+                  <label className="text-slate-700 font-bold text-xs flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-orange-600" />
+                    <span>Delivery Time Window *</span>
+                  </label>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {TIME_SLOTS.map((slot) => {
+                      const isSelected = (billForm.deliveryPeriod === slot.period) || (billForm.deliverySlot?.includes(slot.time));
+                      return (
+                        <button
+                          key={slot.id}
+                          type="button"
+                          onClick={() => setBillForm(prev => ({
+                            ...prev,
+                            deliveryPeriod: slot.period,
+                            deliverySlot: slot.label,
+                          }))}
+                          className={`px-2 py-1.5 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 ${
+                            isSelected
+                              ? 'bg-orange-500 text-white border-orange-500 font-bold shadow-xs ring-1 ring-orange-300'
+                              : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700 font-medium'
+                          }`}
+                        >
+                          <span className="text-xs">{slot.icon} {slot.period === 'MORNING' ? 'Morning' : slot.period === 'AFTERNOON' ? 'Afternoon' : 'Evening'}</span>
+                          <span className={`text-[10px] ${isSelected ? 'text-orange-100' : 'text-slate-500'}`}>
+                            {slot.shortLabel.split(' ')[1] || slot.time}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             </section>
@@ -2604,6 +2918,30 @@ export const BillingMachinePage = () => {
           onClose={() => setShowShiftReportModal(false)}
         />
       )}
+
+      {/* ── POS ORDER MANAGEMENT MODAL (IN-POS) ── */}
+      <PosOrdersModal
+        isOpen={isOrdersModalOpen}
+        onClose={() => closeModalWithUrl('orders')}
+        terminal={terminal}
+        activeTerminalId={activeTerminalId}
+      />
+
+      {/* ── POS TASKS & DELIVERY DISPATCH MODAL (IN-POS) ── */}
+      <PosTasksModal
+        isOpen={isTasksModalOpen}
+        onClose={() => closeModalWithUrl('tasks')}
+        terminal={terminal}
+        activeTerminalId={activeTerminalId}
+      />
+
+      {/* ── POS BALANCE DUE TRACKER & COLLECTION MODAL (IN-POS) ── */}
+      <PosBalanceDueModal
+        isOpen={isBalancesModalOpen}
+        onClose={() => closeModalWithUrl('balances')}
+        terminal={terminal}
+        activeTerminalId={activeTerminalId}
+      />
     </>
   );
 };

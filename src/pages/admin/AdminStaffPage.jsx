@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { staffService } from '../../services/staffService';
 import { auditService } from '../../services/auditService';
 import { terminalAuthService, DEFAULT_BILLING_TERMINALS } from '../../services/terminalAuthService';
@@ -136,7 +137,7 @@ export const AdminStaffPage = () => {
   };
 
   const handleCopyTerminalCredentials = (term) => {
-    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const origin = typeof window !== 'undefined' && window.location.origin.includes('techwash') ? window.location.origin : 'https://techwashlaundry.com';
     const text = `🏪 Tech Wash POS Billing Counter Credentials:
 URL: ${origin}/billing/${term.id}
 Counter: ${term.name} (${term.code})
@@ -182,7 +183,7 @@ Admin Master Unlock: techwashadmin`;
   };
 
   const handleCopyCredentials = (staff) => {
-    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const origin = typeof window !== 'undefined' && window.location.origin.includes('techwash') ? window.location.origin : 'https://techwashlaundry.com';
     const text = `🚀 Tech Wash Worker Login Credentials:
 Portal URL: ${origin}/worker/login
 Worker Name: ${staff.name}
@@ -378,6 +379,36 @@ Role: ${staff.role || 'Delivery Executive'}`;
 
   return (
     <div className="space-y-8">
+      {/* 0. ATTENDANCE & DAILY ROLL CALL PROMO BANNER */}
+      <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center text-white shrink-0 border border-white/20">
+            <UserCheck className="w-6 h-6" />
+          </div>
+          <div>
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/20 text-white text-[10px] font-black uppercase tracking-wider mb-1">
+              <span className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse" />
+              <span>Smart Roll Call Terminal</span>
+            </div>
+            <h3 className="text-lg sm:text-xl font-black font-display">Daily Attendance, 31-Day Heatmap & Payroll</h3>
+            <p className="text-xs text-emerald-100 max-w-xl">
+              Track daily shift check-in/out timings, overtime hours, effective payable days, and automatically calculate staff wages.
+            </p>
+          </div>
+        </div>
+
+        <Link to="/admin/attendance" className="shrink-0">
+          <Button
+            variant="primary"
+            size="md"
+            icon={ArrowRight}
+            className="bg-white text-emerald-950 hover:bg-emerald-50 font-bold shadow-lg shadow-black/20"
+          >
+            Open Attendance Suite
+          </Button>
+        </Link>
+      </div>
+
       {/* 1. 3 IN-STORE BILLING COUNTERS & PASSWORDS SECTION */}
       <div className="bg-gradient-to-br from-slate-900 via-[#0B0A1C] to-slate-950 p-6 sm:p-7 rounded-3xl border border-purple-500/20 shadow-xl text-white space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-5">

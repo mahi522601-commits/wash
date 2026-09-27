@@ -48,7 +48,18 @@ export const PricingPage = () => {
     return unsub;
   }, []);
 
-  const categories = [
+  const customCategories = useMemo(() => {
+    const list = Array.isArray(pricingConfig.customServices) ? pricingConfig.customServices : [];
+    return list.map(cs => ({
+      id: cs.id,
+      label: cs.name || cs.title,
+      emoji: cs.emoji || cs.icon || '✨',
+      isCustom: true,
+      service: cs,
+    }));
+  }, [pricingConfig.customServices]);
+
+  const categories = useMemo(() => [
     { id: 'ALL', label: 'All Tariffs', emoji: '✨' },
     { id: 'dry-cleaning', label: 'Dry Cleaning', emoji: '🧺' },
     { id: 'ironing', label: 'Steam Iron', emoji: '👔' },
@@ -57,7 +68,8 @@ export const PricingPage = () => {
     { id: 'traditional', label: 'Sarees & Ethnic', emoji: '🥻' },
     { id: 'household', label: 'Home & Curtains', emoji: '🏠' },
     { id: 'footwear', label: 'Shoes & Bags', emoji: '👟' },
-  ];
+    ...customCategories,
+  ], [customCategories]);
 
   const foldMenRate = pricingConfig.services?.find(s => s.id === 'wash-and-fold')?.baseRates?.men ?? 100;
   const foldWomenRate = pricingConfig.services?.find(s => s.id === 'wash-and-fold')?.baseRates?.women ?? 130;
@@ -82,52 +94,75 @@ export const PricingPage = () => {
   }, [pricingConfig]);
 
   const starchMinPrice = useMemo(() => {
-    const all = pricingConfig.starchAndIron?.items || [];
+    const starchList = pricingConfig['starch-and-iron'] || pricingConfig.starchAndIron || {};
+    const all = [...(starchList.men || []), ...(starchList.women || []), ...(starchList.common || [])];
     return all.length > 0 ? Math.min(...all.map(i => Number(i.price) || 25)) : 25;
   }, [pricingConfig]);
 
   // Curated Traditional & Ethnic Wear Tariffs
-  const ethnicItems = useMemo(() => [
-    { name: 'Pattu Saree Original (>10K)', service: 'Dry Clean & Polish', desc: 'Hydrocarbon zero-chemical wash, gold zari shield', price: 900, emoji: '👑', tag: 'Luxury Silk' },
-    { name: 'Silk Saree (Kanchipuram / Banarasi)', service: 'Dry Clean', desc: 'Ultrasonic spot lift, natural sheen retention', price: 220, emoji: '🥻', tag: 'Handloom' },
-    { name: 'Saree with Heavy Embroidery', service: 'Dry Clean', desc: 'Stone, pearl & bead hand-protection wrapping', price: 250, emoji: '✨', tag: 'Embroidered' },
-    { name: 'Saree Rolling & Polishing', service: 'Wooden Roller', desc: 'Traditional wooden roller starching & luster revive', price: 150, emoji: '🥻', tag: 'Finishing' },
-    { name: 'Saree Steam Ironing Only', service: 'Steam Press', desc: 'Pleat alignment and crease-free finish', price: 60, emoji: '🥻', tag: 'Steam Press' },
-    { name: 'Designer Saree Blouse', service: 'Dry Clean', desc: 'Padding & embellishment safe cleanse', price: 70, emoji: '👚', tag: 'Designer' },
-    { name: 'Silk Dhoti / Kanduva', service: 'Dry Clean', desc: 'Crisp handloom fold with traditional borders', price: 140, emoji: '🧣', tag: 'Traditional' },
-    { name: 'Sherwani / Bandgala Suit', service: 'Dry Clean', desc: 'Structured shoulder support & brocade care', price: 250, emoji: '🧥', tag: 'Occasion' },
-    { name: 'Men Kurta (Silk / Worked)', service: 'Dry Clean', desc: 'Gentle spot lift and tension steam press', price: 150, emoji: '👘', tag: 'Ethnic' },
-    { name: 'Bridal Lehanga Set (Bottom)', service: 'Dry Clean', desc: 'Multi-layer flare preservation & netting care', price: 200, emoji: '👗', tag: 'Bridal' },
-  ], []);
+  const ethnicItems = useMemo(() => {
+    const pattuPrice = pricingConfig.dryCleaning?.women?.find(i => i.name.includes('Pattu'))?.price || 900;
+    const silkSareePrice = pricingConfig.dryCleaning?.women?.find(i => i.name.toLowerCase() === 'saree')?.price || 220;
+    const workedSareePrice = pricingConfig.dryCleaning?.women?.find(i => i.name.includes('Worked'))?.price || 250;
+    const sareeRollingPrice = Number(pricingConfig.sareeRolling?.rate) || 150;
+    const sareeIronPrice = pricingConfig.ironing?.women?.find(i => i.name.toLowerCase() === 'saree')?.price || 60;
+    const blousePrice = pricingConfig.dryCleaning?.women?.find(i => i.name.includes('Blouse'))?.price || 70;
+    const silkDhotiPrice = pricingConfig.dryCleaning?.men?.find(i => i.name.includes('Dhoti'))?.price || 140;
+    const sherwaniPrice = pricingConfig.dryCleaning?.men?.find(i => i.name.includes('Sherwani'))?.price || 250;
+    const kurtaPrice = pricingConfig.dryCleaning?.men?.find(i => i.name.includes('Kurta'))?.price || 150;
+    const lehangaPrice = pricingConfig.dryCleaning?.women?.find(i => i.name.includes('Lehanga'))?.price || 200;
+
+    return [
+      { name: 'Pattu Saree Original (>10K)', service: 'Dry Clean & Polish', desc: 'Hydrocarbon zero-chemical wash, gold zari shield', price: pattuPrice, emoji: '👑', tag: 'Luxury Silk' },
+      { name: 'Silk Saree (Kanchipuram / Banarasi)', service: 'Dry Clean', desc: 'Ultrasonic spot lift, natural sheen retention', price: silkSareePrice, emoji: '🥻', tag: 'Handloom' },
+      { name: 'Saree with Heavy Embroidery', service: 'Dry Clean', desc: 'Stone, pearl & bead hand-protection wrapping', price: workedSareePrice, emoji: '✨', tag: 'Embroidered' },
+      { name: 'Saree Rolling & Polishing', service: 'Wooden Roller', desc: 'Traditional wooden roller starching & luster revive', price: sareeRollingPrice, emoji: '🥻', tag: 'Finishing' },
+      { name: 'Saree Steam Ironing Only', service: 'Steam Press', desc: 'Pleat alignment and crease-free finish', price: sareeIronPrice, emoji: '🥻', tag: 'Steam Press' },
+      { name: 'Designer Saree Blouse', service: 'Dry Clean', desc: 'Padding & embellishment safe cleanse', price: blousePrice, emoji: '👚', tag: 'Designer' },
+      { name: 'Silk Dhoti / Kanduva', service: 'Dry Clean', desc: 'Crisp handloom fold with traditional borders', price: silkDhotiPrice, emoji: '🧣', tag: 'Traditional' },
+      { name: 'Sherwani / Bandgala Suit', service: 'Dry Clean', desc: 'Structured shoulder support & brocade care', price: sherwaniPrice, emoji: '🧥', tag: 'Occasion' },
+      { name: 'Men Kurta (Silk / Worked)', service: 'Dry Clean', desc: 'Gentle spot lift and tension steam press', price: kurtaPrice, emoji: '👘', tag: 'Ethnic' },
+      { name: 'Bridal Lehanga Set (Bottom)', service: 'Dry Clean', desc: 'Multi-layer flare preservation & netting care', price: lehangaPrice, emoji: '👗', tag: 'Bridal' },
+    ];
+  }, [pricingConfig]);
 
   // Curated Footwear & Bags Tariffs
-  const footwearItems = useMemo(() => [
-    { name: 'Sneakers & Casual Shoes', desc: 'Midsole foam whitening, lace wash & UV sterilize', price: 350, unit: 'pair', emoji: '👟', tag: 'Sneaker Lab' },
-    { name: 'Sports & Running Shoes', desc: 'Deep mesh scrubbing, odor removal & anti-microbial dry', price: 350, unit: 'pair', emoji: '🏃', tag: 'Athletic' },
-    { name: 'Formal Leather Shoes', desc: 'Hand foam shampoo, rich cream nourish & shine buff', price: 350, unit: 'pair', emoji: '👞', tag: 'Leather Care' },
-    { name: 'Suede Boots & Loafers', desc: 'Specialized suede nap brush, stain lift & rain protection', price: 350, unit: 'pair', emoji: '🥾', tag: 'Suede Care' },
-    { name: 'School & College Backpack', desc: 'Deep foam shampoo, zipper lubrication & sanitization', price: 150, unit: 'piece', emoji: '🎒', tag: 'Bags' },
-    { name: 'Designer / Leather Handbag', desc: 'Supple leather conditioning, hardware polishing & shape revival', price: 250, unit: 'piece', emoji: '👜', tag: 'Luxury Bags' },
-  ], []);
+  const footwearItems = useMemo(() => {
+    const shoeRate = Number(pricingConfig.shoes?.ratePerPair) || 350;
+    const backpackPrice = pricingConfig.dryCleaning?.common?.find(i => i.name.includes('Bag') && !i.name.includes('Leather'))?.price || 150;
+    const leatherBagPrice = pricingConfig.dryCleaning?.common?.find(i => i.name.includes('Leather Bags'))?.price || 250;
+
+    return [
+      { name: 'Sneakers & Casual Shoes', desc: 'Midsole foam whitening, lace wash & UV sterilize', price: shoeRate, unit: 'pair', emoji: '👟', tag: 'Sneaker Lab' },
+      { name: 'Sports & Running Shoes', desc: 'Deep mesh scrubbing, odor removal & anti-microbial dry', price: shoeRate, unit: 'pair', emoji: '🏃', tag: 'Athletic' },
+      { name: 'Formal Leather Shoes', desc: 'Hand foam shampoo, rich cream nourish & shine buff', price: shoeRate, unit: 'pair', emoji: '👞', tag: 'Leather Care' },
+      { name: 'Suede Boots & Loafers', desc: 'Specialized suede nap brush, stain lift & rain protection', price: shoeRate, unit: 'pair', emoji: '🥾', tag: 'Suede Care' },
+      { name: 'School & College Backpack', desc: 'Deep foam shampoo, zipper lubrication & sanitization', price: backpackPrice, unit: 'piece', emoji: '🎒', tag: 'Bags' },
+      { name: 'Designer / Leather Handbag', desc: 'Supple leather conditioning, hardware polishing & shape revival', price: leatherBagPrice, unit: 'piece', emoji: '👜', tag: 'Luxury Bags' },
+    ];
+  }, [pricingConfig]);
 
   // Curated Home & Curtains Tariffs
   const householdItems = useMemo(() => {
-    const curtainService = pricingConfig.services?.find(s => s.id === 'curtain-washing');
-    const getCurtainPrice = (key, fallback) => {
-      const sub = curtainService?.subServices?.find(s => s.key === key || s.id === `curtain-${key}`);
-      return sub?.price !== undefined ? sub.price : fallback;
-    };
+    const curtainPricing = pricingConfig.curtains || {};
+    const curtainDCRate = Number(curtainPricing.dryCleaning) || 200;
+    const curtainWIRate = Number(curtainPricing.washAndIron) || 150;
+    const curtainIRRate = Number(curtainPricing.iron) || 60;
+    const curtainWFRate = Number(curtainPricing.washAndFold) || 100;
+    const carpetRate = Number(pricingConfig.carpets?.ratePerSqFt) || 45;
+    const singleBedsheetIron = pricingConfig.ironing?.men?.find(i => i.name.includes('Single Bedsheet'))?.price || 30;
+    const kingBedsheetIron = pricingConfig.ironing?.men?.find(i => i.name.includes('King Bedsheet'))?.price || 35;
 
     return [
-      { name: 'Curtain Dry Cleaning', method: 'Per-panel hydrocarbon solvent wash for delicate / blackout drapes', price: getCurtainPrice('dryCleaning', 200), unit: 'per panel', emoji: '🧺', tag: 'Curtains' },
-      { name: 'Curtain Wash & Iron', method: 'Per-panel RO softened wash + vertical steam hanging press', price: getCurtainPrice('washAndIron', 150), unit: 'per panel', emoji: '🫧', tag: 'Curtains' },
-      { name: 'Curtain Iron (Steam Press)', method: 'Per-panel vertical tension steam press & wrinkle release', price: getCurtainPrice('iron', 60), unit: 'per panel', emoji: '✨', tag: 'Curtains' },
-      { name: 'Curtain Wash & Fold', method: 'Per-panel hygienic drum wash, drying & precision fold', price: getCurtainPrice('washAndFold', 100), unit: 'per panel', emoji: '👕', tag: 'Curtains' },
-      { name: 'Living Room Carpets & Wool Rugs', method: 'Length (ft) × Width (ft) × ₹45', price: 45, unit: 'per sq. ft.', emoji: '🧶', tag: 'Carpets' },
+      { name: 'Curtain Dry Cleaning', method: 'Per-panel hydrocarbon solvent wash for delicate / blackout drapes', price: curtainDCRate, unit: 'per panel', emoji: '🧺', tag: 'Curtains' },
+      { name: 'Curtain Wash & Iron', method: 'Per-panel RO softened wash + vertical steam hanging press', price: curtainWIRate, unit: 'per panel', emoji: '🫧', tag: 'Curtains' },
+      { name: 'Curtain Iron (Steam Press)', method: 'Per-panel vertical tension steam press & wrinkle release', price: curtainIRRate, unit: 'per panel', emoji: '✨', tag: 'Curtains' },
+      { name: 'Curtain Wash & Fold', method: 'Per-panel hygienic drum wash, drying & precision fold', price: curtainWFRate, unit: 'per panel', emoji: '👕', tag: 'Curtains' },
+      { name: 'Living Room Carpets & Wool Rugs', method: `Length (ft) × Width (ft) × ₹${carpetRate}`, price: carpetRate, unit: 'per sq. ft.', emoji: '🧶', tag: 'Carpets' },
       { name: 'Single Blanket / Comforter', method: 'Per-piece anti-mite thermal wash', price: 200, unit: 'per piece', emoji: '🛋️', tag: 'Blankets' },
       { name: 'Double / Heavy Quilt (Razai)', method: 'Per-piece deep hygiene & fluffing', price: 300, unit: 'per piece', emoji: '🛋️', tag: 'Quilts' },
-      { name: 'Single Bedsheet (Steam Press)', method: 'Per-piece precision steam iron', price: 30, unit: 'per piece', emoji: '🛏️', tag: 'Bedding' },
-      { name: 'King / Double Bedsheet (Steam Press)', method: 'Per-piece precision steam iron', price: 35, unit: 'per piece', emoji: '🛏️', tag: 'Bedding' },
+      { name: 'Single Bedsheet (Steam Press)', method: 'Per-piece precision steam iron', price: singleBedsheetIron, unit: 'per piece', emoji: '🛏️', tag: 'Bedding' },
+      { name: 'King / Double Bedsheet (Steam Press)', method: 'Per-piece precision steam iron', price: kingBedsheetIron, unit: 'per piece', emoji: '🛏️', tag: 'Bedding' },
       { name: 'Pillow Cover (Steam Press)', method: 'Per-piece precision steam iron', price: 15, unit: 'per piece', emoji: '🛋️', tag: 'Bedding' },
     ];
   }, [pricingConfig]);
@@ -234,12 +269,19 @@ export const PricingPage = () => {
           <div className="p-3 rounded-2xl bg-white border border-slate-200 shadow-xs text-center">
             <span className="text-xl">👟</span>
             <div className="text-[10px] text-slate-500 font-bold uppercase mt-1">Shoe Care</div>
-            <div className="text-xs sm:text-sm font-black text-slate-900 font-mono mt-0.5">₹350 / pair</div>
+            <div className="text-xs sm:text-sm font-black text-slate-900 font-mono mt-0.5">₹{pricingConfig.shoes?.ratePerPair || 350} / pair</div>
           </div>
           <div className="p-3 rounded-2xl bg-white border border-slate-200 shadow-xs text-center">
             <span className="text-xl">🪟</span>
             <div className="text-[10px] text-slate-500 font-bold uppercase mt-1">Curtains</div>
-            <div className="text-xs sm:text-sm font-black text-slate-900 font-mono mt-0.5">From ₹60</div>
+            <div className="text-xs sm:text-sm font-black text-slate-900 font-mono mt-0.5">
+              From ₹{Math.min(
+                Number(pricingConfig.curtains?.iron) || 60,
+                Number(pricingConfig.curtains?.washAndFold) || 100,
+                Number(pricingConfig.curtains?.washAndIron) || 150,
+                Number(pricingConfig.curtains?.dryCleaning) || 200
+              )}
+            </div>
           </div>
         </div>
 
@@ -1076,6 +1118,80 @@ export const PricingPage = () => {
                 </div>
               </Card>
             </div>
+          )}
+
+          {/* ═════════════════════════════════════════════════════════
+              SECTION 8: CUSTOM SERVICES & BESPOKE CARE
+          ═════════════════════════════════════════════════════════ */}
+          {(Array.isArray(pricingConfig.customServices) && pricingConfig.customServices.length > 0) && (
+            pricingConfig.customServices.map((cs) => {
+              if (selectedCategory !== 'ALL' && selectedCategory !== cs.id) return null;
+              const subItems = Array.isArray(cs.subServices) && cs.subServices.length > 0
+                ? cs.subServices
+                : [{ id: `${cs.id}-base`, name: cs.name || cs.title, price: cs.startingPrice || cs.defaultPrice || 99, emoji: cs.emoji || '✨', desc: cs.shortDescription || 'Bespoke Care' }];
+
+              const filteredSubs = subItems.filter(item => 
+                !searchQuery || 
+                (item.name && item.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                (item.desc && item.desc.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                ((cs.name || cs.title) && (cs.name || cs.title).toLowerCase().includes(searchQuery.toLowerCase()))
+              );
+
+              if (filteredSubs.length === 0) return null;
+
+              return (
+                <div key={cs.id} className="space-y-3 sm:space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 pb-1">
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-2xl p-2 rounded-2xl bg-white border border-slate-200 shadow-2xs">
+                        {cs.emoji || '✨'}
+                      </span>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h2 className="text-lg sm:text-2xl font-black text-slate-900 font-display">
+                            {cs.name || cs.title}
+                          </h2>
+                          <span className="text-[10px] uppercase font-black bg-[#FFF7ED] text-[#F97316] px-2 py-0.5 rounded-full border border-[#FED7AA]">
+                            {cs.pricingType === 'per_kg' ? 'Per-KG' : 'Itemized'}
+                          </span>
+                        </div>
+                        <p className="text-[11px] sm:text-xs text-slate-500 font-normal">
+                          {cs.shortDescription || 'Bespoke garment treatment & finishing'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <Link to={`/book-pickup?service=${cs.id}`}>
+                      <Button variant="outline" size="sm" className="rounded-full text-xs font-bold w-fit">
+                        Book {cs.name || cs.title} ➔
+                      </Button>
+                    </Link>
+                  </div>
+
+                  <Card className="p-0 bg-white border border-slate-200/80 rounded-2xl sm:rounded-3xl shadow-xs overflow-hidden">
+                    <div className="divide-y divide-slate-100">
+                      {filteredSubs.map((sub, sIdx) => (
+                        <div key={sIdx} className="p-3.5 sm:p-4 flex items-center justify-between gap-3 hover:bg-orange-50/20 transition-colors">
+                          <div className="flex items-center gap-3">
+                            <span className="text-xl">{sub.emoji || cs.emoji || '✨'}</span>
+                            <div>
+                              <div className="font-bold text-slate-900 text-xs sm:text-sm">{sub.name}</div>
+                              {sub.desc && <div className="text-[10px] text-slate-400">{sub.desc}</div>}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <span className="font-mono font-black text-sm text-[#F97316]">
+                              {formatCurrency(sub.price)}
+                            </span>
+                            {cs.pricingType === 'per_kg' && <span className="text-[10px] text-slate-400 block">/ Kg</span>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
+                </div>
+              );
+            })
           )}
 
         </div>

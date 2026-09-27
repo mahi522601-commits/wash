@@ -182,7 +182,7 @@ export const AdminReportsPage = () => {
 
   // Copy Sharable Link
   const handleCopyLink = () => {
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+    const origin = 'https://techwashlaundry.com';
     const link = `${origin}/admin/reports?preset=${datePreset}&branch=${branchFilter}`;
     navigator.clipboard.writeText(link);
     success('Sharable Link Copied', `Direct URL copied: /admin/reports?preset=${datePreset}&branch=${branchFilter}`);
@@ -335,6 +335,18 @@ export const AdminReportsPage = () => {
 
           {/* Action Buttons */}
           <div className="flex flex-wrap items-center gap-2">
+            <Link to="/admin/expenses">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-1.5 border-rose-200 text-rose-700 bg-rose-50/50 hover:bg-rose-100"
+                title="View Operating Expenses & Net Monthly Profit & Loss (P&L)"
+              >
+                <TrendingUp className="w-4 h-4 text-rose-600" />
+                <span>Monthly P&L</span>
+              </Button>
+            </Link>
+
             <Button
               variant="outline"
               size="sm"

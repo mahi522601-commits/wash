@@ -41,9 +41,9 @@ export const PrintReceipt = ({
     internalNotes,
   } = receiptData;
 
-  // Compute tracking and payment QR URLs
-  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://techwashlaundry.com';
-  const trackingUrl = `${origin}/track-order?id=${orderNumber}`;
+  // Compute tracking and payment QR URLs (Always use live production domain for customer QR scans)
+  const origin = 'https://techwashlaundry.com';
+  const trackingUrl = `${origin}/track-order?id=${encodeURIComponent(orderNumber)}`;
   const trackingQrUrl = generateQrImageUrl(trackingUrl, 120);
 
   // Status mapping for the 6-stage visual milestone
@@ -115,8 +115,21 @@ export const PrintReceipt = ({
 
         {/* Right: Invoice Number & Dates */}
         <div className="text-right space-y-0.5">
-          <div className="inline-block px-2 py-0.5 rounded-md bg-orange-50 border border-orange-200 text-[#EA580C] text-[9.5px] font-black tracking-wider uppercase">
-            Tax Invoice / Receipt
+          <div className="flex items-center justify-end gap-1.5 flex-wrap">
+            <div className="inline-block px-2 py-0.5 rounded-md bg-orange-50 border border-orange-200 text-[#EA580C] text-[9.5px] font-black tracking-wider uppercase">
+              Tax Invoice / Receipt
+            </div>
+            <div className={`inline-block px-2 py-0.5 rounded-md text-[9px] font-black tracking-wider uppercase border ${
+              customerStage === 'DELIVERED' 
+                ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                : customerStage === 'OUT_FOR_DELIVERY'
+                ? 'bg-amber-50 text-amber-800 border-amber-300'
+                : customerStage === 'READY_FOR_DELIVERY'
+                ? 'bg-cyan-50 text-cyan-800 border-cyan-300'
+                : 'bg-indigo-50 text-indigo-800 border-indigo-300'
+            }`}>
+              {customerStage ? customerStage.replace(/_/g, ' ') : 'CONFIRMED'}
+            </div>
           </div>
           
           <div>
@@ -146,7 +159,9 @@ export const PrintReceipt = ({
           <span className="text-[8.5px] font-bold text-[#EA580C] uppercase tracking-wider block">
             Billed & Delivered To
           </span>
-          <div className="font-black text-slate-900 text-[11px]">{customer.name || 'Valued Customer'}</div>
+          <div className="font-black text-slate-900 text-[11px] uppercase tracking-wide">
+            {(customer.name || 'VALUED CUSTOMER').toUpperCase()}
+          </div>
           <div className="text-slate-600 font-medium text-[9.5px]">
             Phone: <strong className="text-slate-900">{customer.phone}</strong>
           </div>
@@ -178,12 +193,13 @@ export const PrintReceipt = ({
           </div>
           <div className="flex justify-between text-[9.5px]">
             <span className="text-slate-500">Pickup Date:</span>
-            <span className="font-semibold text-slate-900">{schedule.pickupDate || 'Today'}</span>
+            <span className="font-semibold text-slate-900">{schedule.pickupDate || 'Today'} ({schedule.pickupSlot || 'Counter Drop'})</span>
           </div>
           <div className="flex justify-between text-[9.5px]">
-            <span className="text-slate-500">Turnaround:</span>
+            <span className="text-slate-500">Delivery Date:</span>
             <span className="font-bold text-[#EA580C]">
-              {priceSnapshot?.expressFee > 0 ? '⚡ 24H Express' : 'Standard 48H'}
+              {receiptData.deliveryDate || schedule.deliveryDate || (priceSnapshot?.expressFee > 0 ? '⚡ 24H Express' : 'Standard 48H')}{' '}
+              {receiptData.deliverySlot || schedule.deliverySlot ? `(${receiptData.deliverySlot || schedule.deliverySlot})` : ''}
             </span>
           </div>
         </div>

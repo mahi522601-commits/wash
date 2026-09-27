@@ -46,14 +46,16 @@ export const BillingHubPage = () => {
         canonicalUrl={`${BASE_URL}/billing`}
       />
 
-      <div className="min-h-screen bg-slate-950 text-slate-100 py-10 sm:py-16 px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen bg-slate-950 text-slate-100 py-10 sm:py-16 px-4 sm:px-6 lg:px-8 pos-workspace-screen">
         <div className="max-w-6xl mx-auto space-y-10">
           
           {/* Header Brand */}
-          <div className="text-center space-y-4 max-w-2xl mx-auto">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-orange-500/10 border border-orange-500/30 text-orange-400 text-xs font-bold uppercase tracking-wider">
-              <Store className="w-4 h-4 text-orange-400" />
-              <span>In-Store POS & Billing Terminals</span>
+          <div className="text-center space-y-4 max-w-3xl mx-auto">
+            <div className="flex items-center justify-center gap-3 flex-wrap">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-orange-500/10 border border-orange-500/30 text-orange-400 text-xs font-bold uppercase tracking-wider">
+                <Store className="w-4 h-4 text-orange-400" />
+                <span>In-Store POS & Billing Terminals</span>
+              </div>
             </div>
 
             <h1 className="text-3xl sm:text-5xl font-black text-white font-display tracking-tight">
@@ -126,8 +128,8 @@ export const BillingHubPage = () => {
                   <div className="space-y-2 pt-2 border-t border-white/10">
                     <button
                       type="button"
-                      onClick={async () => {
-                        await terminalAuthService.quickUnlockTerminal(terminal.id);
+                      onClick={() => {
+                        terminalAuthService.quickUnlockSync(terminal.id);
                         navigate(`/billing/${terminal.id}`);
                       }}
                       className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-orange-500/20 transition-all cursor-pointer group-hover:shadow-orange-500/40 active:scale-98"

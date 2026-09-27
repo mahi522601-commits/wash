@@ -9,6 +9,7 @@ import { serviceService } from './serviceService.js';
 import { settingsService } from './settingsService.js';
 import { cmsService } from './cmsService.js';
 import { orderService } from './orderService.js';
+import { pricingService, INITIAL_PRICING_CONFIG } from './pricingConfig.js';
 import { formatCurrency } from '../utils/formatters.js';
 
 const CHATBOT_CONFIG_KEY = 'techwash_chatbot_config';
@@ -21,48 +22,85 @@ export const DEFAULT_CHATBOT_CONFIG = {
   whatsappFallbackPhone: '+91 63048 45567',
 };
 
-export const QUICK_ITEMS_CATALOG = [
-  // Men's Wear
-  { id: 'qi-m1', name: 'Shirt / T-Shirt', category: 'Men', unitPrice: 40, ironingPrice: 12, emoji: '👕', desc: 'Hydrocarbon dry clean or steam press' },
-  { id: 'qi-m2', name: 'Trousers / Jeans', category: 'Men', unitPrice: 40, ironingPrice: 12, emoji: '👖', desc: 'Crease retention steam press' },
-  { id: 'qi-m3', name: 'Kurta / Pyjama', category: 'Men', unitPrice: 90, ironingPrice: 20, emoji: '🥻', desc: 'Gentle bio-enzyme wash & press' },
-  { id: 'qi-m4', name: 'Blazer / Coat', category: 'Men', unitPrice: 200, ironingPrice: 60, emoji: '🧥', desc: '3D mannequin form tension press' },
-  { id: 'qi-m5', name: 'Suit (2-Piece)', category: 'Men', unitPrice: 250, ironingPrice: 90, emoji: '👔', desc: 'Zero shine PERC-free solvent clean' },
-  { id: 'qi-m6', name: 'Sherwani / Indo-Western', category: 'Men', unitPrice: 350, ironingPrice: 120, emoji: '✨', desc: 'Zari embroidery protective wrap' },
-  { id: 'qi-m7', name: 'Winter Jacket / Sweater', category: 'Men', unitPrice: 150, ironingPrice: 40, emoji: '🧥', desc: 'Fiber relaxation & de-pilling' },
+export const getQuickItemsCatalog = (pricingConfig) => {
+  const cfg = pricingConfig || INITIAL_PRICING_CONFIG;
+  const dcMen = cfg.dryCleaning?.men || [];
+  const dcWomen = cfg.dryCleaning?.women || [];
+  const irMen = cfg.ironing?.men || [];
+  const irWomen = cfg.ironing?.women || [];
+  const foldMen = Number(cfg.services?.find(s => s.id === 'wash-and-fold')?.baseRates?.men) || 100;
+  const foldWomen = Number(cfg.services?.find(s => s.id === 'wash-and-fold')?.baseRates?.women) || 130;
+  const ironMen = Number(cfg.services?.find(s => s.id === 'wash-and-iron')?.baseRates?.men) || 130;
+  const ironWomen = Number(cfg.services?.find(s => s.id === 'wash-and-iron')?.baseRates?.women) || 160;
+  const shoeRate = Number(cfg.shoes?.ratePerPair) || 350;
+  const curtainDc = Number(cfg.curtains?.dryCleaning) || 200;
+  const curtainWi = Number(cfg.curtains?.washAndIron) || 150;
+  const curtainIr = Number(cfg.curtains?.iron) || 60;
+  const curtainWf = Number(cfg.curtains?.washAndFold) || 100;
+  const carpetRate = Number(cfg.carpets?.ratePerSqFt) || 45;
 
-  // Women's Wear & Ethnic
-  { id: 'qi-w1', name: 'Top / Blouse / Shirt', category: 'Women', unitPrice: 40, ironingPrice: 12, emoji: '👚', desc: 'Delicate fabric treatment' },
-  { id: 'qi-w2', name: 'Kurti / Tunic', category: 'Women', unitPrice: 50, ironingPrice: 15, emoji: '👗', desc: 'Soft-water wash & steam finish' },
-  { id: 'qi-w3', name: 'Silk / Pattu Saree', category: 'Women', unitPrice: 120, ironingPrice: 60, emoji: '🥻', desc: 'Natural luster restoration & starching' },
-  { id: 'qi-w4', name: 'Designer / Heavy Work Saree', category: 'Women', unitPrice: 180, ironingPrice: 80, emoji: '✨', desc: 'Zari protection & micro-spotting' },
-  { id: 'qi-w5', name: 'Salwar Kameez (Set)', category: 'Women', unitPrice: 100, ironingPrice: 30, emoji: '🥻', desc: 'Demineralized color-safe cleanse' },
-  { id: 'qi-w6', name: 'Casual Dress / Gown', category: 'Women', unitPrice: 150, ironingPrice: 50, emoji: '👗', desc: '3D form vertical steam finish' },
-  { id: 'qi-w7', name: 'Heavy Bridal Lehenga (3-Pc)', category: 'Women', unitPrice: 500, ironingPrice: 180, emoji: '👰', desc: 'Heirloom couture preservation' },
+  const shirtDc = dcMen.find(i => i.name === 'Shirt')?.price || 90;
+  const shirtIr = irMen.find(i => i.name === 'Shirt')?.price || 17;
+  const trouserDc = dcMen.find(i => i.name.includes('Trouser') || i.name.includes('Pant'))?.price || 90;
+  const trouserIr = irMen.find(i => i.name.includes('Trouser'))?.price || 17;
+  const kurtaDc = dcMen.find(i => i.name === 'Kurta')?.price || 120;
+  const kurtaIr = irMen.find(i => i.name === 'Kurta')?.price || 20;
+  const blazerDc = dcMen.find(i => i.name.includes('Blazer'))?.price || 250;
+  const blazerIr = irMen.find(i => i.name.includes('Blazer'))?.price || 50;
+  const suitDc = 350;
+  const suitIr = 90;
+  const sherwaniDc = dcMen.find(i => i.name.includes('Sherwani'))?.price || 250;
+  const sherwaniIr = irMen.find(i => i.name.includes('Sherwani'))?.price || 60;
+  const sweaterDc = dcMen.find(i => i.name.includes('Sweater'))?.price || 120;
+  const sweaterIr = irMen.find(i => i.name.includes('Sweater'))?.price || 17;
 
-  // Per-Kg Laundry (RO Soft Water)
-  { id: 'qi-kg1', name: "Wash & Iron (Men's Clothes)", category: 'Per-Kg', unitPrice: 130, unit: 'per Kg', emoji: '🫧', desc: 'RO water wash + 3D steam press' },
-  { id: 'qi-kg2', name: "Wash & Iron (Women's Clothes)", category: 'Per-Kg', unitPrice: 160, unit: 'per Kg', emoji: '🫧', desc: 'Delicate RO soft wash + steam press' },
-  { id: 'qi-kg3', name: "Wash & Fold (Men's Clothes)", category: 'Per-Kg', unitPrice: 100, unit: 'per Kg', emoji: '👕', desc: 'Isolated drum wash + hand folding' },
-  { id: 'qi-kg4', name: "Wash & Fold (Women's Clothes)", category: 'Per-Kg', unitPrice: 130, unit: 'per Kg', emoji: '👕', desc: 'Hypoallergenic bio-enzyme wash' },
+  const topDc = dcWomen.find(i => i.name.includes('Top'))?.price || 120;
+  const topIr = irWomen.find(i => i.name.includes('Top'))?.price || 25;
+  const sareeDc = dcWomen.find(i => i.name.toLowerCase() === 'saree')?.price || 220;
+  const sareeIr = irWomen.find(i => i.name.toLowerCase() === 'saree')?.price || 60;
+  const workedSareeDc = dcWomen.find(i => i.name.includes('Worked'))?.price || 250;
+  const workedSareeIr = irWomen.find(i => i.name.includes('Worked'))?.price || 60;
 
-  // Household & Furnishings
-  { id: 'qi-h1-dc', name: 'Curtain Dry Cleaning', category: 'Household', unitPrice: 200, unit: 'per panel', emoji: '🧺', desc: 'Hydrocarbon solvent wash for delicate/blackout curtains' },
-  { id: 'qi-h1-wi', name: 'Curtain Wash & Iron', category: 'Household', unitPrice: 150, unit: 'per panel', emoji: '🫧', desc: 'RO water wash + vertical steam hanging press' },
-  { id: 'qi-h1-ir', name: 'Curtain Iron (Steam Press)', category: 'Household', unitPrice: 60, unit: 'per panel', emoji: '✨', desc: 'Vertical steam pressing & crease removal' },
-  { id: 'qi-h1-wf', name: 'Curtain Wash & Fold', category: 'Household', unitPrice: 100, unit: 'per panel', emoji: '👕', desc: 'Hygienic drum wash, drying & precision fold' },
-  { id: 'qi-h2', name: 'Carpet / Rug Shampoo', category: 'Household', unitPrice: 45, unit: 'per sq. ft.', emoji: '🧶', desc: 'Deep rotary shampoo & moisture lift' },
-  { id: 'qi-h3', name: 'Single Bedsheet & Pillow Covers', category: 'Household', unitPrice: 80, ironingPrice: 25, emoji: '🛏️', desc: 'High-temp sanitization & flat iron' },
-  { id: 'qi-h4', name: 'Double Bedsheet Set', category: 'Household', unitPrice: 120, ironingPrice: 40, emoji: '🛏️', desc: 'Deep hygiene wash & hotel-grade press' },
-  { id: 'qi-h5', name: 'Single Blanket / Quilt', category: 'Household', unitPrice: 200, emoji: '🛋️', desc: 'Thermal anti-mite deep cleaning' },
-  { id: 'qi-h6', name: 'Double / Heavy Quilt (Razai)', category: 'Household', unitPrice: 300, emoji: '🛋️', desc: 'Antibacterial sterilization & fluffing' },
+  return [
+    { id: 'qi-m1', name: 'Shirt / T-Shirt', category: 'Men', unitPrice: shirtDc, ironingPrice: shirtIr, emoji: '👕', desc: 'Hydrocarbon dry clean or steam press' },
+    { id: 'qi-m2', name: 'Trousers / Jeans', category: 'Men', unitPrice: trouserDc, ironingPrice: trouserIr, emoji: '👖', desc: 'Crease retention steam press' },
+    { id: 'qi-m3', name: 'Kurta / Pyjama', category: 'Men', unitPrice: kurtaDc, ironingPrice: kurtaIr, emoji: '🥻', desc: 'Gentle bio-enzyme wash & press' },
+    { id: 'qi-m4', name: 'Blazer / Coat', category: 'Men', unitPrice: blazerDc, ironingPrice: blazerIr, emoji: '🧥', desc: '3D mannequin form tension press' },
+    { id: 'qi-m5', name: 'Suit (2-Piece)', category: 'Men', unitPrice: suitDc, ironingPrice: suitIr, emoji: '👔', desc: 'Zero shine PERC-free solvent clean' },
+    { id: 'qi-m6', name: 'Sherwani / Indo-Western', category: 'Men', unitPrice: sherwaniDc, ironingPrice: sherwaniIr, emoji: '✨', desc: 'Zari embroidery protective wrap' },
+    { id: 'qi-m7', name: 'Winter Jacket / Sweater', category: 'Men', unitPrice: sweaterDc, ironingPrice: sweaterIr, emoji: '🧥', desc: 'Fiber relaxation & de-pilling' },
 
-  // Footwear
-  { id: 'qi-s1', name: 'Sneakers & Casual Shoes', category: 'Footwear', unitPrice: 350, unit: 'per pair', emoji: '👟', desc: 'Midsole whitening & UV disinfection' },
-  { id: 'qi-s2', name: 'Sports & Running Shoes', category: 'Footwear', unitPrice: 350, unit: 'per pair', emoji: '🏃', desc: 'Deep mesh scrubbing & odor removal' },
-  { id: 'qi-s3', name: 'Formal Leather Shoes', category: 'Footwear', unitPrice: 350, unit: 'per pair', emoji: '👞', desc: 'Leather conditioning & cream buffing' },
-  { id: 'qi-s4', name: 'Suede Shoes & Boots', category: 'Footwear', unitPrice: 350, unit: 'per pair', emoji: '🥾', desc: 'Suede nap restoration & water repellent' },
-];
+    { id: 'qi-w1', name: 'Top / Blouse / Shirt', category: 'Women', unitPrice: topDc, ironingPrice: topIr, emoji: '👚', desc: 'Delicate fabric treatment' },
+    { id: 'qi-w2', name: 'Kurti / Tunic', category: 'Women', unitPrice: topDc, ironingPrice: topIr, emoji: '👗', desc: 'Soft-water wash & steam finish' },
+    { id: 'qi-w3', name: 'Silk / Pattu Saree', category: 'Women', unitPrice: sareeDc, ironingPrice: sareeIr, emoji: '🥻', desc: 'Natural luster restoration & starching' },
+    { id: 'qi-w4', name: 'Designer / Heavy Work Saree', category: 'Women', unitPrice: workedSareeDc, ironingPrice: workedSareeIr, emoji: '✨', desc: 'Zari protection & micro-spotting' },
+    { id: 'qi-w5', name: 'Salwar Kameez (Set)', category: 'Women', unitPrice: 100, ironingPrice: 30, emoji: '🥻', desc: 'Demineralized color-safe cleanse' },
+    { id: 'qi-w6', name: 'Casual Dress / Gown', category: 'Women', unitPrice: 150, ironingPrice: 50, emoji: '👗', desc: '3D form vertical steam finish' },
+    { id: 'qi-w7', name: 'Heavy Bridal Lehenga (3-Pc)', category: 'Women', unitPrice: 500, ironingPrice: 180, emoji: '👰', desc: 'Heirloom couture preservation' },
+
+    { id: 'qi-kg1', name: "Wash & Iron (Men's Clothes)", category: 'Per-Kg', unitPrice: ironMen, unit: 'per Kg', emoji: '🫧', desc: 'RO water wash + 3D steam press' },
+    { id: 'qi-kg2', name: "Wash & Iron (Women's Clothes)", category: 'Per-Kg', unitPrice: ironWomen, unit: 'per Kg', emoji: '🫧', desc: 'Delicate RO soft wash + steam press' },
+    { id: 'qi-kg3', name: "Wash & Fold (Men's Clothes)", category: 'Per-Kg', unitPrice: foldMen, unit: 'per Kg', emoji: '👕', desc: 'Isolated drum wash + hand folding' },
+    { id: 'qi-kg4', name: "Wash & Fold (Women's Clothes)", category: 'Per-Kg', unitPrice: foldWomen, unit: 'per Kg', emoji: '👕', desc: 'Hypoallergenic bio-enzyme wash' },
+
+    { id: 'qi-h1-dc', name: 'Curtain Dry Cleaning', category: 'Household', unitPrice: curtainDc, unit: 'per panel', emoji: '🧺', desc: 'Hydrocarbon solvent wash for delicate/blackout curtains' },
+    { id: 'qi-h1-wi', name: 'Curtain Wash & Iron', category: 'Household', unitPrice: curtainWi, unit: 'per panel', emoji: '🫧', desc: 'RO water wash + vertical steam hanging press' },
+    { id: 'qi-h1-ir', name: 'Curtain Iron (Steam Press)', category: 'Household', unitPrice: curtainIr, unit: 'per panel', emoji: '✨', desc: 'Vertical steam pressing & crease removal' },
+    { id: 'qi-h1-wf', name: 'Curtain Wash & Fold', category: 'Household', unitPrice: curtainWf, unit: 'per panel', emoji: '👕', desc: 'Hygienic drum wash, drying & precision fold' },
+    { id: 'qi-h2', name: 'Carpet / Rug Shampoo', category: 'Household', unitPrice: carpetRate, unit: 'per sq. ft.', emoji: '🧶', desc: 'Deep rotary shampoo & moisture lift' },
+    { id: 'qi-h3', name: 'Single Bedsheet & Pillow Covers', category: 'Household', unitPrice: 80, ironingPrice: 25, emoji: '🛏️', desc: 'High-temp sanitization & flat iron' },
+    { id: 'qi-h4', name: 'Double Bedsheet Set', category: 'Household', unitPrice: 120, ironingPrice: 40, emoji: '🛏️', desc: 'Deep hygiene wash & hotel-grade press' },
+    { id: 'qi-h5', name: 'Single Blanket / Quilt', category: 'Household', unitPrice: 200, emoji: '🛋️', desc: 'Thermal anti-mite deep cleaning' },
+    { id: 'qi-h6', name: 'Double / Heavy Quilt (Razai)', category: 'Household', unitPrice: 300, emoji: '🛋️', desc: 'Antibacterial sterilization & fluffing' },
+
+    { id: 'qi-s1', name: 'Sneakers & Casual Shoes', category: 'Footwear', unitPrice: shoeRate, unit: 'per pair', emoji: '👟', desc: 'Midsole whitening & UV disinfection' },
+    { id: 'qi-s2', name: 'Sports & Running Shoes', category: 'Footwear', unitPrice: shoeRate, unit: 'per pair', emoji: '🏃', desc: 'Deep mesh scrubbing & odor removal' },
+    { id: 'qi-s3', name: 'Formal Leather Shoes', category: 'Footwear', unitPrice: shoeRate, unit: 'per pair', emoji: '👞', desc: 'Leather conditioning & cream buffing' },
+    { id: 'qi-s4', name: 'Suede Shoes & Boots', category: 'Footwear', unitPrice: shoeRate, unit: 'per pair', emoji: '🥾', desc: 'Suede nap restoration & water repellent' },
+  ];
+};
+
+export const QUICK_ITEMS_CATALOG = getQuickItemsCatalog(INITIAL_PRICING_CONFIG);
 
 export const chatbotService = {
   async getConfig() {
@@ -90,13 +128,16 @@ export const chatbotService = {
   async processMessage(userMessage, currentContext = {}) {
     const text = (userMessage || '').toLowerCase().trim();
 
-    // 1. Fetch live published data from CMS
-    const [services, locations, faqs, settings] = await Promise.all([
+    // 1. Fetch live published data from CMS & Pricing
+    const [services, locations, faqs, settings, pricingConfig] = await Promise.all([
       serviceService.getServices({ publishedOnly: true }),
       settingsService.getLocations(),
       cmsService.getItems('faqs'),
       settingsService.getSettings(),
+      pricingService.getPricingConfig(),
     ]);
+
+    const activeQuickItems = getQuickItemsCatalog(pricingConfig);
 
     // ─────────────────────────────────────────────────────────────
     // INTENT 1: DIRECT BOOKING / SCHEDULE DOORSTEP PICKUP
@@ -121,7 +162,7 @@ export const chatbotService = {
           : "I'd be delighted to arrange a doorstep pickup for your garments! Follow these quick steps to schedule your slot:",
         payload: {
           services: services.slice(0, 8),
-          quickItems: QUICK_ITEMS_CATALOG,
+          quickItems: activeQuickItems,
           initialService: requestedService || services[0],
         },
         actionLabel: requestedService ? `Open Full Booking for ${requestedService.title}` : 'Open Booking Wizard',
@@ -187,7 +228,7 @@ export const chatbotService = {
     // ─────────────────────────────────────────────────────────────
     // INTENT 3: SPECIFIC APPAREL / ITEM PRICE INQUIRIES
     // ─────────────────────────────────────────────────────────────
-    const matchingItem = QUICK_ITEMS_CATALOG.find((item) => {
+    const matchingItem = activeQuickItems.find((item) => {
       const nameTerms = item.name.toLowerCase().split(/[\s/()]+/);
       return nameTerms.some(term => term.length > 2 && text.includes(term));
     });

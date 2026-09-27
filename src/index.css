@@ -611,4 +611,43 @@
   }
 }
 
+/* ─────────────────────────────────────────────────────────────
+   POS BILLING SYSTEM TYPOGRAPHY & NUMERIC EXCELLENCE
+   Ultra-modern, high-legibility layout for counters & cashier UI
+   ───────────────────────────────────────────────────────────── */
+.pos-workspace-screen {
+  font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  letter-spacing: -0.011em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.pos-workspace-screen input,
+.pos-workspace-screen select,
+.pos-workspace-screen textarea,
+.pos-workspace-screen button {
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+}
+
+/* Crisp Tabular & Monospace Numerals for Currency & Weights */
+.pos-num,
+.font-mono {
+  font-family: 'JetBrains Mono', 'Plus Jakarta Sans', monospace !important;
+  font-feature-settings: 'tnum' 1, 'zero' 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.025em;
+}
+
+/* Numeric alignment utility */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+/* Smooth badges and quick action tags */
+.pos-tag {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { offerService } from '../../services/offerService';
 import { useToast } from '../../context/ToastContext';
 import { 
@@ -14,12 +14,18 @@ import {
 
 export const FirstVisitOfferModal = () => {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const { success } = useToast();
 
   const [offer, setOffer] = useState(null);
   const [popupConfig, setPopupConfig] = useState(null);
   const [isOpen, setIsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  // Suppress on booking flow or administrative consoles
+  if (pathname === '/book-pickup' || pathname.startsWith('/admin') || pathname.startsWith('/worker')) {
+    return null;
+  }
 
   useEffect(() => {
     const initPopup = async () => {

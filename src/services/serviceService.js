@@ -413,37 +413,58 @@ function applyPricingConfigToServices(serviceList) {
     let startingPrice = srv.startingPrice;
     let startingPriceDisplay = srv.startingPriceDisplay;
 
-    if (cfgSrv) {
-      if (cfgSrv.pricingType === 'PER_KG') {
-        startingPrice = cfgSrv.baseRates?.men || cfgSrv.baseRates?.women || srv.startingPrice;
-        startingPriceDisplay = `Starts at ₹${startingPrice} / Kg`;
-      } else if (cfgSrv.pricingType === 'ITEMIZED') {
-        if (cleanId === 'dry-cleaning') {
-          const all = [...(config.dryCleaning?.men || []), ...(config.dryCleaning?.women || []), ...(config.dryCleaning?.common || [])];
-          if (all.length > 0) {
-            startingPrice = Math.min(...all.map(i => Number(i.price) || 40));
-            startingPriceDisplay = `Starts at ₹${startingPrice}`;
-          }
-        } else if (cleanId === 'ironing') {
-          const all = [...(config.ironing?.men || []), ...(config.ironing?.women || [])];
-          if (all.length > 0) {
-            startingPrice = Math.min(...all.map(i => Number(i.price) || 12));
-            startingPriceDisplay = `Starts at ₹${startingPrice}`;
-          }
-        } else if (cleanId === 'starch-and-iron') {
-          const all = config.starchAndIron?.items || [];
-          if (all.length > 0) {
-            startingPrice = Math.min(...all.map(i => Number(i.price) || 25));
-            startingPriceDisplay = `Starts at ₹${startingPrice}`;
-          }
-        } else if (cleanId === 'curtain-washing') {
-          const sub = cfgSrv.subServices || [];
-          if (sub.length > 0) {
-            startingPrice = Math.min(...sub.map(i => Number(i.price) || 60));
-            startingPriceDisplay = `Starts at ₹${startingPrice}`;
-          }
-        }
+    if (cleanId === 'dry-cleaning') {
+      const all = [...(config.dryCleaning?.men || []), ...(config.dryCleaning?.women || []), ...(config.dryCleaning?.common || [])];
+      if (all.length > 0) {
+        startingPrice = Math.min(...all.map(i => Number(i.price) || 40));
+        startingPriceDisplay = `Starts at ₹${startingPrice}`;
       }
+    } else if (cleanId === 'ironing') {
+      const all = [...(config.ironing?.men || []), ...(config.ironing?.women || [])];
+      if (all.length > 0) {
+        startingPrice = Math.min(...all.map(i => Number(i.price) || 12));
+        startingPriceDisplay = `Starts at ₹${startingPrice}`;
+      }
+    } else if (cleanId === 'starch-and-iron') {
+      const starchObj = config['starch-and-iron'] || config.starchAndIron || {};
+      const all = [...(starchObj.men || []), ...(starchObj.women || []), ...(starchObj.common || [])];
+      if (all.length > 0) {
+        startingPrice = Math.min(...all.map(i => Number(i.price) || 25));
+        startingPriceDisplay = `Starts at ₹${startingPrice}`;
+      }
+    } else if (cleanId === 'wash-and-fold') {
+      const foldRate = Number(cfgSrv?.baseRates?.men || config.services?.find(s => s.id === 'wash-and-fold')?.baseRates?.men) || 100;
+      startingPrice = foldRate;
+      startingPriceDisplay = `Starts at ₹${foldRate} / Kg`;
+    } else if (cleanId === 'wash-and-iron') {
+      const ironRate = Number(cfgSrv?.baseRates?.men || config.services?.find(s => s.id === 'wash-and-iron')?.baseRates?.men) || 130;
+      startingPrice = ironRate;
+      startingPriceDisplay = `Starts at ₹${ironRate} / Kg`;
+    } else if (cleanId === 'saree-rolling') {
+      const sareeRate = Number(config.sareeRolling?.rate || cfgSrv?.rate) || null;
+      if (sareeRate) {
+        startingPrice = sareeRate;
+        startingPriceDisplay = `Starts at ₹${sareeRate}`;
+      } else {
+        startingPrice = null;
+        startingPriceDisplay = 'Price to be confirmed';
+      }
+    } else if (cleanId === 'curtain-washing') {
+      const curtainPricing = config.curtains || {};
+      const dc = Number(curtainPricing.dryCleaning) || 200;
+      const wi = Number(curtainPricing.washAndIron) || 150;
+      const ir = Number(curtainPricing.iron) || 60;
+      const wf = Number(curtainPricing.washAndFold) || 100;
+      startingPrice = Math.min(dc, wi, ir, wf);
+      startingPriceDisplay = `Starts at ₹${startingPrice}`;
+    } else if (cleanId === 'shoe-washing') {
+      const shoeRate = Number(config.shoes?.ratePerPair || cfgSrv?.ratePerPair) || 350;
+      startingPrice = shoeRate;
+      startingPriceDisplay = `₹${shoeRate} / pair`;
+    } else if (cleanId === 'carpet-washing') {
+      const carpetRate = Number(config.carpets?.ratePerSqFt || cfgSrv?.ratePerSqFt) || 45;
+      startingPrice = carpetRate;
+      startingPriceDisplay = `₹${carpetRate} / sq. ft.`;
     }
 
     return {
