@@ -4,7 +4,7 @@
  * Synchronizes with Firestore `settings/pricing` if configured, with exact default fallbacks.
  */
 import { db, isFirebaseConfigured } from './firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 
 export const INITIAL_PRICING_CONFIG = {
   // 1. Service Catalog Metadata
@@ -559,33 +559,21 @@ export const buildMasterCatalogFromPricing = (config = INITIAL_PRICING_CONFIG, e
     });
   });
 
-  // 5. Kids Wear
+  // 5. Kids Wear & Toys
   const kidsItems = dcWomen.filter(it => it.gender === 'kids' || it.category === 'Kids');
-  if (kidsItems.length > 0) {
-    kidsItems.forEach(it => {
-      items.push({
-        id: `k-${it.id}`,
-        name: it.name,
-        price: parsePrice(it.price, 60),
-        emoji: it.emoji || '👶',
-        categoryKey: 'KIDS',
-        categoryName: "Kids",
-        serviceId: 'srv-dry-cleaning',
-        serviceName: 'Premium Dry Cleaning',
-        subServiceName: it.name,
-      });
+  kidsItems.forEach(it => {
+    items.push({
+      id: `k-${it.id}`,
+      name: it.name,
+      price: parsePrice(it.price, 60),
+      emoji: it.emoji || '👶',
+      categoryKey: 'KIDS',
+      categoryName: "Kids",
+      serviceId: 'srv-dry-cleaning',
+      serviceName: 'Premium Dry Cleaning',
+      subServiceName: it.name,
     });
-  } else {
-    items.push(
-      { id: 'k-1', name: 'Kids Frock / Dress', price: 60, emoji: '👗', categoryKey: 'KIDS', categoryName: "Kids", serviceId: 'srv-dry-cleaning', serviceName: 'Premium Dry Cleaning' },
-      { id: 'k-2', name: 'Kids Shirt', price: 70, emoji: '👕', categoryKey: 'KIDS', categoryName: "Kids", serviceId: 'srv-dry-cleaning', serviceName: 'Premium Dry Cleaning' },
-      { id: 'k-3', name: 'Kids Pant / Shorts', price: 70, emoji: '👖', categoryKey: 'KIDS', categoryName: "Kids", serviceId: 'srv-dry-cleaning', serviceName: 'Premium Dry Cleaning' },
-      { id: 'k-4', name: 'Kids Dhoti / Pyjama', price: 90, emoji: '🥻', categoryKey: 'KIDS', categoryName: "Kids", serviceId: 'srv-dry-cleaning', serviceName: 'Premium Dry Cleaning' },
-      { id: 'k-5', name: 'Soft Toys - Small', price: 100, emoji: '🧸', categoryKey: 'KIDS', categoryName: "Toys", serviceId: 'srv-dry-cleaning', serviceName: 'Premium Dry Cleaning' },
-      { id: 'k-6', name: 'Soft Toys - Medium', price: 150, emoji: '🧸', categoryKey: 'KIDS', categoryName: "Toys", serviceId: 'srv-dry-cleaning', serviceName: 'Premium Dry Cleaning' },
-      { id: 'k-7', name: 'Soft Toys - Large Giant', price: 200, emoji: '🧸', categoryKey: 'KIDS', categoryName: "Toys", serviceId: 'srv-dry-cleaning', serviceName: 'Premium Dry Cleaning' }
-    );
-  }
+  });
 
   // 6. Sarees & Ethnic Care
   const sareeRate = parsePrice(cfg.sareeRolling?.rate, 150);
@@ -860,14 +848,15 @@ export const pricingService = {
 
   /**
    * Updates pricing configuration in Firestore & local storage (Admin access)
-   * and broadcasts real-time updates across all open tabs and windows.
+   * and broadcasts real-time updates across all open tabs, windows, and remote devices.
    */
   async updatePricingConfig(newConfig) {
     const calibratedConfig = recalculateServicesInConfig(newConfig);
 
     if (isFirebaseConfigured && db) {
       try {
-        await setDoc(doc(db, 'settings', 'pricing'), calibratedConfig, { merge: true });
+        // Overwrite full document without merge: true so deleted items/categories/sub-services are permanently purged
+        await setDoc(doc(db, 'settings', 'pricing'), calibratedConfig);
       } catch (e) {
         console.warn("Firestore pricing update failed:", e);
       }
@@ -896,12 +885,37 @@ export const pricingService = {
   },
 
   /**
-   * Subscribes to real-time pricing changes across Firestore, BroadcastChannel, and Custom Events
+   * Subscribes to real-time pricing changes across Firestore onSnapshot, BroadcastChannel, and Custom Events
    */
   subscribeToPricing(callback) {
     if (typeof callback !== 'function') return () => {};
 
-    // Custom window event listener
+    let unsubscribeFirestore = null;
+
+    // Attach Firestore real-time listener for multi-device instant sync
+    if (isFirebaseConfigured && db) {
+      try {
+        unsubscribeFirestore = onSnapshot(doc(db, 'settings', 'pricing'), (snap) => {
+          if (snap.exists()) {
+            const remoteData = snap.data();
+            const merged = recalculateServicesInConfig({
+              ...INITIAL_PRICING_CONFIG,
+              ...remoteData,
+            });
+            try {
+              localStorage.setItem(PRICING_STORAGE_KEY, JSON.stringify(merged));
+            } catch (e) {}
+            callback(merged);
+          }
+        }, (err) => {
+          console.warn("Firestore real-time pricing subscription error:", err);
+        });
+      } catch (e) {
+        console.warn("Failed to attach Firestore real-time listener:", e);
+      }
+    }
+
+    // Custom window event listener (for immediate same-window UI updates)
     const handleCustomEvent = (e) => {
       if (e.detail) callback(e.detail);
       else pricingService.getPricingConfig().then(callback);
@@ -934,6 +948,9 @@ export const pricingService = {
     } catch (err) {}
 
     return () => {
+      if (unsubscribeFirestore) {
+        try { unsubscribeFirestore(); } catch (e) {}
+      }
       if (typeof window !== 'undefined') {
         window.removeEventListener('techwash-pricing-updated', handleCustomEvent);
         window.removeEventListener('storage', handleStorageEvent);
