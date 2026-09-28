@@ -6,6 +6,7 @@ import { useToast } from '../../context/ToastContext';
 import { formatCurrency } from '../../utils/formatters';
 import { AdminPageHeader } from '../../components/admin/AdminPageHeader';
 import { AdvancedLogoLoader } from '../../components/common/AdvancedLogoLoader';
+import { EmojiPicker } from '../../components/common/EmojiPicker';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
@@ -1332,7 +1333,7 @@ export const AdminPricingPage = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3 items-end">
                 <div>
                   <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Starting Price (₹) *</label>
                   <input
@@ -1342,18 +1343,15 @@ export const AdminPricingPage = () => {
                     placeholder="150"
                     value={newCustomService.startingPrice}
                     onChange={(e) => setNewCustomService({ ...newCustomService, startingPrice: e.target.value })}
-                    className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold"
+                    className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold h-10"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Emoji Icon</label>
-                  <input
-                    type="text"
-                    placeholder="✨"
+                  <EmojiPicker
+                    label="Emoji Icon"
                     value={newCustomService.emoji}
-                    onChange={(e) => setNewCustomService({ ...newCustomService, emoji: e.target.value })}
-                    className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-center font-bold"
+                    onChange={(val) => setNewCustomService({ ...newCustomService, emoji: val })}
                   />
                 </div>
               </div>
@@ -1428,7 +1426,7 @@ export const AdminPricingPage = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3 items-end">
                 <div>
                   <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Starting Price (₹) *</label>
                   <input
@@ -1437,17 +1435,15 @@ export const AdminPricingPage = () => {
                     min="0"
                     value={editingCustomService.startingPrice}
                     onChange={(e) => setEditingCustomService({ ...editingCustomService, startingPrice: e.target.value })}
-                    className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold"
+                    className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold h-10"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Emoji Icon</label>
-                  <input
-                    type="text"
+                  <EmojiPicker
+                    label="Emoji Icon"
                     value={editingCustomService.emoji}
-                    onChange={(e) => setEditingCustomService({ ...editingCustomService, emoji: e.target.value })}
-                    className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-center font-bold"
+                    onChange={(val) => setEditingCustomService({ ...editingCustomService, emoji: val })}
                   />
                 </div>
               </div>
@@ -1521,7 +1517,7 @@ export const AdminPricingPage = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3 items-end">
                 <div>
                   <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Price (₹) *</label>
                   <input
@@ -1531,18 +1527,15 @@ export const AdminPricingPage = () => {
                     placeholder="120"
                     value={newSubService.price}
                     onChange={(e) => setNewSubService({ ...newSubService, price: e.target.value })}
-                    className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold"
+                    className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold h-10"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Emoji Icon</label>
-                  <input
-                    type="text"
-                    placeholder="✨"
+                  <EmojiPicker
+                    label="Emoji Icon"
                     value={newSubService.emoji}
-                    onChange={(e) => setNewSubService({ ...newSubService, emoji: e.target.value })}
-                    className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-center font-bold"
+                    onChange={(val) => setNewSubService({ ...newSubService, emoji: val })}
                   />
                 </div>
               </div>
@@ -1591,7 +1584,7 @@ export const AdminPricingPage = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3 items-end">
                 <div>
                   <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Price (₹) *</label>
                   <input
@@ -1600,17 +1593,15 @@ export const AdminPricingPage = () => {
                     min="0"
                     value={editingSubService.price}
                     onChange={(e) => setEditingSubService({ ...editingSubService, price: e.target.value })}
-                    className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold"
+                    className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold h-10"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Emoji Icon</label>
-                  <input
-                    type="text"
+                  <EmojiPicker
+                    label="Emoji Icon"
                     value={editingSubService.emoji}
-                    onChange={(e) => setEditingSubService({ ...editingSubService, emoji: e.target.value })}
-                    className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-center font-bold"
+                    onChange={(val) => setEditingSubService({ ...editingSubService, emoji: val })}
                   />
                 </div>
               </div>
@@ -1659,7 +1650,7 @@ export const AdminPricingPage = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3 items-end">
                 <div>
                   <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Price (₹) *</label>
                   <input
@@ -1669,18 +1660,15 @@ export const AdminPricingPage = () => {
                     placeholder="90"
                     value={newItem.price}
                     onChange={(e) => setNewItem({ ...newItem, price: e.target.value })}
-                    className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold"
+                    className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold h-10"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Emoji Icon</label>
-                  <input
-                    type="text"
-                    placeholder="👔"
+                  <EmojiPicker
+                    label="Emoji Icon"
                     value={newItem.emoji}
-                    onChange={(e) => setNewItem({ ...newItem, emoji: e.target.value })}
-                    className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-center font-bold"
+                    onChange={(val) => setNewItem({ ...newItem, emoji: val })}
                   />
                 </div>
               </div>
@@ -1718,7 +1706,7 @@ export const AdminPricingPage = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3 items-end">
                 <div>
                   <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Price (₹) *</label>
                   <input
@@ -1727,17 +1715,15 @@ export const AdminPricingPage = () => {
                     min="0"
                     value={editingItem.price}
                     onChange={(e) => setEditingItem({ ...editingItem, price: e.target.value })}
-                    className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold"
+                    className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold h-10"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Emoji Icon</label>
-                  <input
-                    type="text"
+                  <EmojiPicker
+                    label="Emoji Icon"
                     value={editingItem.emoji}
-                    onChange={(e) => setEditingItem({ ...editingItem, emoji: e.target.value })}
-                    className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-center font-bold"
+                    onChange={(val) => setEditingItem({ ...editingItem, emoji: val })}
                   />
                 </div>
               </div>
