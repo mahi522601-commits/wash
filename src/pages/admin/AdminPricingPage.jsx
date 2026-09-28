@@ -23,7 +23,8 @@ import {
   RotateCcw,
   AlertCircle,
   HelpCircle,
-  Layers
+  Layers,
+  FolderPlus
 } from 'lucide-react';
 
 export const AdminPricingPage = () => {
@@ -42,6 +43,18 @@ export const AdminPricingPage = () => {
   const [newItem, setNewItem] = useState({ name: '', price: '', emoji: '👔', category: 'Men', subCategory: 'tops' });
   const [showAddModal, setShowAddModal] = useState(false);
 
+  // Edit item draft state
+  const [showEditItemModal, setShowEditItemModal] = useState(false);
+  const [editingItem, setEditingItem] = useState({
+    serviceType: '',
+    category: '',
+    id: '',
+    name: '',
+    price: '',
+    emoji: '👔',
+    subCategory: 'tops',
+  });
+
   // Custom Service & Sub-Services draft state
   const [showAddCustomServiceModal, setShowAddCustomServiceModal] = useState(false);
   const [newCustomService, setNewCustomService] = useState({
@@ -53,9 +66,33 @@ export const AdminPricingPage = () => {
     description: '',
   });
 
+  // Edit Custom Service Category draft state
+  const [showEditCustomServiceModal, setShowEditCustomServiceModal] = useState(false);
+  const [editingCustomService, setEditingCustomService] = useState({
+    id: '',
+    name: '',
+    emoji: '✨',
+    startingPrice: '',
+    pricingType: 'per_item',
+    category: 'Custom Care',
+    description: '',
+  });
+
+  // Add Sub-Service draft state
   const [showAddSubServiceModal, setShowAddSubServiceModal] = useState(false);
   const [targetCustomServiceId, setTargetCustomServiceId] = useState(null);
   const [newSubService, setNewSubService] = useState({
+    name: '',
+    price: '',
+    emoji: '✨',
+    desc: '',
+  });
+
+  // Edit Sub-Service draft state
+  const [showEditSubServiceModal, setShowEditSubServiceModal] = useState(false);
+  const [editingSubService, setEditingSubService] = useState({
+    serviceId: '',
+    subId: '',
     name: '',
     price: '',
     emoji: '✨',
@@ -108,6 +145,7 @@ export const AdminPricingPage = () => {
 
   // Delete Itemized Price item
   const handleDeleteItem = (serviceType, category, itemId) => {
+    if (!window.confirm('Remove this garment item from rate card?')) return;
     setHasUnsavedChanges(true);
     const tabKey = resolveTabKey(serviceType);
     setPricingConfig(prev => {
@@ -121,6 +159,55 @@ export const AdminPricingPage = () => {
         }
       };
     });
+  };
+
+  // Open Edit Item Modal
+  const handleOpenEditItem = (serviceType, category, item) => {
+    setEditingItem({
+      serviceType,
+      category,
+      id: item.id,
+      name: item.name || '',
+      price: item.price !== undefined ? item.price : 0,
+      emoji: item.emoji || '👔',
+      subCategory: item.subCategory || 'tops',
+    });
+    setShowEditItemModal(true);
+  };
+
+  // Save Edit Item
+  const handleSaveEditItem = (e) => {
+    e.preventDefault();
+    if (!editingItem.name.trim()) {
+      error('Name Required', 'Please enter an item name.');
+      return;
+    }
+    setHasUnsavedChanges(true);
+    const tabKey = resolveTabKey(editingItem.serviceType);
+    setPricingConfig(prev => {
+      const currentList = prev[tabKey]?.[editingItem.category] || prev.starchAndIron?.[editingItem.category] || [];
+      const updatedList = currentList.map(item => {
+        if (item.id === editingItem.id) {
+          return {
+            ...item,
+            name: editingItem.name.trim(),
+            price: Math.max(0, Number(editingItem.price) || 0),
+            emoji: editingItem.emoji || '👔',
+            subCategory: editingItem.subCategory || 'tops',
+          };
+        }
+        return item;
+      });
+      return {
+        ...prev,
+        [tabKey]: {
+          ...(prev[tabKey] || {}),
+          [editingItem.category]: updatedList
+        }
+      };
+    });
+    setShowEditItemModal(false);
+    success('Item Updated', `"${editingItem.name}" updated. Click Save to broadcast live.`);
   };
 
   // Add Itemized Price item
@@ -217,11 +304,11 @@ export const AdminPricingPage = () => {
     }));
   };
 
-  // Add Custom Service
+  // Add Custom Service Category
   const handleAddCustomService = (e) => {
     e.preventDefault();
     if (!newCustomService.name.trim()) {
-      error('Name Required', 'Please enter a name for the custom service.');
+      error('Name Required', 'Please enter a name for the custom service category.');
       return;
     }
     const cleanId = `srv-${Date.now()}`;
@@ -251,18 +338,66 @@ export const AdminPricingPage = () => {
     setHasUnsavedChanges(true);
     setNewCustomService({ name: '', emoji: '✨', startingPrice: '', pricingType: 'per_item', category: 'Custom Care', description: '' });
     setShowAddCustomServiceModal(false);
-    success('Custom Service Created', `"${serviceObj.name}" added to Master Rate Card. Click "Save Changes to Firebase" to broadcast live.`);
+    success('Service Category Created', `"${serviceObj.name}" added to Master Rate Card. Click "Save Changes to Firebase" to broadcast live.`);
+  };
+
+  // Open Edit Custom Service Category Modal
+  const handleOpenEditCustomService = (service) => {
+    setEditingCustomService({
+      id: service.id,
+      name: service.name || service.title || '',
+      emoji: service.emoji || service.icon || '✨',
+      startingPrice: service.startingPrice !== undefined ? service.startingPrice : (service.defaultPrice || 0),
+      pricingType: service.pricingType || 'per_item',
+      category: service.category || 'Custom Care',
+      description: service.shortDescription || service.description || '',
+    });
+    setShowEditCustomServiceModal(true);
+  };
+
+  // Save Edit Custom Service Category
+  const handleSaveEditCustomService = (e) => {
+    e.preventDefault();
+    if (!editingCustomService.name.trim()) {
+      error('Name Required', 'Category name cannot be empty.');
+      return;
+    }
+    setHasUnsavedChanges(true);
+    const startPrice = Math.max(0, Number(editingCustomService.startingPrice) || 0);
+    setPricingConfig(prev => {
+      const updated = (Array.isArray(prev.customServices) ? prev.customServices : []).map(s => {
+        if (s.id === editingCustomService.id) {
+          return {
+            ...s,
+            name: editingCustomService.name.trim(),
+            title: editingCustomService.name.trim(),
+            emoji: editingCustomService.emoji || '✨',
+            icon: editingCustomService.emoji || '✨',
+            startingPrice: startPrice,
+            startingPriceDisplay: startPrice > 0 ? `Starts at ₹${startPrice}` : 'Price on request',
+            defaultPrice: startPrice,
+            pricingType: editingCustomService.pricingType || 'per_item',
+            category: editingCustomService.category || 'Custom Care',
+            shortDescription: editingCustomService.description || '',
+          };
+        }
+        return s;
+      });
+      return { ...prev, customServices: updated };
+    });
+    setShowEditCustomServiceModal(false);
+    success('Category Updated', `"${editingCustomService.name}" updated. Save to broadcast live.`);
   };
 
   // Delete Custom Service
   const handleDeleteCustomService = (serviceId) => {
-    if (!window.confirm('Are you sure you want to remove this custom service?')) return;
+    if (!window.confirm('Are you sure you want to remove this custom service category?')) return;
     setHasUnsavedChanges(true);
     setPricingConfig(prev => ({
       ...prev,
       customServices: (Array.isArray(prev.customServices) ? prev.customServices : []).filter(s => s.id !== serviceId)
     }));
-    success('Service Removed', 'Click "Save Changes to Firebase" to commit.');
+    success('Service Category Removed', 'Click "Save Changes to Firebase" to commit.');
   };
 
   // Add Sub-Service to Custom Service
@@ -301,8 +436,57 @@ export const AdminPricingPage = () => {
     success('Sub-Service Added', `"${subObj.name}" added successfully.`);
   };
 
+  // Open Edit Sub-Service Modal
+  const handleOpenEditSubService = (serviceId, sub) => {
+    setEditingSubService({
+      serviceId,
+      subId: sub.id,
+      name: sub.name || '',
+      price: sub.price !== undefined ? sub.price : 0,
+      emoji: sub.emoji || '✨',
+      desc: sub.desc || '',
+    });
+    setShowEditSubServiceModal(true);
+  };
+
+  // Save Edit Sub-Service
+  const handleSaveEditSubService = (e) => {
+    e.preventDefault();
+    if (!editingSubService.name.trim()) {
+      error('Name Required', 'Sub-service name cannot be empty.');
+      return;
+    }
+    setHasUnsavedChanges(true);
+    setPricingConfig(prev => {
+      const updated = (Array.isArray(prev.customServices) ? prev.customServices : []).map(s => {
+        if (s.id === editingSubService.serviceId) {
+          return {
+            ...s,
+            subServices: (Array.isArray(s.subServices) ? s.subServices : []).map(sub => {
+              if (sub.id === editingSubService.subId) {
+                return {
+                  ...sub,
+                  name: editingSubService.name.trim(),
+                  price: Math.max(0, Number(editingSubService.price) || 0),
+                  emoji: editingSubService.emoji || '✨',
+                  desc: editingSubService.desc || '',
+                };
+              }
+              return sub;
+            })
+          };
+        }
+        return s;
+      });
+      return { ...prev, customServices: updated };
+    });
+    setShowEditSubServiceModal(false);
+    success('Sub-Service Updated', `"${editingSubService.name}" updated.`);
+  };
+
   // Delete Sub-Service from Custom Service
   const handleDeleteSubService = (serviceId, subId) => {
+    if (!window.confirm('Remove this sub-service?')) return;
     setHasUnsavedChanges(true);
     setPricingConfig(prev => {
       const updated = (Array.isArray(prev.customServices) ? prev.customServices : []).map(s => {
@@ -402,11 +586,24 @@ export const AdminPricingPage = () => {
             Master Pricing & Rate Card
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Manage live prices across Dry Cleaning, Ironing, Starch & Finishing, Per-KG rates, Curtains, Shoes, and Carpets.
+            Manage live prices across Dry Cleaning, Ironing, Starch & Finishing, Per-KG rates, Curtains, Shoes, Carpets, and custom Service Categories.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            size="md"
+            icon={FolderPlus}
+            onClick={() => {
+              setActiveTab('customServices');
+              setShowAddCustomServiceModal(true);
+            }}
+            className="border-brand-300 text-brand-700 hover:bg-brand-50 font-bold"
+          >
+            + Add Service Category
+          </Button>
+
           <Button
             variant="outline"
             size="md"
@@ -437,7 +634,7 @@ export const AdminPricingPage = () => {
           { id: 'perKg', label: '🫧 Per-KG Rates', desc: 'Wash & Iron / Fold' },
           { id: 'weights', label: '⚖️ Garment Weights', desc: 'Weight standards (g)' },
           { id: 'special', label: '🪟 Special Services', desc: 'Curtains, Shoes, Carpets, Sarees' },
-          { id: 'customServices', label: '⚡ Custom Services', desc: 'Custom services & sub-items' },
+          { id: 'customServices', label: '⚡ Custom Services', desc: 'Custom categories & sub-items' },
         ].map(tab => (
           <button
             key={tab.id}
@@ -512,12 +709,12 @@ export const AdminPricingPage = () => {
             </div>
           </div>
 
-          {/* Item Price Grid */}
+          {/* Item Price Grid with Edit capability */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {currentItemList.map(item => (
               <div
                 key={item.id}
-                className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center justify-between gap-3"
+                className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center justify-between gap-3 hover:border-brand-300 transition-all"
               >
                 <div className="flex items-center gap-2.5 min-w-0">
                   <span className="text-xl shrink-0">{item.emoji || '👔'}</span>
@@ -527,8 +724,8 @@ export const AdminPricingPage = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
-                  <div className="flex items-center bg-white rounded-xl border border-slate-200 px-2 py-1">
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="flex items-center bg-white rounded-xl border border-slate-200 px-2 py-1 shadow-2xs">
                     <span className="text-xs font-bold text-slate-400 mr-1">₹</span>
                     <input
                       type="number"
@@ -541,8 +738,18 @@ export const AdminPricingPage = () => {
 
                   <button
                     type="button"
+                    title="Edit item details"
+                    onClick={() => handleOpenEditItem(activeTab, activeCategory, item)}
+                    className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                  </button>
+
+                  <button
+                    type="button"
+                    title="Remove item"
                     onClick={() => handleDeleteItem(activeTab, activeCategory, item.id)}
-                    className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50"
+                    className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -927,27 +1134,27 @@ export const AdminPricingPage = () => {
       )}
 
       {/* ============================================================ */}
-      {/* 5. CUSTOM SERVICES & SUB-SERVICES CATALOG                    */}
+      {/* 5. CUSTOM SERVICE CATEGORIES & SUB-SERVICES CATALOG          */}
       {/* ============================================================ */}
       {activeTab === 'customServices' && (
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-slate-200">
             <div>
               <h3 className="text-base font-bold text-slate-900 font-display flex items-center gap-2">
-                <span>⚡</span> Custom Services & Dynamic Sub-Services
+                <span>⚡</span> Custom Service Categories & Dynamic Sub-Services
               </h3>
               <p className="text-xs text-slate-500 mt-1">
-                Add bespoke services (e.g. VIP Couture, Bag Spa, Embroidery Shield, etc.) with custom pricing and sub-services. Synchronizes in real-time to POS and Website.
+                Create bespoke service categories (e.g. VIP Couture, Bag Spa, Leather Treatment) with custom pricing & sub-services. Synchronizes in real-time to POS counters and Public Website.
               </p>
             </div>
 
             <Button
               variant="primary"
               size="sm"
-              icon={Plus}
+              icon={FolderPlus}
               onClick={() => setShowAddCustomServiceModal(true)}
             >
-              Create Custom Service
+              + Create Service Category
             </Button>
           </div>
 
@@ -958,9 +1165,9 @@ export const AdminPricingPage = () => {
                 ✨
               </div>
               <div className="space-y-1">
-                <h4 className="text-sm font-bold text-slate-900">No Custom Services Yet</h4>
+                <h4 className="text-sm font-bold text-slate-900">No Custom Service Categories Yet</h4>
                 <p className="text-xs text-slate-500 max-w-md mx-auto">
-                  Click the button below to create your first custom service (like "Gopi Care", "Shoe & Sneaker Spa", or "Leather Treatment") and attach its sub-services.
+                  Click the button below to create your first custom service category (like "Gopi Care", "Shoe & Sneaker Spa", or "Leather Treatment") and attach its sub-services.
                 </p>
               </div>
               <Button
@@ -969,7 +1176,7 @@ export const AdminPricingPage = () => {
                 icon={Plus}
                 onClick={() => setShowAddCustomServiceModal(true)}
               >
-                Add First Custom Service
+                Create First Custom Category
               </Button>
             </Card>
           ) : (
@@ -996,7 +1203,7 @@ export const AdminPricingPage = () => {
                           </Badge>
                         </div>
                         <p className="text-xs text-slate-500 mt-0.5">
-                          Base rate: <span className="font-bold text-slate-900">₹{service.startingPrice || service.defaultPrice || 0}</span> {service.pricingType === 'per_kg' ? '/ Kg' : ''} • {service.subServices?.length || 0} Sub-Services
+                          Base rate: <span className="font-bold text-slate-900">₹{service.startingPrice !== undefined ? service.startingPrice : (service.defaultPrice || 0)}</span> {service.pricingType === 'per_kg' ? '/ Kg' : ''} • {service.subServices?.length || 0} Sub-Services
                         </p>
                       </div>
                     </div>
@@ -1012,6 +1219,15 @@ export const AdminPricingPage = () => {
                         }}
                       >
                         Add Sub-Service
+                      </Button>
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        icon={Edit3}
+                        onClick={() => handleOpenEditCustomService(service)}
+                      >
+                        Edit Category
                       </Button>
 
                       <Button
@@ -1041,7 +1257,7 @@ export const AdminPricingPage = () => {
                         {service.subServices.map(sub => (
                           <div
                             key={sub.id}
-                            className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/90 flex items-center justify-between gap-3"
+                            className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/90 flex items-center justify-between gap-3 group hover:border-brand-300 transition-all"
                           >
                             <div className="flex items-center gap-2.5 min-w-0">
                               <span className="text-xl shrink-0">{sub.emoji || service.emoji || '✨'}</span>
@@ -1051,7 +1267,7 @@ export const AdminPricingPage = () => {
                               </div>
                             </div>
 
-                            <div className="flex items-center gap-2 shrink-0">
+                            <div className="flex items-center gap-1.5 shrink-0">
                               <div className="flex items-center bg-white rounded-xl border border-slate-200 px-2.5 py-1">
                                 <span className="text-xs font-bold text-slate-400 mr-1">₹</span>
                                 <input
@@ -1065,8 +1281,18 @@ export const AdminPricingPage = () => {
 
                               <button
                                 type="button"
+                                title="Edit sub-service"
+                                onClick={() => handleOpenEditSubService(service.id, sub)}
+                                className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                              </button>
+
+                              <button
+                                type="button"
+                                title="Delete sub-service"
                                 onClick={() => handleDeleteSubService(service.id, sub.id)}
-                                className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50"
+                                className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
@@ -1085,21 +1311,21 @@ export const AdminPricingPage = () => {
         </div>
       )}
 
-      {/* Add Custom Service Modal */}
+      {/* Add Custom Service Category Modal */}
       {showAddCustomServiceModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl">
             <h3 className="text-base font-bold text-slate-900 font-display flex items-center gap-2">
-              <span>⚡</span> Create New Custom Service
+              <span>⚡</span> Create New Service Category
             </h3>
 
             <form onSubmit={handleAddCustomService} className="space-y-3">
               <div>
-                <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Service Name *</label>
+                <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Service Category Name *</label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. VIP Bridal Spa, Gopi Special Care"
+                  placeholder="e.g. VIP Bridal Spa, Gopi Special Care, Leather Spa"
                   value={newCustomService.name}
                   onChange={(e) => setNewCustomService({ ...newCustomService, name: e.target.value })}
                   className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium"
@@ -1147,7 +1373,7 @@ export const AdminPricingPage = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Category</label>
+                  <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Category Tag</label>
                   <input
                     type="text"
                     placeholder="Special Care"
@@ -1174,7 +1400,99 @@ export const AdminPricingPage = () => {
                   Cancel
                 </Button>
                 <Button variant="primary" size="sm" type="submit">
-                  Create Service
+                  Create Category
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Custom Service Category Modal */}
+      {showEditCustomServiceModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl">
+            <h3 className="text-base font-bold text-slate-900 font-display flex items-center gap-2">
+              <span>✏️</span> Edit Service Category
+            </h3>
+
+            <form onSubmit={handleSaveEditCustomService} className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Category Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={editingCustomService.name}
+                  onChange={(e) => setEditingCustomService({ ...editingCustomService, name: e.target.value })}
+                  className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Starting Price (₹) *</label>
+                  <input
+                    type="number"
+                    required
+                    min="0"
+                    value={editingCustomService.startingPrice}
+                    onChange={(e) => setEditingCustomService({ ...editingCustomService, startingPrice: e.target.value })}
+                    className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Emoji Icon</label>
+                  <input
+                    type="text"
+                    value={editingCustomService.emoji}
+                    onChange={(e) => setEditingCustomService({ ...editingCustomService, emoji: e.target.value })}
+                    className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-center font-bold"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Pricing Model</label>
+                  <select
+                    value={editingCustomService.pricingType}
+                    onChange={(e) => setEditingCustomService({ ...editingCustomService, pricingType: e.target.value })}
+                    className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium"
+                  >
+                    <option value="per_item">Itemized (Per Piece)</option>
+                    <option value="per_kg">Weighed (Per Kg)</option>
+                    <option value="custom">Fixed Treatment</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Category Tag</label>
+                  <input
+                    type="text"
+                    value={editingCustomService.category}
+                    onChange={(e) => setEditingCustomService({ ...editingCustomService, category: e.target.value })}
+                    className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Short Description</label>
+                <textarea
+                  rows="2"
+                  value={editingCustomService.description}
+                  onChange={(e) => setEditingCustomService({ ...editingCustomService, description: e.target.value })}
+                  className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium"
+                />
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2">
+                <Button variant="ghost" size="sm" onClick={() => setShowEditCustomServiceModal(false)}>
+                  Cancel
+                </Button>
+                <Button variant="primary" size="sm" type="submit">
+                  Save Category
                 </Button>
               </div>
             </form>
@@ -1253,12 +1571,79 @@ export const AdminPricingPage = () => {
         </div>
       )}
 
+      {/* Edit Sub-Service Modal */}
+      {showEditSubServiceModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl">
+            <h3 className="text-base font-bold text-slate-900 font-display flex items-center gap-2">
+              <span>✏️</span> Edit Sub-Service
+            </h3>
+
+            <form onSubmit={handleSaveEditSubService} className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Sub-Service Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={editingSubService.name}
+                  onChange={(e) => setEditingSubService({ ...editingSubService, name: e.target.value })}
+                  className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Price (₹) *</label>
+                  <input
+                    type="number"
+                    required
+                    min="0"
+                    value={editingSubService.price}
+                    onChange={(e) => setEditingSubService({ ...editingSubService, price: e.target.value })}
+                    className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Emoji Icon</label>
+                  <input
+                    type="text"
+                    value={editingSubService.emoji}
+                    onChange={(e) => setEditingSubService({ ...editingSubService, emoji: e.target.value })}
+                    className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-center font-bold"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Description (Optional)</label>
+                <input
+                  type="text"
+                  value={editingSubService.desc}
+                  onChange={(e) => setEditingSubService({ ...editingSubService, desc: e.target.value })}
+                  className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium"
+                />
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2">
+                <Button variant="ghost" size="sm" onClick={() => setShowEditSubServiceModal(false)}>
+                  Cancel
+                </Button>
+                <Button variant="primary" size="sm" type="submit">
+                  Save Sub-Service
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Add New Item Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl">
             <h3 className="text-base font-bold text-slate-900 font-display">
-              Add New Item to {activeTab === 'dryCleaning' ? 'Dry Cleaning' : activeTab === 'ironing' ? 'Ironing' : 'Starch & Iron'} ({activeCategory})
+              Add New Garment Item to {activeTab === 'dryCleaning' ? 'Dry Cleaning' : activeTab === 'ironing' ? 'Ironing' : 'Starch & Iron'} ({activeCategory})
             </h3>
 
             <form onSubmit={handleAddNewItem} className="space-y-3">
@@ -1306,6 +1691,63 @@ export const AdminPricingPage = () => {
                 </Button>
                 <Button variant="primary" size="sm" type="submit">
                   Add Item
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Item Modal */}
+      {showEditItemModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl">
+            <h3 className="text-base font-bold text-slate-900 font-display flex items-center gap-2">
+              <span>✏️</span> Edit Garment Item Details
+            </h3>
+
+            <form onSubmit={handleSaveEditItem} className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Item Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={editingItem.name}
+                  onChange={(e) => setEditingItem({ ...editingItem, name: e.target.value })}
+                  className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Price (₹) *</label>
+                  <input
+                    type="number"
+                    required
+                    min="0"
+                    value={editingItem.price}
+                    onChange={(e) => setEditingItem({ ...editingItem, price: e.target.value })}
+                    className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Emoji Icon</label>
+                  <input
+                    type="text"
+                    value={editingItem.emoji}
+                    onChange={(e) => setEditingItem({ ...editingItem, emoji: e.target.value })}
+                    className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-center font-bold"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2">
+                <Button variant="ghost" size="sm" onClick={() => setShowEditItemModal(false)}>
+                  Cancel
+                </Button>
+                <Button variant="primary" size="sm" type="submit">
+                  Save Changes
                 </Button>
               </div>
             </form>

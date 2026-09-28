@@ -93,11 +93,19 @@ export const PricingPage = () => {
     return all.length > 0 ? Math.min(...all.map(i => Number(i.price) || 12)) : 12;
   }, [pricingConfig]);
 
-  const starchMinPrice = useMemo(() => {
+  const starchItemsList = useMemo(() => {
     const starchList = pricingConfig['starch-and-iron'] || pricingConfig.starchAndIron || {};
-    const all = [...(starchList.men || []), ...(starchList.women || []), ...(starchList.common || [])];
-    return all.length > 0 ? Math.min(...all.map(i => Number(i.price) || 25)) : 25;
+    return [
+      ...(starchList.men || []),
+      ...(starchList.women || []),
+      ...(starchList.common || []),
+      ...(starchList.items || [])
+    ];
   }, [pricingConfig]);
+
+  const starchMinPrice = useMemo(() => {
+    return starchItemsList.length > 0 ? Math.min(...starchItemsList.map(i => Number(i.price) || 25)) : 25;
+  }, [starchItemsList]);
 
   // Curated Traditional & Ethnic Wear Tariffs
   const ethnicItems = useMemo(() => {
@@ -605,10 +613,10 @@ export const PricingPage = () => {
               <Card variant="luxury" className="overflow-hidden p-0 bg-white border border-slate-200 shadow-xs">
                 {/* 1. MOBILE LIST CARDS (< md) */}
                 <div className="md:hidden divide-y divide-slate-100">
-                  {(pricingConfig.starchAndIron?.items || [])
+                  {starchItemsList
                     .filter(item => !searchQuery || item.name.toLowerCase().includes(searchQuery.toLowerCase()) || (item.category && item.category.toLowerCase().includes(searchQuery.toLowerCase())))
-                    .map((item) => (
-                      <div key={item.id} className="p-3.5 flex items-center justify-between gap-3 hover:bg-orange-50/20 transition-colors">
+                    .map((item, idx) => (
+                      <div key={item.id || idx} className="p-3.5 flex items-center justify-between gap-3 hover:bg-orange-50/20 transition-colors">
                         <div className="flex items-start gap-2.5 flex-1 min-w-0">
                           <div className="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center text-base shrink-0 mt-0.5">
                             {item.emoji || '✨'}
@@ -648,10 +656,10 @@ export const PricingPage = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 font-medium">
-                      {(pricingConfig.starchAndIron?.items || [])
+                      {starchItemsList
                         .filter(item => !searchQuery || item.name.toLowerCase().includes(searchQuery.toLowerCase()) || (item.category && item.category.toLowerCase().includes(searchQuery.toLowerCase())))
-                        .map((item) => (
-                          <tr key={item.id} className="hover:bg-[#FFF7ED]/30 transition-colors">
+                        .map((item, idx) => (
+                          <tr key={item.id || idx} className="hover:bg-[#FFF7ED]/30 transition-colors">
                             <td className="py-3 px-4 font-bold text-slate-900 flex items-center gap-2">
                               <span className="text-base">{item.emoji || '✨'}</span>
                               <span>{item.name}</span>
