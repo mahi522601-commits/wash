@@ -178,21 +178,11 @@ const ORDERS_STORAGE_KEY = 'techwash_orders_store';
 const ORDER_SEQ_KEY = 'techwash_order_sequence_counter';
 
 export const getOrderBranchKey = (order) => {
-  if (!order) return 'ONLINE_WEBSITE';
-  const isPos = Boolean(
-    order.isWalkIn === true || 
-    order.orderSource === 'OFFLINE_POS' || 
-    order.orderSource === 'WALK_IN' || 
-    order.orderSource === 'POS' ||
-    order.terminalId || 
-    order.terminalCode || 
-    order.manualBillNumber
-  );
-  if (!isPos) return 'ONLINE_WEBSITE';
+  if (!order) return 'counter-1';
 
   const tId = String(order.terminalId || '').toLowerCase().trim();
   const tCode = String(order.terminalCode || '').toLowerCase().trim();
-  const bName = String(order.storeBranch || order.customer?.storeBranch || order.customer?.address || '').toLowerCase().trim();
+  const bName = String(order.storeBranch || order.branch || order.customer?.storeBranch || order.customer?.address || '').toLowerCase().trim();
 
   // Explicit Counter 2 checks (Branch 1 — Tolichowki / OU Colony / DreamScape / POS-02)
   if (
@@ -212,6 +202,11 @@ export const getOrderBranchKey = (order) => {
     bName.includes('pickup')
   ) {
     return 'counter-3';
+  }
+
+  // Explicit Online Website check ONLY IF marked as online website booking
+  if (order.isOnlineBooking === true || order.orderSource === 'ONLINE_WEBSITE' || order.channel === 'ONLINE_WEBSITE' || order.channel === 'ONLINE') {
+    return 'ONLINE_WEBSITE';
   }
 
   // Counter 1 or fallback POS (Main Branch — Manikonda / Shaikpet Main Rd / POS-01)
@@ -504,57 +499,95 @@ export const orderService = {
   async getOrders({ status = null, search = '', limitCount = 2000 } = {}) {
     let ordersList = [];
 
-    // 1. Fetch from Firestore if configured (with strict 1500ms timeout so offline mode loads in under 1s)
+    // 1. Fetch from Firestore if configured (using Promise.allSettled for zero-loss concurrent retrieval)
     if (isFirebaseConfigured && db) {
       try {
-        const fetchPromise = getDocs(collection(db, 'orders'));
-        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Firestore timeout')), 1500));
-        const snap = await Promise.race([fetchPromise, timeoutPromise]);
-        if (snap && !snap.empty) {
-          ordersList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        } else {
-          // Check 'bookings' collection if 'orders' is empty
-          const bookingFetch = getDocs(collection(db, 'bookings'));
-          const bookingSnap = await Promise.race([bookingFetch, timeoutPromise]);
-          if (bookingSnap && !bookingSnap.empty) {
-            ordersList = bookingSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const results = await Promise.allSettled([
+          getDocs(collection(db, 'orders')),
+          getDocs(collection(db, 'bookings'))
+        ]);
+
+        const mapById = new Map();
+        results.forEach(res => {
+          if (res.status === 'fulfilled' && res.value && !res.value.empty) {
+            res.value.docs.forEach(d => {
+              const data = d.data();
+              const docId = d.id;
+              const orderNum = data.orderNumber || data.id || docId;
+              if (orderNum) {
+                const normKey = String(orderNum).toUpperCase().trim();
+                if (!mapById.has(normKey)) {
+                  mapById.set(normKey, { id: docId, ...data });
+                } else {
+                  mapById.set(normKey, { ...data, ...mapById.get(normKey) });
+                }
+              }
+            });
           }
-        }
+        });
+        ordersList = Array.from(mapById.values());
       } catch (e) {
-        // Fast offline fallback - continues immediately to local storage
+        console.warn('Firestore orders fetch fallback to localStorage:', e);
       }
     }
 
-    // 2. Fetch and merge LocalStorage orders so offline/counter POS orders are never lost
-    let localOrders = [];
-    try {
-      localOrders = JSON.parse(localStorage.getItem(ORDERS_STORAGE_KEY) || '[]');
-    } catch (e) {
-      localOrders = [];
-    }
-
+    // 2. Fetch and merge LocalStorage orders across ALL keys so offline/counter POS orders are never lost
     const orderMap = new Map();
     // A. Insert Firestore orders
     ordersList.forEach(o => {
-      const key = o.id || o.orderNumber;
-      if (key) orderMap.set(key, o);
-    });
-    // B. Merge LocalStorage orders (Local overrides or supplements if matching/newer)
-    localOrders.forEach(o => {
-      const key = o.id || o.orderNumber;
+      const key = o.orderNumber || o.id;
       if (key) {
-        const existing = orderMap.get(key);
-        if (!existing) {
-          orderMap.set(key, o);
-        } else {
-          const localTime = new Date(o.updatedAt || o.createdAt || 0).getTime();
-          const remoteTime = new Date(existing.updatedAt || existing.createdAt || 0).getTime();
-          if (localTime >= remoteTime) {
-            orderMap.set(key, { ...existing, ...o });
+        orderMap.set(String(key).toUpperCase().trim(), o);
+      }
+    });
+
+    // B. Dynamically scan ALL LocalStorage keys for any stored orders/bookings/bills
+    try {
+      if (typeof localStorage !== 'undefined') {
+        for (let i = 0; i < localStorage.length; i++) {
+          const keyName = localStorage.key(i);
+          if (!keyName) continue;
+          const lowerKey = keyName.toLowerCase();
+          if (
+            lowerKey.includes('order') || 
+            lowerKey.includes('booking') || 
+            lowerKey.includes('bill') || 
+            lowerKey.includes('checkpoint') ||
+            lowerKey.includes('walkin')
+          ) {
+            try {
+              const raw = localStorage.getItem(keyName);
+              if (!raw) continue;
+              const parsed = JSON.parse(raw);
+              const list = Array.isArray(parsed) 
+                ? parsed 
+                : (parsed?.orders && Array.isArray(parsed.orders) 
+                   ? parsed.orders 
+                   : (typeof parsed === 'object' ? Object.values(parsed) : []));
+
+              list.forEach(o => {
+                if (o && typeof o === 'object') {
+                  const oNum = o.orderNumber || o.invoiceNumber || o.bookingId || o.id;
+                  if (oNum) {
+                    const normKey = String(oNum).toUpperCase().trim();
+                    const existing = orderMap.get(normKey);
+                    if (!existing) {
+                      orderMap.set(normKey, o);
+                    } else {
+                      const localTime = new Date(o.updatedAt || o.createdAt || 0).getTime();
+                      const remoteTime = new Date(existing.updatedAt || existing.createdAt || 0).getTime();
+                      if (localTime >= remoteTime) {
+                        orderMap.set(normKey, { ...existing, ...o });
+                      }
+                    }
+                  }
+                }
+              });
+            } catch (e) {}
           }
         }
       }
-    });
+    } catch (e) {}
 
     let mergedList = Array.from(orderMap.values());
 

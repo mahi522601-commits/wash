@@ -331,9 +331,9 @@ export const BillingMachinePage = () => {
     try {
       const data = await reportService.generateFinancialReport({
         datePreset: 'today',
-        branchFilter: activeTerminalId || 'POS_ONLY',
-        channelFilter: 'POS_ONLY',
-        onlyOfflinePos: true,
+        branchFilter: 'ALL_POS',
+        channelFilter: 'ALL',
+        onlyOfflinePos: false,
       });
       const count = data?.metrics?.totalOrdersCount || 0;
       const total = data?.metrics?.totalGrossBilled || 0;
@@ -343,7 +343,7 @@ export const BillingMachinePage = () => {
     } catch (err) {
       console.warn('Failed to load real-time shift stats:', err);
     }
-  }, [activeTerminalId]);
+  }, []);
 
   const [showPastShiftPicker, setShowPastShiftPicker] = useState(false);
   const [selectedPastDate, setSelectedPastDate] = useState('');
@@ -359,9 +359,9 @@ export const BillingMachinePage = () => {
         data = await reportService.generateFinancialReport({
           datePreset: preset,
           targetDate: targetDate || null,
-          branchFilter: activeTerminalId || 'POS_ONLY',
-          channelFilter: 'POS_ONLY',
-          onlyOfflinePos: true,
+          branchFilter: 'ALL_POS',
+          channelFilter: 'ALL',
+          onlyOfflinePos: false,
         });
       }
       if (data) {

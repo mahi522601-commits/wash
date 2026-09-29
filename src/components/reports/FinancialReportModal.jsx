@@ -67,8 +67,8 @@ export const FinancialReportModal = ({
         datePreset: preset,
         targetDate: targetDate || (preset === 'single' ? customDate : null),
         branchFilter: branch,
-        channelFilter: (branch === 'POS_ONLY' || branch === 'ALL_POS' || branch.startsWith('counter')) ? 'POS_ONLY' : (branch === 'ONLINE_WEBSITE' ? 'ONLINE_ONLY' : 'ALL'),
-        onlyOfflinePos: branch === 'POS_ONLY' || branch === 'ALL_POS' || branch.startsWith('counter'),
+        channelFilter: branch === 'ONLINE_WEBSITE' ? 'ONLINE_ONLY' : (branch === 'POS_ONLY' ? 'POS_ONLY' : 'ALL'),
+        onlyOfflinePos: branch === 'POS_ONLY',
       });
       if (data) {
         setActiveReport(data);

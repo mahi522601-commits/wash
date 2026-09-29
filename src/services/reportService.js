@@ -13,20 +13,33 @@ const LAST_BACKUP_COUNT_KEY = 'techwash_last_backup_order_count';
 export const parseOrderDateSafe = (val) => {
   if (!val) return null;
   if (val instanceof Date) return isNaN(val.getTime()) ? null : val;
-  if (typeof val === 'object' && typeof val.seconds === 'number') {
-    return new Date(val.seconds * 1000);
-  }
-  if (typeof val === 'object' && typeof val.toDate === 'function') {
-    return val.toDate();
+  if (typeof val === 'object') {
+    if (typeof val.toDate === 'function') {
+      try { return val.toDate(); } catch (e) {}
+    }
+    const secs = typeof val.seconds === 'number' ? val.seconds : (typeof val._seconds === 'number' ? val._seconds : null);
+    if (secs !== null) {
+      return new Date(secs * 1000);
+    }
   }
   if (typeof val === 'string') {
+    const str = val.trim();
+    if (!str) return null;
     // Check format DD/MM/YYYY or DD-MM-YYYY
-    const dmyMatch = val.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+    const dmyMatch = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
     if (dmyMatch) {
       return new Date(Number(dmyMatch[3]), Number(dmyMatch[2]) - 1, Number(dmyMatch[1]));
     }
-    const d = new Date(val);
+    // Replace September variant 'Sept' -> 'Sep'
+    const cleaned = str.replace(/Sept/i, 'Sep');
+    let d = new Date(cleaned);
     if (!isNaN(d.getTime())) return d;
+    // Append current year if string lacks a 4-digit year like "29 Sep, 11:39 am"
+    if (!/\d{4}/.test(cleaned)) {
+      const currentYear = new Date().getFullYear();
+      d = new Date(`${cleaned} ${currentYear}`);
+      if (!isNaN(d.getTime())) return d;
+    }
   }
   if (typeof val === 'number') {
     const d = new Date(val);
@@ -49,11 +62,15 @@ export const isSameCalendarDay = (date1, date2) => {
 export const isPosOrder = (order) => {
   if (!order) return false;
   if (order.isWalkIn === true) return true;
-  if (order.orderSource === 'OFFLINE_POS' || order.orderSource === 'POS' || order.orderSource === 'WALK_IN') return true;
-  if (order.terminalCode || order.terminalId) return true;
-  if (order.manualBillNumber) return true;
-  const storeBranch = (order.storeBranch || '').toLowerCase();
-  if (storeBranch.includes('counter') || storeBranch.includes('pos-') || storeBranch.includes('pos ') || storeBranch.includes('flagship') || storeBranch.includes('express') || storeBranch.includes('walk-in')) return true;
+  if (order.orderSource === 'OFFLINE_POS' || order.orderSource === 'POS' || order.orderSource === 'WALK_IN' || order.orderSource === 'COUNTER' || order.orderSource === 'DIRECT' || order.orderSource === 'ADMIN') return true;
+  if (order.terminalCode || order.terminalId || order.manualBillNumber) return true;
+  if (order.orderType === 'POS' || order.orderType === 'WALK_IN' || order.channel === 'POS') return true;
+  const storeBranch = (order.storeBranch || order.branch || order.customer?.storeBranch || '').toLowerCase();
+  if (storeBranch.includes('counter') || storeBranch.includes('pos') || storeBranch.includes('flagship') || storeBranch.includes('express') || storeBranch.includes('walk-in') || storeBranch.includes('main') || storeBranch.includes('manikonda') || storeBranch.includes('shaikpet') || storeBranch.includes('tolichowki') || storeBranch.includes('ambience')) return true;
+  // If not explicitly marked as an online website booking, consider it a POS counter bill
+  if (order.isOnlineBooking !== true && order.orderSource !== 'ONLINE_WEBSITE' && order.channel !== 'ONLINE_WEBSITE' && order.channel !== 'ONLINE') {
+    return true;
+  }
   return false;
 };
 
@@ -130,7 +147,7 @@ export const reportService = {
 
     // Filter orders
     const filteredOrders = allOrders.filter(order => {
-      // 1. Comprehensive Date Check across all potential timestamps
+      // 1. Comprehensive Date Check across creation and payment timestamps
       if (start && end) {
         const dateCandidates = [
           parseOrderDateSafe(order.createdAt),
@@ -138,9 +155,9 @@ export const reportService = {
           parseOrderDateSafe(order.orderDate),
           parseOrderDateSafe(order.date),
           parseOrderDateSafe(order.timestamp),
-          parseOrderDateSafe(order.pickupDate),
-          parseOrderDateSafe(order.schedule?.pickupDate),
           parseOrderDateSafe(order.updatedAt),
+          parseOrderDateSafe(order.paymentDate),
+          parseOrderDateSafe(order.paidAt),
           parseOrderDateSafe(order.statusTimeline?.[0]?.timestamp),
         ].filter(Boolean);
 
@@ -150,7 +167,7 @@ export const reportService = {
 
       // 2. Channel & Source Filter (Strict POS Offline vs Online)
       const isPos = isPosOrder(order);
-      const isExplicitPosOnly = onlyOfflinePos || channelFilter === 'POS_ONLY' || branchFilter === 'POS_ONLY' || branchFilter === 'ALL_POS';
+      const isExplicitPosOnly = onlyOfflinePos || channelFilter === 'POS_ONLY' || branchFilter === 'POS_ONLY';
       const isExplicitOnlineOnly = channelFilter === 'ONLINE_ONLY' || branchFilter === 'ONLINE_WEBSITE';
 
       if (isExplicitPosOnly && !isPos) return false;
@@ -168,9 +185,9 @@ export const reportService = {
           bKey === targetKey ||
           tId === targetKey ||
           tCode.includes(targetKey) ||
-          (targetKey === 'counter-1' && (tCode.includes('01') || tId.includes('1') || tId === 'counter-1')) ||
-          (targetKey === 'counter-2' && (tCode.includes('02') || tId.includes('2') || tId === 'counter-2')) ||
-          (targetKey === 'counter-3' && (tCode.includes('03') || tId.includes('3') || tId === 'counter-3'))
+          (targetKey === 'counter-1' && (tCode.includes('01') || tId.includes('1') || tId === 'counter-1' || bKey === 'counter-1' || !tId || tId === 'undefined')) ||
+          (targetKey === 'counter-2' && (tCode.includes('02') || tId.includes('2') || tId === 'counter-2' || bKey === 'counter-2')) ||
+          (targetKey === 'counter-3' && (tCode.includes('03') || tId.includes('3') || tId === 'counter-3' || bKey === 'counter-3'))
         );
 
         if (!isDirectMatch) return false;
