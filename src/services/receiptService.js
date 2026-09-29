@@ -105,8 +105,8 @@ export const receiptService = {
           return {
             ...it,
             serviceName: itemServiceName,
-            subServiceName: it.name || 'Garment Item',
-            name: it.name || 'Garment Item',
+            subServiceName: it.subServiceName || it.name || 'Garment Item',
+            name: it.name || it.subServiceName || 'Garment Item',
             category: it.category || 'General',
             quantity: qty,
             unitPrice: uPrice,

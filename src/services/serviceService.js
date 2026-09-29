@@ -406,12 +406,13 @@ function applyPricingConfigToServices(serviceList) {
 
   if (!config) return serviceList;
 
-  return serviceList.map(srv => {
+  const updatedList = serviceList.map(srv => {
     const cleanId = (srv.id || '').replace(/^srv-/, '');
     const cfgSrv = config.services?.find(s => s.id === cleanId || s.slug === srv.slug || s.id === srv.id);
 
     let startingPrice = srv.startingPrice;
     let startingPriceDisplay = srv.startingPriceDisplay;
+    let subServices = srv.subServices || [];
 
     if (cleanId === 'dry-cleaning') {
       const all = [...(config.dryCleaning?.men || []), ...(config.dryCleaning?.women || []), ...(config.dryCleaning?.common || [])];
@@ -457,6 +458,12 @@ function applyPricingConfigToServices(serviceList) {
       const wf = Number(curtainPricing.washAndFold) || 100;
       startingPrice = Math.min(dc, wi, ir, wf);
       startingPriceDisplay = `Starts at ₹${startingPrice}`;
+      subServices = [
+        { id: 'curtain-dc', name: 'Dry Cleaning', price: dc, emoji: '🧺' },
+        { id: 'curtain-wi', name: 'Wash & Iron', price: wi, emoji: '🫧' },
+        { id: 'curtain-ir', name: 'Iron', price: ir, emoji: '✨' },
+        { id: 'curtain-wf', name: 'Wash & Fold', price: wf, emoji: '👕' },
+      ];
     } else if (cleanId === 'shoe-washing') {
       const shoeRate = Number(config.shoes?.ratePerPair || cfgSrv?.ratePerPair) || 350;
       startingPrice = shoeRate;
@@ -467,12 +474,68 @@ function applyPricingConfigToServices(serviceList) {
       startingPriceDisplay = `₹${carpetRate} / sq. ft.`;
     }
 
+    // Check if matching custom service exists in pricing config to update subServices
+    const customMatch = (config.customServices || []).find(cs => cs.id === srv.id || cs.id === cleanId || cs.slug === srv.slug);
+    if (customMatch && Array.isArray(customMatch.subServices)) {
+      subServices = customMatch.subServices;
+    }
+
     return {
       ...srv,
       startingPrice,
-      startingPriceDisplay: startingPriceDisplay || srv.startingPriceDisplay
+      startingPriceDisplay: startingPriceDisplay || srv.startingPriceDisplay,
+      subServices,
     };
   });
+
+  // Merge custom service categories created in Admin Pricing into Services catalog
+  const customServices = Array.isArray(config.customServices) ? config.customServices : [];
+  const existingIds = new Set(updatedList.map(s => s.id));
+  const existingSlugs = new Set(updatedList.map(s => s.slug));
+
+  customServices.forEach(cs => {
+    if (!cs || !cs.id) return;
+    const srvId = cs.id.startsWith('srv-') ? cs.id : `srv-${cs.id}`;
+    const slug = cs.slug || slugify(cs.name || cs.title || 'custom-service');
+
+    if (!existingIds.has(srvId) && !existingIds.has(cs.id) && !existingSlugs.has(slug)) {
+      updatedList.push({
+        id: srvId,
+        title: cs.name || cs.title || 'Custom Service',
+        name: cs.name || cs.title || 'Custom Service',
+        slug,
+        category: cs.categoryTag || cs.category || 'Special Care',
+        pricingType: cs.pricingType || 'per_item',
+        startingPrice: Number(cs.startingPrice || cs.defaultPrice || cs.price || 99),
+        startingPriceDisplay: `Starts at ₹${cs.startingPrice || cs.defaultPrice || cs.price || 99}`,
+        emoji: cs.emoji || cs.icon || '✨',
+        icon: cs.emoji || cs.icon || '✨',
+        shortDescription: cs.shortDescription || cs.desc || 'Specialized bespoke garment care treatment.',
+        detailedDescription: cs.detailedDescription || cs.desc || 'Professional customized care treatment executed by fabric specialists.',
+        heroImage: cs.heroImage || 'https://images.unsplash.com/photo-1545173168-9f1947eebb7f?auto=format&fit=crop&w=1200&q=80',
+        mobileImage: cs.mobileImage || cs.heroImage || 'https://images.unsplash.com/photo-1545173168-9f1947eebb7f?auto=format&fit=crop&w=600&q=80',
+        subServices: Array.isArray(cs.subServices) ? cs.subServices : [],
+        features: cs.features || ['Specialized treatment', 'Hygienic processing', '3D steam finishing', 'Doorstep pickup'],
+        benefits: cs.benefits || ['Preserves fabric luster', 'Zero chemical odor', 'Crisp crease retention'],
+        processSteps: cs.processSteps || [
+          { stepNumber: '01', title: 'Inspection & Tagging', bullets: ['Fabric analysis', 'Stain mapping'] },
+          { stepNumber: '02', title: 'Specialized Care Wash', bullets: ['Demineralized RO soft wash', 'Eco detergents'] },
+          { stepNumber: '03', title: '3D Steam Finishing', bullets: ['Tension form press', 'Quality check'] }
+        ],
+        faqs: cs.faqs || [
+          { question: 'What is the turnaround time for this service?', answer: 'Standard turnaround is 48 hours. Express options are available.' }
+        ],
+        status: 'published',
+        active: true,
+        featured: false,
+        displayOrder: 20,
+        order: 20,
+        isCustom: true,
+      });
+    }
+  });
+
+  return updatedList;
 }
 
 export const serviceService = {

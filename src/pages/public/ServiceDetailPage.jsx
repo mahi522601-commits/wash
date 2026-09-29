@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, Navigate } from 'react-router-dom';
 import { serviceService } from '../../services/serviceService';
 import { pricingService } from '../../services/pricingConfig';
 import { Button } from '../../components/ui/Button';
@@ -104,8 +104,16 @@ const DEFAULT_PROCESS_STEPS = [
   }
 ];
 
+import { LEGACY_SLUG_MAP } from '../../data/seoData';
+
 export const ServiceDetailPage = () => {
   const { slug } = useParams();
+
+  // Handle legacy slug redirect
+  if (slug && LEGACY_SLUG_MAP[slug]) {
+    return <Navigate to={`/services/${LEGACY_SLUG_MAP[slug]}`} replace />;
+  }
+
   const navigate = useNavigate();
   const [service, setService] = useState(null);
   const [relatedServices, setRelatedServices] = useState([]);
@@ -168,18 +176,25 @@ export const ServiceDetailPage = () => {
 
   if (!service) {
     return (
-      <div className="py-28 max-w-xl mx-auto text-center px-4">
-        <div className="w-16 h-16 rounded-3xl bg-orange-100 text-[#F97316] flex items-center justify-center mx-auto mb-4">
-          <Layers className="w-8 h-8" />
+      <>
+        <SEOHead 
+          title="Service Not Found | Techwash" 
+          description="The requested laundry or dry cleaning service was not found." 
+          noindex={true} 
+        />
+        <div className="py-28 max-w-xl mx-auto text-center px-4">
+          <div className="w-16 h-16 rounded-3xl bg-orange-100 text-[#F97316] flex items-center justify-center mx-auto mb-4">
+            <Layers className="w-8 h-8" />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900 font-display">Service Not Found</h2>
+          <p className="text-sm text-slate-500 mt-2 mb-6">The requested service could not be located or has been archived.</p>
+          <Link to="/services">
+            <Button variant="primary" size="md" icon={ArrowLeft}>
+              Back to All Services
+            </Button>
+          </Link>
         </div>
-        <h2 className="text-2xl font-bold text-slate-900 font-display">Service Not Found</h2>
-        <p className="text-sm text-slate-500 mt-2 mb-6">The requested service could not be located or has been archived.</p>
-        <Link to="/services">
-          <Button variant="primary" size="md" icon={ArrowLeft}>
-            Back to All Services
-          </Button>
-        </Link>
-      </div>
+      </>
     );
   }
 

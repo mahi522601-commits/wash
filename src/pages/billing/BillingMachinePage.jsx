@@ -34,6 +34,7 @@ import {
   buildWeightBandsFromPricing,
   buildPersonaRateBandsFromPricing
 } from '../../services/pricingConfig';
+import { serviceService } from '../../services/serviceService';
 import { 
   Store, 
   MapPin, 
@@ -436,21 +437,28 @@ export const BillingMachinePage = () => {
     initTerminal();
   }, [activeTerminalId]);
 
-  // Real-time Master Pricing Configuration Synchronization
+  // Real-time Master Pricing Configuration & Dynamic Services Synchronization
   const [pricingConfig, setPricingConfig] = useState(INITIAL_PRICING_CONFIG);
+  const [extraServices, setExtraServices] = useState([]);
 
   useEffect(() => {
     pricingService.getPricingConfig().then(cfg => {
       if (cfg) setPricingConfig(cfg);
     });
+    serviceService.getServices({ publishedOnly: false }).then(srvs => {
+      if (Array.isArray(srvs) && srvs.length > 0) {
+        setExtraServices(srvs);
+      }
+    }).catch(err => console.warn("Failed to fetch extra services for POS:", err));
+
     const unsub = pricingService.subscribeToPricing((newCfg) => {
       if (newCfg) setPricingConfig(newCfg);
     });
     return unsub;
   }, []);
 
-  const posServices = useMemo(() => buildWalkInServicesFromPricing(pricingConfig), [pricingConfig]);
-  const dynamicMasterCatalog = useMemo(() => buildMasterCatalogFromPricing(pricingConfig), [pricingConfig]);
+  const posServices = useMemo(() => buildWalkInServicesFromPricing(pricingConfig, extraServices), [pricingConfig, extraServices]);
+  const dynamicMasterCatalog = useMemo(() => buildMasterCatalogFromPricing(pricingConfig, extraServices), [pricingConfig, extraServices]);
   const dynamicWeightBands = useMemo(() => buildWeightBandsFromPricing(pricingConfig), [pricingConfig]);
   const dynamicPersonaBands = useMemo(() => buildPersonaRateBandsFromPricing(pricingConfig), [pricingConfig]);
 
@@ -608,26 +616,28 @@ export const BillingMachinePage = () => {
 
     if (sId === 'srv-dry-cleaning') {
       if (subCategoryFilter === 'ALL') {
-        items = dynamicMasterCatalog.filter(it => ['MEN', 'WOMEN', 'KIDS', 'SAREES_ETHNIC', 'FOOTWEAR_BAGS'].includes(it.categoryKey));
+        items = dynamicMasterCatalog.filter(it => ['MEN', 'WOMEN', 'KIDS', 'SAREES_ETHNIC', 'FOOTWEAR_BAGS', 'HOUSEHOLD', 'CUSTOM_SERVICES', 'EXTRA_SERVICES'].includes(it.categoryKey) || it.serviceId === 'srv-dry-cleaning');
       } else {
-        items = dynamicMasterCatalog.filter(it => it.categoryKey === subCategoryFilter);
+        items = dynamicMasterCatalog.filter(it => (it.categoryKey === subCategoryFilter || it.categoryName === subCategoryFilter) && (it.serviceId === 'srv-dry-cleaning' || ['MEN', 'WOMEN', 'KIDS', 'SAREES_ETHNIC', 'FOOTWEAR_BAGS', 'HOUSEHOLD'].includes(it.categoryKey)));
       }
     } else if (sId === 'srv-wash-and-fold' || sId === 'srv-wash-and-iron') {
       if (subCategoryFilter === 'ALL') {
-        items = dynamicMasterCatalog.filter(it => ['MEN', 'WOMEN', 'KIDS', 'HOUSEHOLD'].includes(it.categoryKey));
+        items = dynamicMasterCatalog.filter(it => ['MEN', 'WOMEN', 'KIDS', 'HOUSEHOLD', 'CUSTOM_SERVICES', 'EXTRA_SERVICES'].includes(it.categoryKey) || it.serviceId === sId);
       } else {
-        items = dynamicMasterCatalog.filter(it => it.categoryKey === subCategoryFilter);
+        items = dynamicMasterCatalog.filter(it => (it.categoryKey === subCategoryFilter || it.categoryName === subCategoryFilter));
       }
-    } else if (sId === 'srv-steam-ironing') {
-      items = dynamicMasterCatalog.filter(it => it.categoryKey === 'STEAM_IRONING' || (it.serviceId === 'srv-steam-ironing') || (it.name && it.name.toLowerCase().includes('steam iron')));
-    } else if (sId === 'srv-saree-spa') {
-      items = dynamicMasterCatalog.filter(it => it.categoryKey === 'SAREES_ETHNIC' || it.serviceId === 'srv-saree-spa' || (it.name && (it.name.toLowerCase().includes('saree') || it.name.toLowerCase().includes('silk') || it.name.toLowerCase().includes('lehanga'))));
-    } else if (sId === 'srv-shoe-spa') {
-      items = dynamicMasterCatalog.filter(it => it.categoryKey === 'FOOTWEAR_BAGS' || it.serviceId === 'srv-shoe-spa' || (it.name && (it.name.toLowerCase().includes('shoe') || it.name.toLowerCase().includes('sneaker') || it.name.toLowerCase().includes('bag'))));
-    } else if (sId === 'srv-curtain-spa') {
-      items = dynamicMasterCatalog.filter(it => it.serviceId === 'srv-curtain-spa' || (it.name && it.name.toLowerCase().includes('curtain')));
+    } else if (sId === 'srv-steam-ironing' || sId === 'srv-ironing') {
+      items = dynamicMasterCatalog.filter(it => it.categoryKey === 'STEAM_IRONING' || (it.serviceId === 'srv-steam-ironing' || it.serviceId === 'srv-ironing') || (it.name && it.name.toLowerCase().includes('steam iron')));
+    } else if (sId === 'srv-saree-spa' || sId === 'srv-saree-rolling') {
+      items = dynamicMasterCatalog.filter(it => it.categoryKey === 'SAREES_ETHNIC' || it.serviceId === 'srv-saree-spa' || it.serviceId === 'srv-saree-rolling' || (it.name && (it.name.toLowerCase().includes('saree') || it.name.toLowerCase().includes('silk') || it.name.toLowerCase().includes('lehanga'))));
+    } else if (sId === 'srv-shoe-spa' || sId === 'srv-shoe-washing') {
+      items = dynamicMasterCatalog.filter(it => it.categoryKey === 'FOOTWEAR_BAGS' || it.serviceId === 'srv-shoe-spa' || it.serviceId === 'srv-shoe-washing' || (it.name && (it.name.toLowerCase().includes('shoe') || it.name.toLowerCase().includes('sneaker') || it.name.toLowerCase().includes('bag'))));
+    } else if (sId === 'srv-curtain-spa' || sId === 'srv-curtain-washing') {
+      items = dynamicMasterCatalog.filter(it => it.serviceId === 'srv-curtain-spa' || it.serviceId === 'srv-curtain-washing' || (it.name && it.name.toLowerCase().includes('curtain')));
     } else if (sId === 'srv-starch-and-iron') {
       items = dynamicMasterCatalog.filter(it => it.categoryKey === 'STARCH_FINISHING' || it.serviceId === 'srv-starch-and-iron' || (it.name && it.name.toLowerCase().includes('starch')));
+    } else if (sId === 'srv-carpet-washing') {
+      items = dynamicMasterCatalog.filter(it => it.serviceId === 'srv-carpet-washing' || (it.name && (it.name.toLowerCase().includes('carpet') || it.name.toLowerCase().includes('rug'))));
     } else {
       // Dynamic Custom Service (e.g. "Gopi" or any admin created service)
       const customMatches = dynamicMasterCatalog.filter(it => 
@@ -642,13 +652,13 @@ export const BillingMachinePage = () => {
         if (customDef && Array.isArray(customDef.subServices) && customDef.subServices.length > 0) {
           items = customDef.subServices.map((sub, idx) => ({
             id: sub.id || `${sId}-sub-${idx}`,
-            name: `${customDef.name} — ${sub.name}`,
+            name: `${customDef.name || customDef.title} — ${sub.name}`,
             price: Number(sub.price || customDef.startingPrice || 99),
             emoji: sub.emoji || customDef.emoji || '✨',
             categoryKey: 'CUSTOM_SERVICES',
             categoryName: customDef.category || customDef.name,
             serviceId: sId,
-            serviceName: customDef.name,
+            serviceName: customDef.name || customDef.title,
             subServiceName: sub.name,
           }));
         } else {
@@ -766,6 +776,8 @@ export const BillingMachinePage = () => {
         ...prev.items,
         {
           name: customItem.name.trim(),
+          serviceName: billForm.serviceName || 'Custom Charge',
+          subServiceName: customItem.name.trim(),
           emoji: '⚡',
           category: customItem.category || 'Custom Extra Charge',
           unitPrice: price,

@@ -35,12 +35,24 @@ export const Footer = () => {
 
   const serviceCategories = [
     { label: 'Dry Cleaning', path: '/services/dry-cleaning' },
-    { label: 'Steam Ironing', path: '/services/ironing' },
+    { label: 'Ironing Service', path: '/services/ironing-service' },
     { label: 'Wash & Iron (Per-Kg)', path: '/services/wash-and-iron' },
     { label: 'Wash & Fold (Per-Kg)', path: '/services/wash-and-fold' },
-    { label: 'Saree Rolling & Polishing', path: '/services/saree-rolling' },
-    { label: 'Sneaker & Shoe Care', path: '/services/shoe-washing' },
-    { label: 'Curtain & Carpet Care', path: '/services/curtain-washing' },
+    { label: 'Saree Rolling', path: '/services/saree-rolling' },
+    { label: 'Shoe Cleaning', path: '/services/shoe-cleaning' },
+    { label: 'Curtain Cleaning', path: '/services/curtain-cleaning' },
+    { label: 'Carpet Cleaning', path: '/services/carpet-cleaning' },
+  ];
+
+  const priorityAreas = [
+    { label: 'Manikonda Hub', path: '/areas/manikonda' },
+    { label: 'Puppalaguda', path: '/areas/puppalaguda' },
+    { label: 'Khajaguda', path: '/areas/khajaguda' },
+    { label: 'Lanco Hills', path: '/areas/lanco-hills' },
+    { label: 'Narsingi', path: '/areas/narsingi' },
+    { label: 'Alkapur Township', path: '/areas/alkapur-township' },
+    { label: 'Shaikpet', path: '/areas/shaikpet' },
+    { label: 'Nanakramguda', path: '/areas/nanakramguda' },
   ];
 
   return (
@@ -76,16 +88,16 @@ export const Footer = () => {
           </Link>
         </div>
 
-        {/* MIDDLE: 4-Column Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-10 lg:gap-12 pt-4">
+        {/* MIDDLE: 5-Column Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8 lg:gap-10 pt-4">
           
-          {/* Col 1: Brand & Identity (Col 4) */}
-          <div className="lg:col-span-4 space-y-5">
+          {/* Col 1: Brand & Identity (Col 3) */}
+          <div className="lg:col-span-3 space-y-5">
             <Link to="/" className="flex items-center gap-3 group">
               <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center p-1 shadow-[0_0_20px_rgba(249,115,22,0.3)] group-hover:scale-105 transition-transform overflow-hidden">
                 <img 
                   src="/techwashlogo.webp" 
-                  alt="Tech Wash" 
+                  alt="Techwash" 
                   className="w-full h-full object-contain"
                   onError={(e) => { e.target.style.display = 'none'; }}
                 />
@@ -104,22 +116,20 @@ export const Footer = () => {
               {tagline}. European hydro-clean chemistry, 100% demineralized RO soft water cycles, and guaranteed zero-color-bleed textile preservation.
             </p>
 
-            <div className="pt-2 flex items-center gap-4 text-xs text-[#F97316] font-bold">
+            <div className="pt-2 flex items-center gap-4 text-xs text-[#F97316] font-bold flex-wrap">
               <span className="flex items-center gap-1.5">
                 <ShieldCheck className="w-4 h-4 text-[#F97316]" />
                 <span>10-Point QC Guarantee</span>
               </span>
-              <span className="text-slate-600">•</span>
-              <span>45-Min Express Slots</span>
             </div>
           </div>
 
           {/* Col 2: Services (Col 3) */}
           <div className="lg:col-span-3 space-y-4">
             <h4 className="text-xs font-bold uppercase tracking-wider text-[#F97316] font-display">
-              Care Offerings
+              Popular Services
             </h4>
-            <ul className="space-y-2.5 text-xs text-slate-300">
+            <ul className="space-y-2 text-xs text-slate-300">
               {serviceCategories.map((s, idx) => (
                 <li key={idx}>
                   <Link to={s.path} className="hover:text-[#F97316] transition-colors flex items-center gap-1.5 group">
@@ -131,13 +141,30 @@ export const Footer = () => {
             </ul>
           </div>
 
-          {/* Col 3: Navigation (Col 2) */}
+          {/* Col 3: Service Areas (Col 2) */}
           <div className="lg:col-span-2 space-y-4">
             <h4 className="text-xs font-bold uppercase tracking-wider text-[#F97316] font-display">
-              Quick Links
+              Service Areas
             </h4>
-            <ul className="space-y-2.5 text-xs text-slate-300">
-              {quickLinks.map((l, idx) => (
+            <ul className="space-y-2 text-xs text-slate-300">
+              {priorityAreas.map((a, idx) => (
+                <li key={idx}>
+                  <Link to={a.path} className="hover:text-[#F97316] transition-colors flex items-center gap-1">
+                    <MapPin className="w-3 h-3 text-[#F97316]/70" />
+                    <span>{a.label}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Col 4: Quick Links (Col 2) */}
+          <div className="lg:col-span-2 space-y-4">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-[#F97316] font-display">
+              Company & Links
+            </h4>
+            <ul className="space-y-2 text-xs text-slate-300">
+              {quickLinks.slice(0, 7).map((l, idx) => (
                 <li key={idx}>
                   <Link to={l.path} className="hover:text-[#F97316] transition-colors">
                     {l.label}
@@ -147,33 +174,27 @@ export const Footer = () => {
             </ul>
           </div>
 
-          {/* Col 4: Contact & Hub (Col 3) */}
-          <div className="lg:col-span-3 space-y-4">
+          {/* Col 5: Contact (Col 2) */}
+          <div className="lg:col-span-2 space-y-4">
             <h4 className="text-xs font-bold uppercase tracking-wider text-[#F97316] font-display">
-              Concierge Contact
+              Contact Us
             </h4>
-            <div className="space-y-3 text-xs text-slate-300">
-              <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-lg bg-slate-800 flex items-center justify-center text-[#F97316] shrink-0 border border-slate-700">
-                  <Phone className="w-3.5 h-3.5" />
-                </div>
-                <a href={`tel:${primaryPhone.replace(/[^0-9]/g, '')}`} className="hover:text-[#F97316] font-bold text-sm text-white">
+            <div className="space-y-2.5 text-xs text-slate-300">
+              <div className="flex items-center gap-2">
+                <Phone className="w-3.5 h-3.5 text-[#F97316] shrink-0" />
+                <a href={`tel:${primaryPhone.replace(/[^0-9]/g, '')}`} className="hover:text-[#F97316] font-bold text-white">
                   {primaryPhone}
                 </a>
               </div>
-              <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-lg bg-slate-800 flex items-center justify-center text-[#F97316] shrink-0 border border-slate-700">
-                  <Mail className="w-3.5 h-3.5" />
-                </div>
-                <a href={`mailto:${supportEmail}`} className="hover:text-[#F97316]">
+              <div className="flex items-center gap-2">
+                <Mail className="w-3.5 h-3.5 text-[#F97316] shrink-0" />
+                <a href={`mailto:${supportEmail}`} className="hover:text-[#F97316] truncate">
                   {supportEmail}
                 </a>
               </div>
-              <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-lg bg-slate-800 flex items-center justify-center text-[#F97316] shrink-0 border border-slate-700">
-                  <Clock className="w-3.5 h-3.5" />
-                </div>
-                <span>{hours}</span>
+              <div className="flex items-center gap-2">
+                <Clock className="w-3.5 h-3.5 text-[#F97316] shrink-0" />
+                <span className="text-[11px]">{hours}</span>
               </div>
             </div>
           </div>

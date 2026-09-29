@@ -1,6 +1,6 @@
 /**
- * Automated Advanced Sitemap Generator for Tech Wash Laundry Services
- * Generates both XML (with Google Image SEO extensions) and TXT URL lists
+ * Automated Advanced Sitemap Generator for Techwash Laundry Services
+ * Generates modular multi-part XML sitemaps (pages, services, areas, blog) + master sitemap index + TXT URL lists
  * Run via: node scripts/generate-sitemap.js
  */
 
@@ -21,12 +21,12 @@ const CORE_PAGES = [
     images: [
       {
         loc: `${BASE_URL}/techwashlogo.webp`,
-        title: 'Tech Wash Laundry Services Logo',
+        title: 'Techwash Laundry Services Logo',
         caption: 'Next-Gen Premium Garment Care Hyderabad',
       },
       {
         loc: `${BASE_URL}/techwash_hero_cutout.webp`,
-        title: 'Tech Wash Eco-Friendly Hydrocarbon Laundry Lab',
+        title: 'Techwash Eco-Friendly Hydrocarbon Laundry Lab',
         caption: 'Certified 0 PPM RO Water Soft Wash and Express Doorstep Delivery Hyderabad',
       },
     ]
@@ -63,13 +63,13 @@ const SERVICE_ITEMS = [
     caption: 'Pure European non-toxic hydrocarbon solvent dry cleaning with zero PERC',
   },
   {
-    slug: 'laundry-pickup-delivery',
+    slug: 'laundry-pickup-and-delivery',
     title: 'Doorstep Laundry Pickup and Delivery in Hyderabad',
     image: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=1200&q=80',
     caption: 'Express 24 to 48-hour doorstep pickup and delivery fleet',
   },
   {
-    slug: 'ironing',
+    slug: 'ironing-service',
     title: '3D Form Tension Steam Pressing in Hyderabad',
     image: 'https://images.unsplash.com/photo-1489274495757-95c7c837b101?auto=format&fit=crop&w=1200&q=80',
     caption: 'Zero heat shine steam form pressing with vacuum table crease retention',
@@ -99,19 +99,19 @@ const SERVICE_ITEMS = [
     caption: 'Zero-pressure calendar roller pressing preserving zari weave integrity',
   },
   {
-    slug: 'shoe-washing',
+    slug: 'shoe-cleaning',
     title: 'Sneaker, Suede & Leather Shoe Care in Hyderabad',
     image: 'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?auto=format&fit=crop&w=1200&q=80',
     caption: 'Deep sole ultrasonic whitening, bacterial disinfection, and leather conditioning',
   },
   {
-    slug: 'curtain-washing',
+    slug: 'curtain-cleaning',
     title: 'Heavy Drape & Curtain Deep Extraction Washing in Hyderabad',
     image: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=1200&q=80',
     caption: 'Dust mite extraction and tension steam de-wrinkling for residential curtains',
   },
   {
-    slug: 'carpet-washing',
+    slug: 'carpet-cleaning',
     title: 'Deep Carpet & Rug Hydro-Extraction Cleaning in Hyderabad',
     image: 'https://images.unsplash.com/photo-1600121848594-d8644e57abab?auto=format&fit=crop&w=1200&q=80',
     caption: 'High-power dual extraction washing restoring carpet softness and pile bounce',
@@ -145,67 +145,88 @@ function escapeXml(str) {
     .replace(/'/g, '&apos;');
 }
 
+function buildUrlEntry(fullUrl, priority, changefreq, currentDate, images = []) {
+  let entry = `  <url>\n    <loc>${escapeXml(fullUrl)}</loc>\n    <lastmod>${currentDate}</lastmod>\n    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>`;
+  if (images && images.length > 0) {
+    images.forEach((img) => {
+      entry += `\n    <image:image>\n      <image:loc>${escapeXml(img.loc)}</image:loc>\n      <image:title>${escapeXml(img.title)}</image:title>\n      <image:caption>${escapeXml(img.caption)}</image:caption>\n    </image:image>`;
+    });
+  }
+  entry += `\n  </url>`;
+  return entry;
+}
+
+function wrapUrlSet(entries) {
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+${entries.join('\n')}
+</urlset>`;
+}
+
 function generateSitemaps() {
   const currentDate = new Date().toISOString().split('T')[0];
-  const xmlEntries = [];
-  const rawUrls = [];
+  const allUrls = [];
 
-  const addUrl = (fullUrl, priority, changefreq, images = []) => {
-    rawUrls.push(fullUrl);
-    let entry = `  <url>\n    <loc>${escapeXml(fullUrl)}</loc>\n    <lastmod>${currentDate}</lastmod>\n    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>`;
-    if (images && images.length > 0) {
-      images.forEach((img) => {
-        entry += `\n    <image:image>\n      <image:loc>${escapeXml(img.loc)}</image:loc>\n      <image:title>${escapeXml(img.title)}</image:title>\n      <image:caption>${escapeXml(img.caption)}</image:caption>\n    </image:image>`;
-      });
-    }
-    entry += `\n  </url>`;
-    xmlEntries.push(entry);
-  };
-
-  // 1. Core Pages (17 pages including /track-order)
+  // 1. Pages
+  const pagesEntries = [];
   CORE_PAGES.forEach((page) => {
-    addUrl(`${BASE_URL}${page.url}`, page.priority, page.changefreq, page.images);
+    const fullUrl = `${BASE_URL}${page.url}`;
+    allUrls.push(fullUrl);
+    pagesEntries.push(buildUrlEntry(fullUrl, page.priority, page.changefreq, currentDate, page.images));
   });
 
-  // 2. Service Pages (11 core services with image schemas)
+  // 2. Services
+  const servicesEntries = [];
   SERVICE_ITEMS.forEach((srv) => {
+    const fullUrl = `${BASE_URL}/services/${srv.slug}`;
+    allUrls.push(fullUrl);
     const images = srv.image ? [{ loc: srv.image, title: srv.title, caption: srv.caption }] : [];
-    addUrl(`${BASE_URL}/services/${srv.slug}`, '0.9', 'weekly', images);
+    servicesEntries.push(buildUrlEntry(fullUrl, '0.9', 'weekly', currentDate, images));
   });
 
-  // 3. Area Hub Pages (8 core areas)
+  // 3. Areas (8 area hubs + 88 area/service pages = 96 local landing pages)
+  const areasEntries = [];
   AREA_SLUGS.forEach((slug) => {
-    addUrl(`${BASE_URL}/areas/${slug}`, '0.9', 'weekly');
+    const hubUrl = `${BASE_URL}/areas/${slug}`;
+    allUrls.push(hubUrl);
+    areasEntries.push(buildUrlEntry(hubUrl, '0.9', 'weekly', currentDate));
   });
-
-  // 4. Area + Service Combination Pages (88 geo-targeted landing pages)
   AREA_SLUGS.forEach((areaSlug) => {
     SERVICE_ITEMS.forEach((srv) => {
-      addUrl(`${BASE_URL}/areas/${areaSlug}/${srv.slug}`, '0.85', 'weekly');
+      const serviceAreaUrl = `${BASE_URL}/areas/${areaSlug}/${srv.slug}`;
+      allUrls.push(serviceAreaUrl);
+      areasEntries.push(buildUrlEntry(serviceAreaUrl, '0.85', 'weekly', currentDate));
     });
   });
 
-  // 5. Blog Detail Pages (3 editorial guides)
+  // 4. Blog
+  const blogEntries = [];
   BLOG_SLUGS.forEach((slug) => {
-    addUrl(`${BASE_URL}/blog/${slug}`, '0.7', 'monthly');
+    const blogUrl = `${BASE_URL}/blog/${slug}`;
+    allUrls.push(blogUrl);
+    blogEntries.push(buildUrlEntry(blogUrl, '0.7', 'monthly', currentDate));
   });
 
-  // Write XML Sitemap
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
-${xmlEntries.join('\n')}
-</urlset>`;
+  // Write Sub-Sitemaps
+  fs.writeFileSync(path.resolve(__dirname, '../public/sitemap-pages.xml'), wrapUrlSet(pagesEntries), 'utf8');
+  fs.writeFileSync(path.resolve(__dirname, '../public/sitemap-services.xml'), wrapUrlSet(servicesEntries), 'utf8');
+  fs.writeFileSync(path.resolve(__dirname, '../public/sitemap-areas.xml'), wrapUrlSet(areasEntries), 'utf8');
+  fs.writeFileSync(path.resolve(__dirname, '../public/sitemap-blog.xml'), wrapUrlSet(blogEntries), 'utf8');
 
-  const xmlOutputPath = path.resolve(__dirname, '../public/sitemap.xml');
-  fs.writeFileSync(xmlOutputPath, xml, 'utf8');
+  // Master Unified XML Sitemap
+  const masterEntries = [...pagesEntries, ...servicesEntries, ...areasEntries, ...blogEntries];
+  fs.writeFileSync(path.resolve(__dirname, '../public/sitemap.xml'), wrapUrlSet(masterEntries), 'utf8');
 
-  // Write TXT Sitemap (for URL inspection & batch submit tools)
-  const txtOutputPath = path.resolve(__dirname, '../public/sitemap.txt');
-  fs.writeFileSync(txtOutputPath, rawUrls.join('\n'), 'utf8');
+  // Master TXT Sitemap
+  fs.writeFileSync(path.resolve(__dirname, '../public/sitemap.txt'), allUrls.join('\n'), 'utf8');
 
-  console.log(`✅ Advanced Sitemap successfully updated with ${rawUrls.length} URLs:`);
-  console.log(`   XML: ${xmlOutputPath}`);
-  console.log(`   TXT: ${txtOutputPath}`);
+  console.log(`✅ Advanced Multi-Part Sitemaps successfully updated with ${allUrls.length} total URLs:`);
+  console.log(`   - sitemap.xml (Master Unified: ${masterEntries.length} URLs)`);
+  console.log(`   - sitemap-pages.xml (${pagesEntries.length} URLs)`);
+  console.log(`   - sitemap-services.xml (${servicesEntries.length} URLs)`);
+  console.log(`   - sitemap-areas.xml (${areasEntries.length} URLs)`);
+  console.log(`   - sitemap-blog.xml (${blogEntries.length} URLs)`);
+  console.log(`   - sitemap.txt (${allUrls.length} plain text URLs)`);
 }
 
 generateSitemaps();

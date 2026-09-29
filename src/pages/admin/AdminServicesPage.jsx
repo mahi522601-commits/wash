@@ -15,7 +15,8 @@ import { Badge } from '../../components/ui/Badge';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { StatusBadge } from '../../components/admin/StatusBadge';
 import { ServicePreviewModal } from '../../components/public/ServicePreviewModal';
-import { ImageUpload } from '../../components/ui/ImageUpload';
+import { EmojiPicker } from '../../components/common/EmojiPicker';
+import { pricingService } from '../../services/pricingConfig';
 import { 
   Sparkles, 
   Plus, 
@@ -36,6 +37,7 @@ import {
 const EDITOR_TABS = [
   { id: 'basic', label: 'Basic Info', icon: Sliders },
   { id: 'pricing', label: 'Pricing & Units', icon: DollarSign },
+  { id: 'subservices', label: 'Sub-Services & Tariffs', icon: Layers },
   { id: 'media', label: 'Media & Covers', icon: ImageIcon },
   { id: 'video', label: 'YouTube Video', icon: Play },
   { id: 'features', label: 'Features & Benefits', icon: CheckCircle2 },
@@ -48,10 +50,13 @@ const INITIAL_SERVICE_STATE = {
   title: '',
   slug: '',
   category: 'Dry Cleaning',
+  emoji: '🧺',
+  icon: '🧺',
   shortDescription: '',
   detailedDescription: '',
   pricingType: 'per piece',
   startingPrice: 99,
+  subServices: [],
   heroImage: '',
   mobileImage: '',
   youtubeUrl: '',
@@ -196,6 +201,41 @@ export const AdminServicesPage = () => {
       const isNew = !currentService.id;
       const saved = await serviceService.saveService(currentService);
 
+      // Sync custom service / sub-services to pricingConfig
+      try {
+        const currentConfig = await pricingService.getPricingConfig();
+        let customList = Array.isArray(currentConfig.customServices) ? currentConfig.customServices : [];
+        const srvId = saved.id;
+        const existingIdx = customList.findIndex(c => c.id === srvId || c.id === srvId.replace(/^srv-/, ''));
+
+        const customObj = {
+          id: srvId,
+          name: saved.title || saved.name,
+          title: saved.title || saved.name,
+          slug: saved.slug,
+          startingPrice: Number(saved.startingPrice || 99),
+          pricingType: saved.pricingType === 'per kg' ? 'per_kg' : 'per_item',
+          emoji: saved.emoji || saved.icon || '✨',
+          icon: saved.emoji || saved.icon || '✨',
+          categoryTag: saved.category || 'Special Care',
+          shortDescription: saved.shortDescription || '',
+          subServices: Array.isArray(saved.subServices) ? saved.subServices : [],
+        };
+
+        if (existingIdx >= 0) {
+          customList[existingIdx] = { ...customList[existingIdx], ...customObj };
+        } else {
+          customList.push(customObj);
+        }
+
+        await pricingService.updatePricingConfig({
+          ...currentConfig,
+          customServices: customList,
+        });
+      } catch (e) {
+        console.warn("Pricing config sync error:", e);
+      }
+
       await auditService.logAction({
         action: isNew ? 'CREATE' : 'UPDATE',
         entity: 'Service',
@@ -205,7 +245,7 @@ export const AdminServicesPage = () => {
         user: currentUser,
       });
 
-      success('Service Saved', `${saved.title} saved successfully.`);
+      success('Service & Sub-Services Saved', `"${saved.title}" saved successfully across Services & POS Billing.`);
       setEditorOpen(false);
       loadServices();
     } catch (err) {
@@ -433,7 +473,7 @@ export const AdminServicesPage = () => {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                   <div>
                     <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
                       Category
@@ -447,6 +487,11 @@ export const AdminServicesPage = () => {
                       <option value="Steam Iron">Steam Iron</option>
                       <option value="Stains Remover">Stains Remover</option>
                       <option value="Dry Cleaning">Dry Cleaning</option>
+                      <option value="Apparel Care">Apparel Care</option>
+                      <option value="Footwear">Footwear</option>
+                      <option value="Household">Household</option>
+                      <option value="Traditional">Traditional</option>
+                      <option value="Special Care">Special Care</option>
                     </select>
                   </div>
 
@@ -471,6 +516,14 @@ export const AdminServicesPage = () => {
                     value={currentService.order}
                     onChange={(e) => setCurrentService({ ...currentService, order: Number(e.target.value) })}
                   />
+
+                  <div>
+                    <EmojiPicker
+                      label="Service Emoji"
+                      value={currentService.emoji || currentService.icon || '🧺'}
+                      onChange={(val) => setCurrentService({ ...currentService, emoji: val, icon: val })}
+                    />
+                  </div>
                 </div>
 
                 <Textarea
@@ -522,6 +575,129 @@ export const AdminServicesPage = () => {
                     </select>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* TAB: SUB-SERVICES & TARIFFS */}
+            {activeTab === 'subservices' && (
+              <div className="space-y-5">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-900 font-display">Sub-Services & Specific Tariffs</h4>
+                    <p className="text-xs text-slate-500">
+                      Add granular service options (e.g. Dry Cleaning ₹200, Wash & Iron ₹150, Steam Press ₹60).
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    icon={Plus}
+                    onClick={() => {
+                      const subs = Array.isArray(currentService.subServices) ? currentService.subServices : [];
+                      const newSub = {
+                        id: `sub-${Date.now()}`,
+                        name: 'New Sub-Service Option',
+                        price: currentService.startingPrice || 99,
+                        emoji: currentService.emoji || '✨',
+                        desc: '',
+                      };
+                      setCurrentService({ ...currentService, subServices: [...subs, newSub] });
+                    }}
+                  >
+                    Add Sub-Service Option
+                  </Button>
+                </div>
+
+                {(currentService.subServices || []).length === 0 ? (
+                  <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200 text-center space-y-2">
+                    <p className="text-xs text-slate-500 font-medium">
+                      No sub-services attached yet to "{currentService.title || 'this service'}".
+                    </p>
+                    <p className="text-[11px] text-slate-400">
+                      This service will use its base rate (₹{currentService.startingPrice || 0}). Click "Add Sub-Service Option" above to create sub-options.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
+                    {currentService.subServices.map((sub, sIdx) => (
+                      <div
+                        key={sub.id || sIdx}
+                        className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3 hover:border-brand-300 transition-all"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2 flex-1">
+                            <span className="text-xs font-bold text-slate-400">#{sIdx + 1}</span>
+                            <input
+                              type="text"
+                              placeholder="Sub-Service Name (e.g. Silk Polish / Shoe Scrub)"
+                              value={sub.name}
+                              onChange={(e) => {
+                                const subs = [...currentService.subServices];
+                                subs[sIdx].name = e.target.value;
+                                setCurrentService({ ...currentService, subServices: subs });
+                              }}
+                              className="flex-1 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-brand-500"
+                            />
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            <div className="flex items-center bg-white rounded-xl border border-slate-200 px-2.5 py-1">
+                              <span className="text-xs font-bold text-slate-400 mr-1">₹</span>
+                              <input
+                                type="number"
+                                min="0"
+                                value={sub.price}
+                                onChange={(e) => {
+                                  const subs = [...currentService.subServices];
+                                  subs[sIdx].price = Number(e.target.value);
+                                  setCurrentService({ ...currentService, subServices: subs });
+                                }}
+                                className="w-16 text-xs font-bold text-slate-900 text-right focus:outline-none"
+                              />
+                            </div>
+
+                            <button
+                              type="button"
+                              title="Delete sub-service"
+                              onClick={() => {
+                                const subs = currentService.subServices.filter((_, idx) => idx !== sIdx);
+                                setCurrentService({ ...currentService, subServices: subs });
+                              }}
+                              className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+                          <input
+                            type="text"
+                            placeholder="Short description / highlight note (optional)..."
+                            value={sub.desc || ''}
+                            onChange={(e) => {
+                              const subs = [...currentService.subServices];
+                              subs[sIdx].desc = e.target.value;
+                              setCurrentService({ ...currentService, subServices: subs });
+                            }}
+                            className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-medium text-slate-700"
+                          />
+
+                          <EmojiPicker
+                            label=""
+                            value={sub.emoji || '✨'}
+                            onChange={(val) => {
+                              const subs = [...currentService.subServices];
+                              subs[sIdx].emoji = val;
+                              setCurrentService({ ...currentService, subServices: subs });
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 

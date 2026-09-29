@@ -253,10 +253,14 @@ export const PrintReceipt = ({
                     {item.quantity || 1}
                   </td>
                   <td className="py-1.5 px-2 text-right font-mono text-slate-800 print:text-black align-top">
-                    {formatCurrency(item.unitPrice !== undefined ? item.unitPrice : (item.price || 0))}
+                    {item.unitPrice === 0 && item.lineTotal === 0
+                      ? <span className="text-[8px] font-bold text-emerald-700 print:text-black">Incl. in Kg</span>
+                      : formatCurrency(item.unitPrice !== undefined ? item.unitPrice : (item.price || 0))}
                   </td>
                   <td className="py-1.5 px-2 text-right font-bold font-mono text-slate-900 print:text-black align-top">
-                    {formatCurrency(item.lineTotal !== undefined ? item.lineTotal : (item.totalPrice || ((item.quantity || 1) * (item.unitPrice || item.price || 0))))}
+                    {item.unitPrice === 0 && item.lineTotal === 0
+                      ? <span className="text-[8.5px] font-bold text-slate-500 print:text-black">₹0</span>
+                      : formatCurrency(item.lineTotal !== undefined ? item.lineTotal : (item.totalPrice || ((item.quantity || 1) * (item.unitPrice || item.price || 0))))}
                   </td>
                 </tr>
               );

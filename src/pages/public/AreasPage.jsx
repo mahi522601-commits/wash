@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { SEO_AREAS, BUSINESS_INFO, BASE_URL } from '../../data/seoData';
 import { SEOHead } from '../../components/seo/SEOHead';
+import { BreadcrumbNav } from '../../components/public/BreadcrumbNav';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
@@ -60,8 +61,8 @@ export const AreasPage = () => {
   return (
     <>
       <SEOHead
-        title="Laundry & Dry Cleaning Service Areas in Hyderabad | Tech Wash"
-        description="Explore Tech Wash laundry, dry cleaning, steam ironing, and shoe care service areas across Hyderabad. Free doorstep pickup in Manikonda, Puppalaguda, Khajaguda, Lanco Hills & more."
+        title="Laundry & Dry Cleaning Service Areas in Hyderabad | Techwash"
+        description="Explore Techwash laundry, dry cleaning, steam ironing, and shoe care service areas across Hyderabad. Doorstep pickup in Manikonda, Puppalaguda, Khajaguda, Lanco Hills & more."
         canonicalUrl={`${BASE_URL}/areas`}
         keywords="laundry hyderabad service areas, dry cleaning manikonda, puppalaguda laundry pickup, khajaguda steam iron, lanco hills dry cleaner, narsingi wash and fold"
         structuredData={structuredData}
@@ -72,7 +73,14 @@ export const AreasPage = () => {
         <div className="absolute top-10 right-0 w-[500px] h-[500px] bg-[#F97316]/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-10 left-0 w-[500px] h-[500px] bg-[#F97316]/5 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 space-y-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 space-y-12">
+          
+          <BreadcrumbNav 
+            items={[
+              { name: 'Home', path: '/' },
+              { name: 'Service Areas' }
+            ]}
+          />
           
           {/* Hero Header */}
           <div className="text-center max-w-3xl mx-auto space-y-4">

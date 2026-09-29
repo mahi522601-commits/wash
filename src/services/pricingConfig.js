@@ -383,6 +383,7 @@ export const buildWalkInServicesFromPricing = (config = INITIAL_PRICING_CONFIG, 
     { id: 'srv-shoe-spa', name: 'Shoe & Sneaker Care', emoji: '👟', defaultPrice: shoeRate, startingPrice: shoeRate },
     { id: 'srv-curtain-spa', name: 'Curtain Service', emoji: '🪟', defaultPrice: curtainDCRate, startingPrice: Math.min(curtainDCRate, Number(cfg.curtains?.iron) || 60) },
     { id: 'srv-starch-and-iron', name: 'Starch & Finishing', emoji: '✨', defaultPrice: starchMin || 45, startingPrice: starchMin },
+    { id: 'srv-carpet-washing', name: 'Carpet & Rug Wash', emoji: '🧶', defaultPrice: Number(cfg.carpets?.ratePerSqFt || 45), startingPrice: Number(cfg.carpets?.ratePerSqFt || 45) },
   ];
 
   // Merge custom services stored in pricingConfig or passed from serviceService

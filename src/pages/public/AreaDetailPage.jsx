@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { SEO_AREAS, SEO_SERVICES, BUSINESS_INFO, BASE_URL } from '../../data/seoData';
 import { SEOHead } from '../../components/seo/SEOHead';
+import { BreadcrumbNav } from '../../components/public/BreadcrumbNav';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
@@ -35,22 +36,31 @@ export const AreaDetailPage = () => {
 
   if (!area) {
     return (
-      <div className="py-24 bg-brand-50 min-h-screen text-center px-4">
-        <div className="max-w-md mx-auto bg-white p-8 rounded-3xl border border-slate-200 space-y-4">
-          <MapPin className="w-12 h-12 text-[#F97316] mx-auto" />
-          <h2 className="text-2xl font-black text-slate-900 font-display">Area Not Found</h2>
-          <p className="text-sm text-slate-600">
-            We couldn't find the requested service area. Please browse our active service corridors in Hyderabad.
-          </p>
-          <Link to="/areas">
-            <Button variant="primary" size="md">
-              View All Service Areas
-            </Button>
-          </Link>
+      <>
+        <SEOHead 
+          title="Area Not Found | Techwash" 
+          description="The requested service area was not found." 
+          noindex={true} 
+        />
+        <div className="py-24 bg-brand-50 min-h-screen text-center px-4">
+          <div className="max-w-md mx-auto bg-white p-8 rounded-3xl border border-slate-200 space-y-4">
+            <MapPin className="w-12 h-12 text-[#F97316] mx-auto" />
+            <h2 className="text-2xl font-black text-slate-900 font-display">Area Not Found</h2>
+            <p className="text-sm text-slate-600">
+              We couldn't find the requested service area. Please browse our active service corridors in Hyderabad.
+            </p>
+            <Link to="/areas">
+              <Button variant="primary" size="md">
+                View All Service Areas
+              </Button>
+            </Link>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
+
+  const pageTitle = `Laundry Service in ${area.name}, Hyderabad | Techwash`;
 
   // Schema.org Structured Data
   const structuredData = {
@@ -80,7 +90,7 @@ export const AreaDetailPage = () => {
         ],
       },
       {
-        '@type': 'DryCleaningOrLaundry',
+        '@type': 'LocalBusiness',
         '@id': `${BASE_URL}/areas/${area.slug}#localbusiness`,
         name: `${BUSINESS_INFO.name} - ${area.name}`,
         telephone: BUSINESS_INFO.telephone,
@@ -131,7 +141,7 @@ export const AreaDetailPage = () => {
       emoji: '🧥',
     },
     {
-      slug: 'laundry-pickup-delivery',
+      slug: 'laundry-pickup-and-delivery',
       title: `Laundry Pickup & Delivery in ${area.name}`,
       tag: 'Doorstep Convenience',
       desc: `Scheduled doorstep collection & sealed 24-48h delivery with electronic weighing across all ${area.name} societies.`,
@@ -142,7 +152,7 @@ export const AreaDetailPage = () => {
 
   // Specific Granular Care Services
   const specializedServices = SEO_SERVICES.filter(
-    (s) => !['laundry-service', 'dry-cleaning', 'laundry-pickup-delivery'].includes(s.slug)
+    (s) => !['laundry-service', 'dry-cleaning', 'laundry-pickup-and-delivery'].includes(s.slug)
   );
 
   // Resolved Nearby Areas
@@ -155,7 +165,7 @@ export const AreaDetailPage = () => {
   return (
     <>
       <SEOHead
-        title={area.title}
+        title={pageTitle}
         description={area.metaDescription}
         canonicalUrl={`${BASE_URL}/areas/${area.slug}`}
         keywords={area.keywords}
@@ -170,13 +180,13 @@ export const AreaDetailPage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 space-y-16">
           
           {/* Breadcrumb Navigation */}
-          <nav className="flex items-center gap-2 text-xs text-slate-500 font-medium">
-            <Link to="/" className="hover:text-[#F97316]">Home</Link>
-            <span>/</span>
-            <Link to="/areas" className="hover:text-[#F97316]">Service Areas</Link>
-            <span>/</span>
-            <span className="text-slate-900 font-bold">{area.name}</span>
-          </nav>
+          <BreadcrumbNav 
+            items={[
+              { name: 'Home', path: '/' },
+              { name: 'Areas', path: '/areas' },
+              { name: area.name }
+            ]}
+          />
 
           {/* 1. HERO SECTION */}
           <div className="bg-white rounded-3xl border border-brand-200 p-8 sm:p-12 shadow-sm space-y-8">

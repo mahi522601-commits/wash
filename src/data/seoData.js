@@ -369,13 +369,21 @@ export const SEO_AREAS = [
 /**
  * 11 Genuine Tech Wash Services & Core Intent Mappings
  */
+export const LEGACY_SLUG_MAP = {
+  'laundry-pickup-delivery': 'laundry-pickup-and-delivery',
+  'ironing': 'ironing-service',
+  'shoe-washing': 'shoe-cleaning',
+  'curtain-washing': 'curtain-cleaning',
+  'carpet-washing': 'carpet-cleaning',
+};
+
 export const SEO_SERVICES = [
   // 1. Core Intent: General Laundry Service
   {
     slug: 'laundry-service',
     name: 'Laundry Service',
     h1: 'Professional Laundry Service in Hyderabad',
-    title: 'Laundry Service in Hyderabad | Tech Wash',
+    title: 'Laundry Service in Hyderabad | Techwash',
     metaDescription: 'Professional laundry service in Hyderabad. 100% demineralized 0 PPM RO soft water washing, isolated single-customer drums, and fast scheduled doorstep pickup.',
     pricingDisplay: 'From ₹100 / Kg',
     category: 'Daily Laundry',
@@ -386,7 +394,7 @@ export const SEO_SERVICES = [
     slug: 'dry-cleaning',
     name: 'Dry Cleaning',
     h1: 'Eco-Friendly Hydrocarbon Dry Cleaning in Hyderabad',
-    title: 'Premium Dry Cleaning Services in Hyderabad | Tech Wash',
+    title: 'Dry Cleaning Service in Hyderabad | Techwash',
     metaDescription: 'Certified 100% non-toxic European hydrocarbon dry cleaning in Hyderabad. Gentle on suits, silks, designer couture, and delicate fabrics with doorstep pickup.',
     pricingDisplay: 'Starts at ₹40 / item',
     category: 'Couture Care',
@@ -394,10 +402,10 @@ export const SEO_SERVICES = [
   },
   // 3. Core Intent: Laundry Pickup & Delivery
   {
-    slug: 'laundry-pickup-delivery',
+    slug: 'laundry-pickup-and-delivery',
     name: 'Laundry Pickup & Delivery',
     h1: 'Doorstep Laundry Pickup and Delivery in Hyderabad',
-    title: 'Doorstep Laundry Pickup & Delivery in Hyderabad | Tech Wash',
+    title: 'Laundry Pickup & Delivery in Hyderabad | Techwash',
     metaDescription: 'Convenient doorstep laundry pickup and delivery in Hyderabad. Timed slots from 8 AM to 9 PM, transparent electronic weighing, and 24-48h turnaround.',
     pricingDisplay: 'Free Pickup on Orders ₹299+',
     category: 'Doorstep Concierge',
@@ -405,11 +413,11 @@ export const SEO_SERVICES = [
   },
   // 4. Steam Ironing
   {
-    slug: 'ironing',
-    name: 'Steam Ironing',
-    h1: 'Professional 3D Form Steam Ironing in Hyderabad',
-    title: 'Steam Ironing & Form Pressing in Hyderabad | Tech Wash',
-    metaDescription: '3D mannequin form steam pressing in Hyderabad with vacuum table crease retention. Zero scorch, zero shine, and crisp collar alignment.',
+    slug: 'ironing-service',
+    name: 'Ironing Service',
+    h1: 'Professional Ironing Service in Hyderabad',
+    title: 'Ironing Service in Hyderabad | Techwash',
+    metaDescription: 'Professional 3D mannequin form steam pressing in Hyderabad with vacuum table crease retention. Zero scorch, zero shine, and crisp collar alignment.',
     pricingDisplay: 'Starts at ₹12 / item',
     category: 'Finishing',
     processSummary: 'Temperature calibration, high-pressure 140°C micro-steam inflation, vacuum cold-suction crease locking, and hanger delivery.',
@@ -418,8 +426,8 @@ export const SEO_SERVICES = [
   {
     slug: 'starch-and-iron',
     name: 'Starch & Iron',
-    h1: 'Traditional Starch & Steam Ironing in Hyderabad',
-    title: 'Starch & Iron Service in Hyderabad | Tech Wash',
+    h1: 'Starch & Iron Service in Hyderabad',
+    title: 'Starch & Iron Service in Hyderabad | Techwash',
     metaDescription: 'Traditional natural rice and corn starching with vacuum form steam pressing for cotton shirts, sarees, dhotis, and ethnic wear in Hyderabad.',
     pricingDisplay: 'Starts at ₹25 / item',
     category: 'Finishing',
@@ -429,8 +437,8 @@ export const SEO_SERVICES = [
   {
     slug: 'wash-and-iron',
     name: 'Wash & Iron',
-    h1: 'RO Soft Water Wash & Iron Laundry in Hyderabad',
-    title: 'Wash & Iron Laundry Service (Per Kg) in Hyderabad | Tech Wash',
+    h1: 'Wash & Iron Service in Hyderabad',
+    title: 'Wash & Iron Service in Hyderabad | Techwash',
     metaDescription: '100% demineralized 0 PPM RO soft water washing with bio-enzymes followed by 3D tension steam press. Single-customer isolated wash drums.',
     pricingDisplay: 'Starts at ₹130 / Kg',
     category: 'Weight Based',
@@ -440,8 +448,8 @@ export const SEO_SERVICES = [
   {
     slug: 'wash-and-fold',
     name: 'Wash & Fold',
-    h1: 'Hygienic Wash & Fold Daily Laundry in Hyderabad',
-    title: 'Wash & Fold Laundry (Per Kg) in Hyderabad | Tech Wash',
+    h1: 'Wash & Fold Service in Hyderabad',
+    title: 'Wash & Fold Service in Hyderabad | Techwash',
     metaDescription: 'Affordable daily laundry per kg in Hyderabad. Demineralized RO soft water batch wash, anti-static tumble dry, and store-style precision folding.',
     pricingDisplay: 'Starts at ₹100 / Kg',
     category: 'Weight Based',
@@ -450,42 +458,42 @@ export const SEO_SERVICES = [
   // 8. Saree Rolling & Traditional Care
   {
     slug: 'saree-rolling',
-    name: 'Saree Rolling & Traditional Care',
-    h1: 'Saree Rolling, Polishing & Traditional Care in Hyderabad',
-    title: 'Saree Rolling & Polishing in Hyderabad | Tech Wash',
+    name: 'Saree Rolling',
+    h1: 'Saree Rolling Service in Hyderabad',
+    title: 'Saree Rolling Service in Hyderabad | Techwash',
     metaDescription: 'Expert wooden roller saree polishing, starching, and gentle steam treatment for silk, pattu, and banarasi sarees in Hyderabad.',
     pricingDisplay: 'Custom Quote',
     category: 'Traditional',
     processSummary: 'Zari inspection, natural starch misting, smooth wooden cylinder roller pass, and wrinkle-free fold packaging.',
   },
-  // 9. Shoe Washing & Sneaker Care
+  // 9. Shoe Cleaning & Sneaker Care
   {
-    slug: 'shoe-washing',
-    name: 'Shoe Washing & Sneaker Care',
-    h1: 'Sneaker & Shoe Deep Cleaning in Hyderabad',
-    title: 'Shoe Cleaning & Sneaker Laundry in Hyderabad | Tech Wash',
+    slug: 'shoe-cleaning',
+    name: 'Shoe Cleaning',
+    h1: 'Shoe Cleaning Service in Hyderabad',
+    title: 'Shoe Cleaning Service in Hyderabad | Techwash',
     metaDescription: 'Hand-scrubbed sneaker cleaning, midsole whitening, and anti-bacterial UV sterilization for sports shoes and formal leathers in Hyderabad.',
     pricingDisplay: 'Starts at ₹350 / pair',
     category: 'Footwear',
     processSummary: 'Material inspection, soft-bristle hand scrubbing, ultrasonic sole stain lift, lace restoration, and UV anti-microbial sterilization.',
   },
-  // 10. Curtain Washing
+  // 10. Curtain Cleaning
   {
-    slug: 'curtain-washing',
-    name: 'Curtain Washing',
-    h1: 'Deep Curtain & Drape Washing in Hyderabad',
-    title: 'Curtain Washing & Drape Cleaning in Hyderabad | Tech Wash',
+    slug: 'curtain-cleaning',
+    name: 'Curtain Cleaning',
+    h1: 'Curtain Cleaning Service in Hyderabad',
+    title: 'Curtain Cleaning Service in Hyderabad | Techwash',
     metaDescription: 'Ultrasonic dust-mite extraction, demineralized soft wash, and vertical steam hanging for blackout drapes and sheer curtains in Hyderabad.',
     pricingDisplay: '₹30 / sq. ft.',
     category: 'Household',
     processSummary: 'Dimension verification, ultrasonic dust-mite extraction, gentle fabric wash, and vertical steam press for wrinkle-free hanging.',
   },
-  // 11. Carpet Washing
+  // 11. Carpet Cleaning
   {
-    slug: 'carpet-washing',
-    name: 'Carpet Washing',
-    h1: 'Deep Carpet & Rug Cleaning in Hyderabad',
-    title: 'Carpet Cleaning & Rug Washing in Hyderabad | Tech Wash',
+    slug: 'carpet-cleaning',
+    name: 'Carpet Cleaning',
+    h1: 'Carpet Cleaning Service in Hyderabad',
+    title: 'Carpet Cleaning Service in Hyderabad | Techwash',
     metaDescription: 'Commercial-grade rotary shampoo extraction and allergen removal for living room carpets and wool rugs in Hyderabad.',
     pricingDisplay: '₹45 / sq. ft.',
     category: 'Household',

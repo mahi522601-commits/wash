@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, useLocation } from 'react-router-dom';
+import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
 import { SettingsProvider } from './context/SettingsContext';
 import { WorkerAuthProvider } from './context/WorkerAuthContext';
+
 
 // Public Layout Components
 import { Navbar } from './components/public/Navbar';
@@ -144,6 +145,13 @@ export function App() {
             <Route path="/areas" element={<PublicLayout><AreasPage /></PublicLayout>} />
             <Route path="/areas/:areaSlug" element={<PublicLayout><AreaDetailPage /></PublicLayout>} />
             <Route path="/areas/:areaSlug/:serviceSlug" element={<PublicLayout><AreaServiceDetailPage /></PublicLayout>} />
+            {/* LEGACY 301 SLUG MIGRATION REDIRECTS */}
+            <Route path="/laundry-pickup-delivery" element={<Navigate to="/services/laundry-pickup-and-delivery" replace />} />
+            <Route path="/ironing" element={<Navigate to="/services/ironing-service" replace />} />
+            <Route path="/shoe-washing" element={<Navigate to="/services/shoe-cleaning" replace />} />
+            <Route path="/curtain-washing" element={<Navigate to="/services/curtain-cleaning" replace />} />
+            <Route path="/carpet-washing" element={<Navigate to="/services/carpet-cleaning" replace />} />
+
             <Route path="/privacy-policy" element={<PublicLayout><PrivacyPolicyPage /></PublicLayout>} />
             <Route path="/terms-and-conditions" element={<PublicLayout><TermsPage /></PublicLayout>} />
             <Route path="/refund-policy" element={<PublicLayout><RefundPolicyPage /></PublicLayout>} />

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { SEO_AREAS, SEO_SERVICES, BUSINESS_INFO, BASE_URL } from '../../data/seoData';
+import { useParams, Link, Navigate } from 'react-router-dom';
+import { SEO_AREAS, SEO_SERVICES, BUSINESS_INFO, BASE_URL, LEGACY_SLUG_MAP } from '../../data/seoData';
 import { SEOHead } from '../../components/seo/SEOHead';
+import { BreadcrumbNav } from '../../components/public/BreadcrumbNav';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
@@ -30,48 +31,60 @@ export const AreaServiceDetailPage = () => {
   const { areaSlug, serviceSlug } = useParams();
   const [openFaqIndex, setOpenFaqIndex] = useState(0);
 
+  // Check legacy slug migration
+  if (serviceSlug && LEGACY_SLUG_MAP[serviceSlug]) {
+    return <Navigate to={`/areas/${areaSlug}/${LEGACY_SLUG_MAP[serviceSlug]}`} replace />;
+  }
+
   const area = SEO_AREAS.find((a) => a.slug === areaSlug);
   const service = SEO_SERVICES.find((s) => s.slug === serviceSlug);
 
   if (!area || !service) {
     return (
-      <div className="py-24 bg-brand-50 min-h-screen text-center px-4">
-        <div className="max-w-md mx-auto bg-white p-8 rounded-3xl border border-slate-200 space-y-4">
-          <MapPin className="w-12 h-12 text-[#F97316] mx-auto" />
-          <h2 className="text-2xl font-black text-slate-900 font-display">Service or Location Not Found</h2>
-          <p className="text-sm text-slate-600">
-            We couldn't locate this specific service and locality combination. Please browse our active hubs and services.
-          </p>
-          <div className="flex justify-center gap-3">
-            <Link to="/areas">
-              <Button variant="primary" size="sm">View Areas</Button>
-            </Link>
-            <Link to="/services">
-              <Button variant="secondary" size="sm">View Services</Button>
-            </Link>
+      <>
+        <SEOHead 
+          title="Page Not Found | Techwash" 
+          description="The requested service or area page was not found." 
+          noindex={true} 
+        />
+        <div className="py-24 bg-brand-50 min-h-screen text-center px-4">
+          <div className="max-w-md mx-auto bg-white p-8 rounded-3xl border border-slate-200 space-y-4">
+            <MapPin className="w-12 h-12 text-[#F97316] mx-auto" />
+            <h2 className="text-2xl font-black text-slate-900 font-display">Service or Location Not Found</h2>
+            <p className="text-sm text-slate-600">
+              We couldn't locate this specific service and locality combination. Please browse our active hubs and services.
+            </p>
+            <div className="flex justify-center gap-3">
+              <Link to="/areas">
+                <Button variant="primary" size="sm">View Areas</Button>
+              </Link>
+              <Link to="/services">
+                <Button variant="secondary" size="sm">View Services</Button>
+              </Link>
+            </div>
           </div>
         </div>
-      </div>
+      </>
     );
   }
 
   // Dynamic Title, H1 & Description tailored per search intent
-  let pageTitle = `${service.name} in ${area.name}, Hyderabad | Tech Wash`;
-  let pageH1 = `${service.name} in ${area.name}, Hyderabad`;
-  let pageDescription = `Professional ${service.name.toLowerCase()} in ${area.name}, Hyderabad. ${service.pricingDisplay}. Demineralized 0 PPM RO water wash, non-toxic eco-solvents, and doorstep pickup across ${area.name}.`;
+  let pageTitle = `${service.name} Service in ${area.name} | Techwash`;
+  let pageH1 = `${service.name} Service in ${area.name}`;
+  let pageDescription = `Professional ${service.name.toLowerCase()} in ${area.name}, Hyderabad from Techwash Laundry. Convenient pickup and delivery with careful garment cleaning and ironing.`;
 
   if (service.slug === 'laundry-service') {
-    pageTitle = `Laundry Service in ${area.name}, Hyderabad | Tech Wash`;
+    pageTitle = `Laundry Service in ${area.name}, Hyderabad | Techwash`;
     pageH1 = `Laundry Service in ${area.name}, Hyderabad`;
-    pageDescription = `Looking for reliable laundry service in ${area.name}? Tech Wash offers 0 PPM RO soft water washing, isolated single-customer drums, and fast doorstep pickup across ${area.name}.`;
+    pageDescription = `Professional laundry service in ${area.name}, Hyderabad from Techwash. 0 PPM RO soft water washing, isolated single-customer drums, and fast doorstep pickup across ${area.name}.`;
   } else if (service.slug === 'dry-cleaning') {
-    pageTitle = `Dry Cleaning in ${area.name}, Hyderabad | Tech Wash`;
-    pageH1 = `Eco-Friendly Dry Cleaning in ${area.name}, Hyderabad`;
-    pageDescription = `Certified non-toxic hydrocarbon dry cleaning in ${area.name}, Hyderabad. Gentle care for suits, silks, lehengas, and formal wear with zero chemical odor.`;
-  } else if (service.slug === 'laundry-pickup-delivery') {
-    pageTitle = `Laundry Pickup & Delivery in ${area.name} | Tech Wash`;
-    pageH1 = `Doorstep Laundry Pickup and Delivery in ${area.name}`;
-    pageDescription = `Fast doorstep laundry pickup and delivery in ${area.name}, Hyderabad. Flexible timed slots from 8 AM to 9 PM, electronic weighing, and 24-48h return.`;
+    pageTitle = `Dry Cleaning Service in ${area.name} | Techwash`;
+    pageH1 = `Dry Cleaning Service in ${area.name}`;
+    pageDescription = `Certified non-toxic hydrocarbon dry cleaning service in ${area.name}, Hyderabad from Techwash. Gentle care for suits, silks, lehengas, and formal wear.`;
+  } else if (service.slug === 'laundry-pickup-and-delivery') {
+    pageTitle = `Laundry Pickup & Delivery in ${area.name} | Techwash`;
+    pageH1 = `Laundry Pickup & Delivery in ${area.name}`;
+    pageDescription = `Convenient laundry pickup and delivery in ${area.name}, Hyderabad from Techwash. Flexible timed slots from 8 AM to 9 PM, electronic weighing, and 24-48h return.`;
   }
 
   // Localized Search Intent Keywords
@@ -80,20 +93,24 @@ export const AreaServiceDetailPage = () => {
   // Localized FAQ list targeting intent
   const serviceAreaFaqs = [
     {
-      question: `How much does ${service.name.toLowerCase()} cost in ${area.name}?`,
-      answer: `Our ${service.name.toLowerCase()} in ${area.name} starts at ${service.pricingDisplay}. Transparent per-piece or per-kg billing is recorded on your digital invoice with zero hidden costs.`,
+      question: `How does Techwash ${service.name.toLowerCase()} work in ${area.name}?`,
+      answer: `Our ${service.name.toLowerCase()} in ${area.name} starts at ${service.pricingDisplay}. You schedule a pickup online or via WhatsApp, our team collects your items at your doorstep, processes them using isolated drum technology or eco-friendly hydrocarbon dry cleaning, and delivers them back fresh and sealed.`,
     },
     {
-      question: `Do you provide doorstep pickup for ${service.name.toLowerCase()} in ${area.name}?`,
-      answer: `Yes, Tech Wash operates daily scheduled doorstep pickup across all societies in ${area.name} between 8:00 AM and 9:00 PM.`,
+      question: `Is pickup and delivery available in ${area.name}?`,
+      answer: `Yes, Techwash operates daily scheduled doorstep pickup across all apartments, gated communities, and colonies in ${area.name} between 8:00 AM and 9:00 PM.`,
+    },
+    {
+      question: `What items can be sent for ${service.name.toLowerCase()} in ${area.name}?`,
+      answer: `We handle daily office wear, shirts, trousers, suits, blazers, delicate silk sarees, traditional dresses, shoes, curtains, and heavy living room carpets.`,
     },
     {
       question: `What is the delivery turnaround time for ${service.name.toLowerCase()} in ${area.name}?`,
       answer: `Standard turnaround is 48 hours. Express 24-hour delivery is also available for urgent requirements across ${area.name}.`,
     },
     {
-      question: `Does Tech Wash serve areas near ${area.name} for ${service.name.toLowerCase()}?`,
-      answer: `Yes, in addition to ${area.name}, our pickup fleet covers surrounding localities including ${area.nearbyAreas.map((s) => SEO_AREAS.find((a) => a.slug === s)?.name || s).join(', ')}.`,
+      question: `How can I schedule a pickup?`,
+      answer: `You can schedule a pickup in 60 seconds on our website or call/WhatsApp us directly at ${BUSINESS_INFO.telephone}.`,
     },
   ];
 
@@ -138,7 +155,7 @@ export const AreaServiceDetailPage = () => {
         category: service.category,
         description: pageDescription,
         provider: {
-          '@type': 'DryCleaningOrLaundry',
+          '@type': 'LocalBusiness',
           '@id': `${BASE_URL}/#organization`,
           name: BUSINESS_INFO.name,
           telephone: BUSINESS_INFO.telephone,
@@ -199,15 +216,14 @@ export const AreaServiceDetailPage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 space-y-16">
           
           {/* Breadcrumb Navigation */}
-          <nav className="flex items-center gap-2 text-xs text-slate-500 font-medium flex-wrap">
-            <Link to="/" className="hover:text-[#F97316]">Home</Link>
-            <span>/</span>
-            <Link to="/areas" className="hover:text-[#F97316]">Service Areas</Link>
-            <span>/</span>
-            <Link to={`/areas/${area.slug}`} className="hover:text-[#F97316]">{area.name}</Link>
-            <span>/</span>
-            <span className="text-slate-900 font-bold">{service.name}</span>
-          </nav>
+          <BreadcrumbNav 
+            items={[
+              { name: 'Home', path: '/' },
+              { name: 'Areas', path: '/areas' },
+              { name: area.name, path: `/areas/${area.slug}` },
+              { name: service.name }
+            ]}
+          />
 
           {/* 1. HERO SECTION */}
           <div className="bg-white rounded-3xl border border-brand-200 p-8 sm:p-12 shadow-sm space-y-8">
