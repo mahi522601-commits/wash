@@ -465,16 +465,25 @@ export const PosTasksModal = ({
   // Save Reschedule
   const handleSaveReschedule = async () => {
     if (!rescheduleOrder || !newDeliveryDate) return;
-    setActionLoadingId(rescheduleOrder.id);
+    const targetId = rescheduleOrder.id || rescheduleOrder.orderNumber;
+    setActionLoadingId(targetId);
     try {
-      await orderService.updateOrderSchedule(rescheduleOrder.id, {
-        deliveryDate: newDeliveryDate,
+      const cleanDate = normalizeDateString(newDeliveryDate);
+      const updatedOrder = await orderService.updateOrderSchedule(targetId, {
+        deliveryDate: cleanDate,
         deliveryPeriod: newDeliveryPeriod,
         deliverySlot: newDeliveryPeriod === 'MORNING' ? 'Morning (8:00 AM - 12:00 PM)' : 
                       newDeliveryPeriod === 'AFTERNOON' ? 'Afternoon (12:00 PM - 4:00 PM)' : 'Evening (4:00 PM - 8:00 PM)'
       });
-      success('Rescheduled!', `Delivery moved to ${newDeliveryDate} (${newDeliveryPeriod}).`);
+
+      // Update local state immediately
+      setOrders(prev => prev.map(o => (o.id === targetId || o.orderNumber === targetId || o.id === rescheduleOrder.id) ? { ...o, ...updatedOrder } : o));
+
+      success('Rescheduled!', `Delivery moved to ${cleanDate} (${newDeliveryPeriod}).`);
       setRescheduleOrder(null);
+      if (typeof onRefresh === 'function') {
+        onRefresh();
+      }
       await loadOrders();
     } catch (err) {
       error('Reschedule Failed', err.message || 'Could not reschedule order.');
@@ -1712,17 +1721,69 @@ export const PosTasksModal = ({
 
         {/* ── RESCHEDULE POPUP MODAL ── */}
         {rescheduleOrder && (
-          <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-sm animate-fade-in">
             <div className="w-full max-w-sm bg-slate-900 border border-slate-700 p-5 rounded-2xl shadow-xl space-y-4">
               <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-                <h3 className="font-bold text-white text-sm">Reschedule Task</h3>
+                <div>
+                  <h3 className="font-bold text-white text-sm">Reschedule Task</h3>
+                  <p className="text-[10px] text-slate-400 font-mono">
+                    Order #{rescheduleOrder.orderNumber || rescheduleOrder.id?.substring(0, 8)} • {rescheduleOrder.customerName || 'Customer'}
+                  </p>
+                </div>
                 <button
                   type="button"
                   onClick={() => setRescheduleOrder(null)}
-                  className="text-slate-400 hover:text-white text-sm"
+                  className="text-slate-400 hover:text-white text-sm p-1 rounded-lg hover:bg-slate-800"
                 >
                   ✕
                 </button>
+              </div>
+
+              {/* Quick Date Presets */}
+              <div className="space-y-1">
+                <label className="block text-[10.5px] font-bold text-slate-400">Quick Date Presets</label>
+                <div className="flex flex-wrap gap-1.5 text-xs font-semibold">
+                  <button
+                    type="button"
+                    onClick={() => setNewDeliveryDate(normalizeDateString(new Date()))}
+                    className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-orange-500/20 hover:text-orange-300 text-slate-300 text-[11px] border border-slate-700 cursor-pointer"
+                  >
+                    Today
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const tmr = new Date();
+                      tmr.setDate(tmr.getDate() + 1);
+                      setNewDeliveryDate(normalizeDateString(tmr));
+                    }}
+                    className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-orange-500/20 hover:text-orange-300 text-slate-300 text-[11px] border border-slate-700 cursor-pointer"
+                  >
+                    Tomorrow
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const d2 = new Date();
+                      d2.setDate(d2.getDate() + 2);
+                      setNewDeliveryDate(normalizeDateString(d2));
+                    }}
+                    className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-orange-500/20 hover:text-orange-300 text-slate-300 text-[11px] border border-slate-700 cursor-pointer"
+                  >
+                    +2 Days
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const d3 = new Date();
+                      d3.setDate(d3.getDate() + 3);
+                      setNewDeliveryDate(normalizeDateString(d3));
+                    }}
+                    className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-orange-500/20 hover:text-orange-300 text-slate-300 text-[11px] border border-slate-700 cursor-pointer"
+                  >
+                    +3 Days
+                  </button>
+                </div>
               </div>
 
               <div className="space-y-3">
@@ -1730,22 +1791,22 @@ export const PosTasksModal = ({
                   <label className="block text-xs font-bold text-slate-400 mb-1">New Delivery Date</label>
                   <input
                     type="date"
-                    value={newDeliveryDate}
+                    value={normalizeDateString(newDeliveryDate)}
                     onChange={(e) => setNewDeliveryDate(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono text-xs outline-none focus:border-orange-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 mb-1">Time Period</label>
+                  <label className="block text-xs font-bold text-slate-400 mb-1">Time Slot Window</label>
                   <select
                     value={newDeliveryPeriod}
                     onChange={(e) => setNewDeliveryPeriod(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs outline-none focus:border-orange-500"
                   >
-                    <option value="MORNING">🌅 Morning (8AM - 12PM)</option>
-                    <option value="AFTERNOON">☀️ Afternoon (12PM - 4PM)</option>
-                    <option value="EVENING">🌙 Evening (4PM - 8PM)</option>
+                    <option value="MORNING">🌅 Morning (8:00 AM - 12:00 PM)</option>
+                    <option value="AFTERNOON">☀️ Afternoon (12:00 PM - 4:00 PM)</option>
+                    <option value="EVENING">🌙 Evening (4:00 PM - 8:00 PM)</option>
                   </select>
                 </div>
               </div>
@@ -1754,16 +1815,21 @@ export const PosTasksModal = ({
                 <button
                   type="button"
                   onClick={() => setRescheduleOrder(null)}
-                  className="flex-1 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-300 cursor-pointer"
+                  className="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-300 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
                   onClick={handleSaveReschedule}
-                  className="flex-1 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-xs font-bold text-white cursor-pointer"
+                  disabled={actionLoadingId === rescheduleOrder.id}
+                  className="flex-1 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-xs font-bold text-white cursor-pointer shadow-lg shadow-orange-500/20 flex items-center justify-center gap-1.5"
                 >
-                  Save Reschedule
+                  {actionLoadingId === rescheduleOrder.id ? (
+                    <span>Saving...</span>
+                  ) : (
+                    <span>Save Reschedule</span>
+                  )}
                 </button>
               </div>
             </div>
@@ -1772,7 +1838,7 @@ export const PosTasksModal = ({
 
         {/* ── MANAGE / UPDATE ORDER STATUS MODAL ── */}
         {statusModalOrder && (
-          <div className="fixed inset-0 z-60 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-sm animate-fade-in">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-sm animate-fade-in">
             <div className="w-full max-w-lg bg-slate-900 border border-slate-700 p-5 sm:p-6 rounded-3xl shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto custom-scrollbar">
               <div className="flex items-center justify-between pb-3 border-b border-slate-800">
                 <div className="flex items-center gap-2.5">

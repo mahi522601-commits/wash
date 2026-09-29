@@ -100,16 +100,37 @@ export const TIME_SLOTS = [
 ];
 
 export const normalizeDateString = (dateInput) => {
-  if (!dateInput) return '';
-  if (typeof dateInput === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateInput.trim())) {
-    return dateInput.trim();
+  if (!dateInput) return new Date().toISOString().split('T')[0];
+  const str = String(dateInput).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+    return str;
   }
-  const d = new Date(dateInput);
-  if (isNaN(d.getTime())) return String(dateInput);
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  // Standard JS Date parsing
+  let d = new Date(str);
+  if (isNaN(d.getTime())) {
+    // Replace September variant 'Sept' -> 'Sep'
+    const cleaned = str.replace(/Sept/i, 'Sep');
+    d = new Date(cleaned);
+  }
+  // Try DD-MM-YYYY or DD/MM/YYYY format
+  if (isNaN(d.getTime())) {
+    const parts = str.split(/[-/]/);
+    if (parts.length === 3) {
+      if (parts[0].length === 2 && parts[2].length === 4) {
+        d = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+      } else if (parts[0].length === 4) {
+        d = new Date(`${parts[0]}-${parts[1]}-${parts[2]}`);
+      }
+    }
+  }
+  if (!isNaN(d.getTime())) {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+  // Fallback to today's YYYY-MM-DD if unparseable
+  return new Date().toISOString().split('T')[0];
 };
 
 export const normalizePeriod = (periodOrSlot) => {
