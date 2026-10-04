@@ -1,4 +1,4 @@
-import PDFDocument from 'pdfkit';
+import PDFDocument from 'pdfkit/js/pdfkit.standalone.js';
 import { TECH_WASH_LOGO_BUFFER } from './logoAsset.js';
 
 /**
