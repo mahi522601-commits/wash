@@ -17,10 +17,17 @@ export async function sendDailyReportEmail({
   pdfFilename = 'TechWash_Daily_Sales_Report.pdf',
   idempotencyKey
 }) {
-  const provider = (process.env.EMAIL_PROVIDER || (process.env.RESEND_API_KEY ? 'resend' : (process.env.SMTP_HOST ? 'smtp' : 'mock'))).toLowerCase().trim();
+  const isVercelProd = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production';
+
+  let provider = (process.env.EMAIL_PROVIDER || (process.env.RESEND_API_KEY ? 'resend' : (process.env.SMTP_HOST ? 'smtp' : (isVercelProd ? 'resend' : 'mock')))).toLowerCase().trim();
+
+  // In production, force real Resend provider and forbid Mock mode
+  if (isVercelProd && provider === 'mock' && !process.env.ALLOW_MOCK_IN_PROD) {
+    provider = 'resend';
+  }
+
   const from = process.env.EMAIL_FROM || 'Tech Wash Laundry <reports@techwash.in>';
 
-  // Parse recipient strings/arrays
   const parseRecipients = (val) => {
     if (val === undefined || val === null) return null;
     if (Array.isArray(val)) return val.map(s => String(s).trim()).filter(Boolean);
@@ -28,7 +35,7 @@ export async function sendDailyReportEmail({
   };
 
   const parsedTo = parseRecipients(to);
-  const toList = parsedTo !== null ? parsedTo : parseRecipients(process.env.EMAIL_TO || 'admin@techwash.in');
+  const toList = parsedTo && parsedTo.length > 0 ? parsedTo : parseRecipients(process.env.EMAIL_TO || 'admin@techwash.in');
   const ccList = parseRecipients(cc || process.env.EMAIL_CC) || [];
 
   if (!toList || toList.length === 0) {
@@ -50,25 +57,11 @@ export async function sendDailyReportEmail({
   console.log(`   ├─ Subject: ${subject}`);
   console.log(`   └─ Attachment: ${pdfFilename} (${pdfBuffer ? pdfBuffer.length : 0} bytes)`);
 
-  // --- 1. MOCK PROVIDER (FOR AUTOMATED LOCAL TESTING ONLY) ---
-  if (provider === 'mock' || process.env.MOCK_EMAIL === 'true') {
-    const mockMessageId = `mock-email-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
-    console.log(`✅ [MOCK EMAIL DELIVERED] ID: ${mockMessageId}`);
-    return {
-      success: true,
-      messageId: mockMessageId,
-      provider: 'mock',
-      recipients: toList,
-      cc: ccList,
-      deliveredAt: new Date().toISOString()
-    };
-  }
-
-  // --- 2. RESEND PROVIDER (PRIMARY PRODUCTION PROVIDER) ---
+  // --- 1. RESEND PROVIDER (PRIMARY PRODUCTION PROVIDER) ---
   if (provider === 'resend') {
     const apiKey = process.env.RESEND_API_KEY;
     if (!apiKey) {
-      throw new Error('Missing RESEND_API_KEY environment variable for Resend provider.');
+      throw new Error('CONFIGURATION ERROR: Missing RESEND_API_KEY environment variable on Vercel production server.');
     }
 
     const resend = new Resend(apiKey);
@@ -95,7 +88,7 @@ export async function sendDailyReportEmail({
 
     const res = await resend.emails.send(payload);
     if (res.error) {
-      throw new Error(`Resend Email Error: ${res.error.message || JSON.stringify(res.error)}`);
+      throw new Error(`Resend Email Delivery Failed: ${res.error.message || JSON.stringify(res.error)}`);
     }
 
     return {
@@ -108,7 +101,7 @@ export async function sendDailyReportEmail({
     };
   }
 
-  // --- 3. SMTP / NODEMAILER PROVIDER ---
+  // --- 2. SMTP / NODEMAILER PROVIDER ---
   if (provider === 'smtp' || provider === 'nodemailer') {
     const host = process.env.SMTP_HOST;
     const port = Number(process.env.SMTP_PORT || 587);
@@ -117,7 +110,7 @@ export async function sendDailyReportEmail({
     const secure = process.env.SMTP_SECURE === 'true' || port === 465;
 
     if (!host) {
-      throw new Error('Missing SMTP_HOST environment variable for SMTP provider.');
+      throw new Error('CONFIGURATION ERROR: Missing SMTP_HOST environment variable.');
     }
 
     const transporter = nodemailer.createTransport({
@@ -152,5 +145,19 @@ export async function sendDailyReportEmail({
     };
   }
 
-  throw new Error(`Unsupported EMAIL_PROVIDER: "${provider}". Expected 'resend', 'smtp', or 'mock'.`);
+  // --- 3. MOCK PROVIDER (LOCAL DEVELOPMENT ONLY) ---
+  if (provider === 'mock' || process.env.MOCK_EMAIL === 'true') {
+    const mockMessageId = `mock-email-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+    console.log(`✅ [MOCK EMAIL DELIVERED] ID: ${mockMessageId}`);
+    return {
+      success: true,
+      messageId: mockMessageId,
+      provider: 'mock',
+      recipients: toList,
+      cc: ccList,
+      deliveredAt: new Date().toISOString()
+    };
+  }
+
+  throw new Error(`Unsupported EMAIL_PROVIDER: "${provider}". Expected 'resend' or 'smtp'.`);
 }

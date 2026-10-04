@@ -4,23 +4,32 @@ import { getAuth } from 'firebase-admin/auth';
 
 export function getFirebaseAdmin() {
   if (getApps().length === 0) {
-    const projectId = process.env.FIREBASE_PROJECT_ID;
+    const projectId = process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID || 'laundry-37abc';
     const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-    const privateKey = process.env.FIREBASE_PRIVATE_KEY
-      ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n')
-      : undefined;
+    const rawPrivateKey = process.env.FIREBASE_PRIVATE_KEY;
 
-    if (!projectId || !clientEmail || !privateKey) {
-      throw new Error('Missing Firebase Admin environment variables (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY).');
+    let privateKey = rawPrivateKey;
+    if (privateKey) {
+      privateKey = privateKey.replace(/\\n/g, '\n').replace(/^["']|["']$/g, '').trim();
     }
 
-    initializeApp({
-      credential: cert({
-        projectId,
-        clientEmail,
-        privateKey,
-      }),
-    });
+    if (clientEmail && privateKey) {
+      try {
+        initializeApp({
+          credential: cert({
+            projectId,
+            clientEmail,
+            privateKey,
+          }),
+        });
+      } catch (err) {
+        console.warn('Firebase Admin cert initialization warning, falling back to default app:', err.message);
+        initializeApp({ projectId });
+      }
+    } else {
+      // Initialize with default project ID
+      initializeApp({ projectId });
+    }
   }
 
   const app = getApp();

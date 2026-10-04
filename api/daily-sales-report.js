@@ -13,7 +13,19 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { app, db, auth } = getFirebaseAdmin();
+    let app, db, auth;
+    try {
+      const admin = getFirebaseAdmin();
+      app = admin.app;
+      db = admin.db;
+      auth = admin.auth;
+    } catch (initErr) {
+      return res.status(500).json({
+        success: false,
+        status: 'CONFIGURATION_ERROR',
+        error: `Firebase Admin Initialization Failed: ${initErr.message}`,
+      });
+    }
 
     // 1. AUTHENTICATION & AUTHORIZATION
     const authHeader = req.headers.authorization || '';
@@ -45,7 +57,7 @@ export default async function handler(req, res) {
           isAuthorized = true;
         }
       } catch (authErr) {
-        // ID token invalid
+        // Token verification error
       }
     }
 
@@ -58,6 +70,7 @@ export default async function handler(req, res) {
     }
 
     const isForce = req.query.force === 'true' || req.body?.force === true;
+    const isTestMode = req.query.testMode === 'true' || req.body?.testMode === true;
 
     // 2. FETCH ADMIN REPORT SETTINGS & CUTOFF TIME
     let scheduleData = { enabled: true, hour: 10, minute: 0, amPm: 'PM' };
@@ -87,15 +100,19 @@ export default async function handler(req, res) {
     let cutoffHour24 = 22;
     let cutoffMinute = 0;
 
-    if (scheduleData.hour !== undefined) {
-      let h = Number(scheduleData.hour);
-      const ampm = String(scheduleData.amPm || 'PM').toUpperCase();
+    const configuredHour = scheduleData.cutoffHour !== undefined ? scheduleData.cutoffHour : scheduleData.hour;
+    const configuredMinute = scheduleData.cutoffMinute !== undefined ? scheduleData.cutoffMinute : scheduleData.minute;
+    const configuredAmPm = scheduleData.cutoffAmPm || scheduleData.amPm || 'PM';
+
+    if (configuredHour !== undefined) {
+      let h = Number(configuredHour);
+      const ampm = String(configuredAmPm).toUpperCase();
       if (ampm === 'PM' && h < 12) h += 12;
       if (ampm === 'AM' && h === 12) h = 0;
       cutoffHour24 = h;
     }
-    if (scheduleData.minute !== undefined) {
-      cutoffMinute = Number(scheduleData.minute);
+    if (configuredMinute !== undefined) {
+      cutoffMinute = Number(configuredMinute);
     }
 
     const displayHour12 = cutoffHour24 % 12 === 0 ? 12 : cutoffHour24 % 12;
@@ -135,7 +152,7 @@ export default async function handler(req, res) {
     const logDocRef = db.collection('dailyReportLogs').doc(runId);
     const existingLogSnap = await logDocRef.get();
 
-    if (!isForce && existingLogSnap.exists && existingLogSnap.data().status === 'COMPLETED') {
+    if (!isForce && !isTestMode && existingLogSnap.exists && existingLogSnap.data().status === 'COMPLETED') {
       return res.status(200).json({
         success: true,
         status: 'ALREADY_COMPLETED',
@@ -192,7 +209,6 @@ export default async function handler(req, res) {
     const serviceCatMap = {};
 
     allOrders.forEach(order => {
-      // Exclude Test Data
       if (order.isTestData === true || (order.customerName && String(order.customerName).toLowerCase().includes('test'))) {
         return;
       }
@@ -273,7 +289,7 @@ export default async function handler(req, res) {
         }
       }
 
-      // Recovered Dues in Window
+      // Recovered Dues
       if (Array.isArray(order.paymentHistory)) {
         order.paymentHistory.forEach(h => {
           let hDate = null;
@@ -336,7 +352,9 @@ export default async function handler(req, res) {
     }
 
     // 7. FORMAT EXECUTIVE OVERVIEW EMAIL TEXT & HTML
-    const emailSubject = `Tech Wash Laundry — Daily Sales Report — ${dateFormatted}`;
+    const emailSubject = isTestMode
+      ? `[TEST] Tech Wash Laundry — Daily Sales Report — ${dateFormatted}`
+      : `Tech Wash Laundry — Daily Sales Report — ${dateFormatted}`;
 
     const serviceCatText = serviceCategoriesList.map(sc =>
       `• ${sc.category}: ${sc.pieces} Pcs | ${sc.weight || 0} Kg | Billed: ₹${sc.amount.toLocaleString('en-IN')}`
@@ -345,7 +363,7 @@ export default async function handler(req, res) {
     let emailTextBody = '';
     if (filteredOrders.length === 0) {
       emailTextBody =
-`TECH WASH LAUNDRY SERVICES — DAILY SALES REPORT
+`TECH WASH LAUNDRY SERVICES — DAILY SALES REPORT ${isTestMode ? '[VERIFICATION TEST]' : ''}
 Date: ${dateFormatted} (${cutoffFormatted} IST Settlement Window)
 
 ==================================================
@@ -369,7 +387,7 @@ Please see the attached A4 PDF report for certified reconciliation details.
 `;
     } else {
       emailTextBody =
-`TECH WASH LAUNDRY SERVICES — DAILY SALES REPORT
+`TECH WASH LAUNDRY SERVICES — DAILY SALES REPORT ${isTestMode ? '[VERIFICATION TEST]' : ''}
 Date: ${dateFormatted} (${cutoffFormatted} IST Settlement Window)
 
 ==================================================
@@ -414,7 +432,7 @@ Please see the attached official A4 PDF report for complete management audit.
 
     const emailHtmlBody = `<div style="font-family: Arial, sans-serif; color: #1f2937; max-width: 650px; line-height: 1.6;">
       <div style="background-color: #1e3a8a; color: #ffffff; padding: 20px; border-radius: 6px 6px 0 0;">
-        <h2 style="margin: 0; font-size: 20px;">TECH WASH LAUNDRY SERVICES</h2>
+        <h2 style="margin: 0; font-size: 20px;">TECH WASH LAUNDRY SERVICES ${isTestMode ? '[VERIFICATION TEST]' : ''}</h2>
         <p style="margin: 5px 0 0 0; font-size: 13px; opacity: 0.9;">Daily Executive Sales Report — ${dateFormatted} (${cutoffFormatted} IST Settlement)</p>
       </div>
       <div style="padding: 20px; border: 1px solid #e5e7eb; border-top: none; background: #ffffff;">
@@ -426,8 +444,8 @@ Please see the attached official A4 PDF report for complete management audit.
     </div>`;
 
     // 8. DELIVER EMAIL VIA SERVER-SIDE EMAIL SERVICE
-    const recipientTo = req.body?.to || req.query.to || scheduleData.recipientsTo || process.env.EMAIL_TO || 'admin@techwash.in';
-    const recipientCc = req.body?.cc || req.query.cc || scheduleData.recipientsCc || process.env.EMAIL_CC;
+    const recipientTo = req.body?.to || req.query.to || scheduleData.emailTo || scheduleData.recipientsTo || process.env.EMAIL_TO || 'admin@techwash.in';
+    const recipientCc = req.body?.cc || req.query.cc || scheduleData.emailCc || scheduleData.recipientsCc || process.env.EMAIL_CC;
 
     let emailResult;
     try {
@@ -439,7 +457,7 @@ Please see the attached official A4 PDF report for complete management audit.
         htmlBody: emailHtmlBody,
         pdfBuffer,
         pdfFilename: `TechWash_Daily_Sales_Report_${reportDateStr.replace(/-/g, '_')}.pdf`,
-        idempotencyKey: `daily-report-${reportDateStr}`
+        idempotencyKey: isTestMode ? `test-${reportDateStr}-${Date.now()}` : `daily-report-${reportDateStr}`
       });
     } catch (emailErr) {
       console.error('Email Delivery Failed:', emailErr);
@@ -481,7 +499,9 @@ Please see the attached official A4 PDF report for complete management audit.
       errorDetails: null,
     };
 
-    await logDocRef.set(finalLogData, { merge: true });
+    if (!isTestMode) {
+      await logDocRef.set(finalLogData, { merge: true });
+    }
 
     return res.status(200).json({
       success: true,
@@ -501,7 +521,7 @@ Please see the attached official A4 PDF report for complete management audit.
     console.error('Error executing daily sales report server endpoint:', error);
     return res.status(500).json({
       success: false,
-      status: 'FAILED',
+      status: error.status || 'FAILED',
       error: error.message || 'Internal Server Error during daily report execution.',
     });
   }
