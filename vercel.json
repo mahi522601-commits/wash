@@ -6,7 +6,7 @@
     "api/daily-sales-report.js": {
       "memory": 1024,
       "maxDuration": 60,
-      "includeFiles": "{public/techwashlogo.webp,node_modules/pdfkit/js/data/**}"
+      "includeFiles": "node_modules/pdfkit/js/data/**"
     }
   },
   "crons": [
