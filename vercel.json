@@ -3,16 +3,7 @@
   "framework": "vite",
   "buildCommand": "vite build",
   "outputDirectory": "dist",
-  "functions": {
-    "api/*.js": {
-      "memory": 1024,
-      "maxDuration": 60,
-      "includeFiles": [
-        "public/techwashlogo.webp",
-        "node_modules/pdfkit/js/data/**"
-      ]
-    }
-  },
+
   "crons": [
     {
       "path": "/api/daily-sales-report",
