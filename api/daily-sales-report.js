@@ -1,7 +1,3 @@
-import { getFirebaseAdmin } from './_utils/firebaseAdmin.js';
-import { generateDailyReportPDF } from './_utils/pdfGenerator.js';
-import { sendDailyReportEmail } from './_utils/emailService.js';
-
 export default async function handler(req, res) {
   // CORS & Header checks
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -13,6 +9,9 @@ export default async function handler(req, res) {
   }
 
   try {
+    const { getFirebaseAdmin } = await import('./_utils/firebaseAdmin.js');
+    const { generateDailyReportPDF } = await import('./_utils/pdfGenerator.js');
+    const { sendDailyReportEmail } = await import('./_utils/emailService.js');
 
     let app, db, auth;
     try {
@@ -25,6 +24,7 @@ export default async function handler(req, res) {
         success: false,
         status: 'CONFIGURATION_ERROR',
         error: `Firebase Admin Initialization Failed: ${initErr.message}`,
+        stack: initErr.stack,
       });
     }
 
@@ -523,6 +523,7 @@ Please see the attached official A4 PDF report for complete management audit.
       success: false,
       status: error.status || 'FAILED',
       error: error.message || 'Internal Server Error during daily report execution.',
+      stack: error.stack,
     });
   }
 }
