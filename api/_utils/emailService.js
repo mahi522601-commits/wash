@@ -108,7 +108,9 @@ export async function sendDailyReportEmail({
     const pass = process.env.SMTP_PASS;
     const secure = process.env.SMTP_SECURE === 'true' || port === 465;
 
-    const { default: nodemailer } = await import('nodemailer');
+    const { createRequire } = await import('module');
+    const require = createRequire(import.meta.url);
+    const nodemailer = require('nodemailer');
     const transporter = nodemailer.createTransport({
       host,
       port,
