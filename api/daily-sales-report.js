@@ -1,3 +1,7 @@
+import { getFirebaseAdmin } from './_utils/firebaseAdmin.js';
+import { generateDailyReportPDF } from './_utils/pdfGenerator.js';
+import { sendDailyReportEmail } from './_utils/emailService.js';
+
 export default async function handler(req, res) {
   // CORS & Header checks
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -9,23 +13,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    let getFirebaseAdmin, generateDailyReportPDF, sendDailyReportEmail;
-    try {
-      const fbMod = await import('./_utils/firebaseAdmin.js');
-      const pdfMod = await import('./_utils/pdfGenerator.js');
-      const emailMod = await import('./_utils/emailService.js');
-      getFirebaseAdmin = fbMod.getFirebaseAdmin;
-      generateDailyReportPDF = pdfMod.generateDailyReportPDF;
-      sendDailyReportEmail = emailMod.sendDailyReportEmail;
-    } catch (importErr) {
-      console.error('Module Import Error:', importErr);
-      return res.status(500).json({
-        success: false,
-        status: 'IMPORT_ERROR',
-        error: `Server Module Load Error: ${importErr.message}`,
-        stack: importErr.stack,
-      });
-    }
 
     let app, db, auth;
     try {
