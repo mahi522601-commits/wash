@@ -4,7 +4,6 @@
  * All credentials remain strictly server-side environment variables.
  */
 
-import nodemailer from 'nodemailer';
 import { Resend } from 'resend';
 
 export async function sendDailyReportEmail({
@@ -109,10 +108,7 @@ export async function sendDailyReportEmail({
     const pass = process.env.SMTP_PASS;
     const secure = process.env.SMTP_SECURE === 'true' || port === 465;
 
-    if (!host) {
-      throw new Error('CONFIGURATION ERROR: Missing SMTP_HOST environment variable.');
-    }
-
+    const { default: nodemailer } = await import('nodemailer');
     const transporter = nodemailer.createTransport({
       host,
       port,
