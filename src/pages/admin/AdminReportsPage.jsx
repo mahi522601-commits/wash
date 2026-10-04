@@ -13,7 +13,7 @@ import { Input } from '../../components/ui/Input';
 import { Badge } from '../../components/ui/Badge';
 import { FinancialReportModal } from '../../components/reports/FinancialReportModal';
 import { ReceiptModal } from '../../components/receipt/ReceiptModal';
-import { DailyWhatsAppSchedulerCard } from '../../components/reports/DailyWhatsAppSchedulerCard';
+import { DailyEmailSchedulerCard } from '../../components/reports/DailyEmailSchedulerCard';
 import { TerminalSyncHealthWidget } from '../../components/admin/TerminalSyncHealthWidget';
 import { 
   FileText, 
@@ -330,7 +330,7 @@ export const AdminReportsPage = () => {
               </Badge>
             </div>
             <p className="text-sm text-slate-500 mt-1">
-              Maintain and inspect complete date-wise daily shift history, reconcile multi-branch collections, print A4 statements, and dispatch 10:00 PM WhatsApp summaries.
+              Maintain and inspect complete date-wise daily shift history, reconcile multi-branch collections, print A4 statements, and manage automated 10:00 PM daily email reports.
             </p>
           </div>
 
@@ -459,8 +459,8 @@ export const AdminReportsPage = () => {
           </div>
         </div>
 
-        {/* ── 10:00 PM AUTOMATED DAILY PDF WHATSAPP DISPATCHER & RECIPIENTS ── */}
-        <DailyWhatsAppSchedulerCard reportData={reportData} onRefresh={loadReport} />
+        {/* ── 10:00 PM AUTOMATED DAILY EXECUTIVE EMAIL REPORT & SCHEDULE CONTROL ── */}
+        <DailyEmailSchedulerCard reportData={reportData} onRefresh={loadReport} />
 
         {/* ── POS TERMINAL SYNCHRONIZATION HEALTH DASHBOARD WIDGET ── */}
         <TerminalSyncHealthWidget />
