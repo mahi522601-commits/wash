@@ -3,6 +3,7 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 
 export function getFirebaseAdmin() {
+  let app;
   if (getApps().length === 0) {
     const projectId = process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID || 'laundry-37abc';
     const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
@@ -10,12 +11,16 @@ export function getFirebaseAdmin() {
 
     let privateKey = rawPrivateKey;
     if (privateKey) {
-      privateKey = privateKey.replace(/\\n/g, '\n').replace(/^["']|["']$/g, '').trim();
+      try {
+        privateKey = privateKey.replace(/\\n/g, '\n').replace(/^["']|["']$/g, '').trim();
+      } catch (e) {
+        // Fallback to raw string
+      }
     }
 
     if (clientEmail && privateKey) {
       try {
-        initializeApp({
+        app = initializeApp({
           credential: cert({
             projectId,
             clientEmail,
@@ -23,18 +28,27 @@ export function getFirebaseAdmin() {
           }),
         });
       } catch (err) {
-        console.warn('Firebase Admin cert initialization warning, falling back to default app:', err.message);
-        initializeApp({ projectId });
+        console.warn('Firebase Admin cert initialization failed, falling back to default:', err.message);
+        try {
+          app = initializeApp({ projectId });
+        } catch (e) {
+          app = getApps()[0] || getApp();
+        }
       }
     } else {
-      // Initialize with default project ID
-      initializeApp({ projectId });
+      try {
+        app = initializeApp({ projectId });
+      } catch (e) {
+        app = getApps()[0] || getApp();
+      }
     }
+  } else {
+    app = getApps()[0] || getApp();
   }
 
-  const app = getApp();
   const db = getFirestore(app);
   const auth = getAuth(app);
 
   return { app, db, auth };
 }
+
