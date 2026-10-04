@@ -1,6 +1,12 @@
 export default async function handler(req, res) {
-  return res.status(200).json({ status: 'HEALTH_CHECK_OK', time: new Date().toISOString() });
-}
+  // CORS & Header checks
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
 
   try {
     let getFirebaseAdmin, generateDailyReportPDF, sendDailyReportEmail;
