@@ -1,5 +1,6 @@
 import PDFDocument from 'pdfkit';
-import { TECH_WASH_LOGO_BUFFER } from './logoAsset.js';
+import fs from 'fs';
+import path from 'path';
 
 /**
  * Generate A4 PDF Report Buffer for Tech Wash Daily Sales Summary
@@ -33,17 +34,19 @@ export function generateDailyReportPDF(reportData) {
       const noDataBg = '#fef2f2';       // Rose fill for no data
       const noDataBorder = '#f87171';   // Rose border
 
-      // --- BRAND HEADER WITH EMBEDDED LOGO PNG BUFFER ---
+      // --- BRAND HEADER WITH LOGO IMAGE / FALLBACK ---
       doc.rect(40, 40, 515, 65).fill(primaryColor);
 
       try {
-        if (TECH_WASH_LOGO_BUFFER && TECH_WASH_LOGO_BUFFER.length > 0) {
-          doc.image(TECH_WASH_LOGO_BUFFER, 50, 47, { fit: [130, 50] });
+        const logoPath = path.join(process.cwd(), 'public', 'techwashlogo.webp');
+        if (fs.existsSync(logoPath)) {
+          const logoBuf = fs.readFileSync(logoPath);
+          doc.image(logoBuf, 50, 47, { fit: [130, 50] });
         } else {
           doc.fillColor('#ffffff').fontSize(16).font('Helvetica-Bold').text('TECH WASH', 55, 52);
         }
       } catch (imgErr) {
-        console.warn('PDFKit logo buffer rendering fallback:', imgErr.message);
+        console.warn('PDFKit logo image rendering fallback:', imgErr.message);
         doc.fillColor('#ffffff').fontSize(16).font('Helvetica-Bold').text('TECH WASH', 55, 52);
       }
 
