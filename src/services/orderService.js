@@ -6,6 +6,7 @@
 import { db, isFirebaseConfigured } from './firebase.js';
 import { posBridgeService } from './posBridgeService.js';
 import { syncQueueService } from './syncQueueService.js';
+import { posIndexedDB } from './posIndexedDB.js';
 import { 
   collection, 
   doc, 
@@ -423,17 +424,32 @@ export const orderService = {
       assignedStaff: orderPayload.assignedStaff || null,
     };
 
-    // STEP 1: Save transaction to Local Windows Bridge FIRST (JSON, PDF Invoice, Excel Export)
+    // STEP 1: Save transaction to browser IndexedDB FIRST (orders & customers stores)
+    try {
+      await posIndexedDB.saveOrder(fullOrder);
+      if (fullOrder.customer || fullOrder.phone) {
+        await posIndexedDB.saveCustomer({
+          id: fullOrder.customerId,
+          name: fullOrder.customerName,
+          phone: fullOrder.phone,
+          address: fullOrder.address,
+        });
+      }
+    } catch (e) {
+      console.warn('IndexedDB order write notice:', e);
+    }
+
+    // STEP 2: Enqueue into IndexedDB Synchronization Queue (status: SYNC_PENDING)
+    await syncQueueService.enqueueTransaction(fullOrder, 'CREATE');
+
+    // STEP 3: Save PDF Invoice & Excel export via Local Windows Bridge
     try {
       await posBridgeService.saveTransaction(fullOrder, activeTerminalId);
     } catch (e) {
-      console.warn('Local bridge write notice (continuing):', e);
+      console.warn('Local bridge PDF/Excel write notice:', e);
     }
 
-    // STEP 2: Enqueue into Local Synchronization Queue (status: SYNC_PENDING)
-    syncQueueService.enqueueTransaction(fullOrder, 'CREATE');
-
-    // STEP 3: Save in local storage cache and dispatch UI events so cashier gets immediate receipt print!
+    // STEP 4: Save in local storage fallback cache & dispatch UI events
     try {
       let localOrders = [];
       try {
@@ -443,9 +459,7 @@ export const orderService = {
       }
       const updatedLocal = [fullOrder, ...localOrders.filter(o => o.id !== fullOrder.id && o.orderNumber !== fullOrder.orderNumber)];
       localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(updatedLocal));
-    } catch (e) {
-      console.warn("Local storage order caching error:", e);
-    }
+    } catch (e) {}
 
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('techwash-new-order-placed', { detail: fullOrder }));
@@ -470,7 +484,7 @@ export const orderService = {
   async getOrders({ status = null, search = '', limitCount = 2000 } = {}) {
     let ordersList = [];
 
-    // 1. Fetch from Firestore if configured (using Promise.allSettled for zero-loss concurrent retrieval)
+    // 1. Fetch from Firestore if configured
     if (isFirebaseConfigured && db) {
       try {
         const results = await Promise.allSettled([
@@ -498,21 +512,44 @@ export const orderService = {
         });
         ordersList = Array.from(mapById.values());
       } catch (e) {
-        console.warn('Firestore orders fetch fallback to localStorage:', e);
+        console.warn('Firestore orders fetch notice:', e);
       }
     }
 
-    // 2. Fetch and merge LocalStorage orders across ALL keys so offline/counter POS orders are never lost
+    // 2. Fetch and merge Primary IndexedDB 'orders' store
     const orderMap = new Map();
-    // A. Insert Firestore orders
     ordersList.forEach(o => {
-      const key = o.orderNumber || o.id;
+      const key = o.orderNumber || o.id || o.localId;
       if (key) {
         orderMap.set(String(key).toUpperCase().trim(), o);
       }
     });
 
-    // B. Dynamically scan ALL LocalStorage keys for any stored orders/bookings/bills
+    try {
+      const dbOrders = await posIndexedDB.getAllOrders();
+      dbOrders.forEach(o => {
+        if (o && typeof o === 'object') {
+          const oNum = o.orderNumber || o.invoiceNumber || o.localId || o.id;
+          if (oNum) {
+            const normKey = String(oNum).toUpperCase().trim();
+            const existing = orderMap.get(normKey);
+            if (!existing) {
+              orderMap.set(normKey, o);
+            } else {
+              const localTime = new Date(o.updatedAt || o.createdAt || 0).getTime();
+              const remoteTime = new Date(existing.updatedAt || existing.createdAt || 0).getTime();
+              if (localTime >= remoteTime) {
+                orderMap.set(normKey, { ...existing, ...o });
+              }
+            }
+          }
+        }
+      });
+    } catch (e) {
+      console.warn('IndexedDB orders read notice:', e);
+    }
+
+    // 3. Fallback scan localStorage
     try {
       if (typeof localStorage !== 'undefined') {
         for (let i = 0; i < localStorage.length; i++) {
@@ -522,9 +559,7 @@ export const orderService = {
           if (
             lowerKey.includes('order') || 
             lowerKey.includes('booking') || 
-            lowerKey.includes('bill') || 
-            lowerKey.includes('checkpoint') ||
-            lowerKey.includes('walkin')
+            lowerKey.includes('bill')
           ) {
             try {
               const raw = localStorage.getItem(keyName);
@@ -541,15 +576,8 @@ export const orderService = {
                   const oNum = o.orderNumber || o.invoiceNumber || o.bookingId || o.id;
                   if (oNum) {
                     const normKey = String(oNum).toUpperCase().trim();
-                    const existing = orderMap.get(normKey);
-                    if (!existing) {
+                    if (!orderMap.has(normKey)) {
                       orderMap.set(normKey, o);
-                    } else {
-                      const localTime = new Date(o.updatedAt || o.createdAt || 0).getTime();
-                      const remoteTime = new Date(existing.updatedAt || existing.createdAt || 0).getTime();
-                      if (localTime >= remoteTime) {
-                        orderMap.set(normKey, { ...existing, ...o });
-                      }
                     }
                   }
                 }

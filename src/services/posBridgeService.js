@@ -1,6 +1,7 @@
 /**
- * React Client Service for Tech Wash Local Windows Storage Bridge
- * Communicates with http://127.0.0.1:9123 for non-SQL Windows local file storage
+ * React Client Service for Tech Wash Local Windows Bridge
+ * Communicates with http://127.0.0.1:9123 for local PDF invoice & Excel export generation.
+ * Primary local POS database is browser IndexedDB (TechWashPOS).
  * Gracefully handles offline bridge states without interrupting POS operations.
  */
 
@@ -39,7 +40,7 @@ export const posBridgeService = {
   },
 
   /**
-   * Send completed POS transaction to Local Bridge for JSON, PDF, and Excel saving
+   * Send completed POS transaction to Local Bridge for PDF Invoice and Excel Ledger generation
    */
   async saveTransaction(order, terminalId = 'counter-1') {
     if (!order) return { ok: false, error: 'Missing order payload' };

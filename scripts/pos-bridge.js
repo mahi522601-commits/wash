@@ -1,7 +1,8 @@
 /**
  * Tech Wash Laundry Services — Local Windows Storage Bridge Service
  * Listens strictly on 127.0.0.1:9123
- * No SQL database — File-based storage only under C:\TechWash\POS-XX\
+ * PDF Invoices & Excel Reports under C:\TechWash\POS-XX\
+ * Primary POS database is browser IndexedDB (TechWashPOS) — JSON transaction storage disabled.
  */
 
 import http from 'node:http';
@@ -57,10 +58,8 @@ const HOST = '127.0.0.1';
 const ROOT_BASE = process.env.TECHWASH_ROOT || 'C:\\TechWash';
 const STORAGE_ROOT = path.join(ROOT_BASE, activePreset.folderName);
 
-const DATA_DIR = path.join(STORAGE_ROOT, 'Data');
 const INVOICES_DIR = path.join(STORAGE_ROOT, 'Invoices');
 const EXPORTS_DIR = path.join(STORAGE_ROOT, 'Exports');
-const BACKUPS_DIR = path.join(STORAGE_ROOT, 'Backups');
 
 // --- HELPER: ENSURE DIRECTORY STRUCTURE FOR ALL TERMINALS ---
 function ensureDirectories() {
@@ -71,10 +70,8 @@ function ensureDirectories() {
     const tRoot = path.join(ROOT_BASE, preset.folderName);
     const subDirs = [
       tRoot,
-      path.join(tRoot, 'Data'),
       path.join(tRoot, 'Invoices'),
       path.join(tRoot, 'Exports'),
-      path.join(tRoot, 'Backups'),
     ];
     subDirs.forEach(d => {
       if (!fs.existsSync(d)) {
@@ -86,17 +83,60 @@ function ensureDirectories() {
 
 ensureDirectories();
 
-// --- ATOMIC FILE WRITE HELPER ---
-function atomicWriteJsonSync(filePath, dataObj) {
-  const tempPath = `${filePath}.${Date.now()}-${Math.random().toString(36).substring(2, 6)}.tmp`;
-  const jsonContent = JSON.stringify(dataObj, null, 2);
-  fs.writeFileSync(tempPath, jsonContent, 'utf8');
-  fs.renameSync(tempPath, filePath);
-}
-
 // --- SANITIZE FILENAME HELPER ---
 function sanitizeFilename(name) {
   return String(name || '').replace(/[^a-zA-Z0-9_\-.]/g, '_');
+}
+
+// --- EXTRACT LOCAL DATE KEY HELPER (YYYY-MM-DD) ---
+function extractLocalDateKey(payload = {}) {
+  const candidates = [payload.dateKey, payload.createdAt, payload.orderDate, payload.pickupDate];
+  for (const cand of candidates) {
+    if (!cand) continue;
+    const str = String(cand).trim();
+    if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
+      return str.slice(0, 10);
+    }
+  }
+
+  const dateInput = payload.createdAt || payload.orderDate || Date.now();
+  let d = new Date(dateInput);
+  if (isNaN(d.getTime())) {
+    d = new Date();
+  }
+
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+// --- RESOLVE TERMINAL PRESET HELPER ---
+function resolveTerminalPreset(terminalIdInput) {
+  const tId = String(terminalIdInput || '').toLowerCase().trim();
+  if (tId === 'counter-2' || tId.includes('pos-02') || tId.includes('02') || tId.includes('tolichowki')) {
+    return TERMINAL_PRESETS['counter-2'];
+  }
+  if (tId === 'counter-3' || tId.includes('pos-03') || tId.includes('03') || tId.includes('ambience')) {
+    return TERMINAL_PRESETS['counter-3'];
+  }
+  return TERMINAL_PRESETS['counter-1'];
+}
+
+// --- RESOLVE LOGO PATH HELPER ---
+function getActualLogoPath() {
+  const possiblePaths = [
+    path.join(process.cwd(), 'public', 'techwashlogo.webp'),
+    path.join(process.cwd(), 'src', 'assets', 'techwashlogo.webp'),
+    path.join(process.cwd(), 'techwashlogo.webp'),
+    path.join(process.cwd(), 'public', 'techwashh.webp'),
+    path.join(process.cwd(), 'src', 'assets', 'techwashh.webp'),
+    path.join(process.cwd(), 'techwashh.webp'),
+  ];
+  for (const p of possiblePaths) {
+    if (fs.existsSync(p)) return p;
+  }
+  return null;
 }
 
 // --- GENERATE CUSTOMER INVOICE PDF ---
@@ -109,97 +149,187 @@ function generateInvoicePDFBuffer(order) {
       doc.on('end', () => resolve(Buffer.concat(buffers)));
       doc.on('error', err => reject(err));
 
-      const primaryColor = '#0f172a';
-      const accentColor = '#f97316';
+      const primaryNavy = '#0f172a';
+      const brandBlue = '#2563eb';
       const textColor = '#1e293b';
+      const mutedText = '#64748b';
+      const lightBg = '#f8fafc';
+      const borderGray = '#cbd5e1';
 
-      // Header Banner
-      doc.rect(36, 36, 523, 50).fill(primaryColor);
-      doc.fillColor('#ffffff').fontSize(16).font('Helvetica-Bold').text('TECH WASH LAUNDRY SERVICES', 50, 48);
-      doc.fontSize(9).font('Helvetica').text('Official Customer Tax Invoice & Receipt', 50, 68);
+      // 1. HEADER SECTION & BRAND LOGO
+      const logoPath = getActualLogoPath();
+      let headerY = 36;
 
-      const invNum = order.invoiceNumber || order.orderNumber || order.id || 'INV-0000';
-      doc.fontSize(10).font('Helvetica-Bold').text(`INV #: ${invNum}`, 400, 48, { align: 'right' });
-      const dateStr = new Date(order.createdAt || Date.now()).toLocaleDateString('en-IN');
-      doc.fontSize(8).font('Helvetica').text(`Date: ${dateStr}`, 400, 64, { align: 'right' });
+      if (logoPath) {
+        try {
+          doc.image(logoPath, 36, 36, { fit: [140, 50] });
+        } catch (e) {
+          doc.fontSize(18).font('Helvetica-Bold').fillColor(primaryNavy).text('TECH WASH', 36, 36);
+        }
+      } else {
+        doc.fontSize(18).font('Helvetica-Bold').fillColor(primaryNavy).text('TECH WASH', 36, 36);
+      }
 
-      let y = 100;
+      // Business Info Block next to logo
+      doc.fontSize(12).font('Helvetica-Bold').fillColor(primaryNavy).text('TECH WASH LAUNDRY SERVICES', 190, 36);
+      doc.fontSize(8).font('Helvetica').fillColor(mutedText)
+        .text('Premium Eco Laundry, Hydrocarbon Dry Cleaning & 3D Steam Pressing', 190, 52)
+        .text('Plot 42, Manikonda Main Rd, Hyderabad | Support: +91 98765 43210 | www.techwash.in', 190, 64);
 
-      // Store & Customer Info Grid
-      doc.fillColor(textColor).fontSize(9).font('Helvetica-Bold').text('STORE BRANCH:', 40, y);
-      doc.font('Helvetica').text(order.storeBranch || activePreset.branch, 130, y);
-      doc.font('Helvetica-Bold').text('CUSTOMER:', 320, y);
-      doc.font('Helvetica').text(order.customerName || order.customer?.name || 'Valued Customer', 390, y);
+      // Title & Invoice Meta Box (Right aligned)
+      doc.rect(400, 34, 159, 58).fillAndStroke('#eff6ff', '#bfdbfe');
+      doc.fillColor(brandBlue).fontSize(10).font('Helvetica-Bold').text('CUSTOMER TAX INVOICE', 405, 40, { width: 149, align: 'center' });
 
-      y += 16;
-      doc.font('Helvetica-Bold').text('TERMINAL:', 40, y);
-      doc.font('Helvetica').text(`${activePreset.terminalCode} (${activePreset.terminalId})`, 130, y);
-      doc.font('Helvetica-Bold').text('MOBILE:', 320, y);
-      doc.font('Helvetica').text(order.phone || order.customer?.phone || 'N/A', 390, y);
+      const rawInvNum = order.invoiceNumber || order.orderNumber || order.id || 'INV-00001';
+      const invNum = rawInvNum.toUpperCase().startsWith('INV-') ? rawInvNum : `INV-${rawInvNum}`;
+      doc.fontSize(8).font('Helvetica-Bold').fillColor(primaryNavy)
+        .text(`INV #: ${invNum}`, 405, 54, { width: 149, align: 'center' })
+        .text(`Order #: ${order.orderNumber || order.id}`, 405, 66, { width: 149, align: 'center' });
 
-      y += 16;
-      doc.font('Helvetica-Bold').text('CASHIER:', 40, y);
-      doc.font('Helvetica').text(order.cashierName || 'Cashier #1', 130, y);
-      doc.font('Helvetica-Bold').text('ADDRESS:', 320, y);
-      doc.font('Helvetica').text((order.address || order.customer?.address || 'Counter Pick-up').slice(0, 35), 390, y);
+      const dateObj = order.createdAt ? new Date(order.createdAt) : new Date();
+      const dateStr = dateObj.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+      const timeStr = dateObj.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+      doc.fontSize(7.5).font('Helvetica').fillColor(mutedText)
+        .text(`${dateStr} | ${timeStr}`, 405, 78, { width: 149, align: 'center' });
 
-      y += 25;
+      let y = 104;
 
-      // Items Table Header
-      doc.rect(40, y, 515, 18).fill(primaryColor);
+      // 2. STORE BRANCH & CUSTOMER DETAILS CARDS
+      // Left Card: Customer Details
+      doc.rect(36, y, 256, 75).fillAndStroke(lightBg, borderGray);
+      doc.fillColor(primaryNavy).fontSize(8.5).font('Helvetica-Bold').text('CUSTOMER DETAILS', 46, y + 8);
+      
+      const custName = order.customerName || order.customer?.name || 'Valued Customer';
+      const custPhone = order.phone || order.customer?.phone || 'N/A';
+      const custId = order.customerId || (custPhone !== 'N/A' ? `cust-${custPhone}` : 'N/A');
+      const custAddr = (order.address || order.customer?.address || 'In-Store Walk-in Drop').slice(0, 50);
+
+      doc.fontSize(8).font('Helvetica').fillColor(textColor)
+        .text(`Name: `, 46, y + 22, { continued: true }).font('Helvetica-Bold').text(custName)
+        .font('Helvetica').text(`Mobile: `, 46, y + 34, { continued: true }).font('Helvetica-Bold').text(custPhone)
+        .font('Helvetica').text(`Customer ID: `, 46, y + 46, { continued: true }).font('Helvetica-Bold').text(custId)
+        .font('Helvetica').text(`Address: `, 46, y + 58, { continued: true }).text(custAddr);
+
+      // Right Card: Store & Terminal Info
+      doc.rect(303, y, 256, 75).fillAndStroke(lightBg, borderGray);
+      doc.fillColor(primaryNavy).fontSize(8.5).font('Helvetica-Bold').text('STORE & TERMINAL DETAILS', 313, y + 8);
+
+      const branchName = order.storeBranch || activePreset.branch;
+      const termCode = order.terminalCode || activePreset.terminalCode;
+      const termId = order.terminalId || activePreset.terminalId;
+      const cashier = order.cashierName || 'Cashier #1';
+
+      doc.fontSize(8).font('Helvetica').fillColor(textColor)
+        .text(`Branch: `, 313, y + 22, { continued: true }).font('Helvetica-Bold').text(branchName)
+        .font('Helvetica').text(`Terminal: `, 313, y + 34, { continued: true }).font('Helvetica-Bold').text(`${termCode} (${termId})`)
+        .font('Helvetica').text(`Cashier: `, 313, y + 46, { continued: true }).font('Helvetica-Bold').text(cashier)
+        .font('Helvetica').text(`Pickup/Delivery: `, 313, y + 58, { continued: true }).text(`${order.pickupDate || 'Today'} -> ${order.deliveryDate || 'Standard'}`);
+
+      y += 88;
+
+      // 3. ITEM SERVICE TABLE
+      // Table Header Bar
+      doc.rect(36, y, 523, 20).fill(primaryNavy);
       doc.fillColor('#ffffff').fontSize(8).font('Helvetica-Bold');
-      doc.text('#', 45, y + 5);
-      doc.text('Item / Service Description', 65, y + 5);
-      doc.text('Qty', 330, y + 5, { align: 'right' });
-      doc.text('Unit Price', 410, y + 5, { align: 'right' });
-      doc.text('Line Total', 490, y + 5, { align: 'right' });
+      doc.text('S.No', 42, y + 6);
+      doc.text('Service & Treatment', 75, y + 6);
+      doc.text('Garment / Description', 185, y + 6);
+      doc.text('Qty / Wt', 355, y + 6, { width: 55, align: 'right' });
+      doc.text('Rate', 420, y + 6, { width: 60, align: 'right' });
+      doc.text('Amount (₹)', 490, y + 6, { width: 62, align: 'right' });
 
-      y += 18;
+      y += 20;
 
       const items = order.items || [];
+      if (items.length === 0) {
+        items.push({
+          name: order.serviceName || order.service || 'Laundry Service',
+          quantity: order.actualWeight || order.estimatedWeightKg || 1,
+          unitPrice: order.totalAmount || order.finalPrice || 0,
+          lineTotal: order.totalAmount || order.finalPrice || 0,
+        });
+      }
+
       items.forEach((it, idx) => {
-        const bg = idx % 2 === 0 ? '#f8fafc' : '#ffffff';
-        doc.rect(40, y, 515, 18).fillAndStroke(bg, '#e2e8f0');
+        const bg = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
+        doc.rect(36, y, 523, 18).fillAndStroke(bg, '#f1f5f9');
 
-        const qty = Number(it.quantity || 1);
+        const serviceTitle = (it.serviceName || order.serviceName || order.service || 'Laundry Care').slice(0, 22);
+        const desc = (it.name || it.subServiceName || 'Garment Item').slice(0, 32);
+        const qty = it.weight ? `${it.weight} Kg` : (it.quantity ? `${it.quantity} Pcs` : '1 Pcs');
         const uPrice = Number(it.unitPrice !== undefined ? it.unitPrice : (it.price || 0));
-        const lTotal = Number(it.lineTotal !== undefined ? it.lineTotal : (uPrice * qty));
+        const lTotal = Number(it.lineTotal !== undefined ? it.lineTotal : (uPrice * (Number(it.quantity) || 1)));
 
-        doc.fillColor(textColor).fontSize(8).font('Helvetica');
-        doc.text(String(idx + 1), 45, y + 5);
-        doc.text(String(it.name || it.subServiceName || 'Garment Item').slice(0, 45), 65, y + 5);
-        doc.text(String(qty), 330, y + 5, { align: 'right' });
-        doc.text(`Rs. ${uPrice.toFixed(2)}`, 410, y + 5, { align: 'right' });
-        doc.text(`Rs. ${lTotal.toFixed(2)}`, 490, y + 5, { align: 'right' });
+        doc.fillColor(textColor).fontSize(7.5).font('Helvetica');
+        doc.text(String(idx + 1), 42, y + 5);
+        doc.text(serviceTitle, 75, y + 5);
+        doc.text(desc, 185, y + 5);
+        doc.text(qty, 355, y + 5, { width: 55, align: 'right' });
+        doc.text(`₹${uPrice.toFixed(2)}`, 420, y + 5, { width: 60, align: 'right' });
+        doc.font('Helvetica-Bold').text(`₹${lTotal.toFixed(2)}`, 490, y + 5, { width: 62, align: 'right' });
         y += 18;
       });
 
-      y += 15;
+      y += 12;
 
-      // Totals Box
+      // 4. FINANCIAL SUMMARY & PAYMENT DETAILS BOXES
+      // Left Box: Payment Details
       const total = Number(order.totalAmount || order.finalPrice || order.priceSnapshot?.finalTotal || 0);
       const rec = Number(order.receivedAmount !== undefined ? order.receivedAmount : (order.paymentStatus === 'PAID' ? total : 0));
       const bal = Number(order.balanceAmount !== undefined ? order.balanceAmount : Math.max(0, total - rec));
+      const payStatus = order.paymentStatus || (bal === 0 ? 'PAID' : (rec > 0 ? 'PARTIAL' : 'PENDING'));
 
-      doc.rect(320, y, 235, 60).fillAndStroke('#f1f5f9', '#cbd5e1');
-      doc.fillColor(textColor).fontSize(9);
+      doc.rect(36, y, 256, 75).fillAndStroke(lightBg, borderGray);
+      doc.fillColor(primaryNavy).fontSize(8.5).font('Helvetica-Bold').text('PAYMENT DETAILS', 46, y + 8);
 
-      doc.font('Helvetica-Bold').text('GRAND TOTAL:', 330, y + 10);
-      doc.font('Helvetica-Bold').text(`Rs. ${total.toFixed(2)}`, 490, y + 10, { align: 'right' });
+      const statusColor = payStatus === 'PAID' ? '#15803d' : (payStatus === 'PARTIAL' ? '#b45309' : '#b91c1c');
+      doc.fontSize(8).font('Helvetica').fillColor(textColor)
+        .text('Payment Status: ', 46, y + 24, { continued: true })
+        .font('Helvetica-Bold').fillColor(statusColor).text(payStatus)
+        .fillColor(textColor).font('Helvetica').text('Payment Method: ', 46, y + 38, { continued: true })
+        .font('Helvetica-Bold').text(order.paymentMethod || 'CASH')
+        .font('Helvetica').text('Payment Ref: ', 46, y + 52, { continued: true })
+        .text(order.paymentReference || order.transactionId || 'N/A');
 
-      doc.font('Helvetica').text('Amount Received:', 330, y + 26);
-      doc.text(`Rs. ${rec.toFixed(2)}`, 490, y + 26, { align: 'right' });
+      // Right Box: Financial Summary
+      doc.rect(303, y, 256, 75).fillAndStroke('#f8fafc', borderGray);
+      doc.fillColor(textColor).fontSize(8);
 
-      doc.font('Helvetica-Bold').text('Balance Due:', 330, y + 42);
+      const subtotal = Number(order.priceSnapshot?.itemsSubtotal || total);
+      const discount = Number(order.priceSnapshot?.discountAmount || order.discount || 0);
+
+      doc.font('Helvetica').text('Subtotal:', 313, y + 8);
+      doc.font('Helvetica').text(`₹${subtotal.toFixed(2)}`, 490, y + 8, { width: 60, align: 'right' });
+
+      if (discount > 0) {
+        doc.font('Helvetica').text('Discount:', 313, y + 20);
+        doc.font('Helvetica').fillColor('#b91c1c').text(`- ₹${discount.toFixed(2)}`, 490, y + 20, { width: 60, align: 'right' });
+      } else {
+        doc.font('Helvetica').text('Tax (GST):', 313, y + 20);
+        doc.font('Helvetica').text(`₹0.00`, 490, y + 20, { width: 60, align: 'right' });
+      }
+
+      doc.fillColor(primaryNavy).font('Helvetica-Bold').fontSize(9).text('GRAND TOTAL:', 313, y + 34);
+      doc.font('Helvetica-Bold').fontSize(9).text(`₹${total.toFixed(2)}`, 490, y + 34, { width: 60, align: 'right' });
+
+      doc.fillColor(textColor).font('Helvetica').fontSize(8).text('Amount Paid:', 313, y + 48);
+      doc.font('Helvetica-Bold').text(`₹${rec.toFixed(2)}`, 490, y + 48, { width: 60, align: 'right' });
+
+      doc.font('Helvetica-Bold').text('Balance Due:', 313, y + 60);
       doc.fillColor(bal > 0 ? '#b91c1c' : '#15803d');
-      doc.text(`Rs. ${bal.toFixed(2)}`, 490, y + 42, { align: 'right' });
+      doc.font('Helvetica-Bold').text(`₹${bal.toFixed(2)}`, 490, y + 60, { width: 60, align: 'right' });
 
-      y += 80;
+      y += 88;
 
-      // Footer
-      doc.fillColor('#64748b').fontSize(8).font('Helvetica');
-      doc.text('Thank you for choosing Tech Wash Laundry Services!', 40, y, { align: 'center' });
-      doc.text(`Payment Mode: ${order.paymentMethod || 'CASH'} • Status: ${order.paymentStatus || (bal === 0 ? 'PAID' : 'PENDING')}`, 40, y + 12, { align: 'center' });
+      // 5. FOOTER & CARE NOTES
+      doc.rect(36, y, 523, 1).fill('#e2e8f0');
+      y += 8;
+
+      doc.fillColor(mutedText).fontSize(7.5).font('Helvetica');
+      doc.text('Garment Care Note: All items processed using 100% RO softened water, eco-friendly bio-detergents, and low-heat drying. Please verify item count upon delivery.', 36, y, { width: 523, align: 'center' });
+      y += 12;
+      doc.fillColor(primaryNavy).fontSize(8.5).font('Helvetica-Bold');
+      doc.text('Thank you for choosing Tech Wash Laundry Services!', 36, y, { width: 523, align: 'center' });
 
       doc.end();
     } catch (err) {
@@ -279,7 +409,6 @@ async function updateDailyExcelFile(excelPath, order) {
     syncStatus: order.syncStatus || 'LOCAL_SAVED',
   };
 
-  // Check if row exists by localId
   let existingRow = null;
   worksheet.eachRow((row, rowNumber) => {
     if (rowNumber > 1 && row.getCell(1).value === rowData.localId) {
@@ -298,7 +427,6 @@ async function updateDailyExcelFile(excelPath, order) {
 
 // --- HTTP SERVER SETUP ---
 const server = http.createServer(async (req, res) => {
-  // CORS Headers for Localhost React Apps
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-terminal-id');
@@ -315,10 +443,8 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && pathname === '/api/health') {
     const foldersOk = {
       root: fs.existsSync(STORAGE_ROOT),
-      data: fs.existsSync(DATA_DIR),
       invoices: fs.existsSync(INVOICES_DIR),
       exports: fs.existsSync(EXPORTS_DIR),
-      backups: fs.existsSync(BACKUPS_DIR),
     };
 
     res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -329,28 +455,8 @@ const server = http.createServer(async (req, res) => {
       branch: activePreset.branch,
       storageRoot: STORAGE_ROOT,
       folders: foldersOk,
-      bridgeVersion: '1.0.0-phase4-hardened',
-    }));
-  }
-
-  // --- GET LOCAL TRANSACTIONS ENDPOINT (for local queue recovery & reconciliation) ---
-  if (req.method === 'GET' && pathname === '/api/get-transactions') {
-    const targetDate = url.searchParams.get('date') || new Date().toISOString().slice(0, 10);
-    const jsonPath = path.join(DATA_DIR, `${targetDate}.json`);
-    let dayOrders = [];
-    if (fs.existsSync(jsonPath)) {
-      try {
-        dayOrders = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
-      } catch (e) {
-        dayOrders = [];
-      }
-    }
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    return res.end(JSON.stringify({
-      ok: true,
-      dateKey: targetDate,
-      terminalId: activePreset.terminalId,
-      orders: Array.isArray(dayOrders) ? dayOrders : []
+      primaryStorage: 'IndexedDB TechWashPOS',
+      bridgeVersion: '2.0.0-indexeddb-redesigned-pdf',
     }));
   }
 
@@ -362,15 +468,13 @@ const server = http.createServer(async (req, res) => {
       try {
         const payload = JSON.parse(bodyText || '{}');
 
-        // 1. Validate Terminal Identity
-        const incomingTerminalId = req.headers['x-terminal-id'] || payload.terminalId || activePreset.terminalId;
-        if (incomingTerminalId !== activePreset.terminalId) {
-          res.writeHead(403, { 'Content-Type': 'application/json' });
-          return res.end(JSON.stringify({
-            ok: false,
-            error: `Terminal Mismatch: Request for terminalId "${incomingTerminalId}" rejected by Local Bridge bound to "${activePreset.terminalId}".`,
-          }));
-        }
+        // 1. Resolve Dynamic Terminal Preset
+        const incomingTerminalId = req.headers['x-terminal-id'] || payload.terminalId || activeTerminalId;
+        const targetPreset = resolveTerminalPreset(incomingTerminalId);
+
+        const terminalStorageRoot = path.join(ROOT_BASE, targetPreset.folderName);
+        const terminalInvoicesDir = path.join(terminalStorageRoot, 'Invoices');
+        const terminalExportsDir = path.join(terminalStorageRoot, 'Exports');
 
         // 2. Validate Required Payload Fields
         const localId = payload.localId || payload.id || payload.orderNumber;
@@ -382,7 +486,6 @@ const server = http.createServer(async (req, res) => {
           }));
         }
 
-        // Security check for path traversal
         if (String(localId).includes('..') || String(localId).includes('/') || String(localId).includes('\\')) {
           res.writeHead(400, { 'Content-Type': 'application/json' });
           return res.end(JSON.stringify({
@@ -391,65 +494,39 @@ const server = http.createServer(async (req, res) => {
           }));
         }
 
-        const createdAt = payload.createdAt ? new Date(payload.createdAt) : new Date();
-        const year = createdAt.getFullYear();
-        const month = String(createdAt.getMonth() + 1).padStart(2, '0');
-        const day = String(createdAt.getDate()).padStart(2, '0');
-        const dateKey = `${year}-${month}-${day}`;
+        const dateKey = extractLocalDateKey(payload);
 
         // Ensure date invoice directory exists
-        const dateInvoiceDir = path.join(INVOICES_DIR, dateKey);
+        const dateInvoiceDir = path.join(terminalInvoicesDir, dateKey);
         if (!fs.existsSync(dateInvoiceDir)) {
           fs.mkdirSync(dateInvoiceDir, { recursive: true });
+        }
+
+        // Ensure exports directory exists
+        if (!fs.existsSync(terminalExportsDir)) {
+          fs.mkdirSync(terminalExportsDir, { recursive: true });
         }
 
         const orderRecord = {
           ...payload,
           localId,
-          terminalId: activePreset.terminalId,
-          terminalCode: activePreset.terminalCode,
-          storeBranch: payload.storeBranch || activePreset.branch,
+          terminalId: targetPreset.terminalId,
+          terminalCode: targetPreset.terminalCode,
+          storeBranch: payload.storeBranch || targetPreset.branch,
           syncStatus: payload.syncStatus || 'LOCAL_SAVED',
           updatedAt: new Date().toISOString(),
         };
 
-        // 3. Atomic JSON Storage
-        const jsonFilePath = path.join(DATA_DIR, `${dateKey}.json`);
-        let dayOrders = [];
-        if (fs.existsSync(jsonFilePath)) {
-          try {
-            dayOrders = JSON.parse(fs.readFileSync(jsonFilePath, 'utf8'));
-            if (!Array.isArray(dayOrders)) dayOrders = [];
-          } catch (e) {
-            dayOrders = [];
-          }
-        }
-
-        const existingIdx = dayOrders.findIndex(o => o.localId === localId || o.orderNumber === localId || o.id === localId);
-        if (existingIdx >= 0) {
-          dayOrders[existingIdx] = orderRecord;
-        } else {
-          dayOrders.push(orderRecord);
-        }
-
-        atomicWriteJsonSync(jsonFilePath, dayOrders);
-
-        // 4. Generate & Save Customer Invoice PDF
+        // 3. Generate & Save Customer Invoice PDF
         const rawInvName = String(orderRecord.invoiceNumber || orderRecord.orderNumber || localId).trim();
         const formattedInvName = rawInvName.toUpperCase().startsWith('INV-') ? rawInvName : `INV-${rawInvName}`;
         const pdfFilePath = path.join(dateInvoiceDir, `${sanitizeFilename(formattedInvName)}.pdf`);
         const pdfBuffer = await generateInvoicePDFBuffer(orderRecord);
         fs.writeFileSync(pdfFilePath, pdfBuffer);
 
-        // 5. Update Daily Excel Spreadsheet
-        const excelFilePath = path.join(EXPORTS_DIR, `${dateKey}.xlsx`);
+        // 4. Update Daily Excel Spreadsheet
+        const excelFilePath = path.join(terminalExportsDir, `${dateKey}.xlsx`);
         await updateDailyExcelFile(excelFilePath, orderRecord);
-
-        // 6. Write Date-wise Backup Snapshots
-        const backupJsonPath = path.join(BACKUPS_DIR, `${activePreset.folderName}-orders-${dateKey}.json`);
-        const backupExcelPath = path.join(BACKUPS_DIR, `${activePreset.folderName}-orders-${dateKey}.xlsx`);
-        atomicWriteJsonSync(backupJsonPath, dayOrders);
-        await updateDailyExcelFile(backupExcelPath, orderRecord);
 
         res.writeHead(200, { 'Content-Type': 'application/json' });
         return res.end(JSON.stringify({
@@ -457,7 +534,6 @@ const server = http.createServer(async (req, res) => {
           localId,
           status: 'LOCAL_SAVED',
           paths: {
-            json: jsonFilePath,
             pdf: pdfFilePath,
             excel: excelFilePath,
           },
@@ -481,7 +557,7 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`✅ Tech Wash Local Windows Storage Bridge Active!`);
+  console.log(`✅ Tech Wash Local Windows Storage Bridge Active (IndexedDB Primary Mode)!`);
   console.log(`   Host: http://${HOST}:${PORT}`);
   console.log(`   Terminal: ${activePreset.terminalCode} (${activePreset.terminalId} - ${activePreset.branch})`);
   console.log(`   Storage Root: ${STORAGE_ROOT}`);

@@ -1,15 +1,13 @@
 /**
  * Tech Wash Offline Synchronization Queue & Terminal Health Service
- * Manages local transaction queues, background auto-retries, exponential backoff,
- * idempotent Firestore setDoc writes, and terminal sync health status updates.
+ * IndexedDB Primary Store: Persistent offline sync queue and terminal health engine.
+ * Idempotent Firestore setDoc writes, exponential backoff, and live sync status monitoring.
  */
 
 import { db, isFirebaseConfigured } from './firebase.js';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { posIndexedDB } from './posIndexedDB.js';
 import { posBridgeService } from './posBridgeService.js';
-
-const QUEUE_STORAGE_KEY = 'techwash_sync_queue_v1';
-const TERMINAL_HEALTH_KEY = 'techwash_terminal_health_cache';
 
 const BACKOFF_STEPS_MS = [
   30 * 1000,        // 30 sec
@@ -26,20 +24,26 @@ class SyncQueueService {
     this.isSyncing = false;
     this.timerId = null;
     this.listeners = new Set();
+    this.memoryQueue = [];
+    this.terminalHealthStatus = 'ONLINE';
     this.initQueue();
   }
 
-  initQueue() {
+  async initQueue() {
     if (typeof window !== 'undefined') {
-      // Reconstruct missing queue items from local Windows JSON files if localStorage was cleared
-      setTimeout(() => this.reconcileFromLocalFiles(), 500);
+      try {
+        await this.loadQueueFromDB();
+        await this.reconcileFromIndexedDB();
+      } catch (e) {
+        console.warn('IndexedDB sync queue init notice:', e);
+      }
 
       // Background retry loop every 30 seconds
       this.startAutoSyncTimer(30000);
 
       // Listen for browser online event to trigger immediate retry
       window.addEventListener('online', () => {
-        console.log('🌐 Browser online event detected. Triggering sync queue retry...');
+        console.log('🌐 Browser online event detected. Triggering IndexedDB sync queue retry...');
         this.processQueue();
       });
     }
@@ -60,34 +64,49 @@ class SyncQueueService {
   }
 
   /**
-   * Get current queue from localStorage
+   * Load queue from IndexedDB store into memory
+   */
+  async loadQueueFromDB() {
+    try {
+      this.memoryQueue = await posIndexedDB.getSyncQueue();
+      this.notifyListeners(this.memoryQueue);
+      return this.memoryQueue;
+    } catch (e) {
+      console.warn('Sync queue load from IndexedDB error:', e);
+      return this.memoryQueue;
+    }
+  }
+
+  /**
+   * Get current queue array
    */
   getQueue() {
-    if (typeof localStorage === 'undefined') return [];
-    try {
-      const raw = localStorage.getItem(QUEUE_STORAGE_KEY);
-      return raw ? JSON.parse(raw) : [];
-    } catch (e) {
-      console.warn('Sync queue read error:', e);
-      return [];
-    }
+    return this.memoryQueue || [];
   }
 
   /**
-   * Save queue array to localStorage
+   * Get summary metrics for UI widgets
    */
-  saveQueue(queue) {
-    if (typeof localStorage === 'undefined') return;
-    try {
-      localStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(queue));
-      this.notifyListeners(queue);
-    } catch (e) {
-      console.warn('Sync queue save error:', e);
-    }
+  getQueueSummary(queue = this.getQueue()) {
+    const list = Array.isArray(queue) ? queue : [];
+    const pendingCount = list.filter(i => i.status === 'SYNC_PENDING').length;
+    const syncingCount = list.filter(i => i.status === 'SYNCING').length;
+    const failedCount = list.filter(i => i.status === 'SYNC_FAILED').length;
+    const syncedCount = list.filter(i => i.status === 'SYNCED').length;
+
+    return {
+      totalCount: list.length,
+      pendingCount,
+      syncingCount,
+      failedCount,
+      syncedCount,
+      isSyncing: this.isSyncing,
+      terminalStatus: this.terminalHealthStatus,
+    };
   }
 
   /**
-   * Register state listener for UI components (e.g. Sync Health Widget)
+   * Register state listener for UI components (e.g. TerminalSyncHealthWidget)
    */
   subscribe(listener) {
     if (typeof listener === 'function') {
@@ -107,19 +126,27 @@ class SyncQueueService {
   }
 
   /**
-   * Enqueue a local order transaction or update
+   * Enqueue a local order transaction or update in IndexedDB
    */
-  enqueueTransaction(orderPayload, action = 'CREATE') {
+  async enqueueTransaction(orderPayload, action = 'CREATE') {
     if (!orderPayload) return null;
 
     const localId = orderPayload.localId || orderPayload.id || orderPayload.orderNumber;
     const terminalId = orderPayload.terminalId || 'counter-1';
     const branchId = orderPayload.branchId || 'main';
 
-    const queue = this.getQueue();
+    // 1. Ensure order is saved to IndexedDB orders store
+    try {
+      await posIndexedDB.saveOrder({
+        ...orderPayload,
+        syncStatus: 'LOCAL_SAVED',
+      });
+    } catch (e) {
+      console.warn('IndexedDB order save error during enqueue:', e);
+    }
 
-    // Check if task for same localId is already in queue
-    const existingIndex = queue.findIndex(item => item.localId === localId);
+    // 2. Check if item is already in queue memory
+    const existingIndex = this.memoryQueue.findIndex(item => item.localId === localId);
 
     const queueItem = {
       localId,
@@ -136,27 +163,29 @@ class SyncQueueService {
     };
 
     if (existingIndex >= 0) {
-      // Merge updates, preserving paymentHistory & payload
-      const oldItem = queue[existingIndex];
+      const oldItem = this.memoryQueue[existingIndex];
       const mergedPayload = {
         ...oldItem.payload,
         ...orderPayload,
         paymentHistory: this.mergePaymentHistories(oldItem.payload?.paymentHistory, orderPayload.paymentHistory),
         statusTimeline: this.mergeTimelines(oldItem.payload?.statusTimeline, orderPayload.statusTimeline),
       };
-      queue[existingIndex] = {
+      const updatedQueueItem = {
         ...oldItem,
         payload: mergedPayload,
         action,
         status: 'SYNC_PENDING',
-        retryCount: 0, // Reset backoff on new user action
+        retryCount: 0,
         nextRetryTime: new Date().toISOString(),
       };
+      this.memoryQueue[existingIndex] = updatedQueueItem;
+      await posIndexedDB.saveSyncItem(updatedQueueItem);
     } else {
-      queue.push(queueItem);
+      this.memoryQueue.push(queueItem);
+      await posIndexedDB.saveSyncItem(queueItem);
     }
 
-    this.saveQueue(queue);
+    this.notifyListeners(this.memoryQueue);
 
     // Attempt immediate background sync if browser is online
     if (typeof navigator !== 'undefined' && navigator.onLine) {
@@ -167,8 +196,36 @@ class SyncQueueService {
   }
 
   /**
-   * Helper to merge payment histories using paymentEventId (with timestamp_amount_mode fallback)
+   * Self-healing recovery: Scans IndexedDB 'orders' store for any unsynced bills
+   * and ensures they exist in the IndexedDB 'syncQueue'.
    */
+  async reconcileFromIndexedDB() {
+    try {
+      const allOrders = await posIndexedDB.getAllOrders();
+      const existingQueueIds = new Set(this.memoryQueue.map(item => item.localId));
+      let count = 0;
+
+      for (const ord of allOrders) {
+        const lId = ord.localId || ord.id || ord.orderNumber;
+        const sStatus = ord.syncStatus || 'LOCAL_SAVED';
+
+        if (lId && sStatus !== 'SYNCED' && !existingQueueIds.has(lId)) {
+          await this.enqueueTransaction(ord, 'CREATE');
+          count++;
+        }
+      }
+
+      if (count > 0 && typeof navigator !== 'undefined' && navigator.onLine) {
+        setTimeout(() => this.processQueue(), 100);
+      }
+
+      return { reconciledCount: count };
+    } catch (e) {
+      console.warn('IndexedDB queue reconciliation notice:', e.message);
+      return { reconciledCount: 0, error: e.message };
+    }
+  }
+
   mergePaymentHistories(oldHist = [], newHist = []) {
     const map = new Map();
     [...(oldHist || []), ...(newHist || [])].forEach(h => {
@@ -180,47 +237,6 @@ class SyncQueueService {
     return Array.from(map.values());
   }
 
-  /**
-   * Reconstruct missing pending queue entries from local Windows JSON files (C:\TechWash\POS-XX\Data\YYYY-MM-DD.json)
-   * Prevents losing unsynced bills if browser localStorage was cleared or corrupted.
-   */
-  async reconcileFromLocalFiles(dateKey = null) {
-    try {
-      const activeTerminalId = (typeof localStorage !== 'undefined' && localStorage.getItem('techwash_terminal_id')) || 'counter-1';
-      const bridgeRes = await posBridgeService.getTransactions(dateKey, activeTerminalId);
-
-      if (!bridgeRes.ok || !Array.isArray(bridgeRes.orders) || bridgeRes.orders.length === 0) {
-        return { reconciledCount: 0 };
-      }
-
-      const queue = this.getQueue();
-      const existingLocalIds = new Set(queue.map(item => item.localId));
-      let count = 0;
-
-      bridgeRes.orders.forEach(ord => {
-        const lId = ord.localId || ord.id || ord.orderNumber;
-        const sStatus = ord.syncStatus || 'LOCAL_SAVED';
-
-        if (lId && sStatus !== 'SYNCED' && !existingLocalIds.has(lId)) {
-          this.enqueueTransaction(ord, 'CREATE');
-          count++;
-        }
-      });
-
-      if (count > 0 && typeof navigator !== 'undefined' && navigator.onLine) {
-        setTimeout(() => this.processQueue(), 100);
-      }
-
-      return { reconciledCount: count };
-    } catch (e) {
-      console.warn('Local file queue reconciliation notice:', e.message);
-      return { reconciledCount: 0, error: e.message };
-    }
-  }
-
-  /**
-   * Helper to merge status timelines
-   */
   mergeTimelines(oldTL = [], newTL = []) {
     const map = new Map();
     [...(oldTL || []), ...(newTL || [])].forEach(t => {
@@ -233,36 +249,43 @@ class SyncQueueService {
   }
 
   /**
-   * Process pending items in sync queue
+   * Process pending items in IndexedDB sync queue
    */
   async processQueue() {
     if (this.isSyncing) return;
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
-      this.updateTerminalHealthStatus('OFFLINE');
+      this.terminalHealthStatus = 'OFFLINE';
+      this.notifyListeners(this.memoryQueue);
       return;
     }
 
-    const queue = this.getQueue();
-    const pendingItems = queue.filter(item => item.status === 'SYNC_PENDING' || item.status === 'SYNC_FAILED');
+    await this.loadQueueFromDB();
+    const pendingItems = this.memoryQueue.filter(item => item.status === 'SYNC_PENDING' || item.status === 'SYNC_FAILED');
 
     if (pendingItems.length === 0) {
-      this.updateTerminalHealthStatus('ONLINE');
+      this.terminalHealthStatus = 'ONLINE';
+      this.notifyListeners(this.memoryQueue);
       return;
     }
 
     this.isSyncing = true;
-    this.updateTerminalHealthStatus('SYNCING');
+    this.terminalHealthStatus = 'SYNCING';
+    this.notifyListeners(this.memoryQueue);
 
     const now = new Date();
 
-    for (let i = 0; i < queue.length; i++) {
-      const item = queue[i];
+    for (let i = 0; i < this.memoryQueue.length; i++) {
+      const item = this.memoryQueue[i];
       if (item.status === 'SYNCED') continue;
 
       // Check backoff time
       if (item.nextRetryTime && new Date(item.nextRetryTime) > now) {
         continue;
       }
+
+      item.status = 'SYNCING';
+      await posIndexedDB.saveSyncItem(item);
+      this.notifyListeners(this.memoryQueue);
 
       try {
         const success = await this.syncItemToFirestore(item);
@@ -271,7 +294,15 @@ class SyncQueueService {
           item.lastError = null;
           item.syncedAt = new Date().toISOString();
 
-          // Also inform Local Bridge to update syncStatus in JSON & Excel
+          // Update order status in IndexedDB
+          await posIndexedDB.updateOrderStatus(item.localId, 'SYNCED', {
+            syncTimestamp: item.syncedAt,
+          });
+
+          // Save item in IndexedDB queue
+          await posIndexedDB.saveSyncItem(item);
+
+          // Inform Local Bridge for PDF & Excel update
           try {
             await posBridgeService.saveTransaction({
               ...item.payload,
@@ -284,6 +315,10 @@ class SyncQueueService {
           item.retryCount = (item.retryCount || 0) + 1;
           const backoffMs = BACKOFF_STEPS_MS[Math.min(item.retryCount - 1, BACKOFF_STEPS_MS.length - 1)];
           item.nextRetryTime = new Date(Date.now() + backoffMs).toISOString();
+          await posIndexedDB.saveSyncItem(item);
+          await posIndexedDB.updateOrderStatus(item.localId, 'SYNC_FAILED', {
+            lastSyncError: item.lastError,
+          });
         }
       } catch (err) {
         console.warn(`Sync item ${item.localId} failed:`, err.message);
@@ -292,21 +327,23 @@ class SyncQueueService {
         item.retryCount = (item.retryCount || 0) + 1;
         const backoffMs = BACKOFF_STEPS_MS[Math.min(item.retryCount - 1, BACKOFF_STEPS_MS.length - 1)];
         item.nextRetryTime = new Date(Date.now() + backoffMs).toISOString();
+        await posIndexedDB.saveSyncItem(item);
+        await posIndexedDB.updateOrderStatus(item.localId, 'SYNC_FAILED', {
+          lastSyncError: err.message,
+        });
       }
-
-      // Save progress after each item attempt
-      this.saveQueue(queue);
     }
 
     this.isSyncing = false;
     
-    // Check if any failed
-    const remainingPending = this.getQueue().filter(i => i.status === 'SYNC_PENDING' || i.status === 'SYNC_FAILED');
+    // Check remaining pending items
+    const remainingPending = this.memoryQueue.filter(i => i.status === 'SYNC_PENDING' || i.status === 'SYNC_FAILED');
     if (remainingPending.length === 0) {
-      this.updateTerminalHealthStatus('ONLINE');
+      this.terminalHealthStatus = 'ONLINE';
     } else {
-      this.updateTerminalHealthStatus('ERROR');
+      this.terminalHealthStatus = 'ERROR';
     }
+    this.notifyListeners(this.memoryQueue);
   }
 
   /**
@@ -332,14 +369,12 @@ class SyncQueueService {
       }
     } catch (e) {}
 
-    // Conflict resolution: If remote data exists, merge paymentHistory & preserve timestamps
     let finalOrderPayload = { ...payload };
 
     if (remoteData) {
       const localUpdated = new Date(payload.updatedAt || payload.createdAt || 0).getTime();
       const remoteUpdated = new Date(remoteData.updatedAt || remoteData.createdAt || 0).getTime();
 
-      // If remote is strictly newer, do NOT overwrite top-level metrics blindly
       if (remoteUpdated > localUpdated) {
         finalOrderPayload = {
           ...payload,
@@ -350,7 +385,6 @@ class SyncQueueService {
           syncStatus: 'SYNCED',
         };
       } else {
-        // Local is newer or equal: Merge payment histories
         finalOrderPayload.paymentHistory = this.mergePaymentHistories(remoteData.paymentHistory, payload.paymentHistory);
         finalOrderPayload.statusTimeline = this.mergeTimelines(remoteData.statusTimeline, payload.statusTimeline);
       }
@@ -364,7 +398,7 @@ class SyncQueueService {
       await setDoc(doc(db, 'orders', targetDocId), finalOrderPayload, { merge: true });
     } catch (e) {
       if (e.code === 'permission-denied' || String(e.message).includes('PERMISSION_DENIED')) {
-        console.warn(`Firestore order update notice for ${targetDocId} (document exists):`, e.message);
+        console.warn(`Firestore order update notice for ${targetDocId}:`, e.message);
       } else {
         throw e;
       }
@@ -373,9 +407,7 @@ class SyncQueueService {
     // Secondary collection sync: 'bookings' (non-blocking)
     try {
       await setDoc(doc(db, 'bookings', targetDocId), finalOrderPayload, { merge: true });
-    } catch (e) {
-      // Non-blocking secondary collection sync notice
-    }
+    } catch (e) {}
 
     // 3. Customer CRM Sync in Firestore
     const phone = finalOrderPayload.phone || finalOrderPayload.customer?.phone ? String(finalOrderPayload.phone || finalOrderPayload.customer.phone).replace(/\D/g, '') : '';
@@ -383,7 +415,6 @@ class SyncQueueService {
       try {
         const custRef = doc(db, 'customers', phone);
         const custSnap = await getDoc(custRef);
-        const totalBilled = Number(finalOrderPayload.totalAmount || finalOrderPayload.finalPrice || 0);
 
         if (custSnap.exists()) {
           const cData = custSnap.data();
@@ -399,85 +430,15 @@ class SyncQueueService {
             id: `cust-${phone}`,
             name: finalOrderPayload.customerName || 'Valued Customer',
             phone,
-            whatsapp: finalOrderPayload.whatsapp || phone,
             address: finalOrderPayload.address || '',
-            locality: finalOrderPayload.locality || '',
-            city: finalOrderPayload.city || 'Hyderabad',
-            orderCount: 1,
-            totalSpent: totalBilled,
-            firstOrderDate: finalOrderPayload.createdAt,
-            lastOrderDate: finalOrderPayload.createdAt,
+            createdAt: finalOrderPayload.createdAt,
             updatedAt: new Date().toISOString(),
           }, { merge: true });
         }
-      } catch (e) {
-        console.warn('Customer CRM sync notice:', e);
-      }
+      } catch (e) {}
     }
 
     return true;
-  }
-
-  /**
-   * Update settings/terminal_sync_health in Firestore
-   */
-  async updateTerminalHealthStatus(status = 'ONLINE') {
-    const queue = this.getQueue();
-    const pendingCount = queue.filter(i => i.status === 'SYNC_PENDING').length;
-    const failedCount = queue.filter(i => i.status === 'SYNC_FAILED').length;
-    const syncedCount = queue.filter(i => i.status === 'SYNCED').length;
-
-    const terminalId = typeof window !== 'undefined' && localStorage.getItem('techwash_terminal_id') || 'counter-1';
-    const terminalCode = terminalId === 'counter-2' ? 'TW-POS-02' : (terminalId === 'counter-3' ? 'TW-POS-03' : 'TW-POS-01');
-    const branchName = terminalId === 'counter-2' ? 'Branch 1 — Tolichowki' : (terminalId === 'counter-3' ? 'Pick Up Point — Ambience' : 'Main Branch — Manikonda');
-
-    const healthData = {
-      terminalId,
-      terminalCode,
-      branchName,
-      status: failedCount > 0 ? 'ERROR' : (pendingCount > 0 ? 'SYNCING' : status),
-      lastSync: new Date().toISOString(),
-      lastSuccessfulSync: (syncedCount > 0 || pendingCount === 0) ? new Date().toISOString() : null,
-      pendingCount,
-      syncedCount,
-      failedCount,
-      updatedAt: new Date().toISOString(),
-    };
-
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(TERMINAL_HEALTH_KEY, JSON.stringify(healthData));
-    }
-
-    if (isFirebaseConfigured && db) {
-      try {
-        const healthDocRef = doc(db, 'settings', 'terminal_sync_health');
-        await setDoc(healthDocRef, {
-          terminals: {
-            [terminalId]: healthData
-          }
-        }, { merge: true });
-      } catch (e) {
-        // Non-critical
-      }
-    }
-  }
-
-  /**
-   * Get queue summary counts
-   */
-  getQueueSummary(queue = this.getQueue()) {
-    const pendingCount = queue.filter(i => i.status === 'SYNC_PENDING').length;
-    const failedCount = queue.filter(i => i.status === 'SYNC_FAILED').length;
-    const syncedCount = queue.filter(i => i.status === 'SYNCED').length;
-
-    return {
-      total: queue.length,
-      pendingCount,
-      failedCount,
-      syncedCount,
-      isSyncing: this.isSyncing,
-      isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
-    };
   }
 }
 
