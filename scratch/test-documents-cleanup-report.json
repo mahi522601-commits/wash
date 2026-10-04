@@ -1,0 +1,482 @@
+[
+  {
+    "collection": "orders",
+    "docId": "POS01-20261003-T11263",
+    "orderNumber": "TW-11299",
+    "customerName": "Real Test 1 Online Customer",
+    "amount": 400,
+    "branch": "Main Branch — Manikonda",
+    "terminalId": "counter-1",
+    "reason": "Test customer name: \"Real Test 1 Online Customer\""
+  },
+  {
+    "collection": "orders",
+    "docId": "POS01-20261003-T11982",
+    "orderNumber": "TW-92507",
+    "customerName": "Real Test 1 Online Customer",
+    "amount": 400,
+    "branch": "Main Branch — Manikonda",
+    "terminalId": "counter-1",
+    "reason": "Test customer name: \"Real Test 1 Online Customer\""
+  },
+  {
+    "collection": "orders",
+    "docId": "POS01-20261003-T12108",
+    "orderNumber": "TW-29520",
+    "customerName": "Real Test 1 Online Customer",
+    "amount": 400,
+    "branch": "Main Branch — Manikonda",
+    "terminalId": "counter-1",
+    "reason": "Test customer name: \"Real Test 1 Online Customer\""
+  },
+  {
+    "collection": "orders",
+    "docId": "POS01-20261003-T12154",
+    "orderNumber": "TW-T12-348",
+    "customerName": "N/A",
+    "amount": 150,
+    "branch": "N/A",
+    "terminalId": "counter-1",
+    "reason": "Test ID pattern / marker (POS01-20261003-T12154)"
+  },
+  {
+    "collection": "orders",
+    "docId": "POS01-20261003-T12912",
+    "orderNumber": "TW-97847",
+    "customerName": "Real Test 1 Online Customer",
+    "amount": 400,
+    "branch": "Main Branch — Manikonda",
+    "terminalId": "counter-1",
+    "reason": "Test customer name: \"Real Test 1 Online Customer\""
+  },
+  {
+    "collection": "orders",
+    "docId": "POS01-20261003-T13195",
+    "orderNumber": "TW-77650",
+    "customerName": "Real Test 1 Online Customer",
+    "amount": 400,
+    "branch": "Main Branch — Manikonda",
+    "terminalId": "counter-1",
+    "reason": "Test customer name: \"Real Test 1 Online Customer\""
+  },
+  {
+    "collection": "orders",
+    "docId": "POS01-20261003-T17643",
+    "orderNumber": "TW-63377",
+    "customerName": "Real Test 1 Online Customer",
+    "amount": 400,
+    "branch": "Main Branch — Manikonda",
+    "terminalId": "counter-1",
+    "reason": "Test customer name: \"Real Test 1 Online Customer\""
+  },
+  {
+    "collection": "orders",
+    "docId": "POS01-20261003-T23204",
+    "orderNumber": "TW-42476",
+    "customerName": "Real Test 2 Offline Customer",
+    "amount": 200,
+    "branch": "Main Branch — Manikonda",
+    "terminalId": "counter-1",
+    "reason": "Test customer name: \"Real Test 2 Offline Customer\""
+  },
+  {
+    "collection": "orders",
+    "docId": "POS01-20261003-T23378",
+    "orderNumber": "TW-88120",
+    "customerName": "Real Test 2 Offline Customer",
+    "amount": 200,
+    "branch": "Main Branch — Manikonda",
+    "terminalId": "counter-1",
+    "reason": "Test customer name: \"Real Test 2 Offline Customer\""
+  },
+  {
+    "collection": "orders",
+    "docId": "POS01-20261003-T24796",
+    "orderNumber": "TW-16807",
+    "customerName": "Real Test 2 Offline Customer",
+    "amount": 200,
+    "branch": "Main Branch — Manikonda",
+    "terminalId": "counter-1",
+    "reason": "Test customer name: \"Real Test 2 Offline Customer\""
+  },
+  {
+    "collection": "orders",
+    "docId": "POS01-20261003-T26206",
+    "orderNumber": "TW-52888",
+    "customerName": "Real Test 2 Offline Customer",
+    "amount": 200,
+    "branch": "Main Branch — Manikonda",
+    "terminalId": "counter-1",
+    "reason": "Test customer name: \"Real Test 2 Offline Customer\""
+  },
+  {
+    "collection": "orders",
+    "docId": "POS01-20261003-T27580",
+    "orderNumber": "TW-99730",
+    "customerName": "Real Test 2 Offline Customer",
+    "amount": 200,
+    "branch": "Main Branch — Manikonda",
+    "terminalId": "counter-1",
+    "reason": "Test customer name: \"Real Test 2 Offline Customer\""
+  },
+  {
+    "collection": "orders",
+    "docId": "POS01-20261003-T54406",
+    "orderNumber": "TW-22611",
+    "customerName": "Real Test 5 Timeout Customer",
+    "amount": 500,
+    "branch": "Main Branch — Manikonda",
+    "terminalId": "counter-1",
+    "reason": "Test customer name: \"Real Test 5 Timeout Customer\""
+  },
+  {
+    "collection": "orders",
+    "docId": "POS01-20261003-T55343",
+    "orderNumber": "TW-17357",
+    "customerName": "Real Test 5 Timeout Customer",
+    "amount": 500,
+    "branch": "Main Branch — Manikonda",
+    "terminalId": "counter-1",
+    "reason": "Test customer name: \"Real Test 5 Timeout Customer\""
+  },
+  {
+    "collection": "orders",
+    "docId": "POS01-20261003-T57067",
+    "orderNumber": "TW-58622",
+    "customerName": "Real Test 5 Timeout Customer",
+    "amount": 500,
+    "branch": "Main Branch — Manikonda",
+    "terminalId": "counter-1",
+    "reason": "Test customer name: \"Real Test 5 Timeout Customer\""
+  },
+  {
+    "collection": "orders",
+    "docId": "POS01-20261003-T57119",
+    "orderNumber": "TW-33238",
+    "customerName": "Real Test 5 Timeout Customer",
+    "amount": 500,
+    "branch": "Main Branch — Manikonda",
+    "terminalId": "counter-1",
+    "reason": "Test customer name: \"Real Test 5 Timeout Customer\""
+  },
+  {
+    "collection": "orders",
+    "docId": "POS01-20261003-T58721",
+    "orderNumber": "TW-41621",
+    "customerName": "Real Test 5 Timeout Customer",
+    "amount": 500,
+    "branch": "Main Branch — Manikonda",
+    "terminalId": "counter-1",
+    "reason": "Test customer name: \"Real Test 5 Timeout Customer\""
+  },
+  {
+    "collection": "orders",
+    "docId": "POS01-20261003-T61454",
+    "orderNumber": "TW-88248",
+    "customerName": "Real Test 6 Partial Customer",
+    "amount": 1000,
+    "branch": "Main Branch — Manikonda",
+    "terminalId": "counter-1",
+    "reason": "Test customer name: \"Real Test 6 Partial Customer\""
+  },
+  {
+    "collection": "orders",
+    "docId": "POS01-20261003-T66603",
+    "orderNumber": "TW-38648",
+    "customerName": "Real Test 6 Partial Customer",
+    "amount": 1000,
+    "branch": "Main Branch — Manikonda",
+    "terminalId": "counter-1",
+    "reason": "Test customer name: \"Real Test 6 Partial Customer\""
+  },
+  {
+    "collection": "orders",
+    "docId": "POS01-20261003-T71947",
+    "orderNumber": "TW-72898",
+    "customerName": "Real Test 7 Stage Lifecycle Customer",
+    "amount": 300,
+    "branch": "Main Branch — Manikonda",
+    "terminalId": "counter-1",
+    "reason": "Test customer name: \"Real Test 7 Stage Lifecycle Customer\""
+  },
+  {
+    "collection": "orders",
+    "docId": "POS01-20261003-T84200",
+    "orderNumber": "TW-98718",
+    "customerName": "Real Test 8 Cancellation Customer",
+    "amount": 250,
+    "branch": "N/A",
+    "terminalId": "counter-1",
+    "reason": "Test customer name: \"Real Test 8 Cancellation Customer\""
+  },
+  {
+    "collection": "orders",
+    "docId": "POS01-20261003-T91477",
+    "orderNumber": "N/A",
+    "customerName": "POS-01 Manikonda Test Order",
+    "amount": 500,
+    "branch": "Main Branch — Manikonda",
+    "terminalId": "counter-1",
+    "reason": "Test customer name: \"POS-01 Manikonda Test Order\""
+  },
+  {
+    "collection": "orders",
+    "docId": "POS02-20261003-T92501",
+    "orderNumber": "N/A",
+    "customerName": "POS-02 Tolichowki Test Order",
+    "amount": 500,
+    "branch": "Branch 1 — Tolichowki",
+    "terminalId": "counter-2",
+    "reason": "Test customer name: \"POS-02 Tolichowki Test Order\""
+  },
+  {
+    "collection": "orders",
+    "docId": "POS03-20261003-T93681",
+    "orderNumber": "N/A",
+    "customerName": "POS-03 Ambience Test Order",
+    "amount": 500,
+    "branch": "Pick Up Point — Ambience",
+    "terminalId": "counter-3",
+    "reason": "Test customer name: \"POS-03 Ambience Test Order\""
+  },
+  {
+    "collection": "bookings",
+    "docId": "POS01-20261003-T11263",
+    "orderNumber": "TW-11299",
+    "customerName": "Real Test 1 Online Customer",
+    "amount": 400,
+    "branch": "Main Branch — Manikonda",
+    "terminalId": "counter-1",
+    "reason": "Test customer name: \"Real Test 1 Online Customer\""
+  },
+  {
+    "collection": "bookings",
+    "docId": "POS01-20261003-T11982",
+    "orderNumber": "TW-92507",
+    "customerName": "Real Test 1 Online Customer",
+    "amount": 400,
+    "branch": "Main Branch — Manikonda",
+    "terminalId": "counter-1",
+    "reason": "Test customer name: \"Real Test 1 Online Customer\""
+  },
+  {
+    "collection": "bookings",
+    "docId": "POS01-20261003-T12108",
+    "orderNumber": "TW-29520",
+    "customerName": "Real Test 1 Online Customer",
+    "amount": 400,
+    "branch": "Main Branch — Manikonda",
+    "terminalId": "counter-1",
+    "reason": "Test customer name: \"Real Test 1 Online Customer\""
+  },
+  {
+    "collection": "bookings",
+    "docId": "POS01-20261003-T12154",
+    "orderNumber": "TW-T12-348",
+    "customerName": "N/A",
+    "amount": 150,
+    "branch": "N/A",
+    "terminalId": "counter-1",
+    "reason": "Test ID pattern / marker (POS01-20261003-T12154)"
+  },
+  {
+    "collection": "bookings",
+    "docId": "POS01-20261003-T12912",
+    "orderNumber": "TW-97847",
+    "customerName": "Real Test 1 Online Customer",
+    "amount": 400,
+    "branch": "Main Branch — Manikonda",
+    "terminalId": "counter-1",
+    "reason": "Test customer name: \"Real Test 1 Online Customer\""
+  },
+  {
+    "collection": "bookings",
+    "docId": "POS01-20261003-T13195",
+    "orderNumber": "TW-77650",
+    "customerName": "Real Test 1 Online Customer",
+    "amount": 400,
+    "branch": "Main Branch — Manikonda",
+    "terminalId": "counter-1",
+    "reason": "Test customer name: \"Real Test 1 Online Customer\""
+  },
+  {
+    "collection": "bookings",
+    "docId": "POS01-20261003-T17643",
+    "orderNumber": "TW-63377",
+    "customerName": "Real Test 1 Online Customer",
+    "amount": 400,
+    "branch": "Main Branch — Manikonda",
+    "terminalId": "counter-1",
+    "reason": "Test customer name: \"Real Test 1 Online Customer\""
+  },
+  {
+    "collection": "bookings",
+    "docId": "POS01-20261003-T23204",
+    "orderNumber": "TW-42476",
+    "customerName": "Real Test 2 Offline Customer",
+    "amount": 200,
+    "branch": "Main Branch — Manikonda",
+    "terminalId": "counter-1",
+    "reason": "Test customer name: \"Real Test 2 Offline Customer\""
+  },
+  {
+    "collection": "bookings",
+    "docId": "POS01-20261003-T23378",
+    "orderNumber": "TW-88120",
+    "customerName": "Real Test 2 Offline Customer",
+    "amount": 200,
+    "branch": "Main Branch — Manikonda",
+    "terminalId": "counter-1",
+    "reason": "Test customer name: \"Real Test 2 Offline Customer\""
+  },
+  {
+    "collection": "bookings",
+    "docId": "POS01-20261003-T24796",
+    "orderNumber": "TW-16807",
+    "customerName": "Real Test 2 Offline Customer",
+    "amount": 200,
+    "branch": "Main Branch — Manikonda",
+    "terminalId": "counter-1",
+    "reason": "Test customer name: \"Real Test 2 Offline Customer\""
+  },
+  {
+    "collection": "bookings",
+    "docId": "POS01-20261003-T26206",
+    "orderNumber": "TW-52888",
+    "customerName": "Real Test 2 Offline Customer",
+    "amount": 200,
+    "branch": "Main Branch — Manikonda",
+    "terminalId": "counter-1",
+    "reason": "Test customer name: \"Real Test 2 Offline Customer\""
+  },
+  {
+    "collection": "bookings",
+    "docId": "POS01-20261003-T27580",
+    "orderNumber": "TW-99730",
+    "customerName": "Real Test 2 Offline Customer",
+    "amount": 200,
+    "branch": "Main Branch — Manikonda",
+    "terminalId": "counter-1",
+    "reason": "Test customer name: \"Real Test 2 Offline Customer\""
+  },
+  {
+    "collection": "bookings",
+    "docId": "POS01-20261003-T54406",
+    "orderNumber": "TW-22611",
+    "customerName": "Real Test 5 Timeout Customer",
+    "amount": 500,
+    "branch": "Main Branch — Manikonda",
+    "terminalId": "counter-1",
+    "reason": "Test customer name: \"Real Test 5 Timeout Customer\""
+  },
+  {
+    "collection": "bookings",
+    "docId": "POS01-20261003-T55343",
+    "orderNumber": "TW-17357",
+    "customerName": "Real Test 5 Timeout Customer",
+    "amount": 500,
+    "branch": "Main Branch — Manikonda",
+    "terminalId": "counter-1",
+    "reason": "Test customer name: \"Real Test 5 Timeout Customer\""
+  },
+  {
+    "collection": "bookings",
+    "docId": "POS01-20261003-T57067",
+    "orderNumber": "TW-58622",
+    "customerName": "Real Test 5 Timeout Customer",
+    "amount": 500,
+    "branch": "Main Branch — Manikonda",
+    "terminalId": "counter-1",
+    "reason": "Test customer name: \"Real Test 5 Timeout Customer\""
+  },
+  {
+    "collection": "bookings",
+    "docId": "POS01-20261003-T57119",
+    "orderNumber": "TW-33238",
+    "customerName": "Real Test 5 Timeout Customer",
+    "amount": 500,
+    "branch": "Main Branch — Manikonda",
+    "terminalId": "counter-1",
+    "reason": "Test customer name: \"Real Test 5 Timeout Customer\""
+  },
+  {
+    "collection": "bookings",
+    "docId": "POS01-20261003-T58721",
+    "orderNumber": "TW-41621",
+    "customerName": "Real Test 5 Timeout Customer",
+    "amount": 500,
+    "branch": "Main Branch — Manikonda",
+    "terminalId": "counter-1",
+    "reason": "Test customer name: \"Real Test 5 Timeout Customer\""
+  },
+  {
+    "collection": "bookings",
+    "docId": "POS01-20261003-T61454",
+    "orderNumber": "TW-88248",
+    "customerName": "Real Test 6 Partial Customer",
+    "amount": 1000,
+    "branch": "Main Branch — Manikonda",
+    "terminalId": "counter-1",
+    "reason": "Test customer name: \"Real Test 6 Partial Customer\""
+  },
+  {
+    "collection": "bookings",
+    "docId": "POS01-20261003-T66603",
+    "orderNumber": "TW-38648",
+    "customerName": "Real Test 6 Partial Customer",
+    "amount": 1000,
+    "branch": "Main Branch — Manikonda",
+    "terminalId": "counter-1",
+    "reason": "Test customer name: \"Real Test 6 Partial Customer\""
+  },
+  {
+    "collection": "bookings",
+    "docId": "POS01-20261003-T71947",
+    "orderNumber": "TW-72898",
+    "customerName": "Real Test 7 Stage Lifecycle Customer",
+    "amount": 300,
+    "branch": "Main Branch — Manikonda",
+    "terminalId": "counter-1",
+    "reason": "Test customer name: \"Real Test 7 Stage Lifecycle Customer\""
+  },
+  {
+    "collection": "bookings",
+    "docId": "POS01-20261003-T84200",
+    "orderNumber": "TW-98718",
+    "customerName": "Real Test 8 Cancellation Customer",
+    "amount": 250,
+    "branch": "N/A",
+    "terminalId": "counter-1",
+    "reason": "Test customer name: \"Real Test 8 Cancellation Customer\""
+  },
+  {
+    "collection": "bookings",
+    "docId": "POS01-20261003-T91477",
+    "orderNumber": "N/A",
+    "customerName": "POS-01 Manikonda Test Order",
+    "amount": 500,
+    "branch": "Main Branch — Manikonda",
+    "terminalId": "counter-1",
+    "reason": "Test customer name: \"POS-01 Manikonda Test Order\""
+  },
+  {
+    "collection": "bookings",
+    "docId": "POS02-20261003-T92501",
+    "orderNumber": "N/A",
+    "customerName": "POS-02 Tolichowki Test Order",
+    "amount": 500,
+    "branch": "Branch 1 — Tolichowki",
+    "terminalId": "counter-2",
+    "reason": "Test customer name: \"POS-02 Tolichowki Test Order\""
+  },
+  {
+    "collection": "bookings",
+    "docId": "POS03-20261003-T93681",
+    "orderNumber": "N/A",
+    "customerName": "POS-03 Ambience Test Order",
+    "amount": 500,
+    "branch": "Pick Up Point — Ambience",
+    "terminalId": "counter-3",
+    "reason": "Test customer name: \"POS-03 Ambience Test Order\""
+  }
+]

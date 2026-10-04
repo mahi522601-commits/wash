@@ -147,6 +147,15 @@ export const reportService = {
 
     // Filter orders
     const filteredOrders = allOrders.filter(order => {
+      // 0. Exclude Test Data Artifacts from Financial Reports
+      const isTestDoc = Boolean(
+        order.isTestData === true || 
+        order.isTestOrder === true ||
+        (order.id && (order.id.includes('-T1') || order.id.includes('-T2') || order.id.includes('-T3') || order.id.includes('-T4') || order.id.includes('-T5') || order.id.includes('-T6') || order.id.includes('-T7') || order.id.includes('-T8') || order.id.includes('-T9') || order.id.includes('-T12'))) ||
+        (order.customerName && (order.customerName.toLowerCase().includes('real test') || order.customerName.toLowerCase().includes('test customer') || order.customerName.toLowerCase().includes('phase 4')))
+      );
+      if (isTestDoc) return false;
+
       // 1. Comprehensive Date Check across creation and payment timestamps
       if (start && end) {
         const dateCandidates = [
@@ -486,7 +495,7 @@ export const reportService = {
         if (bKey !== branchFilter) return;
       }
 
-      const orderDateObj = parseOrderDateSafe(order.createdAt || order.pickupDate || order.schedule?.pickupDate);
+      const orderDateObj = parseOrderDateSafe(order.createdAt || order.pickupDate || order.schedule?.pickupDate) || new Date();
       const year = orderDateObj.getFullYear();
       const month = String(orderDateObj.getMonth() + 1).padStart(2, '0');
       const day = String(orderDateObj.getDate()).padStart(2, '0');

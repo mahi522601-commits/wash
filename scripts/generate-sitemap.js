@@ -1,6 +1,7 @@
 /**
  * Automated Advanced Sitemap Generator for Techwash Laundry Services
  * Generates modular multi-part XML sitemaps (pages, services, areas, blog) + master sitemap index + TXT URL lists
+ * Focuses exclusively on Manikonda local SEO cluster for area routes.
  * Run via: node scripts/generate-sitemap.js
  */
 
@@ -11,7 +12,7 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const BASE_URL = 'https://techwashlaundry.com';
+const BASE_URL = 'https://www.techwashlaundry.com';
 
 const CORE_PAGES = [
   { 
@@ -120,13 +121,6 @@ const SERVICE_ITEMS = [
 
 const AREA_SLUGS = [
   'manikonda',
-  'puppalaguda',
-  'khajaguda',
-  'lanco-hills',
-  'shaikpet',
-  'narsingi',
-  'alkapur-township',
-  'nanakramguda',
 ];
 
 const BLOG_SLUGS = [
@@ -184,18 +178,27 @@ function generateSitemaps() {
     servicesEntries.push(buildUrlEntry(fullUrl, '0.9', 'weekly', currentDate, images));
   });
 
-  // 3. Areas (8 area hubs + 88 area/service pages = 96 local landing pages)
+  // 3. Areas (1 Manikonda area hub + 11 Manikonda service pages = 12 local landing pages)
   const areasEntries = [];
   AREA_SLUGS.forEach((slug) => {
     const hubUrl = `${BASE_URL}/areas/${slug}`;
     allUrls.push(hubUrl);
-    areasEntries.push(buildUrlEntry(hubUrl, '0.9', 'weekly', currentDate));
+    areasEntries.push(buildUrlEntry(hubUrl, '1.0', 'weekly', currentDate));
   });
   AREA_SLUGS.forEach((areaSlug) => {
     SERVICE_ITEMS.forEach((srv) => {
       const serviceAreaUrl = `${BASE_URL}/areas/${areaSlug}/${srv.slug}`;
       allUrls.push(serviceAreaUrl);
-      areasEntries.push(buildUrlEntry(serviceAreaUrl, '0.85', 'weekly', currentDate));
+      // Determine priority based on Manikonda SEO priority specification
+      let priority = '0.85';
+      if (srv.slug === 'laundry-service') priority = '0.95';
+      else if (srv.slug === 'wash-and-iron') priority = '0.95';
+      else if (srv.slug === 'dry-cleaning') priority = '0.90';
+      else if (srv.slug === 'laundry-pickup-and-delivery') priority = '0.90';
+      else if (srv.slug === 'ironing-service') priority = '0.88';
+      else if (srv.slug === 'wash-and-fold') priority = '0.88';
+
+      areasEntries.push(buildUrlEntry(serviceAreaUrl, priority, 'weekly', currentDate));
     });
   });
 
@@ -224,7 +227,7 @@ function generateSitemaps() {
   console.log(`   - sitemap.xml (Master Unified: ${masterEntries.length} URLs)`);
   console.log(`   - sitemap-pages.xml (${pagesEntries.length} URLs)`);
   console.log(`   - sitemap-services.xml (${servicesEntries.length} URLs)`);
-  console.log(`   - sitemap-areas.xml (${areasEntries.length} URLs)`);
+  console.log(`   - sitemap-areas.xml (${areasEntries.length} Manikonda URLs)`);
   console.log(`   - sitemap-blog.xml (${blogEntries.length} URLs)`);
   console.log(`   - sitemap.txt (${allUrls.length} plain text URLs)`);
 }

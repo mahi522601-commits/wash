@@ -1,14 +1,14 @@
 /**
- * Tech Wash Centralized SEO & Geo-Targeting Dataset
- * Single source of truth for Hyderabad Local SEO, Service SEO, and Schema.org metadata
+ * Techwash Laundry Centralized SEO & Geo-Targeting Dataset
+ * Single source of truth for Manikonda Local SEO, Service SEO, and Schema.org metadata
  */
 
-export const BASE_URL = 'https://techwashlaundry.com';
+export const BASE_URL = 'https://www.techwashlaundry.com';
 
 export const BUSINESS_INFO = {
-  name: 'Tech Wash Laundry Services',
-  legalName: 'Tech Wash Laundry Services',
-  alternateName: 'Tech Wash',
+  name: 'Techwash Laundry Services',
+  legalName: 'Techwash Laundry Services',
+  alternateName: 'Techwash Laundry',
   url: BASE_URL,
   logo: `${BASE_URL}/techwashlogo.webp`,
   image: `${BASE_URL}/techwashlogo.webp`,
@@ -46,28 +46,28 @@ export const BUSINESS_INFO = {
 };
 
 /**
- * 8 Priority Hyderabad Local SEO Focus Areas
- * With geographically accurate nearby relationships, landmarks, and unique localized content
+ * Manikonda Local SEO Focus Area
+ * Primary target for local SEO cluster implementation
  */
 export const SEO_AREAS = [
   {
     slug: 'manikonda',
     name: 'Manikonda',
-    h1: 'Laundry & Dry Cleaning Services in Manikonda, Hyderabad',
-    title: 'Laundry Service & Dry Cleaning in Manikonda | Tech Wash',
-    metaDescription: 'Professional laundry service and dry cleaning in Manikonda, Hyderabad. 0 PPM RO soft water wash, non-toxic hydrocarbon dry cleaning, and scheduled doorstep pickup across Manikonda.',
-    keywords: 'laundry service in manikonda, best laundry in manikonda, laundry near manikonda, dry cleaning in manikonda, laundry pickup and delivery manikonda, dry cleaners manikonda hyderabad',
+    h1: 'Laundry Services in Manikonda, Hyderabad',
+    title: 'Laundry Services in Manikonda, Hyderabad | Techwash Laundry',
+    metaDescription: 'Professional wash and iron, dry cleaning, laundry, and garment care services in Manikonda, Hyderabad. Techwash Laundry offers convenient garment cleaning and ironing with pickup and delivery options.',
+    keywords: 'laundry service in Manikonda, laundry services in Manikonda, laundry near Manikonda, laundry service Manikonda Hyderabad, laundry shop near Manikonda, laundry pickup Manikonda, laundry delivery Manikonda',
     pincodes: ['500089'],
     landmarks: [
-      'Lanco Hills Road',
-      'Puppalaguda Main Road',
       'Secretariat Colony',
       'OU Colony',
+      'Lanco Hills Road',
       'Shirdi Sai Nagar',
-      'Alkapoor Township connectivity',
+      'Puppalaguda Main Road',
+      'Alkapoor Township Corridor',
     ],
-    introText: 'Tech Wash delivers professional laundry, eco-friendly hydrocarbon dry cleaning, and steam ironing services for residents and professionals in Manikonda, Hyderabad. With 100% demineralized RO soft water and isolated single-customer wash drums, our dedicated doorstep fleet provides daily scheduled laundry pickup and delivery across Secretariat Colony, OU Colony, Lanco Hills Road, and surrounding societies.',
-    turnaround: 'Standard 48-Hour Delivery • 24-Hour Express Turnaround Available',
+    introText: 'Techwash Laundry provides professional laundry, eco-friendly hydrocarbon dry cleaning, weight-based wash & iron, and steam pressing for residents in Manikonda, Hyderabad. With 100% demineralized 0 PPM RO soft water and single-customer isolated wash drums, our dedicated doorstep fleet provides daily scheduled laundry pickup and delivery across Secretariat Colony, OU Colony, Lanco Hills Road, Shirdi Sai Nagar, and surrounding residential societies in Manikonda.',
+    turnaround: 'Standard 48-Hour Delivery • 24-Hour Express Available',
     pickupHours: '8:00 AM – 9:00 PM (All 7 Days)',
     commonNeeds: [
       'Daily office wear shirts & trousers steam ironing and crease retention',
@@ -76,11 +76,11 @@ export const SEO_AREAS = [
       'Traditional saree rolling & polishing for silk, pattu & banarasi sarees',
       'Living room curtains and heavy carpet deep extraction washing',
     ],
-    nearbyAreas: ['puppalaguda', 'alkapur-township', 'khajaguda', 'lanco-hills', 'shaikpet', 'narsingi'],
+    nearbyAreas: [],
     faqs: [
       {
-        question: 'Does Tech Wash provide laundry service in Manikonda?',
-        answer: 'Yes, Tech Wash provides full laundry services in Manikonda including weight-based wash & fold (₹100/kg), wash & iron (₹130/kg), steam ironing (from ₹12), and premium dry cleaning (from ₹40).',
+        question: 'Does Techwash Laundry provide service in Manikonda?',
+        answer: 'Yes, Techwash Laundry provides full laundry services in Manikonda including weight-based wash & fold (from ₹100/kg), wash & iron (from ₹130/kg), steam ironing (from ₹12), and premium dry cleaning (from ₹40).',
       },
       {
         question: 'How does laundry pickup and delivery in Manikonda work?',
@@ -88,286 +88,22 @@ export const SEO_AREAS = [
       },
       {
         question: 'Where can I find reliable dry cleaning in Manikonda?',
-        answer: 'Tech Wash provides certified non-toxic European hydrocarbon dry cleaning in Manikonda with zero PERC, preserving suit fabrics, delicate silks, and designer wear without harsh chemical odors.',
+        answer: 'Techwash Laundry provides certified non-toxic European hydrocarbon dry cleaning in Manikonda with zero PERC, preserving suit fabrics, delicate silks, and designer wear without harsh chemical odors.',
       },
       {
-        question: 'Is Tech Wash available near Manikonda landmarks like Secretariat Colony & OU Colony?',
-        answer: 'Yes, our pickup fleet operates daily throughout Secretariat Colony, OU Colony, Lanco Hills Road, Shirdi Sai Nagar, and adjacent Puppalaguda corridors.',
+        question: 'Is Techwash Laundry available near Secretariat Colony & OU Colony in Manikonda?',
+        answer: 'Yes, our pickup fleet operates daily throughout Secretariat Colony, OU Colony, Lanco Hills Road, Shirdi Sai Nagar, and adjacent Manikonda corridors.',
       },
       {
-        question: 'Which nearby areas around Manikonda are served?',
-        answer: 'In addition to Manikonda, Tech Wash serves nearby Puppalaguda, Alkapur Township, Lanco Hills, Khajaguda, Shaikpet, and Narsingi.',
-      },
-    ],
-  },
-  {
-    slug: 'puppalaguda',
-    name: 'Puppalaguda / Puppalguda',
-    h1: 'Laundry & Dry Cleaning Services in Puppalaguda, Hyderabad',
-    title: 'Laundry Service & Dry Cleaning in Puppalaguda | Tech Wash',
-    metaDescription: 'Top-rated laundry service and dry cleaning in Puppalaguda (Puppalguda), Hyderabad. Demineralized RO soft wash, suit dry cleaning, and doorstep pickup for gated communities.',
-    keywords: 'laundry service in puppalaguda, best laundry in puppalguda, laundry near puppalaguda, dry cleaning in puppalaguda, laundry pickup and delivery puppalaguda, dry cleaners golden mile road',
-    pincodes: ['500089'],
-    landmarks: [
-      'Golden Mile Road',
-      'Puppalaguda–Narsingi Link Road',
-      'Aparna Zenon',
-      'Rajapushpa Atria',
-      'Western Express corridor',
-    ],
-    introText: 'Tech Wash provides premium garment care, per-kg laundry, and couture dry cleaning across Puppalaguda (also written Puppalguda), Hyderabad. Serving premier high-rise communities along Golden Mile Road and Puppalaguda Main Road with slot-based doorstep pickup and transparent digital billing.',
-    turnaround: 'Standard 48-Hour Turnaround • 24-Hour Express Available',
-    pickupHours: '8:00 AM – 9:00 PM (All 7 Days)',
-    commonNeeds: [
-      'Gated community doorstep laundry pickup and scheduled delivery',
-      'Executive blazers, suits, and designer wear hydrocarbon dry cleaning',
-      'Demineralized RO water wash and steam pressing for sensitive fabrics',
-      'Bed linen, duvet, and curtain deep sanitization',
-      'Sneaker sole whitening and leather shoe restoration',
-    ],
-    nearbyAreas: ['manikonda', 'narsingi', 'khajaguda', 'alkapur-township', 'nanakramguda'],
-    faqs: [
-      {
-        question: 'Do you offer laundry pickup in Puppalaguda gated communities?',
-        answer: 'Yes, Tech Wash regularly services major gated communities and apartment complexes across Puppalaguda and Golden Mile Road with slot-based doorstep pickup.',
-      },
-      {
-        question: 'Is dry cleaning in Puppalaguda chemical-free?',
-        answer: 'We use 100% non-toxic European hydrocarbon eco-solvents with zero PERC, ensuring no harsh chemical smells or fabric degradation.',
-      },
-      {
-        question: 'What are the charges for laundry in Puppalaguda?',
-        answer: 'Our rates start at ₹12 for steam ironing, ₹40 for dry cleaning, and ₹100/kg for wash & fold laundry.',
-      },
-      {
-        question: 'Does Tech Wash serve areas near Puppalaguda?',
-        answer: 'Yes, our fleet covers neighboring Narsingi, Manikonda, Khajaguda, Alkapur Township, and the Financial District.',
-      },
-    ],
-  },
-  {
-    slug: 'khajaguda',
-    name: 'Khajaguda',
-    h1: 'Laundry & Dry Cleaning Services in Khajaguda, Hyderabad',
-    title: 'Laundry Service & Dry Cleaning in Khajaguda | Tech Wash',
-    metaDescription: 'Dependable laundry service and dry cleaning in Khajaguda, Hyderabad. Located near Gachibowli and IT corridors with 24-hr express doorstep collection.',
-    keywords: 'laundry service in khajaguda, best laundry in khajaguda, laundry near khajaguda, dry cleaning in khajaguda, laundry pickup and delivery khajaguda, dry cleaners khajaguda junction',
-    pincodes: ['500075', '500104'],
-    landmarks: [
-      'Khajaguda Junction',
-      'Dargah Road',
-      'Oakridge & DPS corridor',
-      'Knowledge City periphery',
-      'Khajaguda Hills Road',
-    ],
-    introText: 'Tech Wash serves working professionals, IT executives, and families in Khajaguda, Hyderabad. Conveniently connected to Gachibowli, Raidurg, and Knowledge City with scheduled doorstep laundry pickup, 0 PPM soft water washing, and 3D steam finishing.',
-    turnaround: 'Standard 48-Hour Delivery • 24-Hour Express Available',
-    pickupHours: '8:00 AM – 9:00 PM (All 7 Days)',
-    commonNeeds: [
-      'Daily corporate office wear washing and steam ironing',
-      'Blazers, suits, and overcoats dry cleaning',
-      'Weekend family laundry bag per-kg wash and fold',
-      'Sports shoes and sneaker deep cleaning',
-    ],
-    nearbyAreas: ['manikonda', 'nanakramguda', 'puppalaguda', 'lanco-hills', 'shaikpet'],
-    faqs: [
-      {
-        question: 'Can I get express 24-hour laundry pickup in Khajaguda?',
-        answer: 'Yes, Tech Wash provides 24-hour express turnaround for laundry and dry cleaning in Khajaguda upon request.',
-      },
-      {
-        question: 'Do you clean bulky items like blankets and curtains in Khajaguda?',
-        answer: 'Yes, we provide specialized deep dust extraction and wash for heavy blankets, comforters, and curtains.',
-      },
-      {
-        question: 'Is laundry pickup available near Khajaguda Junction and Dargah Road?',
-        answer: 'Yes, our riders cover Khajaguda Junction, Dargah Road, Oakridge school area, and Khajaguda Hills daily.',
-      },
-    ],
-  },
-  {
-    slug: 'lanco-hills',
-    name: 'Lanco Hills',
-    h1: 'Laundry & Dry Cleaning Services in Lanco Hills, Hyderabad',
-    title: 'Laundry Service & Dry Cleaning in Lanco Hills | Tech Wash',
-    metaDescription: 'White-glove laundry service, couture dry cleaning, and steam pressing in Lanco Hills, Manikonda, Hyderabad. Doorstep pickup at residential towers & villas.',
-    keywords: 'laundry service in lanco hills, best laundry in lanco hills, laundry near lanco hills, dry cleaning in lanco hills, laundry pickup and delivery lanco hills, dry cleaners lanco hills towers',
-    pincodes: ['500089'],
-    landmarks: [
-      'Lanco Hills Residential Towers',
-      'Lanco Hills Mega Mall area',
-      'Manikonda Peak Ridge',
-      'Lanco Hills Clubhouse corridor',
-    ],
-    introText: 'Tech Wash delivers luxury garment care and couture dry cleaning directly to the Lanco Hills mega-township in Manikonda, Hyderabad. We provide scheduled doorstep collection right from your apartment tower with digital weighing and protective breathable garment wraps.',
-    turnaround: 'Standard 48-Hour Delivery • 24-Hour Express Available',
-    pickupHours: '8:00 AM – 9:00 PM (All 7 Days)',
-    commonNeeds: [
-      'Designer couture, bridal wear, and silk saree dry cleaning',
-      '3D tension form steam pressing for crisp suits and formal wear',
-      'Luxury shoe restoration and suede cleaning',
-      'Scheduled weekly family laundry subscription',
-    ],
-    nearbyAreas: ['manikonda', 'puppalaguda', 'alkapur-township', 'khajaguda', 'shaikpet'],
-    faqs: [
-      {
-        question: 'Do you provide doorstep pickup directly at Lanco Hills apartment towers?',
-        answer: 'Yes, our pickup executives collect garments directly from your apartment doorstep in Lanco Hills towers with transparent digital scales.',
-      },
-      {
-        question: 'Can you handle delicate silk and designer garments?',
-        answer: 'Absolutely. We specialize in delicate couture, silk saree rolling, and hydrocarbon dry cleaning with zero color fading or fabric stress.',
-      },
-    ],
-  },
-  {
-    slug: 'shaikpet',
-    name: 'Shaikpet',
-    h1: 'Laundry & Dry Cleaning Services in Shaikpet, Hyderabad',
-    title: 'Laundry Service & Dry Cleaning in Shaikpet | Tech Wash',
-    metaDescription: 'High-quality laundry service, dry cleaning & steam ironing in Shaikpet, Hyderabad. Demineralized RO water wash, saree care & doorstep delivery.',
-    keywords: 'laundry service in shaikpet, best laundry in shaikpet, laundry near shaikpet, dry cleaning in shaikpet, laundry pickup and delivery shaikpet, dry cleaners tolichowki shaikpet',
-    pincodes: ['500008'],
-    landmarks: [
-      'Tolichowki–Shaikpet Flyover',
-      'International School Road',
-      'Aditya Empress Towers area',
-      'Galaxy Theatre Junction',
-      'Shaikpet Nala corridor',
-    ],
-    introText: 'Tech Wash provides dependable laundry and dry cleaning services for families and professionals in Shaikpet, Hyderabad. From everyday clothes to heavy wedding ethnics, sherwanis, and traditional sarees, we ensure gentle fiber preservation with fast doorstep turnaround.',
-    turnaround: 'Standard 48-Hour Delivery • 24-Hour Express Available',
-    pickupHours: '8:00 AM – 9:00 PM (All 7 Days)',
-    commonNeeds: [
-      'Traditional ethnic wear, sherwanis, and lehengas dry cleaning',
-      'Cotton shirts and sarees starching and steam ironing',
-      'Household laundry per-kg wash and iron packages',
-      'Curtain, carpet, and bedsheet deep washing',
-    ],
-    nearbyAreas: ['manikonda', 'khajaguda', 'lanco-hills'],
-    faqs: [
-      {
-        question: 'Do you offer laundry pickup service in Shaikpet and Aditya Empress area?',
-        answer: 'Yes, Tech Wash provides daily doorstep pickup and delivery throughout Shaikpet, Aditya Empress Towers, and neighboring corridors.',
-      },
-      {
-        question: 'What is your procedure for ethnic garments and lehengas in Shaikpet?',
-        answer: 'We inspect embellishments, protect delicate buttons and zari, pre-spot stains with bio-enzymes, and clean with non-toxic hydrocarbon solvents.',
-      },
-    ],
-  },
-  {
-    slug: 'narsingi',
-    name: 'Narsingi',
-    h1: 'Laundry & Dry Cleaning Services in Narsingi, Hyderabad',
-    title: 'Laundry Service & Dry Cleaning in Narsingi | Tech Wash',
-    metaDescription: 'Professional laundry service and dry cleaning in Narsingi, Hyderabad. RO soft water wash, steam ironing, and doorstep pickup for My Home Avatar and gated communities.',
-    keywords: 'laundry service in narsingi, best laundry in narsingi, laundry near narsingi, dry cleaning in narsingi, laundry pickup and delivery narsingi, dry cleaners my home avatar',
-    pincodes: ['500075'],
-    landmarks: [
-      'Narsingi Junction',
-      'ORR Exit 18',
-      'My Home Avatar corridor',
-      'PBEL City Link Road',
-      'Puppalaguda–Narsingi Main Road',
-    ],
-    introText: 'Tech Wash delivers full-spectrum garment care, per-kg laundry, and eco-safe dry cleaning across Narsingi, Hyderabad. We actively serve major gated communities near ORR Exit 18 and Puppalaguda road with reliable doorstep service and 100% demineralized RO soft water.',
-    turnaround: 'Standard 48-Hour Delivery • 24-Hour Express Available',
-    pickupHours: '8:00 AM – 9:00 PM (All 7 Days)',
-    commonNeeds: [
-      'Weight-based wash & fold / wash & iron for families in gated communities',
-      'Formal suits and blazers dry cleaning',
-      'Starch & iron for crisp cotton formals and dhotis',
-      'Kids clothing hygienic RO soft water wash',
-      'Living room curtains and carpet washing',
-    ],
-    nearbyAreas: ['puppalaguda', 'manikonda', 'alkapur-township', 'nanakramguda'],
-    faqs: [
-      {
-        question: 'Does Tech Wash provide laundry service to My Home Avatar and Narsingi societies?',
-        answer: 'Yes, Tech Wash has daily scheduled pickup and delivery routes covering My Home Avatar, PBEL City link road, and all major societies in Narsingi.',
-      },
-      {
-        question: 'How is per-kg laundry weighed in Narsingi?',
-        answer: 'Our executive weighs your laundry batch at your doorstep with transparent electronic scales, recorded directly on your digital receipt.',
-      },
-    ],
-  },
-  {
-    slug: 'alkapur-township',
-    name: 'Alkapur Township',
-    h1: 'Laundry & Dry Cleaning Services in Alkapur Township, Hyderabad',
-    title: 'Laundry Service & Dry Cleaning in Alkapur Township | Tech Wash',
-    metaDescription: 'Trusted laundry service, dry cleaning & steam pressing in Alkapur Township (Alkapoor), Manikonda, Hyderabad. Hygienic RO wash & doorstep pickup.',
-    keywords: 'laundry service in alkapur township, best laundry in alkapur township, laundry near alkapur township, dry cleaning in alkapur township, laundry pickup and delivery alkapur township, dry cleaners alkapoor',
-    pincodes: ['500089'],
-    landmarks: [
-      'Alkapur Road No. 1 to 35',
-      'Neknampur Lake Periphery',
-      'Puppalaguda Extension',
-      'Alkapoor Commercial Hub',
-    ],
-    introText: 'Tech Wash is the trusted garment care partner for residents of Alkapur Township (Alkapoor Township), Manikonda, Hyderabad. We provide regular doorstep laundry pickup across all roads from Road No. 1 through Road No. 35 with isolated drum wash and non-toxic dry cleaning.',
-    turnaround: 'Standard 48-Hour Delivery • 24-Hour Express Available',
-    pickupHours: '8:00 AM – 9:00 PM (All 7 Days)',
-    commonNeeds: [
-      'Family laundry wash and fold bundles',
-      'Steam ironing and crease retention for office shirts',
-      'Silk saree rolling, polishing, and starching',
-      'Curtain, sofa cover, and bedspread washing',
-    ],
-    nearbyAreas: ['manikonda', 'puppalaguda', 'lanco-hills', 'narsingi'],
-    faqs: [
-      {
-        question: 'Is doorstep pickup free in Alkapur Township?',
-        answer: 'Yes, doorstep pickup is available throughout Alkapur Township with free delivery on orders above ₹299.',
-      },
-      {
-        question: 'Do you offer starching for cotton clothes in Alkapur Township?',
-        answer: 'Yes, we provide specialized Starch & Iron service with customized stiffness levels for cotton shirts, kurtas, and sarees.',
-      },
-    ],
-  },
-  {
-    slug: 'nanakramguda',
-    name: 'Nanakramguda',
-    h1: 'Laundry & Dry Cleaning Services in Nanakramguda, Hyderabad',
-    title: 'Laundry Service & Dry Cleaning in Nanakramguda Financial District | Tech Wash',
-    metaDescription: 'Premier laundry service, suit dry cleaning, and 24-hr express garment care in Nanakramguda, Financial District, Hyderabad. Doorstep collection at residential towers.',
-    keywords: 'laundry service in nanakramguda, best laundry in nanakramguda, laundry near nanakramguda, dry cleaning in nanakramguda, laundry pickup and delivery nanakramguda, financial district laundry',
-    pincodes: ['500032', '500075'],
-    landmarks: [
-      'Financial District Hub',
-      'WaveRock & IT Sez corridor',
-      'Golf Edge Towers',
-      'US Consulate Area',
-      'ISB Road & Q-City area',
-    ],
-    introText: 'Tech Wash delivers fast, technology-driven laundry and executive dry cleaning to Nanakramguda and the Financial District in Hyderabad. Designed for busy tech professionals seeking high-standard garment care with minimal turnaround time and live WhatsApp tracking.',
-    turnaround: 'Standard 48-Hour Delivery • 24-Hour Express Available',
-    pickupHours: '8:00 AM – 9:00 PM (All 7 Days)',
-    commonNeeds: [
-      'Executive suit, blazer, and formal shirt dry cleaning',
-      'Fast 24-hour turnaround for business travel wardrobes',
-      'Per-kg wash & fold laundry for working bachelors and couples',
-      'Sneaker cleaning and leather shoe care',
-    ],
-    nearbyAreas: ['khajaguda', 'puppalaguda', 'narsingi'],
-    faqs: [
-      {
-        question: 'Do you provide express 24-hour dry cleaning in Nanakramguda Financial District?',
-        answer: 'Yes, we offer express 24-hour turnaround for corporate executives and residents in Nanakramguda upon request.',
-      },
-      {
-        question: 'How do I track my order status in Nanakramguda?',
-        answer: 'You can track all 10 milestones of your laundry live on our website or via automated WhatsApp status updates.',
+        question: 'What is the turnaround time for laundry delivery in Manikonda?',
+        answer: 'Standard turnaround for regular laundry and dry cleaning is 48 hours. Express 24-hour delivery is also available for urgent orders in Manikonda upon request.',
       },
     ],
   },
 ];
 
 /**
- * 11 Genuine Tech Wash Services & Core Intent Mappings
+ * 11 Genuine Techwash Services & Core Intent Mappings
  */
 export const LEGACY_SLUG_MAP = {
   'laundry-pickup-delivery': 'laundry-pickup-and-delivery',
@@ -382,121 +118,137 @@ export const SEO_SERVICES = [
   {
     slug: 'laundry-service',
     name: 'Laundry Service',
-    h1: 'Professional Laundry Service in Hyderabad',
-    title: 'Laundry Service in Hyderabad | Techwash',
-    metaDescription: 'Professional laundry service in Hyderabad. 100% demineralized 0 PPM RO soft water washing, isolated single-customer drums, and fast scheduled doorstep pickup.',
+    h1: 'Laundry Service in Manikonda, Hyderabad',
+    title: 'Laundry Service in Manikonda, Hyderabad | Techwash Laundry',
+    metaDescription: 'Professional laundry service in Manikonda, Hyderabad from Techwash Laundry. 0 PPM RO soft water washing, isolated single-customer drums, and fast doorstep pickup across Manikonda.',
     pricingDisplay: 'From ₹100 / Kg',
     category: 'Daily Laundry',
+    primaryKeyword: 'laundry service in Manikonda',
+    secondaryKeywords: 'laundry services in Manikonda, laundry near Manikonda, laundry service Manikonda Hyderabad, laundry shop near Manikonda, laundry pickup Manikonda, laundry delivery Manikonda',
     processSummary: 'Demineralized 0 PPM RO soft water washing, single-customer isolated drum cycles, bio-enzyme stain removal, sensor moisture drying, and precision steam pressing.',
   },
-  // 2. Core Intent: Dry Cleaning
-  {
-    slug: 'dry-cleaning',
-    name: 'Dry Cleaning',
-    h1: 'Eco-Friendly Hydrocarbon Dry Cleaning in Hyderabad',
-    title: 'Dry Cleaning Service in Hyderabad | Techwash',
-    metaDescription: 'Certified 100% non-toxic European hydrocarbon dry cleaning in Hyderabad. Gentle on suits, silks, designer couture, and delicate fabrics with doorstep pickup.',
-    pricingDisplay: 'Starts at ₹40 / item',
-    category: 'Couture Care',
-    processSummary: 'Ultrasonic stain pre-spotting, closed-loop hydrocarbon solvent bath, 3D form tension steam finishing, and archival protective packaging.',
-  },
-  // 3. Core Intent: Laundry Pickup & Delivery
-  {
-    slug: 'laundry-pickup-and-delivery',
-    name: 'Laundry Pickup & Delivery',
-    h1: 'Doorstep Laundry Pickup and Delivery in Hyderabad',
-    title: 'Laundry Pickup & Delivery in Hyderabad | Techwash',
-    metaDescription: 'Convenient doorstep laundry pickup and delivery in Hyderabad. Timed slots from 8 AM to 9 PM, transparent electronic weighing, and 24-48h turnaround.',
-    pricingDisplay: 'Free Pickup on Orders ₹299+',
-    category: 'Doorstep Concierge',
-    processSummary: 'Slot-based doorstep pickup, electronic weighing with digital receipt, isolated hamper transport, laboratory cleaning, and sealed return delivery.',
-  },
-  // 4. Steam Ironing
-  {
-    slug: 'ironing-service',
-    name: 'Ironing Service',
-    h1: 'Professional Ironing Service in Hyderabad',
-    title: 'Ironing Service in Hyderabad | Techwash',
-    metaDescription: 'Professional 3D mannequin form steam pressing in Hyderabad with vacuum table crease retention. Zero scorch, zero shine, and crisp collar alignment.',
-    pricingDisplay: 'Starts at ₹12 / item',
-    category: 'Finishing',
-    processSummary: 'Temperature calibration, high-pressure 140°C micro-steam inflation, vacuum cold-suction crease locking, and hanger delivery.',
-  },
-  // 5. Starch & Iron
-  {
-    slug: 'starch-and-iron',
-    name: 'Starch & Iron',
-    h1: 'Starch & Iron Service in Hyderabad',
-    title: 'Starch & Iron Service in Hyderabad | Techwash',
-    metaDescription: 'Traditional natural rice and corn starching with vacuum form steam pressing for cotton shirts, sarees, dhotis, and ethnic wear in Hyderabad.',
-    pricingDisplay: 'Starts at ₹25 / item',
-    category: 'Finishing',
-    processSummary: 'Customizable starch ratio formulation, gentle fiber infusion bath, high-pressure vacuum steam bed pressing, and crisp collar stiffening.',
-  },
-  // 6. Wash & Iron (Per Kg)
+  // 2. Core Intent: Wash & Iron
   {
     slug: 'wash-and-iron',
     name: 'Wash & Iron',
-    h1: 'Wash & Iron Service in Hyderabad',
-    title: 'Wash & Iron Service in Hyderabad | Techwash',
-    metaDescription: '100% demineralized 0 PPM RO soft water washing with bio-enzymes followed by 3D tension steam press. Single-customer isolated wash drums.',
+    h1: 'Wash & Iron Service in Manikonda',
+    title: 'Wash & Iron Service in Manikonda | Techwash Laundry',
+    metaDescription: 'Professional wash and iron service in Manikonda, Hyderabad. Techwash Laundry offers convenient garment washing with 0 PPM RO soft water and 3D steam form pressing.',
     pricingDisplay: 'Starts at ₹130 / Kg',
     category: 'Weight Based',
-    processSummary: 'Batch weighing, single-customer drum wash in 0 PPM soft water, bio-enzyme stain removal, and steam form pressing.',
+    primaryKeyword: 'wash and iron service in Manikonda',
+    secondaryKeywords: 'wash and iron near Manikonda, laundry wash and iron Manikonda, clothes washing and ironing Manikonda, wash iron laundry service Manikonda',
+    processSummary: 'Single-customer drum wash in 0 PPM soft water, bio-enzyme stain removal, followed by 3D tension mannequin steam form pressing.',
   },
-  // 7. Wash & Fold (Per Kg)
+  // 3. Core Intent: Dry Cleaning
+  {
+    slug: 'dry-cleaning',
+    name: 'Dry Cleaning',
+    h1: 'Dry Cleaning Service in Manikonda',
+    title: 'Dry Cleaning Service in Manikonda | Techwash Laundry',
+    metaDescription: 'Professional dry cleaning service in Manikonda, Hyderabad. Certified non-toxic European hydrocarbon dry cleaning for formal suits, delicate silks, sarees, and formal wear.',
+    pricingDisplay: 'Starts at ₹40 / item',
+    category: 'Couture Care',
+    primaryKeyword: 'dry cleaning in Manikonda',
+    secondaryKeywords: 'dry cleaning service near Manikonda, dry cleaner Manikonda, dry cleaners near Manikonda',
+    processSummary: 'Ultrasonic stain pre-spotting, closed-loop non-toxic hydrocarbon solvent bath, 3D form tension steam finishing, and archival protective packaging.',
+  },
+  // 4. Core Intent: Laundry Pickup & Delivery
+  {
+    slug: 'laundry-pickup-and-delivery',
+    name: 'Laundry Pickup & Delivery',
+    h1: 'Laundry Pickup & Delivery in Manikonda',
+    title: 'Laundry Pickup & Delivery in Manikonda | Techwash Laundry',
+    metaDescription: 'Convenient laundry pickup and delivery in Manikonda, Hyderabad. Flexible timed slots from 8 AM to 9 PM, transparent electronic doorstep weighing, and 24-48h return.',
+    pricingDisplay: 'Free Pickup on Orders ₹299+',
+    category: 'Doorstep Concierge',
+    primaryKeyword: 'laundry pickup and delivery in Manikonda',
+    secondaryKeywords: 'laundry pickup Manikonda, laundry delivery Manikonda, doorstep laundry Manikonda, laundry home pickup Manikonda',
+    processSummary: 'Slot-based doorstep pickup, electronic weighing with digital receipt, isolated hamper transport, laboratory cleaning, and sealed return delivery.',
+  },
+  // 5. Ironing Service
+  {
+    slug: 'ironing-service',
+    name: 'Ironing Service',
+    h1: 'Ironing Service in Manikonda',
+    title: 'Ironing Service in Manikonda | Techwash Laundry',
+    metaDescription: 'Professional steam ironing service in Manikonda, Hyderabad. 3D mannequin form pressing with zero heat shine, zero scorch, and vacuum table crease retention.',
+    pricingDisplay: 'Starts at ₹12 / item',
+    category: 'Finishing',
+    primaryKeyword: 'ironing service in Manikonda',
+    secondaryKeywords: 'clothes ironing Manikonda, ironing near Manikonda, steam ironing Manikonda',
+    processSummary: 'Temperature calibration, high-pressure 140°C micro-steam inflation, vacuum cold-suction crease locking, and hanger delivery.',
+  },
+  // 6. Wash & Fold
   {
     slug: 'wash-and-fold',
     name: 'Wash & Fold',
-    h1: 'Wash & Fold Service in Hyderabad',
-    title: 'Wash & Fold Service in Hyderabad | Techwash',
-    metaDescription: 'Affordable daily laundry per kg in Hyderabad. Demineralized RO soft water batch wash, anti-static tumble dry, and store-style precision folding.',
+    h1: 'Wash & Fold Service in Manikonda',
+    title: 'Wash & Fold Service in Manikonda | Techwash Laundry',
+    metaDescription: 'Affordable wash and fold service in Manikonda, Hyderabad. Demineralized RO soft water batch wash, hypoallergenic bio-detergents, anti-static drying, and store-style folding.',
     pricingDisplay: 'Starts at ₹100 / Kg',
     category: 'Weight Based',
+    primaryKeyword: 'wash and fold service in Manikonda',
     processSummary: 'Weighing, isolated drum wash with hypoallergenic bio-detergents, low-heat drying, and precision hand-folding in sealed moisture wraps.',
   },
-  // 8. Saree Rolling & Traditional Care
+  // 7. Starch & Iron
+  {
+    slug: 'starch-and-iron',
+    name: 'Starch & Iron',
+    h1: 'Starch & Iron Service in Manikonda',
+    title: 'Starch & Iron Service in Manikonda | Techwash Laundry',
+    metaDescription: 'Traditional natural starch and iron service in Manikonda, Hyderabad. Pure organic rice and corn starching with vacuum steam pressing for cotton shirts and sarees.',
+    pricingDisplay: 'Starts at ₹25 / item',
+    category: 'Finishing',
+    primaryKeyword: 'starch and iron service in Manikonda',
+    processSummary: 'Customizable starch ratio formulation, gentle fiber infusion bath, high-pressure vacuum steam bed pressing, and crisp collar stiffening.',
+  },
+  // 8. Saree Rolling
   {
     slug: 'saree-rolling',
     name: 'Saree Rolling',
-    h1: 'Saree Rolling Service in Hyderabad',
-    title: 'Saree Rolling Service in Hyderabad | Techwash',
-    metaDescription: 'Expert wooden roller saree polishing, starching, and gentle steam treatment for silk, pattu, and banarasi sarees in Hyderabad.',
+    h1: 'Saree Rolling Service in Manikonda',
+    title: 'Saree Rolling Service in Manikonda | Techwash Laundry',
+    metaDescription: 'Professional saree rolling service in Manikonda, Hyderabad. Smooth wooden roller polishing, natural starching, and steam finishing for silk, pattu, and banarasi sarees.',
     pricingDisplay: 'Custom Quote',
     category: 'Traditional',
+    primaryKeyword: 'saree rolling service in Manikonda',
     processSummary: 'Zari inspection, natural starch misting, smooth wooden cylinder roller pass, and wrinkle-free fold packaging.',
   },
-  // 9. Shoe Cleaning & Sneaker Care
+  // 9. Shoe Cleaning
   {
     slug: 'shoe-cleaning',
     name: 'Shoe Cleaning',
-    h1: 'Shoe Cleaning Service in Hyderabad',
-    title: 'Shoe Cleaning Service in Hyderabad | Techwash',
-    metaDescription: 'Hand-scrubbed sneaker cleaning, midsole whitening, and anti-bacterial UV sterilization for sports shoes and formal leathers in Hyderabad.',
+    h1: 'Shoe Cleaning Service in Manikonda',
+    title: 'Shoe Cleaning Service in Manikonda | Techwash Laundry',
+    metaDescription: 'Professional shoe cleaning service in Manikonda, Hyderabad. Soft-bristle hand scrubbing, midsole whitening, suede conditioning, and UV anti-bacterial sterilization.',
     pricingDisplay: 'Starts at ₹350 / pair',
     category: 'Footwear',
+    primaryKeyword: 'shoe cleaning service in Manikonda',
     processSummary: 'Material inspection, soft-bristle hand scrubbing, ultrasonic sole stain lift, lace restoration, and UV anti-microbial sterilization.',
   },
   // 10. Curtain Cleaning
   {
     slug: 'curtain-cleaning',
     name: 'Curtain Cleaning',
-    h1: 'Curtain Cleaning Service in Hyderabad',
-    title: 'Curtain Cleaning Service in Hyderabad | Techwash',
-    metaDescription: 'Ultrasonic dust-mite extraction, demineralized soft wash, and vertical steam hanging for blackout drapes and sheer curtains in Hyderabad.',
+    h1: 'Curtain Cleaning Service in Manikonda',
+    title: 'Curtain Cleaning Service in Manikonda | Techwash Laundry',
+    metaDescription: 'Deep curtain cleaning service in Manikonda, Hyderabad. Dust-mite extraction, demineralized soft wash, and vertical steam de-wrinkling for blackout and sheer drapes.',
     pricingDisplay: '₹30 / sq. ft.',
     category: 'Household',
+    primaryKeyword: 'curtain cleaning service in Manikonda',
     processSummary: 'Dimension verification, ultrasonic dust-mite extraction, gentle fabric wash, and vertical steam press for wrinkle-free hanging.',
   },
   // 11. Carpet Cleaning
   {
     slug: 'carpet-cleaning',
     name: 'Carpet Cleaning',
-    h1: 'Carpet Cleaning Service in Hyderabad',
-    title: 'Carpet Cleaning Service in Hyderabad | Techwash',
-    metaDescription: 'Commercial-grade rotary shampoo extraction and allergen removal for living room carpets and wool rugs in Hyderabad.',
+    h1: 'Carpet Cleaning Service in Manikonda',
+    title: 'Carpet Cleaning Service in Manikonda | Techwash Laundry',
+    metaDescription: 'Deep carpet cleaning service in Manikonda, Hyderabad. Rotary shampoo extraction, allergen removal, and thermal moisture removal for rugs and carpets.',
     pricingDisplay: '₹45 / sq. ft.',
     category: 'Household',
+    primaryKeyword: 'carpet cleaning service in Manikonda',
     processSummary: 'High-power dry vacuuming, rotary shampoo agitation, deep stain extraction, and anti-microbial thermal dehumidification.',
   },
 ];

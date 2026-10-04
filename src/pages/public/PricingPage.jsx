@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { serviceService, DEFAULT_SERVICES } from '../../services/serviceService';
-import { pricingService, INITIAL_PRICING_CONFIG } from '../../services/pricingConfig';
+import { pricingService, INITIAL_PRICING_CONFIG, DEFAULT_PER_KG_SUB_SERVICES } from '../../services/pricingConfig';
 import { formatCurrency } from '../../utils/formatters';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
@@ -730,8 +730,7 @@ export const PricingPage = () => {
                       </h4>
                     </div>
                     <div className="text-right">
-                      <span className="text-lg sm:text-xl font-black font-mono text-[#F97316] block">₹{foldMenRate} / Kg</span>
-                      <span className="text-[10px] text-slate-400">Men's clothes</span>
+                      <span className="text-lg sm:text-xl font-black font-mono text-[#F97316] block">Starts at ₹{foldMenRate} / Kg</span>
                     </div>
                   </div>
 
@@ -739,9 +738,19 @@ export const PricingPage = () => {
                     Single-drum isolated wash with imported eco-detergents, moisture-safe tumble dry, and neat store-ready hand-folding.
                   </p>
 
-                  <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between text-xs font-medium">
-                    <span className="text-slate-600">Women's delicate wear:</span>
-                    <span className="font-mono font-bold text-slate-900">₹{foldWomenRate} / Kg</span>
+                  <div className="space-y-2 pt-2 border-t border-slate-100">
+                    <span className="text-[10px] font-bold uppercase text-slate-400 block tracking-wider">Configured Sub-Services & Tariffs:</span>
+                    {(Array.isArray(pricingConfig.perKgSubServices) && pricingConfig.perKgSubServices.length > 0 ? pricingConfig.perKgSubServices : DEFAULT_PER_KG_SUB_SERVICES)
+                      .filter(s => s.serviceId === 'wash-and-fold')
+                      .map(sub => (
+                        <div key={sub.id} className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between text-xs font-medium">
+                          <div className="flex items-center gap-2">
+                            <span>{sub.emoji || '👕'}</span>
+                            <span className="text-slate-800 font-bold">{sub.name}</span>
+                          </div>
+                          <span className="font-mono font-bold text-slate-900">₹{sub.price} / Kg</span>
+                        </div>
+                      ))}
                   </div>
                 </div>
 
@@ -757,8 +766,7 @@ export const PricingPage = () => {
                       </h4>
                     </div>
                     <div className="text-right">
-                      <span className="text-lg sm:text-xl font-black font-mono text-[#F97316] block">₹{ironMenRate} / Kg</span>
-                      <span className="text-[10px] text-slate-400">Men's clothes</span>
+                      <span className="text-lg sm:text-xl font-black font-mono text-[#F97316] block">Starts at ₹{ironMenRate} / Kg</span>
                     </div>
                   </div>
 
@@ -766,9 +774,19 @@ export const PricingPage = () => {
                     Full laundry cycle in softened RO water followed by precision steam iron press on tension vacuum tables. Ready to wear.
                   </p>
 
-                  <div className="p-2.5 rounded-xl bg-orange-50/50 border border-orange-100 flex items-center justify-between text-xs font-medium">
-                    <span className="text-slate-600">Women's delicate wear:</span>
-                    <span className="font-mono font-bold text-[#EA580C]">₹{ironWomenRate} / Kg</span>
+                  <div className="space-y-2 pt-2 border-t border-orange-100">
+                    <span className="text-[10px] font-bold uppercase text-slate-400 block tracking-wider">Configured Sub-Services & Tariffs:</span>
+                    {(Array.isArray(pricingConfig.perKgSubServices) && pricingConfig.perKgSubServices.length > 0 ? pricingConfig.perKgSubServices : DEFAULT_PER_KG_SUB_SERVICES)
+                      .filter(s => s.serviceId === 'wash-and-iron')
+                      .map(sub => (
+                        <div key={sub.id} className="p-2.5 rounded-xl bg-orange-50/50 border border-orange-100 flex items-center justify-between text-xs font-medium">
+                          <div className="flex items-center gap-2">
+                            <span>{sub.emoji || '🫧'}</span>
+                            <span className="text-slate-800 font-bold">{sub.name}</span>
+                          </div>
+                          <span className="font-mono font-bold text-[#EA580C]">₹{sub.price} / Kg</span>
+                        </div>
+                      ))}
                   </div>
                 </div>
 

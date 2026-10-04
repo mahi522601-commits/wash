@@ -1,7 +1,14 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { settingsService, DEFAULT_SETTINGS } from '../services/settingsService';
 
-const SettingsContext = createContext(null);
+const DEFAULT_SETTINGS_CONTEXT = {
+  settings: DEFAULT_SETTINGS,
+  loading: true,
+  updateSettings: async (val) => val,
+  reloadSettings: async () => {},
+};
+
+const SettingsContext = createContext(DEFAULT_SETTINGS_CONTEXT);
 
 export const SettingsProvider = ({ children }) => {
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
@@ -37,6 +44,5 @@ export const SettingsProvider = ({ children }) => {
 
 export const useSettings = () => {
   const context = useContext(SettingsContext);
-  if (!context) throw new Error('useSettings must be used within SettingsProvider');
-  return context;
+  return context || DEFAULT_SETTINGS_CONTEXT;
 };

@@ -32,7 +32,8 @@ import {
   buildMasterCatalogFromPricing,
   buildWalkInServicesFromPricing,
   buildWeightBandsFromPricing,
-  buildPersonaRateBandsFromPricing
+  buildPersonaRateBandsFromPricing,
+  buildWeighedSubServicesFromPricing
 } from '../../services/pricingConfig';
 import { serviceService } from '../../services/serviceService';
 import { 
@@ -580,8 +581,7 @@ export const BillingMachinePage = () => {
 
   // Weighed Laundry sub-services strictly separated for Wash & Fold vs Wash & Steam Iron
   const filteredWeighedLaundryItems = useMemo(() => {
-    const isFold = billForm.serviceId === 'srv-wash-and-fold';
-    let list = isFold ? WASH_AND_FOLD_SUB_SERVICES : WASH_AND_IRON_SUB_SERVICES;
+    let list = buildWeighedSubServicesFromPricing(pricingConfig, billForm.serviceId);
     if (weighedItemSearch.trim()) {
       const q = weighedItemSearch.toLowerCase();
       list = list.filter(it => 
@@ -594,7 +594,7 @@ export const BillingMachinePage = () => {
       list = list.filter(it => it.group === weighedCategoryFilter);
     }
     return list;
-  }, [billForm.serviceId, weighedCategoryFilter, weighedItemSearch]);
+  }, [pricingConfig, billForm.serviceId, weighedCategoryFilter, weighedItemSearch]);
 
   const isWeighedService = billForm.pricingType === 'per_kg' || billForm.serviceId === 'srv-wash-and-fold' || billForm.serviceId === 'srv-wash-and-iron';
 

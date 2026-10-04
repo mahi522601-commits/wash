@@ -4,6 +4,8 @@
  * Synchronizes customer CRM `customers` collection on every booking and financial update.
  */
 import { db, isFirebaseConfigured } from './firebase.js';
+import { posBridgeService } from './posBridgeService.js';
+import { syncQueueService } from './syncQueueService.js';
 import { 
   collection, 
   doc, 
@@ -277,16 +279,20 @@ export const orderService = {
    * Create a new booking with immutable price snapshot & customer CRM sync
    */
   async createOrder(orderPayload) {
-    let orderNumber = orderPayload.orderNumber;
-    let orderId = orderPayload.id;
+    // 1. Generate Deterministic Local ID (POS01-YYYYMMDD-XXXXXX)
+    const activeTerminalId = orderPayload.terminalId || (typeof localStorage !== 'undefined' && localStorage.getItem('techwash_terminal_id')) || 'counter-1';
+    const activeBranchCode = activeTerminalId === 'counter-2' ? 'POS02' : (activeTerminalId === 'counter-3' ? 'POS03' : 'POS01');
+    const dateCompact = new Date().toISOString().slice(0, 10).replace(/-/g, '');
 
-    if (!orderNumber || !orderNumber.startsWith('TW-')) {
+    let orderNumber = orderPayload.orderNumber || orderPayload.id || '';
+    if (!orderNumber || !String(orderNumber).startsWith('TW-')) {
       const seqData = await this.getNextOrderSequence();
       orderNumber = seqData.orderNumber;
-      orderId = orderId || seqData.orderId;
-    } else {
-      orderId = orderId || orderNumber;
     }
+
+    const seqNumStr = (orderNumber.match(/\d+/) || [Date.now().toString().slice(-6)])[0].padStart(6, '0');
+    const localId = orderPayload.localId || orderPayload.id || `${activeBranchCode}-${dateCompact}-${seqNumStr}`;
+    const orderId = localId;
 
     const phone = orderPayload.customer?.phone ? String(orderPayload.customer.phone).replace(/\D/g, '') : '';
     const customerId = `cust-${phone || Math.random().toString(36).substring(2, 8)}`;
@@ -355,10 +361,12 @@ export const orderService = {
 
     const fullOrder = {
       ...orderPayload,
+      localId,
+      serverId: localId,
       id: orderId,
       bookingId: orderId,
       orderNumber,
-      invoiceNumber: orderPayload.invoiceNumber || orderNumber,
+      invoiceNumber: orderPayload.invoiceNumber || `INV-${localId}`,
       customerId,
       customerName: orderPayload.customer?.name || 'Valued Customer',
       phone: orderPayload.customer?.phone || '',
@@ -382,10 +390,10 @@ export const orderService = {
       balanceAmount,
       isWalkIn,
       orderSource,
-      terminalId: orderPayload.terminalId || null,
-      terminalCode: orderPayload.terminalCode || null,
-      storeBranch: orderPayload.storeBranch || null,
-      cashierName: orderPayload.cashierName || null,
+      terminalId: activeTerminalId,
+      terminalCode: activeTerminalId === 'counter-2' ? 'TW-POS-02' : (activeTerminalId === 'counter-3' ? 'TW-POS-03' : 'TW-POS-01'),
+      storeBranch: orderPayload.storeBranch || (activeTerminalId === 'counter-2' ? 'Branch 1 — Tolichowki' : (activeTerminalId === 'counter-3' ? 'Pick Up Point — Ambience' : 'Main Branch — Manikonda')),
+      cashierName: orderPayload.cashierName || 'Cashier #1',
       pickupDate,
       pickupPeriod,
       pickupSlot,
@@ -401,6 +409,7 @@ export const orderService = {
       paymentStatus: resolvedPaymentStatus,
       paymentMethod: orderPayload.paymentMethod || 'PAY_ON_DELIVERY',
       priceSnapshot,
+      syncStatus: 'LOCAL_SAVED',
       createdAt: orderPayload.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       statusTimeline: orderPayload.statusTimeline || [
@@ -414,54 +423,17 @@ export const orderService = {
       assignedStaff: orderPayload.assignedStaff || null,
     };
 
-    if (isFirebaseConfigured && db) {
-      try {
-        // Write to both 'orders' and 'bookings' for compatibility
-        await Promise.all([
-          setDoc(doc(db, 'orders', orderId), fullOrder),
-          setDoc(doc(db, 'bookings', orderId), fullOrder)
-        ]);
-
-        // Synchronize customer CRM record in Firestore 'customers'
-        if (phone) {
-          const customerRef = doc(db, 'customers', phone);
-          const custSnap = await getDoc(customerRef);
-          let custData = {
-            id: customerId,
-            name: fullOrder.customerName,
-            phone: fullOrder.phone,
-            whatsapp: fullOrder.whatsapp,
-            email: orderPayload.customer?.email || '',
-            address: fullOrder.address,
-            locality: fullOrder.locality,
-            city: fullOrder.city,
-            orderCount: 1,
-            totalSpent: estimatedPrice,
-            lastOrderDate: fullOrder.createdAt,
-            firstOrderDate: fullOrder.createdAt,
-            updatedAt: new Date().toISOString(),
-          };
-
-          if (custSnap.exists()) {
-            const prev = custSnap.data();
-            custData = {
-              ...prev,
-              name: fullOrder.customerName || prev.name,
-              address: fullOrder.address || prev.address,
-              orderCount: (prev.orderCount || 0) + 1,
-              totalSpent: (prev.totalSpent || 0) + estimatedPrice,
-              lastOrderDate: fullOrder.createdAt,
-              updatedAt: new Date().toISOString(),
-            };
-          }
-
-          await setDoc(customerRef, custData, { merge: true });
-        }
-      } catch (e) {
-        console.warn("Firestore order create / customer sync error:", e);
-      }
+    // STEP 1: Save transaction to Local Windows Bridge FIRST (JSON, PDF Invoice, Excel Export)
+    try {
+      await posBridgeService.saveTransaction(fullOrder, activeTerminalId);
+    } catch (e) {
+      console.warn('Local bridge write notice (continuing):', e);
     }
 
+    // STEP 2: Enqueue into Local Synchronization Queue (status: SYNC_PENDING)
+    syncQueueService.enqueueTransaction(fullOrder, 'CREATE');
+
+    // STEP 3: Save in local storage cache and dispatch UI events so cashier gets immediate receipt print!
     try {
       let localOrders = [];
       try {
@@ -469,7 +441,6 @@ export const orderService = {
       } catch (e) {
         localOrders = [];
       }
-      // Insert fullOrder at start, deduplicate by id & orderNumber
       const updatedLocal = [fullOrder, ...localOrders.filter(o => o.id !== fullOrder.id && o.orderNumber !== fullOrder.orderNumber)];
       localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(updatedLocal));
     } catch (e) {
@@ -781,6 +752,16 @@ export const orderService = {
       statusTimeline: [...(order.statusTimeline || []), newTimelineEntry],
     };
 
+    // STEP 1: Save transaction update to Local Windows Bridge FIRST
+    try {
+      await posBridgeService.saveTransaction(updatedOrder, updatedOrder.terminalId || 'counter-1');
+    } catch (e) {
+      console.warn("Local bridge update status notice:", e);
+    }
+
+    // STEP 2: Enqueue update into Sync Queue Service (status: SYNC_PENDING)
+    syncQueueService.enqueueTransaction(updatedOrder, 'UPDATE');
+
     if (isFirebaseConfigured && db) {
       try {
         await Promise.all([
@@ -790,7 +771,7 @@ export const orderService = {
 
         // If price changed, update customer totalSpent in Firestore
         const phone = order.phone || order.customer?.phone ? String(order.phone || order.customer.phone).replace(/\D/g, '') : null;
-        if (phone && finalPrice !== undefined && Number(finalPrice) !== Number(order.finalPrice || order.totalAmount)) {
+        if (phone && finalPrice !== undefined && Number(finalPrice) !== Number(order.finalPrice || order.totalAmount || 0)) {
           const custRef = doc(db, 'customers', phone);
           const cSnap = await getDoc(custRef);
           if (cSnap.exists()) {
@@ -870,6 +851,12 @@ export const orderService = {
         }
       ]
     };
+
+    // Save update to Local Windows Bridge FIRST
+    try {
+      await posBridgeService.saveTransaction(updatedOrder, updatedOrder.terminalId || 'counter-1');
+    } catch (e) {}
+    syncQueueService.enqueueTransaction(updatedOrder, 'UPDATE');
 
     if (isFirebaseConfigured && db) {
       try {
@@ -1042,6 +1029,7 @@ export const orderService = {
     }
 
     const newPaymentEntry = {
+      paymentEventId: `pay-${order.terminalId || 'POS'}-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`,
       timestamp: new Date().toISOString(),
       amount: diffCollected > 0 ? diffCollected : newReceived,
       mode: paymentMethod || order.paymentMethod || 'CASH',
@@ -1084,6 +1072,16 @@ export const orderService = {
         }] : [])
       ]
     };
+
+    // STEP 1: Save transaction update to Local Windows Bridge FIRST
+    try {
+      await posBridgeService.saveTransaction(updatedOrder, updatedOrder.terminalId || 'counter-1');
+    } catch (e) {
+      console.warn("Local bridge update payment notice:", e);
+    }
+
+    // STEP 2: Enqueue update into Sync Queue Service (status: SYNC_PENDING)
+    syncQueueService.enqueueTransaction(updatedOrder, 'PAYMENT');
 
     if (isFirebaseConfigured && db) {
       try {

@@ -1,13 +1,13 @@
 /**
- * Automated Daily 9:30 PM Financial Report WhatsApp Dispatcher & Number Manager
+ * Automated Daily Financial Report WhatsApp Dispatcher & Number Manager
  * Manages recipient numbers, persistent schedules in Firebase/localStorage,
- * and automated document/PDF dispatch at 9:30 PM nightly.
+ * and authenticated Vercel Serverless Function invocations.
  */
 
 import { reportService } from './reportService.js';
 import { whatsappNotificationService } from './whatsappNotificationService.js';
 import { auditService } from './auditService.js';
-import { db, isFirebaseConfigured } from './firebase.js';
+import { db, auth, isFirebaseConfigured } from './firebase.js';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { parsePinToPinItems } from '../utils/formatters.js';
 
@@ -16,11 +16,23 @@ const DAILY_SCHEDULE_STORAGE_KEY = 'techwash_daily_report_schedule_v2';
 export const DEFAULT_SCHEDULE_CONFIG = {
   enabled: true,
   scheduleTime: '22:00', // 10:00 PM IST
+  hour: 10,
+  minute: 0,
+  amPm: 'PM',
+  scheduleTimeFormatted: '10:00 PM',
+  timezone: 'Asia/Kolkata',
   recipients: [
     { 
       id: 'rec-1', 
       name: 'Store Owner / Director', 
-      phone: '+91 63048 45567', 
+      phone: '+91 93987 24704', 
+      role: 'Management', 
+      active: true 
+    },
+    { 
+      id: 'rec-2', 
+      name: 'Executive Director', 
+      phone: '+91 95502 47676', 
       role: 'Management', 
       active: true 
     },
@@ -29,7 +41,7 @@ export const DEFAULT_SCHEDULE_CONFIG = {
   autoDispatchPdf: true,
   lastDispatchedDate: '',
   lastDispatchedTimestamp: '',
-  lastStatus: 'IDLE', // 'IDLE' | 'SCHEDULED' | 'DISPATCHED' | 'ERROR'
+  lastStatus: 'IDLE', // 'IDLE' | 'SCHEDULED' | 'RUNNING' | 'PDF_GENERATED' | 'WHATSAPP_SENDING' | 'COMPLETED' | 'FAILED' | 'DRY_RUN_COMPLETED'
   dispatchHistory: []
 };
 
@@ -37,7 +49,6 @@ class DailyReportSchedulerService {
   constructor() {
     this.timerId = null;
     this.isChecking = false;
-    this.initBackgroundScheduler();
   }
 
   /**
@@ -83,7 +94,9 @@ class DailyReportSchedulerService {
     if (isFirebaseConfigured && db) {
       try {
         const docRef = doc(db, 'settings', 'daily_report_schedule');
+        const mainDocRef = doc(db, 'settings', 'daily_report');
         await setDoc(docRef, merged, { merge: true });
+        await setDoc(mainDocRef, merged, { merge: true });
       } catch (e) {
         console.warn('Firebase daily schedule save warning:', e);
       }
@@ -94,6 +107,36 @@ class DailyReportSchedulerService {
     }
 
     return merged;
+  }
+
+  /**
+   * Save Admin-configured daily report send time
+   */
+  async saveScheduleTime({ hour, minute, amPm, enabled = true, updatedBy = 'Admin' }) {
+    let h24 = Number(hour);
+    if (amPm === 'PM' && h24 < 12) h24 += 12;
+    if (amPm === 'AM' && h24 === 12) h24 = 0;
+
+    const hourStr = String(h24).padStart(2, '0');
+    const minStr = String(minute).padStart(2, '0');
+    const scheduleTime = `${hourStr}:${minStr}`;
+    const scheduleTimeFormatted = `${hour}:${minStr} ${amPm}`;
+
+    const config = await this.getConfig();
+    const updated = {
+      ...config,
+      enabled: Boolean(enabled),
+      hour: Number(hour),
+      minute: Number(minute),
+      amPm: String(amPm).toUpperCase(),
+      scheduleTime,
+      scheduleTimeFormatted,
+      timezone: 'Asia/Kolkata',
+      updatedAt: new Date().toISOString(),
+      updatedBy,
+    };
+
+    return this.saveConfig(updated);
   }
 
   /**
@@ -140,7 +183,51 @@ class DailyReportSchedulerService {
   }
 
   /**
-   * Builds the official Daily PDF / Settlement Document WhatsApp payload
+   * Helper to invoke serverless endpoint /api/daily-sales-report with Firebase ID Token
+   */
+  async triggerServerlessReport({ action = 'send_today' } = {}) {
+    const currentUser = auth?.currentUser;
+    if (!currentUser) {
+      throw new Error('You must be signed in as an authenticated Admin to execute this operation.');
+    }
+
+    let token;
+    try {
+      token = await currentUser.getIdToken(false);
+    } catch (e) {
+      token = await currentUser.getIdToken(true);
+    }
+
+    const res = await fetch('/api/daily-sales-report', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ action }),
+    });
+
+    const rawText = await res.text();
+    let data;
+    try {
+      data = JSON.parse(rawText);
+    } catch (parseErr) {
+      data = {
+        success: false,
+        status: 'FAILED',
+        error: `Server HTTP ${res.status} (${res.statusText}): ${rawText.slice(0, 200) || 'Non-JSON API response'}`
+      };
+    }
+
+    if (!res.ok || data.success === false) {
+      throw new Error(data.error || data.details || data.message || `Server error (${res.status})`);
+    }
+
+    return data;
+  }
+
+  /**
+   * Builds the official Daily PDF / Settlement Document WhatsApp payload text
    */
   buildDailyReportWhatsAppDocument(reportData, recipientName = 'Management') {
     if (!reportData) return '';
@@ -155,11 +242,10 @@ class DailyReportSchedulerService {
     const documentPdfUrl = `${origin}/admin/reports?preset=today&print=auto`;
     const thirtyDaysUrl = `${origin}/admin/reports?preset=30days`;
 
-    // Branch-wise Sales Computation
     const branchStats = {
       main: { name: 'Main Branch — Manikonda (POS-01)', count: 0, billed: 0, received: 0 },
       branch1: { name: 'Branch 1 — Tolichowki (POS-02)', count: 0, billed: 0, received: 0 },
-      pickup: { name: 'Pick Up Point — Ambience Courtyard (POS-03)', count: 0, billed: 0, received: 0 },
+      pickup: { name: 'Pick Up Point — Ambience (POS-03)', count: 0, billed: 0, received: 0 },
       online: { name: 'Website Online Pickup', count: 0, billed: 0, received: 0 },
     };
 
@@ -172,36 +258,24 @@ class DailyReportSchedulerService {
       const branchName = (ord.storeBranch || '').toLowerCase();
 
       if (!isPos) {
-        branchStats.online.count += 1;
-        branchStats.online.billed += total;
-        branchStats.online.received += rec;
-      } else if (tId === 'counter-1' || tCode.includes('pos-01') || branchName.includes('main branch') || branchName.includes('manikonda') || branchName.includes('shaikpet main')) {
-        branchStats.main.count += 1;
-        branchStats.main.billed += total;
-        branchStats.main.received += rec;
-      } else if (tId === 'counter-2' || tCode.includes('pos-02') || branchName.includes('branch 1') || branchName.includes('tolichowki') || branchName.includes('ou colony') || branchName.includes('dreamscape')) {
-        branchStats.branch1.count += 1;
-        branchStats.branch1.billed += total;
-        branchStats.branch1.received += rec;
-      } else if (tId === 'counter-3' || tCode.includes('pos-03') || branchName.includes('pick up point') || branchName.includes('ambience') || branchName.includes('courtyard')) {
-        branchStats.pickup.count += 1;
-        branchStats.pickup.billed += total;
-        branchStats.pickup.received += rec;
+        branchStats.online.count += 1; branchStats.online.billed += total; branchStats.online.received += rec;
+      } else if (tId === 'counter-1' || tCode.includes('pos-01') || branchName.includes('main branch') || branchName.includes('manikonda')) {
+        branchStats.main.count += 1; branchStats.main.billed += total; branchStats.main.received += rec;
+      } else if (tId === 'counter-2' || tCode.includes('pos-02') || branchName.includes('branch 1') || branchName.includes('tolichowki')) {
+        branchStats.branch1.count += 1; branchStats.branch1.billed += total; branchStats.branch1.received += rec;
+      } else if (tId === 'counter-3' || tCode.includes('pos-03') || branchName.includes('ambience')) {
+        branchStats.pickup.count += 1; branchStats.pickup.billed += total; branchStats.pickup.received += rec;
       } else {
-        branchStats.main.count += 1;
-        branchStats.main.billed += total;
-        branchStats.main.received += rec;
+        branchStats.main.count += 1; branchStats.main.billed += total; branchStats.main.received += rec;
       }
     });
 
-    // Format Service Breakdown Lines
     const serviceBreakdown = metrics.serviceBreakdown || {};
     const serviceLines = Object.entries(serviceBreakdown)
       .filter(([_, data]) => data.count > 0 || data.revenue > 0)
       .map(([name, data]) => `  • *${name}:* ${data.count} Orders (₹${(data.revenue || 0).toLocaleString('en-IN')})`)
       .join('\n') || '  • *General Services:* Active';
 
-    // Format top items breakdown with clear pin-to-pin description
     const itemsList = orders.slice(0, 12).map((ord, idx) => {
       const isPos = Boolean(ord.isWalkIn || ord.orderSource === 'OFFLINE_POS' || ord.terminalCode);
       const prefix = isPos ? '🏪' : '🌐';
@@ -222,7 +296,6 @@ class DailyReportSchedulerService {
 
     return `📑 *TECH WASH LAUNDRY SERVICES — OFFICIAL DAILY EXECUTIVE SALES AUDIT*
 📅 *Audit Date:* ${dateLabel} (${new Date().toLocaleDateString('en-IN', { weekday: 'long', day: '2-digit', month: 'short', year: 'numeric' })})
-⏰ *Automated 10:00 PM Night Settlement Overview*
 👤 *Recipient:* ${recipientName}
 
 ───────────────────────────────
@@ -276,149 +349,6 @@ ${thirtyDaysUrl}
 ───────────────────────────────
 _Tech Wash Financial Reconciliation Engine • Certified Operations Report_
 _Confidential Daily Executive Summary for Authorized Management Only._`;
-  }
-
-  /**
-   * Execute immediate dispatch to all configured recipient numbers
-   */
-  async dispatchDailyReportNow({ recipientOverride = null, isManual = false } = {}) {
-    const config = await this.getConfig();
-    const todayStr = new Date().toISOString().split('T')[0];
-
-    // 1. Generate fresh Financial Report for Today
-    const reportData = await reportService.generateFinancialReport({
-      datePreset: 'today',
-      branchFilter: config.branchScope || 'ALL',
-    });
-
-    const activeRecipients = recipientOverride 
-      ? [recipientOverride]
-      : (config.recipients || []).filter(r => r.active !== false);
-
-    if (activeRecipients.length === 0) {
-      return { success: false, message: 'No active WhatsApp recipients configured.' };
-    }
-
-    const results = [];
-
-    for (const rec of activeRecipients) {
-      const rawPhone = rec.phone || rec.cleanPhone;
-      const cleanPhone = whatsappNotificationService.formatWhatsAppNumber(rawPhone);
-      const documentMessage = this.buildDailyReportWhatsAppDocument(reportData, rec.name);
-
-      // Dispatch via configured WhatsApp provider in background
-      const dispatchResult = await whatsappNotificationService.dispatchAutomatedMessage({
-        phone: cleanPhone,
-        message: documentMessage,
-        type: 'DAILY_10PM_FINANCIAL_REPORT_PDF',
-      });
-
-      results.push({
-        recipient: rec.name,
-        phone: cleanPhone,
-        success: dispatchResult.success,
-        timestamp: new Date().toISOString(),
-      });
-    }
-
-    // Update dispatch log history
-    const updatedHistory = [
-      {
-        id: `disp-${Date.now()}`,
-        date: todayStr,
-        timestamp: new Date().toISOString(),
-        isManual,
-        recipientCount: results.length,
-        results,
-        grossBilled: reportData.metrics?.totalGrossBilled || 0,
-        inflowReceived: reportData.category1?.totalRealizedInflows || 0,
-        netDues: reportData.category2?.netPendingDues || 0,
-      },
-      ...(config.dispatchHistory || []).slice(0, 30) // keep last 30 daily logs
-    ];
-
-    const updatedConfig = await this.saveConfig({
-      ...config,
-      lastDispatchedDate: todayStr,
-      lastDispatchedTimestamp: new Date().toISOString(),
-      lastStatus: 'DISPATCHED',
-      dispatchHistory: updatedHistory,
-    });
-
-    try {
-      await auditService.logAction({
-        action: 'DISPATCH',
-        entity: 'DailyReport',
-        entityId: todayStr,
-        entityName: `10:00 PM Daily Sales Overview (${results.length} WhatsApp Recipients)`,
-        newValue: { results, summary: reportData.metrics },
-      });
-    } catch (e) {}
-
-    return {
-      success: true,
-      results,
-      reportData,
-      config: updatedConfig,
-      dispatchedCount: results.length,
-    };
-  }
-
-  /**
-   * Background Scheduler: Checks every 30 seconds for 10:00 PM (22:00) trigger
-   */
-  initBackgroundScheduler() {
-    if (typeof window === 'undefined') return;
-
-    if (this.timerId) {
-      clearInterval(this.timerId);
-    }
-
-    this.timerId = setInterval(() => {
-      this.checkAndRunScheduledDispatch();
-    }, 30000); // check every 30 seconds
-  }
-
-  /**
-   * Evaluates if current time matches scheduled 10:00 PM time and executes dispatch
-   */
-  async checkAndRunScheduledDispatch() {
-    if (this.isChecking) return;
-    this.isChecking = true;
-
-    try {
-      const config = await this.getConfig();
-      if (!config.enabled) return;
-
-      const now = new Date();
-      const currentHours = now.getHours();
-      const currentMinutes = now.getMinutes();
-      const todayStr = now.toISOString().split('T')[0];
-
-      const [targetHours, targetMinutes] = (config.scheduleTime || '22:00').split(':').map(Number);
-
-      // Check if current time is at or after scheduled time (e.g. 22:00)
-      const isTimeReached = currentHours > targetHours || (currentHours === targetHours && currentMinutes >= targetMinutes);
-
-      // Check if not already dispatched today
-      if (isTimeReached && config.lastDispatchedDate !== todayStr) {
-        console.log(`⏰ [TechWash] Executing 10:00 PM Automated WhatsApp Financial Overview Dispatch for ${todayStr}...`);
-        
-        // Lock today's date immediately to prevent race conditions
-        await this.saveConfig({
-          ...config,
-          lastDispatchedDate: todayStr,
-          lastStatus: 'PROCESSING',
-        });
-
-        await this.dispatchDailyReportNow({ isManual: false });
-        console.log(`✅ [TechWash] 10:00 PM WhatsApp Financial Overview Dispatch completed successfully for ${todayStr}.`);
-      }
-    } catch (err) {
-      console.warn('Scheduled 10:00 PM dispatch check error:', err);
-    } finally {
-      this.isChecking = false;
-    }
   }
 }
 

@@ -1,5 +1,5 @@
 # Techwash Laundry Services - Robots.txt
-# Canonical: https://techwashlaundry.com
+# Canonical Hostname: https://www.techwashlaundry.com
 
 User-agent: *
 Allow: /
@@ -32,9 +32,9 @@ Disallow: /worker/
 Disallow: /track-order?*
 
 # Sitemaps (XML & TXT)
-Sitemap: https://techwashlaundry.com/sitemap.xml
-Sitemap: https://techwashlaundry.com/sitemap-pages.xml
-Sitemap: https://techwashlaundry.com/sitemap-services.xml
-Sitemap: https://techwashlaundry.com/sitemap-areas.xml
-Sitemap: https://techwashlaundry.com/sitemap-blog.xml
-Sitemap: https://techwashlaundry.com/sitemap.txt
+Sitemap: https://www.techwashlaundry.com/sitemap.xml
+Sitemap: https://www.techwashlaundry.com/sitemap-pages.xml
+Sitemap: https://www.techwashlaundry.com/sitemap-services.xml
+Sitemap: https://www.techwashlaundry.com/sitemap-areas.xml
+Sitemap: https://www.techwashlaundry.com/sitemap-blog.xml
+Sitemap: https://www.techwashlaundry.com/sitemap.txt

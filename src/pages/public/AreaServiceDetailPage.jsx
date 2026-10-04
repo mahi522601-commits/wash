@@ -20,9 +20,7 @@ import {
   ShieldCheck,
   Truck,
   Droplets,
-  Layers,
   ArrowLeft,
-  Sparkle,
   Tag
 } from 'lucide-react';
 import { WhatsAppLogo } from '../../components/ui/BrandIcons';
@@ -31,35 +29,36 @@ export const AreaServiceDetailPage = () => {
   const { areaSlug, serviceSlug } = useParams();
   const [openFaqIndex, setOpenFaqIndex] = useState(0);
 
-  // Check legacy slug migration
+  // 1. Check legacy slug 301 migration
   if (serviceSlug && LEGACY_SLUG_MAP[serviceSlug]) {
     return <Navigate to={`/areas/${areaSlug}/${LEGACY_SLUG_MAP[serviceSlug]}`} replace />;
   }
 
-  const area = SEO_AREAS.find((a) => a.slug === areaSlug);
+  // 2. Enforce Manikonda ONLY local cluster
+  const area = SEO_AREAS.find((a) => a.slug === areaSlug && a.slug === 'manikonda');
   const service = SEO_SERVICES.find((s) => s.slug === serviceSlug);
 
   if (!area || !service) {
     return (
       <>
         <SEOHead 
-          title="Page Not Found | Techwash" 
+          title="Page Not Found | Techwash Laundry" 
           description="The requested service or area page was not found." 
           noindex={true} 
         />
         <div className="py-24 bg-brand-50 min-h-screen text-center px-4">
           <div className="max-w-md mx-auto bg-white p-8 rounded-3xl border border-slate-200 space-y-4">
             <MapPin className="w-12 h-12 text-[#F97316] mx-auto" />
-            <h2 className="text-2xl font-black text-slate-900 font-display">Service or Location Not Found</h2>
+            <h2 className="text-2xl font-black text-slate-900 font-display">Service Not Found</h2>
             <p className="text-sm text-slate-600">
-              We couldn't locate this specific service and locality combination. Please browse our active hubs and services.
+              We couldn't locate this service under Manikonda. Please browse our active Manikonda service hub.
             </p>
             <div className="flex justify-center gap-3">
-              <Link to="/areas">
-                <Button variant="primary" size="sm">View Areas</Button>
+              <Link to="/areas/manikonda">
+                <Button variant="primary" size="sm">Manikonda Hub</Button>
               </Link>
               <Link to="/services">
-                <Button variant="secondary" size="sm">View Services</Button>
+                <Button variant="secondary" size="sm">View All Services</Button>
               </Link>
             </div>
           </div>
@@ -68,48 +67,33 @@ export const AreaServiceDetailPage = () => {
     );
   }
 
-  // Dynamic Title, H1 & Description tailored per search intent
-  let pageTitle = `${service.name} Service in ${area.name} | Techwash`;
-  let pageH1 = `${service.name} Service in ${area.name}`;
-  let pageDescription = `Professional ${service.name.toLowerCase()} in ${area.name}, Hyderabad from Techwash Laundry. Convenient pickup and delivery with careful garment cleaning and ironing.`;
-
-  if (service.slug === 'laundry-service') {
-    pageTitle = `Laundry Service in ${area.name}, Hyderabad | Techwash`;
-    pageH1 = `Laundry Service in ${area.name}, Hyderabad`;
-    pageDescription = `Professional laundry service in ${area.name}, Hyderabad from Techwash. 0 PPM RO soft water washing, isolated single-customer drums, and fast doorstep pickup across ${area.name}.`;
-  } else if (service.slug === 'dry-cleaning') {
-    pageTitle = `Dry Cleaning Service in ${area.name} | Techwash`;
-    pageH1 = `Dry Cleaning Service in ${area.name}`;
-    pageDescription = `Certified non-toxic hydrocarbon dry cleaning service in ${area.name}, Hyderabad from Techwash. Gentle care for suits, silks, lehengas, and formal wear.`;
-  } else if (service.slug === 'laundry-pickup-and-delivery') {
-    pageTitle = `Laundry Pickup & Delivery in ${area.name} | Techwash`;
-    pageH1 = `Laundry Pickup & Delivery in ${area.name}`;
-    pageDescription = `Convenient laundry pickup and delivery in ${area.name}, Hyderabad from Techwash. Flexible timed slots from 8 AM to 9 PM, electronic weighing, and 24-48h return.`;
-  }
-
-  // Localized Search Intent Keywords
-  const pageKeywords = `${service.name.toLowerCase()} in ${area.name}, ${service.name.toLowerCase()} near ${area.name}, ${service.name.toLowerCase()} ${area.name}, best ${service.name.toLowerCase()} ${area.name}, laundry hyderabad ${area.name}`;
+  // Exact titles, H1s, and meta descriptions as per SEO Keyword Map & Rules
+  const pageTitle = service.title;
+  const pageH1 = service.h1;
+  const pageDescription = service.metaDescription;
+  const canonicalUrl = `${BASE_URL}/areas/manikonda/${service.slug}`;
+  const pageKeywords = `${service.primaryKeyword}${service.secondaryKeywords ? `, ${service.secondaryKeywords}` : ''}`;
 
   // Localized FAQ list targeting intent
   const serviceAreaFaqs = [
     {
-      question: `How does Techwash ${service.name.toLowerCase()} work in ${area.name}?`,
-      answer: `Our ${service.name.toLowerCase()} in ${area.name} starts at ${service.pricingDisplay}. You schedule a pickup online or via WhatsApp, our team collects your items at your doorstep, processes them using isolated drum technology or eco-friendly hydrocarbon dry cleaning, and delivers them back fresh and sealed.`,
+      question: `How does Techwash Laundry ${service.name.toLowerCase()} work in Manikonda?`,
+      answer: `Our ${service.name.toLowerCase()} in Manikonda starts at ${service.pricingDisplay}. You schedule a pickup online or via WhatsApp, our rider collects your garments at your Manikonda doorstep, processes them using 0 PPM soft water or European hydrocarbon dry cleaning, and delivers them back fresh and sealed.`,
     },
     {
-      question: `Is pickup and delivery available in ${area.name}?`,
-      answer: `Yes, Techwash operates daily scheduled doorstep pickup across all apartments, gated communities, and colonies in ${area.name} between 8:00 AM and 9:00 PM.`,
+      question: `Is doorstep pickup available in Manikonda for ${service.name.toLowerCase()}?`,
+      answer: `Yes, Techwash Laundry operates daily scheduled doorstep pickup across all apartments, gated communities, and colonies in Manikonda between 8:00 AM and 9:00 PM.`,
     },
     {
-      question: `What items can be sent for ${service.name.toLowerCase()} in ${area.name}?`,
-      answer: `We handle daily office wear, shirts, trousers, suits, blazers, delicate silk sarees, traditional dresses, shoes, curtains, and heavy living room carpets.`,
+      question: `What garments are suitable for ${service.name.toLowerCase()} in Manikonda?`,
+      answer: `We handle daily office wear, shirts, trousers, formal suits, blazers, delicate silk sarees, traditional dresses, shoes, curtains, and heavy living room carpets.`,
     },
     {
-      question: `What is the delivery turnaround time for ${service.name.toLowerCase()} in ${area.name}?`,
-      answer: `Standard turnaround is 48 hours. Express 24-hour delivery is also available for urgent requirements across ${area.name}.`,
+      question: `What is the delivery turnaround time for ${service.name.toLowerCase()} in Manikonda?`,
+      answer: `Standard turnaround is 48 hours. Express 24-hour delivery is also available for urgent requirements across Manikonda upon request.`,
     },
     {
-      question: `How can I schedule a pickup?`,
+      question: `How can I schedule a ${service.name.toLowerCase()} pickup in Manikonda?`,
       answer: `You can schedule a pickup in 60 seconds on our website or call/WhatsApp us directly at ${BUSINESS_INFO.telephone}.`,
     },
   ];
@@ -130,27 +114,27 @@ export const AreaServiceDetailPage = () => {
           {
             '@type': 'ListItem',
             position: 2,
-            name: 'Service Areas',
+            name: 'Areas',
             item: `${BASE_URL}/areas`,
           },
           {
             '@type': 'ListItem',
             position: 3,
-            name: area.name,
-            item: `${BASE_URL}/areas/${area.slug}`,
+            name: 'Manikonda',
+            item: `${BASE_URL}/areas/manikonda`,
           },
           {
             '@type': 'ListItem',
             position: 4,
             name: service.name,
-            item: `${BASE_URL}/areas/${area.slug}/${service.slug}`,
+            item: canonicalUrl,
           },
         ],
       },
       {
         '@type': 'Service',
-        '@id': `${BASE_URL}/areas/${area.slug}/${service.slug}#service`,
-        name: `${service.name} in ${area.name}`,
+        '@id': `${canonicalUrl}#service`,
+        name: `${service.name} in Manikonda`,
         serviceType: service.name,
         category: service.category,
         description: pageDescription,
@@ -162,12 +146,12 @@ export const AreaServiceDetailPage = () => {
           url: BASE_URL,
           address: {
             ...BUSINESS_INFO.address,
-            postalCode: area.pincodes[0] || BUSINESS_INFO.address.postalCode,
+            postalCode: '500089',
           },
         },
         areaServed: {
           '@type': 'AdministrativeArea',
-          name: `${area.name}, Hyderabad`,
+          name: 'Manikonda, Hyderabad, Telangana, India',
         },
         offers: {
           '@type': 'Offer',
@@ -190,12 +174,8 @@ export const AreaServiceDetailPage = () => {
     ],
   };
 
-  // Cross links
-  const otherServicesInArea = SEO_SERVICES.filter((s) => s.slug !== service.slug);
-  const nearbyAreaObjects = area.nearbyAreas
-    .map((slug) => SEO_AREAS.find((a) => a.slug === slug))
-    .filter(Boolean);
-
+  // Cross links to other Manikonda services
+  const otherServicesInManikonda = SEO_SERVICES.filter((s) => s.slug !== service.slug);
   const cleanPhone = BUSINESS_INFO.telephone.replace(/\D/g, '');
 
   return (
@@ -203,7 +183,7 @@ export const AreaServiceDetailPage = () => {
       <SEOHead
         title={pageTitle}
         description={pageDescription}
-        canonicalUrl={`${BASE_URL}/areas/${area.slug}/${service.slug}`}
+        canonicalUrl={canonicalUrl}
         keywords={pageKeywords}
         structuredData={structuredData}
       />
@@ -220,7 +200,7 @@ export const AreaServiceDetailPage = () => {
             items={[
               { name: 'Home', path: '/' },
               { name: 'Areas', path: '/areas' },
-              { name: area.name, path: `/areas/${area.slug}` },
+              { name: 'Manikonda', path: '/areas/manikonda' },
               { name: service.name }
             ]}
           />
@@ -230,7 +210,7 @@ export const AreaServiceDetailPage = () => {
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#FFF7ED] border border-[#F97316]/30 text-[#F97316] text-xs font-bold uppercase tracking-wider">
                 <MapPin className="w-3.5 h-3.5 text-[#F97316]" />
-                <span>{area.name} • Pincode: {area.pincodes.join(', ')}</span>
+                <span>Manikonda, Hyderabad • Pincode: 500089</span>
               </div>
 
               <div className="flex items-center gap-2">
@@ -244,7 +224,7 @@ export const AreaServiceDetailPage = () => {
                 {pageH1}
               </h1>
               <p className="text-base sm:text-lg text-slate-600 leading-relaxed font-normal">
-                {service.metaDescription} Our specialized pickup fleet covers {area.name} daily with {area.turnaround.toLowerCase()} and protective packaging.
+                {service.metaDescription} Our specialized pickup fleet covers Manikonda daily with 24-48 hour delivery turnaround and protective garment packaging.
               </p>
             </div>
 
@@ -260,20 +240,20 @@ export const AreaServiceDetailPage = () => {
               <div className="text-xs text-slate-700 space-y-1.5">
                 <div className="flex items-center gap-2">
                   <Clock className="w-4 h-4 text-[#F97316]" />
-                  <span>Pickup Slots: <strong className="text-slate-900">{area.pickupHours}</strong></span>
+                  <span>Pickup Slots: <strong className="text-slate-900">8:00 AM – 9:00 PM (All 7 Days)</strong></span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Truck className="w-4 h-4 text-emerald-600" />
-                  <span>Turnaround: <strong className="text-slate-900">{area.turnaround}</strong></span>
+                  <span>Turnaround: <strong className="text-slate-900">Standard 48h • 24h Express Available</strong></span>
                 </div>
               </div>
             </div>
 
             {/* Action Buttons */}
             <div className="pt-2 flex flex-wrap items-center gap-4">
-              <Link to={`/book-pickup?locality=${encodeURIComponent(area.name)}&service=${encodeURIComponent(service.slug)}`}>
+              <Link to={`/book-pickup?locality=Manikonda&service=${encodeURIComponent(service.slug)}`}>
                 <Button variant="primary" size="lg" icon={Calendar}>
-                  Book {service.name} in {area.name}
+                  Book {service.name} in Manikonda
                 </Button>
               </Link>
               <a href={`tel:${cleanPhone}`}>
@@ -282,7 +262,7 @@ export const AreaServiceDetailPage = () => {
                 </Button>
               </a>
               <a
-                href={`https://wa.me/${cleanPhone}?text=${encodeURIComponent(`Hello Tech Wash, I want to book ${service.name} in ${area.name}.`)}`}
+                href={`https://wa.me/${cleanPhone}?text=${encodeURIComponent(`Hello Techwash Laundry, I want to book ${service.name} in Manikonda.`)}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="px-6 py-3.5 rounded-full bg-[#25D366] hover:bg-[#1EBE5D] text-white font-bold text-sm inline-flex items-center gap-2 shadow-sm transition-all"
@@ -300,25 +280,25 @@ export const AreaServiceDetailPage = () => {
                 Laboratory Grade Quality Standards
               </div>
               <h2 className="text-2xl sm:text-3xl font-black text-slate-900 font-display tracking-tight">
-                Our {service.name} Care Protocol
+                Our {service.name} Process
               </h2>
             </div>
 
             <p className="text-sm sm:text-base text-slate-600 leading-relaxed font-normal">
-              {service.processSummary} Every garment processed for {area.name} residents undergoes optical pre-inspection, fabric identification, individualized cleaning cycles, and final 10-point quality control before being dispatched.
+              {service.processSummary} Every garment processed for Manikonda residents undergoes optical pre-inspection, fabric identification, individualized single-customer wash or dry clean cycles, and final 10-point quality control before being dispatched.
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 pt-2">
               <div className="p-5 rounded-2xl bg-brand-50 border border-brand-100 space-y-2.5">
                 <Sparkles className="w-6 h-6 text-[#F97316]" />
                 <h3 className="font-bold text-slate-900 text-sm font-display">1. Fabric Inspection & Spotting</h3>
-                <p className="text-xs text-slate-600 leading-relaxed">Optical daylight fiber mapping and ultrasonic spot dissolution targeting oil, tannin, and protein marks.</p>
+                <p className="text-xs text-slate-600 leading-relaxed">Optical daylight fiber mapping and bio-enzyme stain dissolution targeting oil, tannin, and protein marks.</p>
               </div>
 
               <div className="p-5 rounded-2xl bg-brand-50 border border-brand-100 space-y-2.5">
                 <ShieldCheck className="w-6 h-6 text-[#F97316]" />
-                <h3 className="font-bold text-slate-900 text-sm font-display">2. Customized Treatment</h3>
-                <p className="text-xs text-slate-600 leading-relaxed">Demineralized 0 PPM RO softened wash or pure European hydrocarbon solvent bath in isolated drums.</p>
+                <h3 className="font-bold text-slate-900 text-sm font-display">2. Specialized Washing / Cleaning</h3>
+                <p className="text-xs text-slate-600 leading-relaxed">Demineralized 0 PPM RO softened wash or pure European hydrocarbon solvent bath in single-customer drums.</p>
               </div>
 
               <div className="p-5 rounded-2xl bg-brand-50 border border-brand-100 space-y-2.5">
@@ -336,7 +316,7 @@ export const AreaServiceDetailPage = () => {
                 Simple & Convenient
               </div>
               <h2 className="text-2xl sm:text-3xl font-black text-slate-900 font-display tracking-tight">
-                How It Works in {area.name}
+                How It Works in Manikonda
               </h2>
             </div>
 
@@ -344,13 +324,13 @@ export const AreaServiceDetailPage = () => {
               <div className="bg-white p-6 rounded-3xl border border-brand-200 shadow-sm space-y-2">
                 <div className="text-[#F97316] font-display font-black text-lg">01</div>
                 <h3 className="font-bold text-slate-900 text-base font-display">Book Online</h3>
-                <p className="text-xs text-slate-600 leading-relaxed">Choose a time slot between 8:00 AM and 9:00 PM for pickup in {area.name}.</p>
+                <p className="text-xs text-slate-600 leading-relaxed">Choose a time slot between 8:00 AM and 9:00 PM for pickup in Manikonda.</p>
               </div>
 
               <div className="bg-white p-6 rounded-3xl border border-brand-200 shadow-sm space-y-2">
                 <div className="text-[#F97316] font-display font-black text-lg">02</div>
                 <h3 className="font-bold text-slate-900 text-base font-display">Doorstep Pickup</h3>
-                <p className="text-xs text-slate-600 leading-relaxed">Our rider arrives with electronic weighing scales and digital tag logging.</p>
+                <p className="text-xs text-slate-600 leading-relaxed">Our rider arrives with electronic weighing scales and digital barcode tag logging.</p>
               </div>
 
               <div className="bg-white p-6 rounded-3xl border border-brand-200 shadow-sm space-y-2">
@@ -367,13 +347,13 @@ export const AreaServiceDetailPage = () => {
             </div>
           </div>
 
-          {/* 4. LOCAL SOCIETIES & CORRIDORS SERVED */}
+          {/* 4. MANIKONDA SOCIETIES & CORRIDORS SERVED */}
           <div className="bg-white rounded-3xl border border-brand-200 p-8 sm:p-10 shadow-sm space-y-4">
             <h2 className="text-xl sm:text-2xl font-black text-slate-900 font-display tracking-tight">
-              Doorstep {service.name} Coverage in {area.name}
+              Doorstep {service.name} Coverage in Manikonda
             </h2>
             <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-              We provide scheduled doorstep collection and return delivery for {service.name.toLowerCase()} across all prominent colonies and apartment complexes in {area.name}:
+              We provide scheduled doorstep collection and return delivery for {service.name.toLowerCase()} across all prominent colonies and apartment complexes in Manikonda:
             </p>
             <div className="flex flex-wrap gap-2 pt-2">
               {area.landmarks.map((landmark, idx) => (
@@ -388,57 +368,15 @@ export const AreaServiceDetailPage = () => {
             </div>
           </div>
 
-          {/* 5. NEARBY AREAS WE SERVE (GEOGRAPHIC SERVICE DISCOVERY) */}
-          <div className="bg-white rounded-3xl border border-brand-200 p-8 sm:p-10 shadow-sm space-y-6">
-            <div className="space-y-2">
-              <div className="text-xs font-bold text-[#F97316] uppercase tracking-wider">
-                Surrounding Service Network
-              </div>
-              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 font-display tracking-tight">
-                Nearby Areas Where Tech Wash Provides {service.name}
-              </h2>
-            </div>
-            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-              In addition to {area.name}, Tech Wash operates daily routes providing {service.name.toLowerCase()} in adjacent neighborhoods:
-            </p>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
-              {nearbyAreaObjects.map((nearby) => (
-                <div
-                  key={nearby.slug}
-                  className="p-5 rounded-2xl bg-brand-50/50 border border-brand-100 flex flex-col justify-between space-y-3 group hover:border-[#F97316]/50 transition-all"
-                >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-1 text-[#F97316] text-xs font-bold">
-                      <MapPin className="w-3 h-3" />
-                      <span>{nearby.name}</span>
-                    </div>
-                    <h3 className="font-bold text-slate-900 text-sm font-display group-hover:text-[#F97316] transition-colors">
-                      {service.name} in {nearby.name}
-                    </h3>
-                  </div>
-
-                  <Link
-                    to={`/areas/${nearby.slug}/${service.slug}`}
-                    className="text-xs font-bold text-[#F97316] hover:text-[#EA580C] inline-flex items-center gap-1 pt-2 border-t border-slate-200/60"
-                  >
-                    <span>View {nearby.name} {service.name}</span>
-                    <ArrowRight className="w-3 h-3" />
-                  </Link>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* 6. FAQS */}
+          {/* 5. FAQS */}
           <div className="space-y-6">
             <div className="text-center max-w-2xl mx-auto space-y-2">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-100 text-[#F97316] text-xs font-bold uppercase tracking-wider">
                 <HelpCircle className="w-3.5 h-3.5" />
-                <span>Got Questions?</span>
+                <span>Frequently Asked Questions</span>
               </div>
               <h2 className="text-2xl sm:text-3xl font-black text-slate-900 font-display tracking-tight">
-                {service.name} in {area.name} — FAQs
+                {service.name} in Manikonda — FAQs
               </h2>
             </div>
 
@@ -456,9 +394,9 @@ export const AreaServiceDetailPage = () => {
                     >
                       <span>{faq.question}</span>
                       {isOpen ? (
-                        <ChevronUp className="w-5 h-5 text-[#F97316] shrink-0" />
+                        <ChevronUp className="w-5 h-5 text-[#F97316]" />
                       ) : (
-                        <ChevronDown className="w-5 h-5 text-slate-400 shrink-0" />
+                        <ChevronDown className="w-5 h-5 text-slate-400" />
                       )}
                     </button>
                     {isOpen && (
@@ -472,45 +410,52 @@ export const AreaServiceDetailPage = () => {
             </div>
           </div>
 
-          {/* 7. OTHER SERVICES IN THIS AREA */}
+          {/* 6. OTHER SERVICES IN MANIKONDA (INTERNAL LINKING CLUSTER) */}
           <div className="bg-white rounded-3xl border border-brand-200 p-8 shadow-sm space-y-4">
             <h3 className="text-base font-bold text-slate-900 font-display">
-              Other Fabric Care Options in {area.name}
+              Other Fabric Care Options in Manikonda
             </h3>
             <div className="flex flex-wrap gap-2">
-              {otherServicesInArea.map((s) => (
+              <Link
+                to="/areas/manikonda"
+                className="px-3.5 py-1.5 rounded-full bg-[#FFF7ED] text-[#F97316] text-xs font-bold border border-[#F97316]/40 transition-all flex items-center gap-1.5"
+              >
+                <MapPin className="w-3 h-3 text-[#F97316]" />
+                <span>Manikonda Area Hub</span>
+              </Link>
+              {otherServicesInManikonda.map((s) => (
                 <Link
                   key={s.slug}
-                  to={`/areas/${area.slug}/${s.slug}`}
+                  to={`/areas/manikonda/${s.slug}`}
                   className="px-3.5 py-1.5 rounded-full bg-slate-100 hover:bg-[#FFF7ED] hover:text-[#F97316] hover:border-[#F97316]/40 text-slate-700 text-xs font-semibold border border-slate-200 transition-all flex items-center gap-1.5"
                 >
                   <Sparkles className="w-3 h-3 text-[#F97316]" />
-                  <span>{s.name} in {area.name}</span>
+                  <span>{s.name} in Manikonda</span>
                 </Link>
               ))}
             </div>
           </div>
 
-          {/* 8. FINAL CONVERSION CTA */}
+          {/* 7. FINAL CONVERSION CTA */}
           <div className="p-8 sm:p-12 rounded-[36px] bg-[#111827] border border-[#F97316]/30 flex flex-col md:flex-row items-center justify-between gap-8 shadow-2xl text-white">
             <div className="space-y-2 text-center md:text-left">
               <h3 className="text-2xl sm:text-3xl font-black font-display tracking-tight">
-                Order {service.name} in {area.name}
+                Order {service.name} in Manikonda
               </h3>
               <p className="text-xs sm:text-sm text-slate-300 max-w-xl font-normal leading-relaxed">
-                Experience precision care, transparent digital billing, and prompt doorstep delivery.
+                Experience precision care, transparent digital billing, and prompt doorstep delivery across Manikonda.
               </p>
             </div>
 
             <div className="flex flex-col sm:flex-row items-center gap-4 shrink-0">
-              <Link to={`/book-pickup?locality=${encodeURIComponent(area.name)}&service=${encodeURIComponent(service.slug)}`}>
+              <Link to={`/book-pickup?locality=Manikonda&service=${encodeURIComponent(service.slug)}`}>
                 <Button variant="primary" size="lg" icon={Calendar}>
                   Schedule Pickup
                 </Button>
               </Link>
-              <Link to={`/areas/${area.slug}`}>
+              <Link to="/areas/manikonda">
                 <Button variant="secondary" size="lg" icon={ArrowLeft}>
-                  All {area.name} Services
+                  Manikonda Hub
                 </Button>
               </Link>
             </div>

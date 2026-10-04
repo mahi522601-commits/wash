@@ -340,7 +340,57 @@ export const INITIAL_PRICING_CONFIG = {
 
   // 5. Custom Services & Dynamic Sub-Services created in Admin
   customServices: [],
+
+  // 6. Dynamic Per-KG Sub-Services & Rate Tiers (Wash & Fold, Wash & Iron)
+  perKgSubServices: [
+    { id: 'wf-sub-men', serviceId: 'wash-and-fold', name: "Men's Apparel", price: 100, unit: 'Kg', emoji: '👔', description: 'T-Shirts, Jeans, Shorts, Daily Wear' },
+    { id: 'wf-sub-women', serviceId: 'wash-and-fold', name: "Women's & Delicate Wear", price: 130, unit: 'Kg', emoji: '👗', description: 'Kurtis, Tops, Dresses, Delicate Wear' },
+    { id: 'wf-sub-household', serviceId: 'wash-and-fold', name: 'Home Linens & Towels', price: 120, unit: 'Kg', emoji: '🛏️', description: 'Bedsheets, Towels, Pillow Covers' },
+    { id: 'wf-sub-kids', serviceId: 'wash-and-fold', name: 'Kids & Baby Wear', price: 90, unit: 'Kg', emoji: '👶', description: 'Kids clothing & baby garments' },
+    { id: 'wf-sub-express', serviceId: 'wash-and-fold', name: 'Express Wash & Fold (24h)', price: 180, unit: 'Kg', emoji: '⚡', description: 'Fast 24-hour turnaround wash & fold' },
+
+    { id: 'wi-sub-men', serviceId: 'wash-and-iron', name: "Men's Standard", price: 130, unit: 'Kg', emoji: '👔', description: 'Formals, Trousers, Polos + Steam Iron' },
+    { id: 'wi-sub-women', serviceId: 'wash-and-iron', name: "Women's & Workwear", price: 160, unit: 'Kg', emoji: '👗', description: 'Kurtas, Salwars, Tops + Steam Iron' },
+    { id: 'wi-sub-linens', serviceId: 'wash-and-iron', name: 'Heavy Linens & Drapes', price: 180, unit: 'Kg', emoji: '🛏️', description: 'Bedsheets, Curtains + Steam Press' },
+    { id: 'wi-sub-express', serviceId: 'wash-and-iron', name: 'Express Wash & Iron (24h)', price: 200, unit: 'Kg', emoji: '⚡', description: 'Fast 24-hour express steam press' },
+  ],
+
+  // 7. Dynamic Weighed Clothes Sub-Services Catalog (Wash & Fold, Wash & Steam Iron Tagging Items)
+  weighedGarments: [
+    { id: 'wg-m-1', name: 'Cotton Shirt', emoji: '👔', category: "Men's Tops", group: 'MEN', targetService: 'all' },
+    { id: 'wg-m-2', name: 'Trouser / Pant', emoji: '👖', category: "Men's Bottoms", group: 'MEN', targetService: 'all' },
+    { id: 'wg-m-3', name: 'Jeans / Denim', emoji: '👖', category: "Men's Bottoms", group: 'MEN', targetService: 'all' },
+    { id: 'wg-m-4', name: 'T-Shirt / Polo', emoji: '👕', category: "Men's Tops", group: 'MEN', targetService: 'all' },
+    { id: 'wg-m-5', name: 'Kurta / Ethnic', emoji: '👘', category: "Men's Ethnic", group: 'MEN', targetService: 'all' },
+    { id: 'wg-m-6', name: 'Shorts / Trackpant', emoji: '🩳', category: "Men's Bottoms", group: 'MEN', targetService: 'all' },
+    { id: 'wg-m-7', name: 'Pyjama / Lounge Pant', emoji: '🩳', category: "Men's Bottoms", group: 'MEN', targetService: 'all' },
+    { id: 'wg-m-8', name: 'Silk Dhoti / Lungi', emoji: '🥻', category: "Men's Ethnic", group: 'MEN', targetService: 'all' },
+
+    { id: 'wg-w-1', name: 'Normal Top / Kurti', emoji: '👚', category: "Women's Tops", group: 'WOMEN', targetService: 'all' },
+    { id: 'wg-w-2', name: 'Medium / Long Top', emoji: '👚', category: "Women's Tops", group: 'WOMEN', targetService: 'all' },
+    { id: 'wg-w-3', name: 'Leggings / Bottoms', emoji: '👖', category: "Women's Bottoms", group: 'WOMEN', targetService: 'all' },
+    { id: 'wg-w-4', name: 'Women T-Shirt', emoji: '👕', category: "Women's Tops", group: 'WOMEN', targetService: 'all' },
+    { id: 'wg-w-5', name: 'Daily Saree / Dress', emoji: '🥻', category: "Women's Ethnic", group: 'WOMEN', targetService: 'all' },
+    { id: 'wg-w-6', name: 'Nighties / Sleepwear', emoji: '👗', category: "Women's Wear", group: 'WOMEN', targetService: 'all' },
+    { id: 'wg-w-7', name: 'Saree Blouse', emoji: '👚', category: "Women's Ethnic", group: 'WOMEN', targetService: 'all' },
+    { id: 'wg-w-8', name: 'Dupatta / Chunni', emoji: '🧣', category: "Women's Ethnic", group: 'WOMEN', targetService: 'all' },
+    { id: 'wg-w-9', name: 'Western Skirt / Gown', emoji: '👗', category: "Women's Wear", group: 'WOMEN', targetService: 'all' },
+
+    { id: 'wg-h-1', name: 'Single Bedsheet', emoji: '🛏️', category: 'Household', group: 'HOUSEHOLD', targetService: 'all' },
+    { id: 'wg-h-2', name: 'Double / King Bedsheet', emoji: '🛌', category: 'Household', group: 'HOUSEHOLD', targetService: 'all' },
+    { id: 'wg-h-3', name: 'Pillow Cover (Pair)', emoji: '🛋️', category: 'Household', group: 'HOUSEHOLD', targetService: 'all' },
+    { id: 'wg-h-4', name: 'Bath Towel Large', emoji: '🧖', category: 'Household', group: 'HOUSEHOLD', targetService: 'all' },
+    { id: 'wg-h-5', name: 'Hand Towel / Napkin', emoji: '🧼', category: 'Household', group: 'HOUSEHOLD', targetService: 'all' },
+
+    { id: 'wg-k-1', name: 'Kids Dress / Frock', emoji: '👗', category: 'Kids Wear', group: 'KIDS', targetService: 'all' },
+    { id: 'wg-k-2', name: 'Kids Shirt / T-Shirt', emoji: '👕', category: 'Kids Wear', group: 'KIDS', targetService: 'all' },
+    { id: 'wg-k-3', name: 'Kids Shorts / Pant', emoji: '🩳', category: 'Kids Wear', group: 'KIDS', targetService: 'all' },
+    { id: 'wg-k-4', name: 'Kids School Uniform', emoji: '👔', category: 'Kids Wear', group: 'KIDS', targetService: 'all' },
+  ],
 };
+
+export const DEFAULT_PER_KG_SUB_SERVICES = INITIAL_PRICING_CONFIG.perKgSubServices;
+export const DEFAULT_WEIGHED_GARMENTS = INITIAL_PRICING_CONFIG.weighedGarments;
 
 const PRICING_STORAGE_KEY = 'techwash_pricing_config_v2';
 const PRICING_BROADCAST_CHANNEL = 'techwash_pricing_channel';
@@ -456,25 +506,59 @@ export const buildWeightBandsFromPricing = (config = INITIAL_PRICING_CONFIG) => 
  */
 export const buildPersonaRateBandsFromPricing = (config = INITIAL_PRICING_CONFIG) => {
   const cfg = config || INITIAL_PRICING_CONFIG;
-  const foldMen = Number(cfg.services?.find(s => s.id === 'wash-and-fold')?.baseRates?.men) || 100;
-  const foldWomen = Number(cfg.services?.find(s => s.id === 'wash-and-fold')?.baseRates?.women) || 130;
-  const ironMen = Number(cfg.services?.find(s => s.id === 'wash-and-iron')?.baseRates?.men) || 130;
-  const ironWomen = Number(cfg.services?.find(s => s.id === 'wash-and-iron')?.baseRates?.women) || 160;
+  const perKgSubs = Array.isArray(cfg.perKgSubServices) && cfg.perKgSubServices.length > 0
+    ? cfg.perKgSubServices
+    : DEFAULT_PER_KG_SUB_SERVICES;
 
-  return {
-    foldPriceBands: [
-      { label: "Men's Regular", price: foldMen, desc: 'T-Shirts, Jeans, Shorts, Daily Wear' },
-      { label: "Women's / Delicate", price: foldWomen, desc: 'Kurtis, Tops, Dresses, Delicate Wear' },
-      { label: "Home Linens", price: Math.round(foldMen * 1.2), desc: 'Bedsheets, Towels, Pillow Covers' },
-      { label: 'Premium Fabric', price: Math.round(foldMen * 1.5), desc: 'Khadi, Linen, Silk-blend, Heavy loads' },
-    ],
-    ironPriceBands: [
-      { label: "Men's Standard", price: ironMen, desc: 'Formals, Trousers, Polos + Steam Iron' },
-      { label: "Women's / Work", price: ironWomen, desc: 'Kurtas, Salwars, Tops + Steam Iron' },
-      { label: "Heavy Linens", price: Math.round(ironMen * 1.38), desc: 'Duvets, Heavy Curtains + Steam Iron' },
-      { label: 'Silk / Form Press', price: Math.round(ironMen * 1.54), desc: 'Silk, Chiffon, Formal Blazers Press' },
-    ]
-  };
+  const foldSubs = perKgSubs.filter(s => s.serviceId === 'wash-and-fold');
+  const ironSubs = perKgSubs.filter(s => s.serviceId === 'wash-and-iron');
+
+  const foldPriceBands = foldSubs.map(s => ({
+    id: s.id,
+    label: s.name,
+    rate: Number(s.price) || 100,
+    price: Number(s.price) || 100,
+    desc: s.description || `${s.name} @ ₹${s.price}/Kg`,
+    emoji: s.emoji || '👕',
+  }));
+
+  const ironPriceBands = ironSubs.map(s => ({
+    id: s.id,
+    label: s.name,
+    rate: Number(s.price) || 130,
+    price: Number(s.price) || 130,
+    desc: s.description || `${s.name} @ ₹${s.price}/Kg`,
+    emoji: s.emoji || '🫧',
+  }));
+
+  return { foldPriceBands, ironPriceBands };
+};
+
+/**
+ * Builds the dynamic Weighed Garments Sub-Services list (Cotton Shirt, Trouser, Saree, Bedsheets, etc.)
+ */
+export const buildWeighedSubServicesFromPricing = (config = INITIAL_PRICING_CONFIG, serviceId = 'srv-wash-and-fold') => {
+  const cfg = config || INITIAL_PRICING_CONFIG;
+  const list = Array.isArray(cfg.weighedGarments) && cfg.weighedGarments.length > 0
+    ? cfg.weighedGarments
+    : DEFAULT_WEIGHED_GARMENTS;
+
+  const cleanSrvId = serviceId.replace(/^srv-/, '');
+  const isFold = cleanSrvId === 'wash-and-fold';
+  const prefix = isFold ? 'waf' : 'wai';
+  const srvName = isFold ? 'Wash & Fold' : 'Wash & Steam Iron';
+  const tagEmoji = isFold ? '🧺' : '🫧';
+
+  return list
+    .filter(it => !it.targetService || it.targetService === 'all' || it.targetService === cleanSrvId || it.targetService === serviceId)
+    .map(it => ({
+      ...it,
+      id: it.id?.startsWith(`${prefix}-`) ? it.id : `${prefix}-${it.id}`,
+      serviceId: serviceId.startsWith('srv-') ? serviceId : `srv-${serviceId}`,
+      serviceName: srvName,
+      displayName: `${tagEmoji} ${isFold ? 'Fold' : 'Iron'} — ${it.name}`,
+      fullName: `${tagEmoji} ${srvName} — ${it.name}`,
+    }));
 };
 
 /**
@@ -742,9 +826,25 @@ export const recalculateServicesInConfig = (config) => {
   const starchPrices = starchItems.map(i => Number(i.price)).filter(p => !isNaN(p) && p > 0);
   const starchMin = starchPrices.length > 0 ? Math.min(...starchPrices) : 25;
 
+  // Ensure perKgSubServices is preserved or initialized
+  cfg.perKgSubServices = Array.isArray(cfg.perKgSubServices) && cfg.perKgSubServices.length > 0
+    ? cfg.perKgSubServices
+    : DEFAULT_PER_KG_SUB_SERVICES;
+
+  // Ensure weighedGarments is preserved or initialized
+  cfg.weighedGarments = Array.isArray(cfg.weighedGarments) && cfg.weighedGarments.length > 0
+    ? cfg.weighedGarments
+    : DEFAULT_WEIGHED_GARMENTS;
+
   // Wash and Fold / Wash and Iron per-kg rates
-  const foldRate = Number(cfg.services?.find(s => s.id === 'wash-and-fold')?.baseRates?.men) || 100;
-  const ironRate = Number(cfg.services?.find(s => s.id === 'wash-and-iron')?.baseRates?.men) || 130;
+  const foldSubList = cfg.perKgSubServices.filter(s => s.serviceId === 'wash-and-fold');
+  const ironSubList = cfg.perKgSubServices.filter(s => s.serviceId === 'wash-and-iron');
+  const foldRate = foldSubList.length > 0 
+    ? Math.min(...foldSubList.map(s => Number(s.price) || 100)) 
+    : (Number(cfg.services?.find(s => s.id === 'wash-and-fold')?.baseRates?.men) || 100);
+  const ironRate = ironSubList.length > 0 
+    ? Math.min(...ironSubList.map(s => Number(s.price) || 130)) 
+    : (Number(cfg.services?.find(s => s.id === 'wash-and-iron')?.baseRates?.men) || 130);
 
   // Curtains lowest
   const curtainDCRate = Number(cfg.curtains?.dryCleaning) || 200;

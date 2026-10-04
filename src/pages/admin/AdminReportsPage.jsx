@@ -14,6 +14,7 @@ import { Badge } from '../../components/ui/Badge';
 import { FinancialReportModal } from '../../components/reports/FinancialReportModal';
 import { ReceiptModal } from '../../components/receipt/ReceiptModal';
 import { DailyWhatsAppSchedulerCard } from '../../components/reports/DailyWhatsAppSchedulerCard';
+import { TerminalSyncHealthWidget } from '../../components/admin/TerminalSyncHealthWidget';
 import { 
   FileText, 
   Printer, 
@@ -460,6 +461,9 @@ export const AdminReportsPage = () => {
 
         {/* ── 10:00 PM AUTOMATED DAILY PDF WHATSAPP DISPATCHER & RECIPIENTS ── */}
         <DailyWhatsAppSchedulerCard reportData={reportData} onRefresh={loadReport} />
+
+        {/* ── POS TERMINAL SYNCHRONIZATION HEALTH DASHBOARD WIDGET ── */}
+        <TerminalSyncHealthWidget />
 
         {/* ─────────────────────────────────────────────────────────────
             TAB 1: DATE-WISE SAVED DAILY SHIFTS ARCHIVE

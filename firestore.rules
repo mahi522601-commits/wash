@@ -98,6 +98,10 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    match /settings/terminal_sync_health {
+      allow read, write: if true;
+    }
+
     match /settings/{docId} {
       allow read: if true;
       allow write: if isAdmin();
@@ -108,17 +112,17 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // Orders & Bookings: Customers can create and track, Admins have full access
+    // Orders & Bookings: POS Terminals and Customers can create and update transactions; deletion is restricted to Admins
     match /orders/{orderId} {
-      allow create: if true;
+      allow create, update: if true;
       allow read: if true;
-      allow update, delete: if isAdmin();
+      allow delete: if isAdmin();
     }
 
     match /bookings/{bookingId} {
-      allow create: if true;
+      allow create, update: if true;
       allow read: if true;
-      allow update, delete: if isAdmin();
+      allow delete: if isAdmin();
     }
 
     // Customers CRM
@@ -145,6 +149,10 @@ service cloud.firestore {
 
     match /activityLogs/{logId} {
       allow create: if true;
+      allow read, write: if isAdmin();
+    }
+
+    match /dailyReportLogs/{logId} {
       allow read, write: if isAdmin();
     }
   }

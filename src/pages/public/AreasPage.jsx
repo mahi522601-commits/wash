@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { SEO_AREAS, BUSINESS_INFO, BASE_URL } from '../../data/seoData';
+import { SEO_AREAS, SEO_SERVICES, BUSINESS_INFO, BASE_URL } from '../../data/seoData';
 import { SEOHead } from '../../components/seo/SEOHead';
 import { BreadcrumbNav } from '../../components/public/BreadcrumbNav';
 import { Card } from '../../components/ui/Card';
@@ -15,11 +15,13 @@ import {
   Calendar, 
   Phone,
   ShieldCheck,
-  Truck
+  Truck,
+  Droplets
 } from 'lucide-react';
 
 export const AreasPage = () => {
-  // Generate ItemList & Breadcrumb Schema
+  const manikondaArea = SEO_AREAS.find((a) => a.slug === 'manikonda') || SEO_AREAS[0];
+
   const structuredData = {
     '@context': 'https://schema.org',
     '@graph': [
@@ -50,21 +52,23 @@ export const AreasPage = () => {
         image: BUSINESS_INFO.image,
         priceRange: BUSINESS_INFO.priceRange,
         address: BUSINESS_INFO.address,
-        areaServed: SEO_AREAS.map((a) => ({
+        areaServed: {
           '@type': 'AdministrativeArea',
-          name: a.name,
-        })),
+          name: 'Manikonda, Hyderabad, Telangana, India',
+        },
       },
     ],
   };
 
+  const cleanPhone = BUSINESS_INFO.telephone.replace(/\D/g, '');
+
   return (
     <>
       <SEOHead
-        title="Laundry & Dry Cleaning Service Areas in Hyderabad | Techwash"
-        description="Explore Techwash laundry, dry cleaning, steam ironing, and shoe care service areas across Hyderabad. Doorstep pickup in Manikonda, Puppalaguda, Khajaguda, Lanco Hills & more."
+        title="Laundry Services in Manikonda, Hyderabad | Techwash Laundry"
+        description="Explore Techwash Laundry services in Manikonda, Hyderabad. Professional wash & iron, eco-friendly dry cleaning, steam pressing, shoe cleaning, and doorstep pickup across Manikonda."
         canonicalUrl={`${BASE_URL}/areas`}
-        keywords="laundry hyderabad service areas, dry cleaning manikonda, puppalaguda laundry pickup, khajaguda steam iron, lanco hills dry cleaner, narsingi wash and fold"
+        keywords="laundry service in Manikonda, laundry services in Manikonda, laundry near Manikonda, dry cleaning in Manikonda, wash and iron Manikonda"
         structuredData={structuredData}
       />
 
@@ -86,14 +90,14 @@ export const AreasPage = () => {
           <div className="text-center max-w-3xl mx-auto space-y-4">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#FFF7ED] border border-[#F97316]/30 text-[#F97316] text-xs font-bold uppercase tracking-wider">
               <MapPin className="w-3.5 h-3.5 text-[#F97316]" />
-              <span>Hyderabad Doorstep Service Network</span>
+              <span>Manikonda Local SEO Hub</span>
             </div>
             <h1 className="text-4xl sm:text-6xl font-black text-slate-900 font-display tracking-tight leading-tight">
-              Laundry & Dry Cleaning <br />
-              <span className="text-[#F97316]">Service Areas in Hyderabad</span>
+              Laundry Services in <br />
+              <span className="text-[#F97316]">Manikonda, Hyderabad</span>
             </h1>
             <p className="text-sm sm:text-base text-slate-600 font-normal leading-relaxed">
-              We provide prompt doorstep laundry pickup, 100% demineralized RO soft water washing, and eco-friendly European hydrocarbon dry cleaning across West Hyderabad's premier residential corridors and tech hubs.
+              Techwash Laundry operates a dedicated local service network across Manikonda, Hyderabad. We provide 100% demineralized 0 PPM RO soft water washing, eco-friendly European hydrocarbon dry cleaning, and scheduled doorstep pickup across Secretariat Colony, OU Colony, Lanco Hills Road, and surrounding societies.
             </p>
           </div>
 
@@ -101,145 +105,118 @@ export const AreasPage = () => {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
             <div className="bg-white p-5 rounded-3xl border border-brand-200 shadow-sm text-center">
               <Truck className="w-6 h-6 text-[#F97316] mx-auto mb-2" />
-              <div className="font-extrabold text-xl text-slate-900 font-display">Daily Slots</div>
-              <div className="text-xs text-slate-500 mt-1">8:00 AM – 9:00 PM Pickup</div>
+              <div className="font-extrabold text-xl text-slate-900 font-display">Doorstep Pickup</div>
+              <div className="text-xs text-slate-500 mt-1">8:00 AM – 9:00 PM Slots</div>
             </div>
             <div className="bg-white p-5 rounded-3xl border border-brand-200 shadow-sm text-center">
               <Clock className="w-6 h-6 text-[#F97316] mx-auto mb-2" />
               <div className="font-extrabold text-xl text-slate-900 font-display">24-48 Hours</div>
-              <div className="text-xs text-slate-500 mt-1">Standard & Express Delivery</div>
+              <div className="text-xs text-slate-500 mt-1">Standard & Express Turnaround</div>
             </div>
             <div className="bg-white p-5 rounded-3xl border border-brand-200 shadow-sm text-center">
-              <Sparkles className="w-6 h-6 text-[#F97316] mx-auto mb-2" />
+              <Droplets className="w-6 h-6 text-[#F97316] mx-auto mb-2" />
               <div className="font-extrabold text-xl text-slate-900 font-display">0 PPM Soft Water</div>
-              <div className="text-xs text-slate-500 mt-1">Fiber-safe RO Washing</div>
+              <div className="text-xs text-slate-500 mt-1">Fiber-Safe RO Wash</div>
             </div>
             <div className="bg-white p-5 rounded-3xl border border-brand-200 shadow-sm text-center">
               <ShieldCheck className="w-6 h-6 text-[#F97316] mx-auto mb-2" />
-              <div className="font-extrabold text-xl text-slate-900 font-display">Non-Toxic PERC 0%</div>
-              <div className="text-xs text-slate-500 mt-1">Pure Hydrocarbon Dry Clean</div>
+              <div className="font-extrabold text-xl text-slate-900 font-display">Hydrocarbon 0% PERC</div>
+              <div className="text-xs text-slate-500 mt-1">Non-Toxic Dry Cleaning</div>
             </div>
           </div>
 
-          {/* 8 Areas Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8">
-            {SEO_AREAS.map((area) => (
-              <Card
-                key={area.slug}
-                variant="luxury"
-                className="overflow-hidden flex flex-col justify-between group hover:border-[#F97316]/50 transition-all p-7 sm:p-8"
-              >
-                <div className="space-y-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="flex items-center gap-2 text-xs font-bold text-[#F97316] uppercase tracking-wider mb-1">
-                        <MapPin className="w-3.5 h-3.5" />
-                        <span>Pincode: {area.pincodes.join(', ')}</span>
-                      </div>
-                      <h2 className="text-2xl sm:text-3xl font-black text-slate-900 font-display tracking-tight group-hover:text-[#F97316] transition-colors">
-                        {area.name}
-                      </h2>
-                    </div>
-                    <Badge variant="royal" size="sm">Active Hub</Badge>
-                  </div>
-
-                  <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-normal">
-                    {area.introText}
-                  </p>
-
-                  {/* Landmarks Tag Cloud */}
-                  <div>
-                    <span className="text-xs font-bold text-slate-700 block mb-2">Key Landmarks & Societies:</span>
-                    <div className="flex flex-wrap gap-1.5">
-                      {area.landmarks.map((landmark, idx) => (
-                        <span
-                          key={idx}
-                          className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-[11px] font-medium border border-slate-200"
-                        >
-                          {landmark}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Core Intent Quick Links */}
-                  <div className="pt-2 flex flex-wrap gap-2 text-xs">
-                    <Link
-                      to={`/areas/${area.slug}/laundry-service`}
-                      className="px-2.5 py-1 rounded-lg bg-orange-50 hover:bg-orange-100 text-orange-800 font-medium border border-orange-200/60 transition-colors"
-                    >
-                      Laundry Service
-                    </Link>
-                    <Link
-                      to={`/areas/${area.slug}/dry-cleaning`}
-                      className="px-2.5 py-1 rounded-lg bg-orange-50 hover:bg-orange-100 text-orange-800 font-medium border border-orange-200/60 transition-colors"
-                    >
-                      Dry Cleaning
-                    </Link>
-                    <Link
-                      to={`/areas/${area.slug}/laundry-pickup-delivery`}
-                      className="px-2.5 py-1 rounded-lg bg-orange-50 hover:bg-orange-100 text-orange-800 font-medium border border-orange-200/60 transition-colors"
-                    >
-                      Pickup & Delivery
-                    </Link>
-                  </div>
-
-                  {/* Highlights */}
-                  <div className="pt-3 border-t border-slate-100 space-y-2 text-xs text-slate-600">
-                    <div className="flex items-center gap-2">
-                      <Clock className="w-3.5 h-3.5 text-[#F97316] shrink-0" />
-                      <span>{area.turnaround}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                      <span>Doorstep Pickup: {area.pickupHours}</span>
-                    </div>
-                  </div>
+          {/* Main Manikonda Area Hub Showcase Card */}
+          <Card variant="luxury" className="p-8 sm:p-10 space-y-8 bg-white border border-brand-200 shadow-sm">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-slate-100">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-xs font-bold text-[#F97316] uppercase tracking-wider">
+                  <MapPin className="w-4 h-4" />
+                  <span>Primary Location Hub • Pincode: 500089</span>
                 </div>
+                <h2 className="text-3xl sm:text-4xl font-black text-slate-900 font-display tracking-tight">
+                  Manikonda Local Service Directory
+                </h2>
+                <p className="text-xs sm:text-sm text-slate-600 max-w-2xl font-normal leading-relaxed">
+                  Select any specialized service below for detailed pricing, treatment process, and doorstep pickup scheduling in Manikonda.
+                </p>
+              </div>
 
-                <div className="mt-6 pt-5 border-t border-slate-100 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 shrink-0">
+                <Link to="/areas/manikonda">
+                  <Button variant="primary" size="md" icon={ArrowRight}>
+                    View Manikonda Hub
+                  </Button>
+                </Link>
+                <Link to="/book-pickup?locality=Manikonda">
+                  <Button variant="secondary" size="md" icon={Calendar}>
+                    Book Pickup
+                  </Button>
+                </Link>
+              </div>
+            </div>
+
+            {/* 11 Manikonda Service Gateways */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-bold text-slate-900 font-display flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-[#F97316]" />
+                <span>Manikonda Service Cluster</span>
+              </h3>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {SEO_SERVICES.map((srv) => (
                   <Link
-                    to={`/areas/${area.slug}`}
-                    className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold text-[#F97316] hover:text-[#EA580C] transition-colors"
+                    key={srv.slug}
+                    to={`/areas/manikonda/${srv.slug}`}
+                    className="p-4 rounded-2xl bg-brand-50/70 border border-brand-200/80 hover:border-[#F97316] hover:bg-white transition-all group flex flex-col justify-between space-y-2"
                   >
-                    <span>View {area.name} Hub</span>
-                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                  </Link>
+                    <div className="flex items-center justify-between">
+                      <Badge variant="amber" size="sm">{srv.category}</Badge>
+                      <span className="text-[11px] font-black text-[#F97316] font-display">{srv.pricingDisplay}</span>
+                    </div>
 
-                  <Link to={`/book-pickup?locality=${encodeURIComponent(area.name)}`}>
-                    <Button variant="primary" size="sm" icon={Calendar}>
-                      Book Pickup
-                    </Button>
+                    <div>
+                      <h4 className="font-bold text-slate-900 text-sm font-display group-hover:text-[#F97316] transition-colors">
+                        {srv.name} in Manikonda
+                      </h4>
+                      <p className="text-xs text-slate-500 line-clamp-2 mt-1">
+                        {srv.metaDescription}
+                      </p>
+                    </div>
+
+                    <div className="pt-2 flex items-center justify-between text-xs font-bold text-[#F97316]">
+                      <span>View Details</span>
+                      <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                    </div>
                   </Link>
-                </div>
-              </Card>
-            ))}
-          </div>
+                ))}
+              </div>
+            </div>
+          </Card>
 
           {/* Bottom Call to Action */}
           <div className="p-8 sm:p-12 rounded-[36px] bg-[#111827] border border-[#F97316]/30 flex flex-col md:flex-row items-center justify-between gap-8 shadow-2xl text-white">
             <div className="space-y-2 text-center md:text-left">
               <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#F97316]/15 border border-[#F97316]/40 text-[#F97316] text-xs font-bold uppercase tracking-wider">
                 <Sparkles className="w-3.5 h-3.5" />
-                <span>Need Laundry in Another Nearby Area?</span>
+                <span>Doorstep Collection Across Manikonda</span>
               </div>
               <h3 className="text-2xl sm:text-4xl font-black font-display tracking-tight">
-                We Cover Your Neighborhood
+                Ready for Professional Garment Care?
               </h3>
               <p className="text-xs sm:text-sm text-slate-300 max-w-xl font-normal leading-relaxed">
-                Even if your specific lane is not listed above, our doorstep fleet covers surrounding areas in West Hyderabad with free scheduled pickups.
+                Schedule a 60-second pickup in Manikonda. Our executive arrives at your doorstep with electronic scales and delivers your clothes back fresh and crisp.
               </p>
             </div>
 
             <div className="flex flex-col sm:flex-row items-center gap-4 shrink-0">
-              <Link to="/book-pickup">
+              <Link to="/book-pickup?locality=Manikonda">
                 <Button variant="primary" size="lg" icon={Calendar}>
                   Schedule Pickup
                 </Button>
               </Link>
-              <a href={`tel:${BUSINESS_INFO.telephone.replace(/\D/g, '')}`}>
+              <a href={`tel:${cleanPhone}`}>
                 <Button variant="secondary" size="lg" icon={Phone}>
-                  Call Concierge
+                  Call {BUSINESS_INFO.telephone}
                 </Button>
               </a>
             </div>

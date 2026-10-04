@@ -1,0 +1,112 @@
+[
+  {
+    "collection": "orders",
+    "docId": "POS01-20261003-RECOVER01",
+    "orderNumber": "TW-REC-2404",
+    "customerName": "Offline Storage Clear Test Customer",
+    "amount": 300,
+    "branch": "Main Branch — Manikonda",
+    "terminalId": "counter-1",
+    "reason": "Test marker identified (isTestData: true, id: POS01-20261003-RECOVER01)",
+    "deletionTimestamp": "2026-10-03T09:32:46.922Z"
+  },
+  {
+    "collection": "orders",
+    "docId": "TWPOS-01-20261003-H1152",
+    "orderNumber": "TW-H-93074",
+    "customerName": "Hardened Test Customer TW-POS-01",
+    "amount": 450,
+    "branch": "Main Branch — Manikonda",
+    "terminalId": "counter-1",
+    "reason": "Test marker identified (isTestData: true, id: TWPOS-01-20261003-H1152)",
+    "deletionTimestamp": "2026-10-03T09:32:47.291Z"
+  },
+  {
+    "collection": "orders",
+    "docId": "TWPOS-01-20261003-H4416",
+    "orderNumber": "TW-H-14253",
+    "customerName": "Hardened Test Customer TW-POS-01",
+    "amount": 450,
+    "branch": "Main Branch — Manikonda",
+    "terminalId": "counter-1",
+    "reason": "Test marker identified (isTestData: true, id: TWPOS-01-20261003-H4416)",
+    "deletionTimestamp": "2026-10-03T09:32:47.651Z"
+  },
+  {
+    "collection": "orders",
+    "docId": "TWPOS-01-20261003-H6345",
+    "orderNumber": "TW-H-12010",
+    "customerName": "Hardened Test Customer TW-POS-01",
+    "amount": 450,
+    "branch": "Main Branch — Manikonda",
+    "terminalId": "counter-1",
+    "reason": "Test marker identified (isTestData: true, id: TWPOS-01-20261003-H6345)",
+    "deletionTimestamp": "2026-10-03T09:32:48.003Z"
+  },
+  {
+    "collection": "orders",
+    "docId": "TWPOS-02-20261003-H4495",
+    "orderNumber": "TW-H-44270",
+    "customerName": "Hardened Test Customer TW-POS-02",
+    "amount": 450,
+    "branch": "Branch 1 — Tolichowki",
+    "terminalId": "counter-2",
+    "reason": "Test marker identified (isTestData: true, id: TWPOS-02-20261003-H4495)",
+    "deletionTimestamp": "2026-10-03T09:32:48.371Z"
+  },
+  {
+    "collection": "orders",
+    "docId": "TWPOS-02-20261003-H6529",
+    "orderNumber": "TW-H-96863",
+    "customerName": "Hardened Test Customer TW-POS-02",
+    "amount": 450,
+    "branch": "Branch 1 — Tolichowki",
+    "terminalId": "counter-2",
+    "reason": "Test marker identified (isTestData: true, id: TWPOS-02-20261003-H6529)",
+    "deletionTimestamp": "2026-10-03T09:32:48.691Z"
+  },
+  {
+    "collection": "orders",
+    "docId": "TWPOS-02-20261003-H7355",
+    "orderNumber": "TW-H-43723",
+    "customerName": "Hardened Test Customer TW-POS-02",
+    "amount": 450,
+    "branch": "Branch 1 — Tolichowki",
+    "terminalId": "counter-2",
+    "reason": "Test marker identified (isTestData: true, id: TWPOS-02-20261003-H7355)",
+    "deletionTimestamp": "2026-10-03T09:32:49.036Z"
+  },
+  {
+    "collection": "orders",
+    "docId": "TWPOS-03-20261003-H4823",
+    "orderNumber": "TW-H-49885",
+    "customerName": "Hardened Test Customer TW-POS-03",
+    "amount": 450,
+    "branch": "Pick Up Point — Ambience",
+    "terminalId": "counter-3",
+    "reason": "Test marker identified (isTestData: true, id: TWPOS-03-20261003-H4823)",
+    "deletionTimestamp": "2026-10-03T09:32:49.383Z"
+  },
+  {
+    "collection": "orders",
+    "docId": "TWPOS-03-20261003-H4846",
+    "orderNumber": "TW-H-98697",
+    "customerName": "Hardened Test Customer TW-POS-03",
+    "amount": 450,
+    "branch": "Pick Up Point — Ambience",
+    "terminalId": "counter-3",
+    "reason": "Test marker identified (isTestData: true, id: TWPOS-03-20261003-H4846)",
+    "deletionTimestamp": "2026-10-03T09:32:49.734Z"
+  },
+  {
+    "collection": "orders",
+    "docId": "TWPOS-03-20261003-H5044",
+    "orderNumber": "TW-H-51247",
+    "customerName": "Hardened Test Customer TW-POS-03",
+    "amount": 450,
+    "branch": "Pick Up Point — Ambience",
+    "terminalId": "counter-3",
+    "reason": "Test marker identified (isTestData: true, id: TWPOS-03-20261003-H5044)",
+    "deletionTimestamp": "2026-10-03T09:32:50.083Z"
+  }
+]

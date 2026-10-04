@@ -10,30 +10,31 @@ import { Modal } from '../ui/Modal';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { 
   Clock, 
-  MessageSquare, 
   Send, 
   Plus, 
   Trash2, 
   CheckCircle2, 
   AlertCircle, 
   Phone, 
-  User, 
-  ShieldCheck, 
-  Sparkles, 
-  FileText, 
-  Download,
-  Copy,
-  Check,
-  RefreshCw,
-  ExternalLink,
-  ChevronDown,
-  ChevronUp
+  Copy, 
+  Check, 
+  ChevronDown, 
+  ChevronUp,
+  Save,
+  Power,
+  FlaskConical
 } from 'lucide-react';
 
 export const DailyWhatsAppSchedulerCard = ({ reportData, onRefresh }) => {
   const { success, error, info } = useToast();
   const [config, setConfig] = useState(DEFAULT_SCHEDULE_CONFIG);
   const [loading, setLoading] = useState(true);
+
+  // Time Picker Selectors
+  const [selectedHour, setSelectedHour] = useState(10);
+  const [selectedMinute, setSelectedMinute] = useState(0);
+  const [selectedAmPm, setSelectedAmPm] = useState('PM');
+  const [isSavingSchedule, setIsSavingSchedule] = useState(false);
 
   // Add Recipient Modal State
   const [showAddModal, setShowAddModal] = useState(false);
@@ -44,9 +45,14 @@ export const DailyWhatsAppSchedulerCard = ({ reportData, onRefresh }) => {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Manual Dispatch Center Modal State
-  const [showDispatchModal, setShowDispatchModal] = useState(false);
-  const [isDispatchingNow, setIsDispatchingNow] = useState(false);
+  // Manual Confirmation Dialog State
+  const [showManualConfirmModal, setShowManualConfirmModal] = useState(false);
+
+  // Dry Run & Live Execution State
+  const [isExecutingAction, setIsExecutingAction] = useState(false);
+  const [executionResult, setExecutionResult] = useState(null);
+  const [showResultModal, setShowResultModal] = useState(false);
+
   const [copiedId, setCopiedId] = useState(null);
   const [showPreviewText, setShowPreviewText] = useState(false);
 
@@ -55,6 +61,18 @@ export const DailyWhatsAppSchedulerCard = ({ reportData, onRefresh }) => {
       setLoading(true);
       const data = await dailyReportScheduler.getConfig();
       setConfig(data);
+      
+      if (data.hour !== undefined) setSelectedHour(data.hour);
+      if (data.minute !== undefined) setSelectedMinute(data.minute);
+      if (data.amPm) setSelectedAmPm(data.amPm);
+      else if (data.scheduleTime) {
+        const [h, m] = data.scheduleTime.split(':').map(Number);
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        const h12 = h % 12 || 12;
+        setSelectedHour(h12);
+        setSelectedMinute(m || 0);
+        setSelectedAmPm(ampm);
+      }
     } catch (e) {
       console.warn('Failed to load daily schedule config:', e);
     } finally {
@@ -66,7 +84,12 @@ export const DailyWhatsAppSchedulerCard = ({ reportData, onRefresh }) => {
     loadConfig();
 
     const handleUpdate = (e) => {
-      if (e.detail) setConfig(e.detail);
+      if (e.detail) {
+        setConfig(e.detail);
+        if (e.detail.hour !== undefined) setSelectedHour(e.detail.hour);
+        if (e.detail.minute !== undefined) setSelectedMinute(e.detail.minute);
+        if (e.detail.amPm) setSelectedAmPm(e.detail.amPm);
+      }
     };
 
     if (typeof window !== 'undefined') {
@@ -88,14 +111,74 @@ export const DailyWhatsAppSchedulerCard = ({ reportData, onRefresh }) => {
         enabled: nextState,
       });
       setConfig(updated);
+      const timeStr = updated.scheduleTimeFormatted || `${selectedHour}:${String(selectedMinute).padStart(2, '0')} ${selectedAmPm}`;
       success(
         nextState ? 'Auto-Dispatch Enabled' : 'Auto-Dispatch Paused',
         nextState 
-          ? 'Daily overview reports will be sent at 10:00 PM nightly.' 
-          : 'Automated 10:00 PM dispatch is now paused.'
+          ? `Daily sales report will be sent automatically at ${timeStr} IST.` 
+          : 'Automated daily report dispatch is now paused.'
       );
     } catch (err) {
       error('Update Failed', err.message);
+    }
+  };
+
+  const handleSaveSchedule = async (e) => {
+    if (e) e.preventDefault();
+    setIsSavingSchedule(true);
+    try {
+      const updated = await dailyReportScheduler.saveScheduleTime({
+        hour: selectedHour,
+        minute: selectedMinute,
+        amPm: selectedAmPm,
+        enabled: config.enabled !== false,
+      });
+      setConfig(updated);
+      const formatted = updated.scheduleTimeFormatted || `${selectedHour}:${String(selectedMinute).padStart(2, '0')} ${selectedAmPm}`;
+      success('Schedule Updated', `Daily WhatsApp report schedule updated to ${formatted} IST.`);
+    } catch (err) {
+      error('Save Failed', err.message || 'Could not update schedule time.');
+    } finally {
+      setIsSavingSchedule(false);
+    }
+  };
+
+  // Execute Serverless Dry Run (ZERO WhatsApp Messages Sent)
+  const handleExecuteDryRun = async () => {
+    setIsExecutingAction(true);
+    try {
+      const result = await dailyReportScheduler.triggerServerlessReport({ action: 'dry_run' });
+      setExecutionResult(result);
+      setShowResultModal(true);
+      loadConfig();
+      if (onRefresh) onRefresh();
+      success('Dry Run Verified', 'A4 PDF generated & stored securely in Firebase Storage. ZERO WhatsApp messages sent.');
+    } catch (err) {
+      error('Dry Run Failed', err.message || 'Serverless dry run failed.');
+    } finally {
+      setIsExecutingAction(false);
+    }
+  };
+
+  // Execute Serverless Live Send (Confirmed by Admin)
+  const handleExecuteLiveSendNow = async () => {
+    setShowManualConfirmModal(false);
+    setIsExecutingAction(true);
+    try {
+      const result = await dailyReportScheduler.triggerServerlessReport({ action: 'send_today' });
+      setExecutionResult(result);
+      setShowResultModal(true);
+      loadConfig();
+      if (onRefresh) onRefresh();
+      if (result.success) {
+        success('Live Dispatch Completed', `Report and PDF dispatched to WhatsApp recipients.`);
+      } else {
+        error('Live Dispatch Notice', result.errorMessage || result.message || 'Dispatch completed with notices.');
+      }
+    } catch (err) {
+      error('Live Send Failed', err.message || 'Failed to dispatch live report.');
+    } finally {
+      setIsExecutingAction(false);
     }
   };
 
@@ -109,7 +192,7 @@ export const DailyWhatsAppSchedulerCard = ({ reportData, onRefresh }) => {
     try {
       const updated = await dailyReportScheduler.addRecipient(newRecipient);
       setConfig(updated);
-      success('Recipient Added', `WhatsApp number for "${newRecipient.name || newRecipient.phone}" added to database.`);
+      success('Recipient Added', `WhatsApp number for "${newRecipient.name || newRecipient.phone}" added.`);
       setShowAddModal(false);
       setNewRecipient({ name: '', phone: '', role: 'Management' });
     } catch (err) {
@@ -143,26 +226,12 @@ export const DailyWhatsAppSchedulerCard = ({ reportData, onRefresh }) => {
     }
   };
 
-  // Open Direct WhatsApp Send Center Modal
-  const handleOpenDispatchCenter = async () => {
-    setShowDispatchModal(true);
-    try {
-      await dailyReportScheduler.dispatchDailyReportNow({ isManual: true });
-      loadConfig();
-      if (onRefresh) onRefresh();
-    } catch (err) {
-      console.warn('Dispatch log update notice:', err);
-    }
-  };
-
-  // 1-Click WhatsApp Direct Opener
   const handleOpenIndividualWhatsApp = (rec) => {
     const documentText = dailyReportScheduler.buildDailyReportWhatsAppDocument(reportData, rec.name);
     whatsappNotificationService.openWhatsAppManual(rec.phone, documentText);
     success('WhatsApp Opened', `Prepared executive sales summary for ${rec.name} (${rec.phone}).`);
   };
 
-  // Copy Document Text
   const handleCopyDocument = async (rec) => {
     const documentText = dailyReportScheduler.buildDailyReportWhatsAppDocument(reportData, rec?.name || 'Management');
     await whatsappNotificationService.copyMessageToClipboard(documentText);
@@ -173,11 +242,14 @@ export const DailyWhatsAppSchedulerCard = ({ reportData, onRefresh }) => {
 
   const activeRecipients = (config.recipients || []).filter(r => r.active !== false);
   const sampleMessage = dailyReportScheduler.buildDailyReportWhatsAppDocument(reportData, activeRecipients[0]?.name || 'Management');
+  const currentScheduleFormatted = config.scheduleTimeFormatted || `${config.hour || 10}:${String(config.minute || 0).padStart(2, '0')} ${config.amPm || 'PM'}`;
+  const minutesList = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
+  const hoursList = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
   return (
     <Card variant="luxury" className="p-6 sm:p-7 bg-white border-emerald-300 shadow-md space-y-6">
       
-      {/* 1. Header & Scheduler Status */}
+      {/* 1. Header & Automation Status */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-2xl bg-[#25D366]/15 text-[#1EBE5D] flex items-center justify-center shrink-0 shadow-xs">
@@ -186,27 +258,41 @@ export const DailyWhatsAppSchedulerCard = ({ reportData, onRefresh }) => {
           <div>
             <div className="flex items-center gap-2">
               <h3 className="text-base sm:text-lg font-black font-display text-slate-900">
-                ⏰ Automated 10:00 PM Daily Sales Overview & WhatsApp Dispatcher
+                DAILY WHATSAPP SALES REPORT & SCHEDULE CONTROL
               </h3>
               <Badge variant={config.enabled ? 'emerald' : 'slate'} dot>
-                {config.enabled ? 'Active (10:00 PM)' : 'Paused'}
+                {config.enabled ? `Active (${currentScheduleFormatted})` : 'Paused'}
               </Badge>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              Automatically delivers professional in-detail daily sales breakdown, collection inflows, dues, and printable PDF audit links to Admin & Owner WhatsApp numbers every night at 10:00 PM IST.
+              Automated daily executive sales summary and printable A4 PDF audit links delivered directly to management WhatsApp numbers (Asia/Kolkata IST).
             </p>
           </div>
         </div>
 
-        <div className="flex items-center flex-wrap gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button
             type="button"
             variant="outline"
             size="sm"
             onClick={handleToggleEnabled}
-            className={config.enabled ? 'text-slate-600 border-slate-300' : 'bg-emerald-50 text-emerald-800 border-emerald-300'}
+            className={config.enabled ? 'text-slate-600 border-slate-300' : 'bg-emerald-50 text-emerald-800 border-emerald-300 font-bold'}
           >
-            {config.enabled ? 'Pause Auto-Send' : 'Enable 10:00 PM Auto-Send'}
+            <Power className="w-3.5 h-3.5 mr-1" />
+            <span>Automation: {config.enabled ? 'ON' : 'OFF'}</span>
+          </Button>
+
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            icon={FlaskConical}
+            isLoading={isExecutingAction}
+            onClick={handleExecuteDryRun}
+            className="border-cyan-300 text-cyan-800 bg-cyan-50/70 hover:bg-cyan-100 font-bold cursor-pointer flex items-center gap-1.5"
+            title="Execute dry run via Serverless Function. Calculates report and generates PDF but sends ZERO WhatsApp messages."
+          >
+            <span>🧪 Test Dry Run</span>
           </Button>
 
           <Button
@@ -214,46 +300,121 @@ export const DailyWhatsAppSchedulerCard = ({ reportData, onRefresh }) => {
             variant="primary"
             size="sm"
             icon={Send}
-            isLoading={isDispatchingNow}
-            onClick={handleOpenDispatchCenter}
+            isLoading={isExecutingAction}
+            onClick={() => setShowManualConfirmModal(true)}
             className="bg-[#25D366] hover:bg-[#1EBE5D] text-white shadow-md font-bold cursor-pointer flex items-center gap-1.5"
           >
-            <span>🚀 Send Today's 10 PM Overview Now</span>
+            <span>🚀 Send Today's Report Now</span>
           </Button>
         </div>
       </div>
 
-      {/* 2. Schedule Parameters & Highlights */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-        <div className="p-3 rounded-xl bg-emerald-50/70 border border-emerald-200">
-          <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider block">
-            Scheduled Night Trigger
-          </span>
-          <div className="text-sm font-black font-mono text-emerald-950 mt-0.5">
-            🌙 Every Night at 10:00 PM (22:00 IST)
+      {/* 2. Admin Time Picker & Schedule Control Box */}
+      <form onSubmit={handleSaveSchedule} className="p-4 sm:p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <span className="text-xs font-bold text-slate-900 uppercase tracking-wider block">
+              ⏰ Admin Send Time Setting (Asia/Kolkata IST)
+            </span>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              Select the exact hour and minute for nightly WhatsApp report delivery. Stored securely in Firestore.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            <select
+              value={selectedHour}
+              onChange={(e) => setSelectedHour(Number(e.target.value))}
+              className="bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-900 outline-none focus:border-emerald-500 shadow-2xs"
+            >
+              {hoursList.map(h => (
+                <option key={h} value={h}>{String(h).padStart(2, '0')}</option>
+              ))}
+            </select>
+
+            <span className="text-slate-500 font-black text-sm">:</span>
+
+            <select
+              value={selectedMinute}
+              onChange={(e) => setSelectedMinute(Number(e.target.value))}
+              className="bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-900 outline-none focus:border-emerald-500 shadow-2xs"
+            >
+              {minutesList.map(m => (
+                <option key={m} value={m}>{String(m).padStart(2, '0')}</option>
+              ))}
+            </select>
+
+            <select
+              value={selectedAmPm}
+              onChange={(e) => setSelectedAmPm(e.target.value)}
+              className="bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none focus:border-emerald-500 shadow-2xs"
+            >
+              <option value="AM">AM</option>
+              <option value="PM">PM</option>
+            </select>
+
+            <Button
+              type="submit"
+              variant="primary"
+              size="sm"
+              icon={Save}
+              isLoading={isSavingSchedule}
+              className="bg-slate-900 text-white font-bold hover:bg-slate-800 cursor-pointer"
+            >
+              Save Schedule
+            </Button>
           </div>
         </div>
 
-        <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-            Executive Message & Report Format
-          </span>
-          <div className="text-sm font-bold text-slate-900 mt-0.5">
-            📄 In-Detail Sales Breakdown + Printable A4 PDF Link
+        {/* Schedule Info Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs pt-3 border-t border-slate-200">
+          <div className="p-3 rounded-xl bg-white border border-slate-200">
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+              Current Schedule
+            </span>
+            <div className="text-sm font-black font-mono text-emerald-700 mt-0.5">
+              {currentScheduleFormatted} IST
+            </div>
           </div>
-        </div>
 
-        <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-            Last Dispatched Execution
-          </span>
-          <div className="text-xs font-bold text-slate-800 mt-0.5">
-            {config.lastDispatchedTimestamp 
-              ? `${new Date(config.lastDispatchedTimestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })} (${config.lastDispatchedDate})`
-              : 'Pending scheduled 10:00 PM trigger'}
+          <div className="p-3 rounded-xl bg-white border border-slate-200">
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+              Next Scheduled Report
+            </span>
+            <div className="text-xs font-bold text-slate-900 mt-0.5">
+              {config.enabled !== false ? `Today at ${currentScheduleFormatted}` : 'Paused (Automation Off)'}
+            </div>
+          </div>
+
+          <div className="p-3 rounded-xl bg-white border border-slate-200">
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+              Last Report Dispatched
+            </span>
+            <div className="text-xs font-bold text-slate-800 mt-0.5">
+              {config.lastDispatchedTimestamp 
+                ? `${new Date(config.lastDispatchedTimestamp).toLocaleDateString('en-IN')} ${new Date(config.lastDispatchedTimestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}`
+                : 'Not Sent Yet'}
+            </div>
+          </div>
+
+          <div className="p-3 rounded-xl bg-white border border-slate-200">
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+              Last Server Status
+            </span>
+            <div className="text-xs font-bold mt-0.5">
+              {config.lastStatus === 'COMPLETED' ? (
+                <span className="text-emerald-700 flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Dispatched</span>
+              ) : config.lastStatus === 'DRY_RUN_COMPLETED' ? (
+                <span className="text-cyan-700 flex items-center gap-1"><FlaskConical className="w-3.5 h-3.5" /> DRY RUN — WhatsApp not sent</span>
+              ) : config.lastStatus === 'FAILED' ? (
+                <span className="text-rose-600 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" /> Failed</span>
+              ) : (
+                <span className="text-slate-500">Idle / Ready</span>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      </form>
 
       {/* 3. Recipient WhatsApp Numbers List */}
       <div className="space-y-3">
@@ -261,7 +422,7 @@ export const DailyWhatsAppSchedulerCard = ({ reportData, onRefresh }) => {
           <div className="flex items-center gap-2">
             <Phone className="w-4 h-4 text-emerald-600" />
             <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-              Admin & Owner WhatsApp Recipients ({config.recipients?.length || 0})
+              Management WhatsApp Recipients ({config.recipients?.length || 0})
             </span>
           </div>
 
@@ -279,7 +440,7 @@ export const DailyWhatsAppSchedulerCard = ({ reportData, onRefresh }) => {
 
         {(!config.recipients || config.recipients.length === 0) ? (
           <div className="p-6 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-xs text-slate-400">
-            No recipient WhatsApp numbers added yet. Click "+ Add WhatsApp Number" above to add owners and managers.
+            No recipient WhatsApp numbers added yet. Click "+ Add WhatsApp Number" above.
           </div>
         ) : (
           <div className="divide-y divide-slate-100 border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-2xs">
@@ -312,9 +473,7 @@ export const DailyWhatsAppSchedulerCard = ({ reportData, onRefresh }) => {
                   </div>
                 </div>
 
-                {/* Right Action Buttons */}
                 <div className="flex items-center gap-2 shrink-0 flex-wrap">
-                  {/* Primary 1-Click Send WhatsApp */}
                   <button
                     type="button"
                     onClick={() => handleOpenIndividualWhatsApp(rec)}
@@ -358,112 +517,96 @@ export const DailyWhatsAppSchedulerCard = ({ reportData, onRefresh }) => {
         )}
       </div>
 
-      {/* ── 4. DIRECT WHATSAPP SEND CENTER MODAL ── */}
+      {/* 4. Manual Send Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showManualConfirmModal}
+        onClose={() => setShowManualConfirmModal(false)}
+        onConfirm={handleExecuteLiveSendNow}
+        title="Send today's sales report to WhatsApp now?"
+        message={`This will call the Vercel serverless function using your authenticated Firebase ID token, generate today's live executive report, create the private A4 PDF statement, and dispatch WhatsApp messages to ${activeRecipients.length} configured management recipient(s).`}
+        confirmText={`Yes, Send Now (${activeRecipients.length} Recipients)`}
+        isLoading={isExecutingAction}
+      />
+
+      {/* 5. Server Execution Result Modal */}
       <Modal
-        isOpen={showDispatchModal}
-        onClose={() => setShowDispatchModal(false)}
-        title="📱 Send Daily 10:00 PM Executive Overview via WhatsApp"
-        subtitle="Click any recipient below to immediately open WhatsApp Web / App with the official formatted sales summary."
+        isOpen={showResultModal}
+        onClose={() => setShowResultModal(false)}
+        title={executionResult?.mode === 'DRY_RUN' ? '🧪 Dry Run Execution Result' : '🚀 Serverless Dispatch Result'}
+        subtitle={`Report Date: ${executionResult?.reportDate || 'Today'} • Status: ${executionResult?.statusLabel || executionResult?.status}`}
       >
-        <div className="space-y-4 text-xs">
+        <div className="space-y-4 text-xs font-sans">
           
-          <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 space-y-1">
-            <div className="flex items-center gap-2 text-emerald-950 font-bold text-xs">
+          <div className={`p-3.5 rounded-2xl border ${
+            executionResult?.status === 'COMPLETED' ? 'bg-emerald-50 border-emerald-200 text-emerald-950' : 'bg-cyan-50 border-cyan-200 text-cyan-950'
+          }`}>
+            <div className="font-bold text-xs flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>Executive Sales Report Ready for Dispatch</span>
+              <span>{executionResult?.statusLabel || executionResult?.status}</span>
             </div>
-            <p className="text-[11px] text-emerald-800">
-              Clicking <strong>"Send to WhatsApp"</strong> on any number opens WhatsApp Web / Mobile directly with the full formatted text, totals, collections breakdown, and printable PDF audit link.
+            <p className="text-[11px] mt-1">
+              {executionResult?.mode === 'DRY_RUN' 
+                ? 'Report calculated, A4 PDF generated, and 24h signed link stored. ZERO WhatsApp messages were dispatched.'
+                : 'Serverless execution completed.'}
             </p>
           </div>
 
-          {/* Recipient Buttons List */}
-          <div className="space-y-2.5">
-            <label className="block text-slate-700 font-bold text-xs uppercase tracking-wider">
-              Select Recipient to Send:
-            </label>
-
-            {activeRecipients.length === 0 ? (
-              <p className="text-slate-500 py-2">No active recipients configured. Please add an active phone number first.</p>
-            ) : (
-              activeRecipients.map((rec, i) => (
-                <div 
-                  key={rec.id || i}
-                  className="p-3 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-3 hover:border-emerald-300 transition"
-                >
-                  <div>
-                    <div className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
-                      <span>👤 {rec.name}</span>
-                      <span className="text-[10px] font-semibold text-slate-500">({rec.role || 'Management'})</span>
-                    </div>
-                    <div className="text-xs font-mono font-bold text-emerald-700 mt-0.5">
-                      📱 +91 {rec.phone.replace(/\D/g, '').slice(-10)}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleCopyDocument(rec)}
-                      className="px-2.5 py-1.5 rounded-xl border border-slate-300 hover:bg-slate-100 text-slate-700 font-semibold text-xs flex items-center gap-1 cursor-pointer"
-                    >
-                      <Copy className="w-3.5 h-3.5" />
-                      <span>Copy Text</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleOpenIndividualWhatsApp(rec)}
-                      className="px-3.5 py-1.5 rounded-xl bg-[#25D366] hover:bg-[#1EBE5D] text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition cursor-pointer"
-                    >
-                      <Send className="w-3.5 h-3.5" />
-                      <span>Open WhatsApp</span>
-                    </button>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-
-          {/* Collapsible Message Preview */}
-          <div className="border border-slate-200 rounded-2xl overflow-hidden bg-slate-50">
-            <button
-              type="button"
-              onClick={() => setShowPreviewText(prev => !prev)}
-              className="w-full p-3 flex items-center justify-between text-xs font-bold text-slate-700 hover:bg-slate-100 transition cursor-pointer"
-            >
-              <span>📄 Preview Formatted Executive WhatsApp Document</span>
-              {showPreviewText ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-            </button>
-
-            {showPreviewText && (
-              <div className="p-3 border-t border-slate-200 bg-white font-mono text-[11px] text-slate-800 whitespace-pre-wrap max-h-56 overflow-y-auto">
-                {sampleMessage}
+          {executionResult?.financialSummary && (
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200">
+                <span className="text-[10px] font-bold text-slate-500 block">Total Orders</span>
+                <span className="font-black text-slate-900 font-mono text-sm">{executionResult.financialSummary.totalOrders}</span>
               </div>
-            )}
-          </div>
+              <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200">
+                <span className="text-[10px] font-bold text-slate-500 block">Gross Billed Sales</span>
+                <span className="font-black text-amber-700 font-mono text-sm">Rs. {(executionResult.financialSummary.grossBilledSales || 0).toLocaleString('en-IN')}</span>
+              </div>
+              <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200">
+                <span className="text-[10px] font-bold text-slate-500 block">Inflow Collections</span>
+                <span className="font-black text-emerald-700 font-mono text-sm">Rs. {(executionResult.financialSummary.totalInflowCollections || 0).toLocaleString('en-IN')}</span>
+              </div>
+              <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200">
+                <span className="text-[10px] font-bold text-slate-500 block">Net Pending Dues</span>
+                <span className="font-black text-rose-700 font-mono text-sm">Rs. {(executionResult.financialSummary.netPendingDues || 0).toLocaleString('en-IN')}</span>
+              </div>
+            </div>
+          )}
+
+          {executionResult?.pdfLocation && (
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+              <span className="text-[10px] font-bold text-slate-500 uppercase block">Private A4 PDF Signed URL (24h)</span>
+              <a
+                href={executionResult.pdfLocation}
+                target="_blank"
+                rel="noreferrer"
+                className="text-cyan-700 hover:underline font-mono text-[11px] block truncate"
+              >
+                👉 {executionResult.pdfLocation}
+              </a>
+            </div>
+          )}
 
           <div className="pt-2 flex items-center justify-end border-t border-slate-100">
             <Button
               type="button"
               variant="primary"
               size="sm"
-              onClick={() => setShowDispatchModal(false)}
+              onClick={() => setShowResultModal(false)}
               className="bg-slate-900 text-white"
             >
-              Done
+              Close Result
             </Button>
           </div>
 
         </div>
       </Modal>
 
-      {/* 5. Add Recipient Modal */}
+      {/* 6. Add Recipient Modal */}
       <Modal
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
         title="Add WhatsApp Report Recipient"
-        subtitle="Add owner or store manager mobile numbers to receive the automated daily 10:00 PM executive sales overview."
+        subtitle="Add owner or store manager mobile numbers to receive automated daily executive sales overviews."
       >
         <form onSubmit={handleAddRecipient} className="space-y-4 text-xs">
           <Input
@@ -509,13 +652,13 @@ export const DailyWhatsAppSchedulerCard = ({ reportData, onRefresh }) => {
         </form>
       </Modal>
 
-      {/* 6. Delete Recipient Confirmation */}
+      {/* 7. Delete Recipient Confirmation */}
       <ConfirmDialog
         isOpen={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}
         onConfirm={handleDeleteRecipient}
         title={`Remove Recipient "${deleteTarget?.name}"?`}
-        message={`Are you sure you want to remove ${deleteTarget?.name} (${deleteTarget?.phone}) from receiving nightly 10:00 PM WhatsApp reports?`}
+        message={`Are you sure you want to remove ${deleteTarget?.name} (${deleteTarget?.phone}) from receiving daily WhatsApp reports?`}
         confirmText="Remove Number"
         isLoading={isDeleting}
       />

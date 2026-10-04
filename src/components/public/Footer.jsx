@@ -46,13 +46,13 @@ export const Footer = () => {
 
   const priorityAreas = [
     { label: 'Manikonda Hub', path: '/areas/manikonda' },
-    { label: 'Puppalaguda', path: '/areas/puppalaguda' },
-    { label: 'Khajaguda', path: '/areas/khajaguda' },
-    { label: 'Lanco Hills', path: '/areas/lanco-hills' },
-    { label: 'Narsingi', path: '/areas/narsingi' },
-    { label: 'Alkapur Township', path: '/areas/alkapur-township' },
-    { label: 'Shaikpet', path: '/areas/shaikpet' },
-    { label: 'Nanakramguda', path: '/areas/nanakramguda' },
+    { label: 'Manikonda Laundry', path: '/areas/manikonda/laundry-service' },
+    { label: 'Manikonda Dry Cleaning', path: '/areas/manikonda/dry-cleaning' },
+    { label: 'Manikonda Wash & Iron', path: '/areas/manikonda/wash-and-iron' },
+    { label: 'Manikonda Pickup & Delivery', path: '/areas/manikonda/laundry-pickup-and-delivery' },
+    { label: 'Manikonda Ironing', path: '/areas/manikonda/ironing-service' },
+    { label: 'Manikonda Wash & Fold', path: '/areas/manikonda/wash-and-fold' },
+    { label: 'Manikonda Starch & Iron', path: '/areas/manikonda/starch-and-iron' },
   ];
 
   return (
