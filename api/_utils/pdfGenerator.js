@@ -1,18 +1,5 @@
 import PDFDocument from 'pdfkit';
-import fs from 'fs';
-import path from 'path';
-
-function getActualLogoPath() {
-  const possiblePaths = [
-    path.join(process.cwd(), 'public', 'techwashlogo.webp'),
-    path.join(process.cwd(), 'public', 'techwashh.webp'),
-    path.join(process.cwd(), 'src', 'assets', 'techwashlogo.webp'),
-  ];
-  for (const p of possiblePaths) {
-    if (fs.existsSync(p)) return p;
-  }
-  return null;
-}
+import { TECH_WASH_LOGO_BUFFER } from './logoAsset.js';
 
 /**
  * Generate A4 PDF Report Buffer for Tech Wash Daily Sales Summary
@@ -46,18 +33,18 @@ export function generateDailyReportPDF(reportData) {
       const noDataBg = '#fef2f2';       // Rose fill for no data
       const noDataBorder = '#f87171';   // Rose border
 
-      // --- BRAND HEADER WITH ACTUAL LOGO ---
+      // --- BRAND HEADER WITH EMBEDDED LOGO PNG BUFFER ---
       doc.rect(40, 40, 515, 65).fill(primaryColor);
 
-      const logoPath = getActualLogoPath();
-      if (logoPath) {
-        try {
-          doc.image(logoPath, 50, 47, { fit: [140, 50] });
-        } catch (e) {
-          doc.fillColor('#ffffff').fontSize(18).font('Helvetica-Bold').text('TECH WASH', 55, 52);
+      try {
+        if (TECH_WASH_LOGO_BUFFER && TECH_WASH_LOGO_BUFFER.length > 0) {
+          doc.image(TECH_WASH_LOGO_BUFFER, 50, 47, { fit: [130, 50] });
+        } else {
+          doc.fillColor('#ffffff').fontSize(16).font('Helvetica-Bold').text('TECH WASH', 55, 52);
         }
-      } else {
-        doc.fillColor('#ffffff').fontSize(18).font('Helvetica-Bold').text('TECH WASH', 55, 52);
+      } catch (imgErr) {
+        console.warn('PDFKit logo buffer rendering fallback:', imgErr.message);
+        doc.fillColor('#ffffff').fontSize(16).font('Helvetica-Bold').text('TECH WASH', 55, 52);
       }
 
       doc

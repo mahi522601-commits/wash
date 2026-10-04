@@ -496,12 +496,11 @@ Please see the attached official A4 PDF report for complete management audit.
       metrics: reportData.metrics,
       branchStats: reportData.branchStats,
       serviceCategories: reportData.serviceCategories,
+      isTestRun: Boolean(isTestMode),
       errorDetails: null,
     };
 
-    if (!isTestMode) {
-      await logDocRef.set(finalLogData, { merge: true });
-    }
+    await logDocRef.set(finalLogData, { merge: true });
 
     return res.status(200).json({
       success: true,
