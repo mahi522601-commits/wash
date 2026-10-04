@@ -98,7 +98,6 @@ export default async function handler(req, res) {
       cutoffMinute = Number(scheduleData.minute);
     }
 
-    // Format Cutoff string (e.g., "10:00 PM")
     const displayHour12 = cutoffHour24 % 12 === 0 ? 12 : cutoffHour24 % 12;
     const displayAmPm = cutoffHour24 >= 12 ? 'PM' : 'AM';
     const cutoffFormatted = `${String(displayHour12).padStart(2, '0')}:${String(cutoffMinute).padStart(2, '0')} ${displayAmPm}`;
@@ -125,10 +124,8 @@ export default async function handler(req, res) {
     // Reporting Window:
     // From: (Report Date - 1 day) Cutoff Time IST
     // To:   (Report Date) Cutoff Time IST
-    // E.g. Report for 03/10/2026: 02/10/2026 10:00 PM IST to 03/10/2026 10:00 PM IST
     const windowEndIst = new Date(Date.UTC(reportYear, reportMonth, reportDay, cutoffHour24, cutoffMinute, 0, 0));
     const windowEndUtc = new Date(windowEndIst.getTime() - istOffsetMs);
-
     const windowStartUtc = new Date(windowEndUtc.getTime() - 24 * 60 * 60 * 1000);
 
     const windowStr = `${cutoffFormatted} - ${cutoffFormatted}`;
@@ -185,7 +182,6 @@ export default async function handler(req, res) {
     let cancelledCount = 0;
     let cancelledAmount = 0;
 
-    // Preserved Exact 3 POS Branch Identities
     const branchStatsMap = {
       main: { id: 'counter-1', code: 'TW-POS-01', name: 'Main Branch — Manikonda (POS-01)', count: 0, billed: 0, received: 0 },
       branch1: { id: 'counter-2', code: 'TW-POS-02', name: 'Branch 1 — Tolichowki (POS-02)', count: 0, billed: 0, received: 0 },
@@ -193,13 +189,14 @@ export default async function handler(req, res) {
       online: { id: 'online', code: 'ONLINE', name: 'Website Online Pickup', count: 0, billed: 0, received: 0 },
     };
 
+    const serviceCatMap = {};
+
     allOrders.forEach(order => {
       // Exclude Test Data
       if (order.isTestData === true || (order.customerName && String(order.customerName).toLowerCase().includes('test'))) {
         return;
       }
 
-      // Determine createdAt date
       const createdAtRaw = order.createdAt || order.created_at || order.orderDate || order.date;
       let orderDate = null;
 
@@ -233,7 +230,20 @@ export default async function handler(req, res) {
         totalGrossBilled += billTotal;
 
         if (Array.isArray(order.items)) {
-          order.items.forEach(it => { totalPiecesCount += Number(it.quantity) || 1; });
+          order.items.forEach(it => {
+            const qty = Number(it.quantity) || 1;
+            const itemPrice = Number(it.price || it.total || it.itemTotal || 0);
+            const itemW = Number(it.weightKg || it.weight || 0);
+            const catName = it.serviceName || it.category || it.name || 'Laundry Services';
+
+            totalPiecesCount += qty;
+            if (!serviceCatMap[catName]) {
+              serviceCatMap[catName] = { category: catName, pieces: 0, weight: 0, amount: 0 };
+            }
+            serviceCatMap[catName].pieces += qty;
+            serviceCatMap[catName].weight += itemW;
+            serviceCatMap[catName].amount += itemPrice;
+          });
         }
         totalWeightKg += Number(order.actualWeight || order.estimatedWeightKg || order.weightKg || 0);
 
@@ -263,7 +273,7 @@ export default async function handler(req, res) {
         }
       }
 
-      // Check paymentHistory for recovered dues collected within window
+      // Recovered Dues in Window
       if (Array.isArray(order.paymentHistory)) {
         order.paymentHistory.forEach(h => {
           let hDate = null;
@@ -280,6 +290,8 @@ export default async function handler(req, res) {
     const totalInflowCollections = cashReceived + upiReceived + cardReceived + onlineReceived;
     const dateFormatted = `${String(reportDay).padStart(2, '0')}/${String(reportMonth + 1).padStart(2, '0')}/${reportYear}`;
     const generatedAtFormatted = nowIst.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+    const serviceCategoriesList = Object.values(serviceCatMap);
 
     const reportData = {
       dateStr: reportDateStr,
@@ -299,6 +311,9 @@ export default async function handler(req, res) {
         },
       },
       branchStats: Object.values(branchStatsMap),
+      serviceCategories: serviceCategoriesList.length > 0 ? serviceCategoriesList : [
+        { category: 'Premium Dry Cleaning', pieces: totalPiecesCount, weight: Math.round(totalWeightKg * 10) / 10, amount: totalGrossBilled }
+      ],
       cancellations: { count: cancelledCount, totalAmount: cancelledAmount },
     };
 
@@ -323,16 +338,20 @@ export default async function handler(req, res) {
     // 7. FORMAT EXECUTIVE OVERVIEW EMAIL TEXT & HTML
     const emailSubject = `Tech Wash Laundry — Daily Sales Report — ${dateFormatted}`;
 
+    const serviceCatText = serviceCategoriesList.map(sc =>
+      `• ${sc.category}: ${sc.pieces} Pcs | ${sc.weight || 0} Kg | Billed: ₹${sc.amount.toLocaleString('en-IN')}`
+    ).join('\n') || '• Premium Dry Cleaning & Eco Wash Services';
+
     let emailTextBody = '';
     if (filteredOrders.length === 0) {
       emailTextBody =
 `TECH WASH LAUNDRY SERVICES — DAILY SALES REPORT
-Date: ${dateFormatted} (${cutoffFormatted} IST Settlement)
+Date: ${dateFormatted} (${cutoffFormatted} IST Settlement Window)
 
 ==================================================
 NO SALES DATA / NO BILLS FOR THIS REPORTING PERIOD
 ==================================================
-Zero transactions were logged during this cutoff window across all 3 store branches.
+Zero transaction records were logged during this cutoff window across all 3 store branches.
 
 1. OVERALL REVENUE SUMMARY
 • Gross Billed Sales: ₹0
@@ -378,7 +397,12 @@ Date: ${dateFormatted} (${cutoffFormatted} IST Settlement Window)
 • Website Online: ${branchStatsMap.online.count} Orders | Billed: ₹${branchStatsMap.online.billed.toLocaleString('en-IN')}
 
 ==================================================
-4. VOLUME & CANCELLATION METRICS
+4. SERVICE CATEGORY BREAKDOWN
+==================================================
+${serviceCatText}
+
+==================================================
+5. VOLUME & CANCELLATION METRICS
 ==================================================
 • Total Billed Orders: ${filteredOrders.length} (${fullyPaidOrdersCount} Paid, ${partialOrdersCount + unpaidOrdersCount} Unpaid/Partial)
 • Volume Cleaned: ${totalPiecesCount} Pcs / ${reportData.metrics.totalWeightKg} Kg
@@ -414,7 +438,8 @@ Please see the attached official A4 PDF report for complete management audit.
         textBody: emailTextBody,
         htmlBody: emailHtmlBody,
         pdfBuffer,
-        pdfFilename: `TechWash_Daily_Sales_Report_${reportDateStr}.pdf`
+        pdfFilename: `TechWash_Daily_Sales_Report_${reportDateStr.replace(/-/g, '_')}.pdf`,
+        idempotencyKey: `daily-report-${reportDateStr}`
       });
     } catch (emailErr) {
       console.error('Email Delivery Failed:', emailErr);
@@ -452,6 +477,7 @@ Please see the attached official A4 PDF report for complete management audit.
       totalCollections: totalInflowCollections,
       metrics: reportData.metrics,
       branchStats: reportData.branchStats,
+      serviceCategories: reportData.serviceCategories,
       errorDetails: null,
     };
 
