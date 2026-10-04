@@ -4,7 +4,10 @@
   "version": "1.0.0",
   "type": "module",
   "engines": {
-    "node": "24.x"
+    "node": ">=20.0.0"
+  },
+  "overrides": {
+    "jwks-rsa": "3.1.0"
   },
   "scripts": {
     "dev": "vite",
