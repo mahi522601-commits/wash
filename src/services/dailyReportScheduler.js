@@ -8,6 +8,7 @@ import { reportService } from './reportService.js';
 import { auditService } from './auditService.js';
 import { db, auth, isFirebaseConfigured } from './firebase.js';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { localDbService } from './localDbService.js';
 
 const DAILY_SCHEDULE_STORAGE_KEY = 'techwash_daily_report_schedule_v3';
 
@@ -35,10 +36,21 @@ export const DEFAULT_SCHEDULE_CONFIG = {
 
 class DailyReportSchedulerService {
   /**
-   * Fetch current Schedule & Recipient configuration from Firebase settings/daily_report
+   * Fetch current Schedule & Recipient configuration from local IndexedDB first, then localStorage & Firebase
    */
   async getConfig() {
     try {
+      // 1. Try reading from permanent local IndexedDB first
+      const localIndexedDbSetting = await localDbService.getTerminalSetting('daily_report_schedule');
+      if (localIndexedDbSetting && typeof localIndexedDbSetting === 'object') {
+        const mergedLocal = { ...DEFAULT_SCHEDULE_CONFIG, ...localIndexedDbSetting };
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(DAILY_SCHEDULE_STORAGE_KEY, JSON.stringify(mergedLocal));
+        }
+        return mergedLocal;
+      }
+
+      // 2. Try reading from Firebase settings/daily_report
       if (isFirebaseConfigured && db) {
         const mainDocRef = doc(db, 'settings', 'daily_report');
         const snap = await getDoc(mainDocRef);
@@ -60,6 +72,7 @@ class DailyReportSchedulerService {
               scheduleTime: '22:00',
               scheduleTimeFormatted: '10:00 PM',
             };
+            await localDbService.saveTerminalSetting('daily_report_schedule', migrated);
             if (typeof window !== 'undefined') {
               localStorage.setItem(DAILY_SCHEDULE_STORAGE_KEY, JSON.stringify(migrated));
             }
@@ -67,6 +80,7 @@ class DailyReportSchedulerService {
           }
 
           const merged = { ...DEFAULT_SCHEDULE_CONFIG, ...data };
+          await localDbService.saveTerminalSetting('daily_report_schedule', merged);
           if (typeof window !== 'undefined') {
             localStorage.setItem(DAILY_SCHEDULE_STORAGE_KEY, JSON.stringify(merged));
           }
@@ -78,7 +92,9 @@ class DailyReportSchedulerService {
         const local = localStorage.getItem(DAILY_SCHEDULE_STORAGE_KEY);
         if (local) {
           const parsed = JSON.parse(local);
-          return { ...DEFAULT_SCHEDULE_CONFIG, ...parsed };
+          const mergedLocal = { ...DEFAULT_SCHEDULE_CONFIG, ...parsed };
+          await localDbService.saveTerminalSetting('daily_report_schedule', mergedLocal);
+          return mergedLocal;
         }
       }
     } catch (e) {
@@ -88,7 +104,7 @@ class DailyReportSchedulerService {
   }
 
   /**
-   * Save Schedule & Recipient configuration to Firebase & localStorage
+   * Save Schedule & Recipient configuration to IndexedDB FIRST, then localStorage & Firebase
    */
   async saveConfig(updatedConfig) {
     const merged = {
@@ -106,6 +122,13 @@ class DailyReportSchedulerService {
       updatedAt: new Date().toISOString()
     };
     
+    // Save to IndexedDB FIRST (LOCAL_SAVED)
+    try {
+      await localDbService.saveTerminalSetting('daily_report_schedule', merged);
+    } catch (dbErr) {
+      console.warn('IndexedDB terminal settings save error:', dbErr);
+    }
+
     if (typeof window !== 'undefined') {
       localStorage.setItem(DAILY_SCHEDULE_STORAGE_KEY, JSON.stringify(merged));
     }

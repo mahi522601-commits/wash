@@ -156,6 +156,20 @@ export const localDbService = {
       lastSyncError: errorMsg,
       failedAt: new Date().toISOString(),
     });
+  },
+
+  /**
+   * Save terminal setting to local IndexedDB
+   */
+  async saveTerminalSetting(key, value) {
+    return posIndexedDB.saveTerminalSetting(key, value);
+  },
+
+  /**
+   * Get terminal setting from local IndexedDB
+   */
+  async getTerminalSetting(key) {
+    return posIndexedDB.getTerminalSetting(key);
   }
 };
 
