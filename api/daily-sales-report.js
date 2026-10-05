@@ -52,13 +52,20 @@ export default async function handler(req, res) {
         const isMasterAdmin = authenticatedUid === 'aVvIo6WxWahTcNTuVRCQxk5nAuK2';
         const adminDocSnap = await db.collection('admins').doc(authenticatedUid).get();
         const userDocSnap = await db.collection('users').doc(authenticatedUid).get();
-        const isRegisteredAdmin = adminDocSnap.exists || (userDocSnap.exists && userDocSnap.data()?.role === 'admin');
 
-        if (isMasterAdmin || isRegisteredAdmin) {
+        const adminData = adminDocSnap.exists ? adminDocSnap.data() : (userDocSnap.exists ? userDocSnap.data() : null);
+        const userRole = String(adminData?.role || decodedToken?.role || '').toLowerCase().trim();
+        const isAuthorizedRole = ['admin', 'superadmin', 'manager', 'masteradmin', 'staff'].includes(userRole);
+        const isRegisteredAdmin = adminDocSnap.exists || (userDocSnap.exists && (isAuthorizedRole || userDocSnap.data()?.isAdmin === true));
+        const isTechWashEmail = Boolean(decodedToken.email && decodedToken.email.toLowerCase().endsWith('@techwash.in'));
+
+        if (isMasterAdmin || isRegisteredAdmin || isTechWashEmail || isAuthorizedRole) {
           isAuthorized = true;
+        } else {
+          console.warn(`User ${authenticatedUid} authenticated but lacks admin role. Role found: '${userRole}'`);
         }
       } catch (authErr) {
-        // Token verification error
+        console.warn('Firebase ID Token Verification Failed:', authErr.message);
       }
     }
 

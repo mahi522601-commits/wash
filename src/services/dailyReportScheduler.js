@@ -166,15 +166,26 @@ class DailyReportSchedulerService {
    * Invoke serverless endpoint /api/daily-sales-report with Firebase ID Token
    */
   async triggerServerlessReport(payload = {}) {
-    const currentUser = auth?.currentUser;
+    let currentUser = auth?.currentUser;
+
+    if (!currentUser && auth) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      currentUser = auth.currentUser;
+    }
+
+    if (!currentUser) {
+      throw new Error('Authentication required: Please log in to your administrator account to send a test report email.');
+    }
+
     let token = '';
-    
-    if (currentUser) {
-      try {
-        token = await currentUser.getIdToken(false);
-      } catch (e) {
-        token = await currentUser.getIdToken(true);
-      }
+    try {
+      token = await currentUser.getIdToken(false);
+    } catch (e) {
+      token = await currentUser.getIdToken(true);
+    }
+
+    if (!token) {
+      throw new Error('Authentication Error: Unable to acquire valid Firebase ID token. Please re-authenticate.');
     }
 
     const requestBody = typeof payload === 'object' ? payload : { action: payload };
