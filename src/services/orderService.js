@@ -1540,6 +1540,84 @@ export const orderService = {
     }
 
     return true;
+  },
+
+  /**
+   * Permanently delete all orders (or a list of order IDs) from Firebase Firestore, IndexedDB, and local storage
+   */
+  async deleteAllOrders(orderIds = null) {
+    let targetIds = [];
+
+    if (Array.isArray(orderIds) && orderIds.length > 0) {
+      targetIds = orderIds.map(id => String(id).trim()).filter(Boolean);
+    } else {
+      // Fetch all existing order IDs
+      const allOrders = await this.getOrders({ limitCount: 5000 });
+      targetIds = allOrders.map(o => o.id).filter(Boolean);
+    }
+
+    if (targetIds.length === 0) {
+      try {
+        localStorage.removeItem(ORDERS_STORAGE_KEY);
+      } catch (e) {}
+      return { success: true, deletedCount: 0 };
+    }
+
+    // 1. Delete from Firebase Firestore in parallel
+    if (isFirebaseConfigured && db) {
+      const deletePromises = [];
+      for (const id of targetIds) {
+        deletePromises.push(
+          deleteDoc(doc(db, 'orders', id)).catch(e => console.warn(`Firestore delete order error (${id}):`, e.message)),
+          deleteDoc(doc(db, 'bookings', id)).catch(e => console.warn(`Firestore delete booking error (${id}):`, e.message))
+        );
+      }
+      try {
+        await Promise.all(deletePromises);
+      } catch (e) {
+        console.warn('Batch delete error:', e);
+      }
+    }
+
+    // 2. Clear IndexedDB local storage tables if available
+    try {
+      if (posIndexedDB && typeof posIndexedDB.clearStore === 'function') {
+        await posIndexedDB.clearStore('orders');
+        await posIndexedDB.clearStore('syncQueue');
+      }
+    } catch (e) {
+      console.warn('IndexedDB clear error:', e);
+    }
+
+    // 3. Update / Clear local storage cache
+    try {
+      if (!orderIds || orderIds.length === 0) {
+        localStorage.removeItem(ORDERS_STORAGE_KEY);
+      } else {
+        const remaining = (await this.getOrders({ limitCount: 5000 })).filter(
+          o => !targetIds.includes(o.id) && !targetIds.includes(o.orderNumber)
+        );
+        localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(remaining));
+      }
+    } catch (e) {}
+
+    // 4. Dispatch global broadcast events
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('techwash-orders-updated', { detail: { deletedAll: true, count: targetIds.length } }));
+      window.dispatchEvent(new CustomEvent('techwash-order-deleted', { detail: { deleteAll: true } }));
+      window.dispatchEvent(new CustomEvent('techwash-worker-refresh-tasks', { detail: { deleteAll: true } }));
+      try {
+        if ('BroadcastChannel' in window) {
+          const channel = new BroadcastChannel('techwash_orders_channel');
+          channel.postMessage({ type: 'ALL_ORDERS_DELETED', count: targetIds.length });
+          setTimeout(() => {
+            try { channel.close(); } catch (e) {}
+          }, 200);
+        }
+      } catch (e) {}
+    }
+
+    return { success: true, deletedCount: targetIds.length };
   }
 };
 

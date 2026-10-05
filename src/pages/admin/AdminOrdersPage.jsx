@@ -366,6 +366,8 @@ export const AdminOrdersPage = () => {
   const [isDispatching, setIsDispatching] = useState(false);
   const [deleteTargetOrder, setDeleteTargetOrder] = useState(null);
   const [isDeletingOrder, setIsDeletingOrder] = useState(false);
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
+  const [isDeletingAllOrders, setIsDeletingAllOrders] = useState(false);
   const [showGatewayModal, setShowGatewayModal] = useState(false);
   const [gatewayConfig, setGatewayConfig] = useState(null);
   const [isSavingGateway, setIsSavingGateway] = useState(false);
@@ -553,6 +555,32 @@ export const AdminOrdersPage = () => {
       error('Delete Error', err.message || 'Failed to delete order.');
     } finally {
       setIsDeletingOrder(false);
+    }
+  };
+
+  const handleDeleteAllOrders = async () => {
+    setIsDeletingAllOrders(true);
+    try {
+      const res = await orderService.deleteAllOrders();
+
+      try {
+        await auditService.logAction({
+          action: 'DELETE_ALL',
+          entity: 'Order',
+          entityId: 'ALL_ORDERS',
+          entityName: `All Orders Purge (${res.deletedCount || 0} orders deleted)`,
+          user: currentUser,
+        });
+      } catch (e) {}
+
+      success('All Orders Deleted', `Successfully deleted ${res.deletedCount || orders.length} order(s) permanently.`);
+      setShowDeleteAllConfirm(false);
+      setActiveOrder(null);
+      loadOrders();
+    } catch (err) {
+      error('Delete All Error', err.message || 'Failed to delete all orders.');
+    } finally {
+      setIsDeletingAllOrders(false);
     }
   };
 
@@ -1612,6 +1640,18 @@ export const AdminOrdersPage = () => {
         <Button variant="outline" size="md" icon={Download} onClick={exportCSV}>
           Export CSV
         </Button>
+        {orders.length > 0 && (
+          <Button 
+            variant="danger" 
+            size="md" 
+            icon={Trash2} 
+            onClick={() => setShowDeleteAllConfirm(true)}
+            className="bg-rose-600 hover:bg-rose-700 text-white font-bold shadow-md hover:shadow-lg transition-all"
+            title="Permanently Delete All Orders from Database & Local Storage"
+          >
+            Delete All Orders ({orders.length})
+          </Button>
+        )}
       </AdminPageHeader>
 
       {/* ── TOP 3-BRANCH ISOLATION & SALES METRICS CARDS ── */}
@@ -2537,6 +2577,19 @@ export const AdminOrdersPage = () => {
         message="This order will be permanently deleted from Firebase Firestore and removed from all dispatch queues. This action cannot be undone."
         confirmText="Delete Order"
         isLoading={isDeletingOrder}
+      />
+
+      {/* Delete All Orders Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showDeleteAllConfirm}
+        onClose={() => setShowDeleteAllConfirm(false)}
+        onConfirm={handleDeleteAllOrders}
+        title={`⚠️ PERMANENTLY DELETE ALL ${orders.length} ORDERS?`}
+        message={`Are you sure you want to permanently delete ALL ${orders.length} order(s)? This will remove all customer order records, pickup bookings, and history from Firebase Firestore and local storage. THIS ACTION CANNOT BE UNDONE.`}
+        confirmText={isDeletingAllOrders ? "Deleting All Orders..." : "Yes, Delete All Orders"}
+        cancelText="Cancel"
+        variant="danger"
+        isLoading={isDeletingAllOrders}
       />
 
       {/* WhatsApp Automated Gateway Settings Modal */}
