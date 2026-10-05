@@ -510,6 +510,48 @@ Please see the attached official A4 PDF report for complete management audit.
 
     await logDocRef.set(finalLogData, { merge: true });
 
+    // 10. SAFE FIRESTORE RETENTION CLEANUP
+    // Executed ONLY AFTER email delivery AND dailyReportLogs entry are SUCCESSFUL.
+    // Retention boundary: 2 days (48 hours) older than current window start date.
+    // Only deletes temporary mirror records in 'orders' and 'bookings' collections.
+    // NEVER touches settings, admin users, staff, images, store locations, offers, pricing, or dailyReportLogs.
+    let prunedMirrorCount = 0;
+    if (!isTestMode) {
+      try {
+        const retentionCutoffMs = windowStartUtc.getTime() - (2 * 24 * 60 * 60 * 1000); // 2 days before current report window
+        const retentionCutoffDate = new Date(retentionCutoffMs);
+
+        const oldOrdersSnap = await db.collection('orders').limit(1000).get();
+        if (!oldOrdersSnap.empty) {
+          const batchDeletes = [];
+          oldOrdersSnap.docs.forEach(d => {
+            const data = d.data();
+            const createdAtRaw = data.createdAt || data.created_at || data.orderDate || data.date;
+            let orderDate = null;
+            if (createdAtRaw) {
+              if (typeof createdAtRaw.toDate === 'function') orderDate = createdAtRaw.toDate();
+              else if (createdAtRaw._seconds) orderDate = new Date(createdAtRaw._seconds * 1000);
+              else orderDate = new Date(createdAtRaw);
+            }
+
+            // Must be older than 2-day retention boundary AND syncStatus === 'SYNCED'
+            if (orderDate && orderDate < retentionCutoffDate && data.syncStatus === 'SYNCED') {
+              batchDeletes.push(db.collection('orders').doc(d.id).delete().catch(e => console.warn('Prune order error:', e.message)));
+              batchDeletes.push(db.collection('bookings').doc(d.id).delete().catch(e => console.warn('Prune booking error:', e.message)));
+              prunedMirrorCount++;
+            }
+          });
+
+          if (batchDeletes.length > 0) {
+            await Promise.all(batchDeletes);
+            console.log(`🧹 Firestore Cloud Mirror Pruned: ${prunedMirrorCount} old synced records deleted (boundary: ${retentionCutoffDate.toISOString()})`);
+          }
+        }
+      } catch (pruneErr) {
+        console.warn('Firestore retention cleanup notice (non-fatal):', pruneErr.message);
+      }
+    }
+
     return res.status(200).json({
       success: true,
       status: 'COMPLETED',
@@ -521,6 +563,7 @@ Please see the attached official A4 PDF report for complete management audit.
       emailProvider: emailResult.provider,
       recipients: emailResult.recipients,
       messageId: emailResult.messageId,
+      prunedMirrorCount,
       logDocId: `dailyReportLogs/${runId}`
     });
 

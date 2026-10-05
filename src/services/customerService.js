@@ -5,6 +5,7 @@
 import { db, isFirebaseConfigured } from './firebase.js';
 import { collection, getDocs, doc, setDoc, getDoc, deleteDoc } from 'firebase/firestore';
 import { orderService } from './orderService.js';
+import { posIndexedDB } from './posIndexedDB.js';
 
 export const CUSTOMER_SEGMENTS = {
   VIP: { label: 'VIP Customer', color: 'purple', minSpend: 5000 },
@@ -21,7 +22,33 @@ export const customerService = {
     const orders = await orderService.getOrders({ limitCount: 1000 });
     const customerMap = new Map();
 
-    // 1. First fetch any direct customer documents from Firestore `customers`
+    // 1. Fetch local IndexedDB customers first
+    try {
+      const localCusts = await posIndexedDB.getAllCustomers();
+      localCusts.forEach(c => {
+        const phone = c.phone || c.id;
+        if (phone) {
+          customerMap.set(phone, {
+            id: c.id || `cust-${phone.replace(/\D/g, '')}`,
+            name: c.name || 'Valued Customer',
+            phone: phone,
+            email: c.email || '—',
+            address: c.address || '—',
+            locality: c.locality || '',
+            city: c.city || 'Hyderabad',
+            orderCount: Number(c.orderCount || 0),
+            totalSpent: Number(c.totalSpent || 0),
+            orders: [],
+            firstOrderDate: c.firstOrderDate || new Date().toISOString(),
+            lastOrderDate: c.lastOrderDate || new Date().toISOString(),
+          });
+        }
+      });
+    } catch (e) {
+      console.warn('IndexedDB customers read notice:', e);
+    }
+
+    // 2. Fetch direct customer documents from Firestore `customers` if available
     if (isFirebaseConfigured && db) {
       try {
         const snap = await getDocs(collection(db, 'customers'));
@@ -29,19 +56,21 @@ export const customerService = {
           snap.docs.forEach(d => {
             const data = d.data();
             const phone = data.phone || d.id;
+            const existing = customerMap.get(phone);
             customerMap.set(phone, {
-              id: data.id || `cust-${phone.replace(/\D/g, '')}`,
-              name: data.name || 'Valued Customer',
+              ...existing,
+              id: data.id || existing?.id || `cust-${phone.replace(/\D/g, '')}`,
+              name: data.name || existing?.name || 'Valued Customer',
               phone: phone,
-              email: data.email || '—',
-              address: data.address || '—',
-              locality: data.locality || '',
-              city: data.city || 'Hyderabad',
-              orderCount: Number(data.orderCount || 0),
-              totalSpent: Number(data.totalSpent || 0),
-              orders: [],
-              firstOrderDate: data.firstOrderDate || new Date().toISOString(),
-              lastOrderDate: data.lastOrderDate || new Date().toISOString(),
+              email: data.email || existing?.email || '—',
+              address: data.address || existing?.address || '—',
+              locality: data.locality || existing?.locality || '',
+              city: data.city || existing?.city || 'Hyderabad',
+              orderCount: Math.max(Number(data.orderCount || 0), Number(existing?.orderCount || 0)),
+              totalSpent: Math.max(Number(data.totalSpent || 0), Number(existing?.totalSpent || 0)),
+              orders: existing?.orders || [],
+              firstOrderDate: data.firstOrderDate || existing?.firstOrderDate || new Date().toISOString(),
+              lastOrderDate: data.lastOrderDate || existing?.lastOrderDate || new Date().toISOString(),
             });
           });
         }

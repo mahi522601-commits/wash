@@ -1,11 +1,11 @@
 /**
  * Tech Wash POS — Client-side IndexedDB Engine (TechWashPOS)
  * Persistent local-first transaction store & sync queue.
- * Replaces local JSON transaction files with standard browser IndexedDB storage.
+ * Permanent local business database for orders, payments, customers, dues, cancellations, refunds, serviceTransactions, syncQueue, reportSnapshots, and terminalSettings.
  */
 
 const DB_NAME = 'TechWashPOS';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 class PosIndexedDB {
   constructor() {
@@ -13,7 +13,7 @@ class PosIndexedDB {
   }
 
   /**
-   * Opens / initializes the IndexedDB database and creates all 5 object stores
+   * Opens / initializes the IndexedDB database and creates all 10 object stores
    */
   openDB() {
     if (this.dbPromise) return this.dbPromise;
@@ -44,6 +44,7 @@ class PosIndexedDB {
           paymentStore.createIndex('localId', 'localId', { unique: false });
           paymentStore.createIndex('orderId', 'orderId', { unique: false });
           paymentStore.createIndex('createdAt', 'createdAt', { unique: false });
+          paymentStore.createIndex('method', 'method', { unique: false });
         }
 
         // 3. Customers Store
@@ -53,7 +54,37 @@ class PosIndexedDB {
           customerStore.createIndex('name', 'name', { unique: false });
         }
 
-        // 4. Sync Queue Store
+        // 4. Dues Store
+        if (!db.objectStoreNames.contains('dues')) {
+          const dueStore = db.createObjectStore('dues', { keyPath: 'id' });
+          dueStore.createIndex('localId', 'localId', { unique: false });
+          dueStore.createIndex('phone', 'phone', { unique: false });
+          dueStore.createIndex('status', 'status', { unique: false });
+        }
+
+        // 5. Cancellations Store
+        if (!db.objectStoreNames.contains('cancellations')) {
+          const cancelStore = db.createObjectStore('cancellations', { keyPath: 'id' });
+          cancelStore.createIndex('localId', 'localId', { unique: false });
+          cancelStore.createIndex('createdAt', 'createdAt', { unique: false });
+        }
+
+        // 6. Refunds Store
+        if (!db.objectStoreNames.contains('refunds')) {
+          const refundStore = db.createObjectStore('refunds', { keyPath: 'id' });
+          refundStore.createIndex('localId', 'localId', { unique: false });
+          refundStore.createIndex('createdAt', 'createdAt', { unique: false });
+        }
+
+        // 7. Service Transactions Store
+        if (!db.objectStoreNames.contains('serviceTransactions')) {
+          const srvTxStore = db.createObjectStore('serviceTransactions', { keyPath: 'id' });
+          srvTxStore.createIndex('localId', 'localId', { unique: false });
+          srvTxStore.createIndex('category', 'category', { unique: false });
+          srvTxStore.createIndex('createdAt', 'createdAt', { unique: false });
+        }
+
+        // 8. Sync Queue Store
         if (!db.objectStoreNames.contains('syncQueue')) {
           const queueStore = db.createObjectStore('syncQueue', { keyPath: 'localId' });
           queueStore.createIndex('status', 'status', { unique: false });
@@ -61,7 +92,14 @@ class PosIndexedDB {
           queueStore.createIndex('createdLocallyAt', 'createdLocallyAt', { unique: false });
         }
 
-        // 5. Terminal Settings Store
+        // 9. Report Snapshots Store
+        if (!db.objectStoreNames.contains('reportSnapshots')) {
+          const reportStore = db.createObjectStore('reportSnapshots', { keyPath: 'id' });
+          reportStore.createIndex('reportDate', 'reportDate', { unique: false });
+          reportStore.createIndex('createdAt', 'createdAt', { unique: false });
+        }
+
+        // 10. Terminal Settings Store
         if (!db.objectStoreNames.contains('terminalSettings')) {
           const settingsStore = db.createObjectStore('terminalSettings', { keyPath: 'id' });
           settingsStore.createIndex('key', 'key', { unique: false });
@@ -79,6 +117,78 @@ class PosIndexedDB {
     });
 
     return this.dbPromise;
+  }
+
+  // --- GENERIC STORE METHODS ---
+
+  async saveItem(storeName, item, keyField = 'id') {
+    if (!item) return null;
+    const db = await this.openDB();
+    const keyVal = item[keyField] || item.localId || item.id || `item-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+    const record = {
+      ...item,
+      [keyField]: keyVal,
+      updatedAt: new Date().toISOString(),
+    };
+
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(storeName, 'readwrite');
+      const store = tx.objectStore(storeName);
+      const req = store.put(record);
+
+      req.onsuccess = () => resolve(record);
+      req.onerror = (e) => reject(e.target.error);
+    });
+  }
+
+  async getItem(storeName, key) {
+    if (!key) return null;
+    const db = await this.openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(storeName, 'readonly');
+      const store = tx.objectStore(storeName);
+      const req = store.get(key);
+
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = (e) => reject(e.target.error);
+    });
+  }
+
+  async getAllItems(storeName) {
+    const db = await this.openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(storeName, 'readonly');
+      const store = tx.objectStore(storeName);
+      const req = store.getAll();
+
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = (e) => reject(e.target.error);
+    });
+  }
+
+  async deleteItem(storeName, key) {
+    if (!key) return false;
+    const db = await this.openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(storeName, 'readwrite');
+      const store = tx.objectStore(storeName);
+      const req = store.delete(key);
+
+      req.onsuccess = () => resolve(true);
+      req.onerror = (e) => reject(e.target.error);
+    });
+  }
+
+  async clearStore(storeName) {
+    const db = await this.openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(storeName, 'readwrite');
+      const store = tx.objectStore(storeName);
+      const req = store.clear();
+
+      req.onsuccess = () => resolve(true);
+      req.onerror = (e) => reject(e.target.error);
+    });
   }
 
   // --- ORDERS STORE METHODS ---
@@ -118,15 +228,7 @@ class PosIndexedDB {
   }
 
   async getAllOrders() {
-    const db = await this.openDB();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction('orders', 'readonly');
-      const store = tx.objectStore('orders');
-      const req = store.getAll();
-
-      req.onsuccess = () => resolve(req.result || []);
-      req.onerror = (e) => reject(e.target.error);
-    });
+    return this.getAllItems('orders');
   }
 
   async getOrdersBySyncStatus(syncStatus) {
@@ -199,6 +301,10 @@ class PosIndexedDB {
     });
   }
 
+  async getAllCustomers() {
+    return this.getAllItems('customers');
+  }
+
   // --- PAYMENTS STORE METHODS ---
 
   async savePayment(payment) {
@@ -232,6 +338,60 @@ class PosIndexedDB {
       req.onsuccess = () => resolve(req.result || []);
       req.onerror = (e) => reject(e.target.error);
     });
+  }
+
+  async getAllPayments() {
+    return this.getAllItems('payments');
+  }
+
+  // --- DUES STORE METHODS ---
+
+  async saveDue(due) {
+    return this.saveItem('dues', due, 'id');
+  }
+
+  async getAllDues() {
+    return this.getAllItems('dues');
+  }
+
+  // --- CANCELLATIONS STORE METHODS ---
+
+  async saveCancellation(cancellation) {
+    return this.saveItem('cancellations', cancellation, 'id');
+  }
+
+  async getAllCancellations() {
+    return this.getAllItems('cancellations');
+  }
+
+  // --- REFUNDS STORE METHODS ---
+
+  async saveRefund(refund) {
+    return this.saveItem('refunds', refund, 'id');
+  }
+
+  async getAllRefunds() {
+    return this.getAllItems('refunds');
+  }
+
+  // --- SERVICE TRANSACTIONS STORE METHODS ---
+
+  async saveServiceTransaction(txData) {
+    return this.saveItem('serviceTransactions', txData, 'id');
+  }
+
+  async getAllServiceTransactions() {
+    return this.getAllItems('serviceTransactions');
+  }
+
+  // --- REPORT SNAPSHOTS STORE METHODS ---
+
+  async saveReportSnapshot(snapshot) {
+    return this.saveItem('reportSnapshots', snapshot, 'id');
+  }
+
+  async getAllReportSnapshots() {
+    return this.getAllItems('reportSnapshots');
   }
 
   // --- SYNC QUEUE STORE METHODS ---
