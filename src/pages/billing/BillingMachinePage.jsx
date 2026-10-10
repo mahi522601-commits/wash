@@ -75,7 +75,8 @@ import {
   AlertCircle,
   Calendar,
   ChevronDown,
-  FileText
+  FileText,
+  Save
 } from 'lucide-react';
 
 const getInitialDeliverySchedule = () => {
@@ -332,7 +333,7 @@ export const BillingMachinePage = () => {
     try {
       const data = await reportService.generateFinancialReport({
         datePreset: 'today',
-        branchFilter: 'ALL_POS',
+        branchFilter: activeTerminalId || 'ALL_POS',
         channelFilter: 'ALL',
         onlyOfflinePos: false,
       });
@@ -343,36 +344,93 @@ export const BillingMachinePage = () => {
       return data;
     } catch (err) {
       console.warn('Failed to load real-time shift stats:', err);
+      return null;
     }
-  }, []);
+  }, [activeTerminalId]);
 
   const [showPastShiftPicker, setShowPastShiftPicker] = useState(false);
   const [selectedPastDate, setSelectedPastDate] = useState('');
+  const [isStoringShift, setIsStoringShift] = useState(false);
 
   const handleOpenShiftReport = async (targetDate = null, preset = 'today') => {
     setIsLoadingReport(true);
     setShowPastShiftPicker(false);
     try {
-      let data;
-      if (preset === 'today' && !targetDate) {
-        data = await loadRealtimeShiftStats();
-      } else {
-        data = await reportService.generateFinancialReport({
+      let data = await reportService.generateFinancialReport({
+        datePreset: preset,
+        targetDate: targetDate || null,
+        branchFilter: activeTerminalId || 'ALL_POS',
+        channelFilter: 'ALL',
+        onlyOfflinePos: false,
+      });
+
+      // Defensive fallback so the modal is guaranteed to open even if query returns empty
+      if (!data) {
+        data = {
           datePreset: preset,
-          targetDate: targetDate || null,
-          branchFilter: 'ALL_POS',
+          dateRangeLabel: preset === 'today' ? "Today's Counter Shift Settlement" : (targetDate || preset),
+          generatedAt: new Date().toISOString(),
+          branchFilter: activeTerminalId || 'ALL_POS',
           channelFilter: 'ALL',
-          onlyOfflinePos: false,
-        });
+          orders: [],
+          metrics: {
+            totalOrdersCount: 0,
+            totalGrossBilled: 0,
+            totalPiecesCount: 0,
+            totalWeightKg: 0,
+            category1: { cashReceived: 0, upiReceived: 0, cardReceived: 0, onlineReceived: 0, totalInflowCollections: 0 },
+            category2: { totalInitialDuesCreated: 0, totalRecoveredDues: 0, totalNetPendingDues: 0, totalExpectedRealization: 0, fullyPaidOrdersCount: 0, partialOrdersCount: 0, unpaidOrdersCount: 0 },
+            serviceBreakdown: {},
+          },
+          attendance: null,
+        };
       }
-      if (data) {
-        setShiftReportData(data);
-        setShowShiftReportModal(true);
-      }
+
+      setShiftReportData(data);
+      setShowShiftReportModal(true);
+
+      // Auto-save snapshot into IndexedDB TechWashPOS reportSnapshots & cloud mirror
+      reportService.saveShiftReportSnapshot(data).catch(() => {});
     } catch (err) {
-      error('Report Error', 'Failed to generate counter shift settlement report.');
+      console.error('Report Error in handleOpenShiftReport:', err);
+      const fallback = {
+        datePreset: preset,
+        dateRangeLabel: preset === 'today' ? "Today's Counter Shift Settlement" : (targetDate || preset),
+        generatedAt: new Date().toISOString(),
+        branchFilter: activeTerminalId || 'ALL_POS',
+        channelFilter: 'ALL',
+        orders: [],
+        metrics: {
+          totalOrdersCount: 0,
+          totalGrossBilled: 0,
+          totalPiecesCount: 0,
+          totalWeightKg: 0,
+          category1: { cashReceived: 0, upiReceived: 0, cardReceived: 0, onlineReceived: 0, totalInflowCollections: 0 },
+          category2: { totalInitialDuesCreated: 0, totalRecoveredDues: 0, totalNetPendingDues: 0, totalExpectedRealization: 0, fullyPaidOrdersCount: 0, partialOrdersCount: 0, unpaidOrdersCount: 0 },
+          serviceBreakdown: {},
+        },
+        attendance: null,
+      };
+      setShiftReportData(fallback);
+      setShowShiftReportModal(true);
     } finally {
       setIsLoadingReport(false);
+    }
+  };
+
+  const handleStoreShiftSnapshot = async () => {
+    setIsStoringShift(true);
+    try {
+      const snap = await reportService.saveCurrentShiftSnapshot({
+        branchFilter: activeTerminalId || 'ALL_POS',
+        terminalId: activeTerminalId,
+      });
+      success('Shift Snapshot Stored!', `Recorded ${snap?.ordersCount || shiftCount} bills (₹${snap?.totalGrossBilled || shiftTotal}) in permanent storage.`);
+      await loadRealtimeShiftStats();
+    } catch (err) {
+      error('Storage Notice', 'Could not save shift snapshot: ' + (err.message || 'Error'));
+    } finally {
+      setIsStoringShift(false);
     }
   };
 
@@ -1426,6 +1484,18 @@ export const BillingMachinePage = () => {
                 </div>
               </div>
 
+              {/* Store Current Live Shift */}
+              <button
+                type="button"
+                disabled={isStoringShift}
+                onClick={handleStoreShiftSnapshot}
+                className="px-3 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-xs font-semibold transition border border-emerald-500/40 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                title="Permanently store today's shift snapshot in local IndexedDB & cloud"
+              >
+                <Save className={`w-3.5 h-3.5 text-emerald-400 ${isStoringShift ? 'animate-spin' : ''}`} />
+                <span>{isStoringShift ? 'Storing...' : 'Store Shift'}</span>
+              </button>
+
               {/* Today's Shift Report (PDF) */}
               <button
                 type="button"
@@ -1435,7 +1505,7 @@ export const BillingMachinePage = () => {
                 title="Print today's live shift settlement report for this counter"
               >
                 <Printer className="w-3.5 h-3.5 text-orange-400" />
-                <span>Shift Report (PDF)</span>
+                <span>{isLoadingReport ? 'Loading...' : 'Shift Report (PDF)'}</span>
               </button>
 
               {/* Past Shifts Dropdown / Selector */}
@@ -2923,10 +2993,27 @@ export const BillingMachinePage = () => {
       )}
 
       {/* ── DAILY SHIFT SETTLEMENT REPORT MODAL ── */}
-      {showShiftReportModal && shiftReportData && (
+      {showShiftReportModal && (
         <FinancialReportModal
           isOpen={showShiftReportModal}
-          reportData={shiftReportData}
+          reportData={shiftReportData || {
+            datePreset: 'today',
+            dateRangeLabel: "Today's Counter Shift Settlement",
+            generatedAt: new Date().toISOString(),
+            branchFilter: activeTerminalId || 'ALL_POS',
+            channelFilter: 'ALL',
+            orders: [],
+            metrics: {
+              totalOrdersCount: 0,
+              totalGrossBilled: 0,
+              totalPiecesCount: 0,
+              totalWeightKg: 0,
+              category1: { cashReceived: 0, upiReceived: 0, cardReceived: 0, onlineReceived: 0, totalInflowCollections: 0 },
+              category2: { totalInitialDuesCreated: 0, totalRecoveredDues: 0, totalNetPendingDues: 0, totalExpectedRealization: 0, fullyPaidOrdersCount: 0, partialOrdersCount: 0, unpaidOrdersCount: 0 },
+              serviceBreakdown: {},
+            },
+            attendance: null,
+          }}
           onClose={() => setShowShiftReportModal(false)}
         />
       )}

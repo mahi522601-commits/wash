@@ -30,10 +30,12 @@ export const PrintFinancialReport = ({
     dateRangeLabel,
     generatedAt,
     branchFilter,
-    orders = [],
+    orders: rawOrders = [],
     metrics = {},
     attendance = null,
   } = reportData;
+
+  const orders = (rawOrders || []).filter(Boolean);
 
   const {
     totalOrdersCount = 0,

@@ -171,6 +171,14 @@ service cloud.firestore {
     match /dailyReportLogs/{logId} {
       allow read, write: if true;
     }
+
+    match /shiftReports/{reportId} {
+      allow read, write: if true;
+    }
+
+    match /shifts/{shiftId} {
+      allow read, write: if true;
+    }
   }
 }
 

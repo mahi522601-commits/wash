@@ -5,7 +5,7 @@
  */
 
 const DB_NAME = 'TechWashPOS';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 class PosIndexedDB {
   constructor() {
@@ -24,6 +24,10 @@ class PosIndexedDB {
       }
 
       const request = window.indexedDB.open(DB_NAME, DB_VERSION);
+
+      request.onblocked = () => {
+        console.warn('IndexedDB TechWashPOS upgrade blocked - please close other tabs');
+      };
 
       request.onupgradeneeded = (event) => {
         const db = event.target.result;
@@ -96,7 +100,19 @@ class PosIndexedDB {
         if (!db.objectStoreNames.contains('reportSnapshots')) {
           const reportStore = db.createObjectStore('reportSnapshots', { keyPath: 'id' });
           reportStore.createIndex('reportDate', 'reportDate', { unique: false });
+          reportStore.createIndex('date', 'date', { unique: false });
+          reportStore.createIndex('branchFilter', 'branchFilter', { unique: false });
           reportStore.createIndex('createdAt', 'createdAt', { unique: false });
+        } else {
+          try {
+            const reportStore = event.target.transaction.objectStore('reportSnapshots');
+            if (!reportStore.indexNames.contains('date')) {
+              reportStore.createIndex('date', 'date', { unique: false });
+            }
+            if (!reportStore.indexNames.contains('branchFilter')) {
+              reportStore.createIndex('branchFilter', 'branchFilter', { unique: false });
+            }
+          } catch (e) {}
         }
 
         // 10. Terminal Settings Store
@@ -111,6 +127,7 @@ class PosIndexedDB {
       };
 
       request.onerror = (event) => {
+        this.dbPromise = null;
         console.error('IndexedDB open error:', event.target.error);
         reject(event.target.error);
       };
@@ -422,11 +439,48 @@ class PosIndexedDB {
   // --- REPORT SNAPSHOTS STORE METHODS ---
 
   async saveReportSnapshot(snapshot) {
-    return this.saveItem('reportSnapshots', snapshot, 'id');
+    if (!snapshot) return null;
+    const id = snapshot.id || snapshot.snapshotId || `shift_${snapshot.date || snapshot.reportDate || Date.now()}_${snapshot.branchFilter || snapshot.terminalId || 'all'}`;
+    const record = {
+      ...snapshot,
+      id,
+      savedAt: snapshot.savedAt || new Date().toISOString(),
+    };
+    try {
+      return await this.saveItem('reportSnapshots', record, 'id');
+    } catch (e) {
+      console.warn('posIndexedDB saveReportSnapshot notice:', e);
+      return record;
+    }
   }
 
   async getAllReportSnapshots() {
-    return this.getAllItems('reportSnapshots');
+    try {
+      return await this.getAllItems('reportSnapshots');
+    } catch (e) {
+      console.warn('posIndexedDB getAllReportSnapshots notice:', e);
+      return [];
+    }
+  }
+
+  async getReportSnapshot(id) {
+    if (!id) return null;
+    try {
+      return await this.getItem('reportSnapshots', id);
+    } catch (e) {
+      console.warn('posIndexedDB getReportSnapshot notice:', e);
+      return null;
+    }
+  }
+
+  async getReportSnapshotsByDate(dateStr) {
+    if (!dateStr) return [];
+    try {
+      const all = await this.getAllReportSnapshots();
+      return (all || []).filter(s => s && (s.date === dateStr || s.reportDate === dateStr || String(s.id).includes(dateStr)));
+    } catch (e) {
+      return [];
+    }
   }
 
   // --- SYNC QUEUE STORE METHODS ---

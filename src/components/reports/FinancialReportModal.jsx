@@ -22,7 +22,8 @@ import {
   Filter,
   CheckCircle2,
   RefreshCw,
-  Clock
+  Clock,
+  Save
 } from 'lucide-react';
 
 export const FinancialReportModal = ({
@@ -40,12 +41,25 @@ export const FinancialReportModal = ({
   const [isCopied, setIsCopied] = useState(false);
   const [isSendingWa, setIsSendingWa] = useState(false);
 
+  const [isSavedLocally, setIsSavedLocally] = useState(false);
+
   // Active Report State with dynamic filter controls
   const [activeReport, setActiveReport] = useState(reportData);
   const [selectedBranch, setSelectedBranch] = useState(reportData?.branchFilter || 'ALL_POS');
   const [selectedPreset, setSelectedPreset] = useState(reportData?.datePreset || 'today');
   const [customDate, setCustomDate] = useState('');
   const [isReloading, setIsReloading] = useState(false);
+
+  const handleSaveShiftModal = async () => {
+    try {
+      await reportService.saveShiftReportSnapshot(activeReport);
+      setIsSavedLocally(true);
+      success('Shift Snapshot Stored!', `Saved report for ${activeReport.dateRangeLabel || 'shift'} into permanent IndexedDB & cloud.`);
+      setTimeout(() => setIsSavedLocally(false), 2500);
+    } catch (err) {
+      error('Storage Error', 'Failed to store shift snapshot: ' + (err.message || 'Error'));
+    }
+  };
 
   useEffect(() => {
     if (reportData) {
@@ -204,6 +218,16 @@ export const FinancialReportModal = ({
             >
               <Download className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Export CSV</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleSaveShiftModal}
+              className="px-3 py-1.5 rounded-xl bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border border-emerald-500/40"
+              title="Permanently store this shift report snapshot into local IndexedDB and cloud"
+            >
+              <Save className="w-3.5 h-3.5 text-emerald-400" />
+              <span>{isSavedLocally ? 'Saved ✓' : 'Save Shift'}</span>
             </button>
 
             <button

@@ -45,7 +45,8 @@ import {
   TrendingUp,
   History,
   ListOrdered,
-  Users
+  Users,
+  Save
 } from 'lucide-react';
 
 export const AdminReportsPage = () => {
@@ -654,9 +655,29 @@ export const AdminReportsPage = () => {
                   </p>
                 </div>
 
-                <span className="text-xs font-bold text-orange-700 bg-orange-100/70 px-3 py-1 rounded-full border border-orange-200">
-                  {filteredDateWiseLedger.length} Shift Records
-                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        const snap = await reportService.saveCurrentShiftSnapshot({ branchFilter });
+                        success('Shift Snapshot Stored!', `Recorded ${snap?.ordersCount || 0} bills (₹${snap?.totalGrossBilled || 0}) in permanent storage.`);
+                        loadDateWiseLedger();
+                      } catch (err) {
+                        error('Error', 'Failed to store shift snapshot.');
+                      }
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                    title="Permanently store today's live shift snapshot now"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    <span>Store Today's Shift</span>
+                  </button>
+
+                  <span className="text-xs font-bold text-orange-700 bg-orange-100/70 px-3 py-1.5 rounded-full border border-orange-200">
+                    {filteredDateWiseLedger.length} Shift Records
+                  </span>
+                </div>
               </div>
 
               <div className="overflow-x-auto">
