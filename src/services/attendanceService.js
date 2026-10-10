@@ -496,10 +496,13 @@ export const attendanceService = {
       const existing = allRecords[recordKey];
 
       const shiftConfig = SHIFT_TIMINGS.find(s => s.id === emp.shift) || SHIFT_TIMINGS[0];
+      const empName = existing?.employeeName || existing?.name || emp.name;
 
       return {
-        employee: emp,
+        employee: { ...emp, name: empName },
         employeeId: emp.id,
+        employeeName: empName,
+        name: empName,
         date: dateKey,
         status: existing?.status || 'UNMARKED',
         checkInTime: existing?.checkInTime || (existing?.status === 'PRESENT' ? shiftConfig.defaultIn : ''),
@@ -517,14 +520,40 @@ export const attendanceService = {
   /**
    * Save / update attendance for a single employee on a date
    */
-  async saveEmployeeAttendance(dateString, employeeId, recordData) {
+  async saveEmployeeAttendance(dateString, employeeId, recordData = {}) {
     const dateKey = dateString || new Date().toISOString().split('T')[0];
     const key = `${dateKey}_${employeeId}`;
+
+    let emp = recordData.employee;
+    if (!emp) {
+      try {
+        const emps = await this.getEmployees();
+        emp = emps.find(e => e.id === employeeId || e.empCode === employeeId);
+      } catch (e) {}
+    }
+
+    const employeeName = recordData.employeeName || recordData.name || emp?.name || 'Staff Member';
+    const employeeRole = recordData.role || recordData.employeeRole || emp?.role || 'Staff';
+    const employeeBranch = recordData.branch || emp?.branch || 'counter-1';
+    const empCode = recordData.empCode || emp?.empCode || '';
 
     const payload = {
       ...recordData,
       date: dateKey,
       employeeId,
+      employeeName,
+      name: employeeName,
+      role: employeeRole,
+      branch: employeeBranch,
+      empCode,
+      employee: {
+        id: employeeId,
+        name: employeeName,
+        role: employeeRole,
+        branch: employeeBranch,
+        empCode,
+        ...(emp || {})
+      },
       status: recordData.status || 'PRESENT',
       checkInTime: recordData.checkInTime || '',
       checkOutTime: recordData.checkOutTime || '',
@@ -541,7 +570,7 @@ export const attendanceService = {
       try {
         await setDoc(doc(db, 'attendance', key), payload, { merge: true });
       } catch (e) {
-        console.warn("Firestore attendance save error:", e);
+        console.warn("Firestore attendance save notice:", e);
       }
     }
 
@@ -549,6 +578,16 @@ export const attendanceService = {
     const map = this._getLocalAttendanceMap();
     map[key] = payload;
     this._setLocalAttendanceMap(map);
+
+    // Save to posIndexedDB terminalSettings
+    try {
+      const { posIndexedDB } = await import('./posIndexedDB.js');
+      await posIndexedDB.saveItem('terminalSettings', {
+        id: `att_${key}`,
+        key: `att_${key}`,
+        value: payload
+      });
+    } catch (e) {}
 
     this._broadcastUpdate();
     return payload;
@@ -564,6 +603,7 @@ export const attendanceService = {
 
     const results = [];
     const map = this._getLocalAttendanceMap();
+    const firestorePromises = [];
 
     for (const emp of employees) {
       if (shiftFilter !== 'ALL' && emp.shift !== shiftFilter) continue;
@@ -575,6 +615,12 @@ export const attendanceService = {
       const payload = {
         date: dateKey,
         employeeId: emp.id,
+        employeeName: emp.name,
+        name: emp.name,
+        role: emp.role || 'Staff',
+        branch: emp.branch || 'counter-1',
+        empCode: emp.empCode || '',
+        employee: emp,
         status: targetStatus,
         checkInTime: isPresent ? shiftConfig.defaultIn : '',
         checkOutTime: isPresent ? shiftConfig.defaultOut : '',
@@ -591,8 +637,16 @@ export const attendanceService = {
 
       // Async Firestore write
       if (isFirebaseConfigured && db) {
-        setDoc(doc(db, 'attendance', key), payload, { merge: true }).catch(() => {});
+        firestorePromises.push(
+          setDoc(doc(db, 'attendance', key), payload, { merge: true }).catch(err => {
+            console.warn(`Firestore attendance write warning for ${emp.name}:`, err);
+          })
+        );
       }
+    }
+
+    if (firestorePromises.length > 0) {
+      await Promise.all(firestorePromises);
     }
 
     this._setLocalAttendanceMap(map);

@@ -317,6 +317,30 @@ export default async function handler(req, res) {
 
     const serviceCategoriesList = Object.values(serviceCatMap);
 
+    // Fetch staff attendance records for the reporting date
+    let attendanceSummary = { totalStaff: 0, presentCount: 0, absentCount: 0, onDutyList: [], absentList: [] };
+    try {
+      const attSnap = await db.collection('attendance').where('date', '==', reportDateStr).get();
+      if (!attSnap.empty) {
+        const attDocs = attSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        attendanceSummary.totalStaff = attDocs.length;
+        attDocs.forEach(d => {
+          const empName = d.employeeName || d.name || d.employee?.name || d.employeeId;
+          const role = d.role || d.employee?.role || 'Staff';
+          const status = String(d.status || '').toUpperCase();
+          if (status === 'PRESENT' || status === 'LATE' || status === 'HALF_DAY') {
+            attendanceSummary.presentCount += 1;
+            attendanceSummary.onDutyList.push(`${empName}${role ? ` (${role})` : ''}`);
+          } else {
+            attendanceSummary.absentCount += 1;
+            attendanceSummary.absentList.push(`${empName} (${status === 'PAID_LEAVE' ? 'Leave' : 'Absent'})`);
+          }
+        });
+      }
+    } catch (attErr) {
+      console.warn('Attendance fetch notice for daily report:', attErr.message);
+    }
+
     const reportData = {
       dateStr: reportDateStr,
       dateFormatted,
@@ -339,6 +363,7 @@ export default async function handler(req, res) {
         { category: 'Premium Dry Cleaning', pieces: totalPiecesCount, weight: Math.round(totalWeightKg * 10) / 10, amount: totalGrossBilled }
       ],
       cancellations: { count: cancelledCount, totalAmount: cancelledAmount },
+      attendance: attendanceSummary,
     };
 
     // 6. GENERATE COMPLETE A4 PDF ATTACHMENT
@@ -433,6 +458,13 @@ ${serviceCatText}
 • Total Billed Orders: ${filteredOrders.length} (${fullyPaidOrdersCount} Paid, ${partialOrdersCount + unpaidOrdersCount} Unpaid/Partial)
 • Volume Cleaned: ${totalPiecesCount} Pcs / ${reportData.metrics.totalWeightKg} Kg
 • Cancelled Orders: ${cancelledCount} Orders (₹${cancelledAmount.toLocaleString('en-IN')})
+
+==================================================
+6. STAFF ATTENDANCE & ON-DUTY ROSTER
+==================================================
+• Staff on Duty Today: ${attendanceSummary.presentCount} / ${attendanceSummary.totalStaff || 'N/A'}
+${attendanceSummary.onDutyList.length > 0 ? `• On-Duty Staff:\n  ${attendanceSummary.onDutyList.map(n => `• ${n}`).join('\n  ')}` : '• No attendance marked yet today.'}
+${attendanceSummary.absentList.length > 0 ? `\n• Absent / On Leave:\n  ${attendanceSummary.absentList.map(n => `• ${n}`).join('\n  ')}` : ''}
 
 Please see the attached official A4 PDF report for complete management audit.
 `;

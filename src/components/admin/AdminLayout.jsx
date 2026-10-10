@@ -9,6 +9,7 @@ import { AdminSidebar } from './AdminSidebar';
 import { AdminHeader } from './AdminHeader';
 import { AdminCommandPalette } from './AdminCommandPalette';
 import { AdvancedLogoLoader } from '../common/AdvancedLogoLoader';
+import { InternalStorageSyncManager } from './InternalStorageSyncManager';
 
 const SIDEBAR_COLLAPSED_KEY = 'techwash_admin_sidebar_collapsed';
 
@@ -128,6 +129,9 @@ export const AdminLayout = () => {
         isOpen={searchPaletteOpen}
         onClose={() => setSearchPaletteOpen(false)}
       />
+
+      {/* 4. INTERNAL MASTER STORAGE & OFFLINE PERSISTENCE MANAGER */}
+      <InternalStorageSyncManager />
 
     </div>
   );

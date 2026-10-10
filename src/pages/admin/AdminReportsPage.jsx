@@ -44,7 +44,8 @@ import {
   MessageSquare,
   TrendingUp,
   History,
-  ListOrdered
+  ListOrdered,
+  Users
 } from 'lucide-react';
 
 export const AdminReportsPage = () => {
@@ -1114,6 +1115,84 @@ export const AdminReportsPage = () => {
               </div>
 
             </div>
+
+            {/* ── STAFF ON-DUTY & ATTENDANCE SUMMARY CARD ── */}
+            {reportData?.attendance && (reportData.attendance.totalStaff > 0 || (reportData.attendance.roster && reportData.attendance.roster.length > 0)) && (
+              <div className="p-5 rounded-3xl bg-white border border-slate-200 shadow-xs space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center font-bold">
+                      <Users className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+                        <span>Staff On-Duty & Daily Attendance</span>
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold">
+                          {reportData.attendance.presentCount || 0} / {reportData.attendance.totalStaff || reportData.attendance.roster?.length || 0} Present
+                        </span>
+                      </h3>
+                      <p className="text-xs text-slate-500">
+                        Operational roll call for {reportData.dateRangeLabel} ({branchFilter})
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 text-xs font-semibold flex-wrap">
+                    <span className="px-2.5 py-1 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200">
+                      🟢 Present: {reportData.attendance.presentCount || 0}
+                    </span>
+                    {reportData.attendance.lateCount > 0 && (
+                      <span className="px-2.5 py-1 rounded-xl bg-cyan-50 text-cyan-800 border border-cyan-200">
+                        ⏱️ Late: {reportData.attendance.lateCount}
+                      </span>
+                    )}
+                    {reportData.attendance.halfDayCount > 0 && (
+                      <span className="px-2.5 py-1 rounded-xl bg-amber-50 text-amber-800 border border-amber-200">
+                        🌗 Half Day: {reportData.attendance.halfDayCount}
+                      </span>
+                    )}
+                    <span className="px-2.5 py-1 rounded-xl bg-rose-50 text-rose-800 border border-rose-200">
+                      🔴 Absent/Leave: {(reportData.attendance.absentCount || 0) + (reportData.attendance.paidLeaveCount || 0)}
+                    </span>
+                    <Link
+                      to="/admin/attendance"
+                      className="text-xs text-indigo-600 hover:text-indigo-800 font-bold ml-2 underline"
+                    >
+                      Manage Roll Call →
+                    </Link>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {(reportData.attendance.roster || []).map((staff, sIdx) => {
+                    const isPresent = staff.status === 'PRESENT' || staff.status === 'LATE' || staff.status === 'HALF_DAY';
+                    return (
+                      <div
+                        key={staff.employeeId || sIdx}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs ${
+                          isPresent
+                            ? 'bg-emerald-50/70 text-emerald-950 border-emerald-200'
+                            : staff.status === 'PAID_LEAVE'
+                            ? 'bg-blue-50/70 text-blue-950 border-blue-200'
+                            : 'bg-rose-50/70 text-rose-950 border-rose-200'
+                        }`}
+                      >
+                        <span className={`w-2 h-2 rounded-full shrink-0 ${isPresent ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                        <div>
+                          <span className="font-bold text-slate-900">{staff.name || 'Staff Member'}</span>
+                          {staff.role && <span className="text-slate-500 text-[10px] ml-1.5 font-normal">({staff.role})</span>}
+                        </div>
+                        <span className={`text-[10px] font-black uppercase tracking-wider px-1.5 py-0.2 rounded ${
+                          isPresent ? 'bg-emerald-200/80 text-emerald-900' : 'bg-rose-200/80 text-rose-900'
+                        }`}>
+                          {staff.status}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* ── PIN-TO-PIN DETAILED TRANSACTIONS TABLE ── */}
             <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden space-y-0">

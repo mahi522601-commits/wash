@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { auditService } from '../../services/auditService';
+import { localDbService } from '../../services/localDbService';
 import { 
   Sparkles, 
   Lock, 
@@ -39,6 +40,14 @@ export const AdminLoginPage = () => {
     try {
       const user = await login(email.trim(), password);
       
+      // Request internal storage permission & sync all business data into IndexedDB FIRST
+      try {
+        await localDbService.requestPersistentStorage();
+        localDbService.syncAllCloudDataToLocalDb().catch(e => console.warn('Login local sync notice:', e));
+      } catch (storageErr) {
+        console.warn('Storage permission initialization notice:', storageErr);
+      }
+
       // Log audit trail for secure access
       try {
         await auditService.logAction({

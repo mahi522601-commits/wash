@@ -211,11 +211,14 @@ export const AdminAttendancePage = () => {
 
   const handleUpdateStatus = async (item, newStatus) => {
     try {
-      const shiftConfig = SHIFT_TIMINGS.find(s => s.id === item.employee.shift) || SHIFT_TIMINGS[0];
+      const empName = item.employee?.name || item.employeeName || item.name || 'Staff Member';
+      const shiftConfig = SHIFT_TIMINGS.find(s => s.id === (item.employee?.shift || item.shift)) || SHIFT_TIMINGS[0];
       const isPresent = newStatus === 'PRESENT' || newStatus === 'LATE';
 
       const updatedRecord = {
         ...item,
+        employeeName: empName,
+        name: empName,
         status: newStatus,
         checkInTime: isPresent ? (item.checkInTime || shiftConfig.defaultIn) : '',
         checkOutTime: isPresent ? (item.checkOutTime || shiftConfig.defaultOut) : '',
@@ -223,7 +226,7 @@ export const AdminAttendancePage = () => {
       };
 
       await attendanceService.saveEmployeeAttendance(selectedDate, item.employeeId, updatedRecord);
-      success('Attendance Saved', `${item.employee.name} marked as ${ATTENDANCE_STATUSES[newStatus]?.label || newStatus}.`);
+      success('Attendance Saved', `${empName} marked as ${ATTENDANCE_STATUSES[newStatus]?.label || newStatus}.`);
       loadAllData();
     } catch (err) {
       error('Update Failed', err.message);
@@ -302,23 +305,28 @@ export const AdminAttendancePage = () => {
 
     try {
       const selectedEmp = employeesList.find(emp => emp.id === attendanceForm.employeeId);
+      const empName = selectedEmp?.name || attendanceForm.employeeName || 'Staff Member';
       await attendanceService.saveEmployeeAttendance(
         attendanceForm.date,
         attendanceForm.employeeId,
         {
+          employee: selectedEmp,
+          employeeName: empName,
+          name: empName,
+          role: selectedEmp?.role || '',
+          branch: attendanceForm.branch || selectedEmp?.branch,
+          shift: attendanceForm.shift || selectedEmp?.shift,
           status: attendanceForm.status,
           checkInTime: attendanceForm.checkInTime || '',
           checkOutTime: attendanceForm.checkOutTime || '',
           workingHours: Number(attendanceForm.workingHours || 0),
           otHours: Number(attendanceForm.otHours || 0),
-          branch: attendanceForm.branch,
-          shift: attendanceForm.shift,
           notes: attendanceForm.notes || '',
           markedBy: 'Admin (Attendance Hub)'
         }
       );
 
-      success('Attendance Recorded', `Saved attendance record for ${selectedEmp?.name || 'Employee'} on ${attendanceForm.date}.`);
+      success('Attendance Recorded', `Saved attendance record for ${empName} on ${attendanceForm.date}.`);
       setAttendanceModalOpen(false);
       loadAllData();
     } catch (err) {
@@ -337,12 +345,12 @@ export const AdminAttendancePage = () => {
 
     const presentList = dailyAttendance
       .filter(d => d.status === 'PRESENT' || d.status === 'LATE')
-      .map(d => `• ${d.employee.name} (${d.employee.role}) - In: ${d.checkInTime || '09:00'} ${d.otHours > 0 ? `(+${d.otHours}h OT)` : ''}`)
+      .map(d => `• ${d.employee?.name || d.employeeName || d.name || 'Staff'} (${d.employee?.role || d.role || 'Staff'}) - In: ${d.checkInTime || '09:00'} ${d.otHours > 0 ? `(+${d.otHours}h OT)` : ''}`)
       .join('\n');
 
     const absentList = dailyAttendance
       .filter(d => d.status === 'ABSENT' || d.status === 'PAID_LEAVE')
-      .map(d => `• ${d.employee.name} (${d.employee.role}) - ${d.status === 'PAID_LEAVE' ? 'Leave' : 'Absent'}`)
+      .map(d => `• ${d.employee?.name || d.employeeName || d.name || 'Staff'} (${d.employee?.role || d.role || 'Staff'}) - ${d.status === 'PAID_LEAVE' ? 'Leave' : 'Absent'}`)
       .join('\n');
 
     const msg = `✨ *Tech Wash Laundry Services — Daily Staff Attendance Report*

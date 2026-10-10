@@ -32,6 +32,7 @@ export const PrintFinancialReport = ({
     branchFilter,
     orders = [],
     metrics = {},
+    attendance = null,
   } = reportData;
 
   const {
@@ -243,6 +244,62 @@ export const PrintFinancialReport = ({
           </span>
         </div>
       </div>
+
+      {/* ── STAFF ON-DUTY & ATTENDANCE SUMMARY (WHEN AVAILABLE) ── */}
+      {attendance && (attendance.totalStaff > 0 || (attendance.roster && attendance.roster.length > 0)) && (
+        <div className="mb-3 p-3 rounded-xl bg-slate-50 border border-slate-200 print:bg-white print:border-black text-xs">
+          <div className="flex items-center justify-between pb-1.5 border-b border-slate-200 print:border-black mb-2">
+            <div className="flex items-center gap-1.5 font-black text-slate-800 uppercase tracking-wider text-[10px] print:text-black">
+              <span>👥 Staff On-Duty & Daily Attendance</span>
+              <span className="text-slate-400 font-normal">|</span>
+              <span className="text-emerald-700 font-bold print:text-black">
+                {attendance.presentCount || 0} / {attendance.totalStaff || attendance.roster?.length || 0} Active On-Duty
+              </span>
+            </div>
+            <div className="flex items-center gap-2 text-[9px] font-bold">
+              <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 print:border print:border-black">
+                Present: {attendance.presentCount || 0}
+              </span>
+              {attendance.lateCount > 0 && (
+                <span className="px-1.5 py-0.5 rounded bg-cyan-100 text-cyan-800">
+                  Late: {attendance.lateCount}
+                </span>
+              )}
+              {attendance.halfDayCount > 0 && (
+                <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">
+                  Half Day: {attendance.halfDayCount}
+                </span>
+              )}
+              <span className="px-1.5 py-0.5 rounded bg-rose-100 text-rose-800 print:border print:border-black">
+                Absent/Leave: {(attendance.absentCount || 0) + (attendance.paidLeaveCount || 0)}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-1.5">
+            {(attendance.roster || []).map((staff, sIdx) => {
+              const isPresent = staff.status === 'PRESENT' || staff.status === 'LATE' || staff.status === 'HALF_DAY';
+              return (
+                <span
+                  key={staff.employeeId || sIdx}
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-medium border print:border-black ${
+                    isPresent
+                      ? 'bg-emerald-50 text-emerald-950 border-emerald-300 print:bg-white print:text-black'
+                      : staff.status === 'PAID_LEAVE'
+                      ? 'bg-blue-50 text-blue-900 border-blue-200 print:bg-white print:text-black'
+                      : 'bg-rose-50 text-rose-900 border-rose-200 print:bg-white print:text-black'
+                  }`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${isPresent ? 'bg-emerald-500' : 'bg-rose-400'}`} />
+                  <span className="font-bold text-slate-900 print:text-black">{staff.name || 'Staff'}</span>
+                  {staff.role && <span className="text-slate-500 text-[8px] print:text-black">({staff.role})</span>}
+                  <span className="font-black text-[8px] uppercase tracking-wider text-slate-700 print:text-black">[{staff.status}]</span>
+                </span>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* ─────────────────────────────────────────────────────────
           3. PIN-TO-PIN DETAILED MASTER TRANSACTIONS TABLE

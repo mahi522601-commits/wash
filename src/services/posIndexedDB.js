@@ -191,6 +191,41 @@ class PosIndexedDB {
     });
   }
 
+  async saveBulkItems(storeName, items, keyField = 'id') {
+    if (!items || !items.length) return [];
+    const db = await this.openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(storeName, 'readwrite');
+      const store = tx.objectStore(storeName);
+
+      tx.oncomplete = () => resolve(items);
+      tx.onerror = (e) => reject(e.target.error);
+
+      for (const item of items) {
+        if (!item) continue;
+        const keyVal = item[keyField] || item.localId || item.id || `item-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+        const record = {
+          ...item,
+          [keyField]: keyVal,
+          updatedAt: item.updatedAt || new Date().toISOString(),
+        };
+        store.put(record);
+      }
+    });
+  }
+
+  async countItems(storeName) {
+    const db = await this.openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(storeName, 'readonly');
+      const store = tx.objectStore(storeName);
+      const req = store.count();
+
+      req.onsuccess = () => resolve(req.result || 0);
+      req.onerror = (e) => reject(e.target.error);
+    });
+  }
+
   // --- ORDERS STORE METHODS ---
 
   async saveOrder(order) {

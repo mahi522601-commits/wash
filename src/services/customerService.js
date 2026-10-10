@@ -153,15 +153,27 @@ export const customerService = {
       };
     });
 
+    if (customers.length > 0) {
+      posIndexedDB.saveBulkItems('customers', customers, 'id').catch(() => {});
+    }
+
     return customers.sort((a, b) => b.totalSpent - a.totalSpent);
   },
 
   /**
-   * Delete customer profile from Firebase Firestore
+   * Delete customer profile from Firebase Firestore & IndexedDB
    */
   async deleteCustomer(phoneOrId) {
     if (!phoneOrId) return false;
     const cleanPhone = String(phoneOrId).replace(/\D/g, '');
+
+    try {
+      await posIndexedDB.deleteItem('customers', phoneOrId);
+      if (cleanPhone) await posIndexedDB.deleteItem('customers', cleanPhone);
+      if (cleanPhone) await posIndexedDB.deleteItem('customers', `cust-${cleanPhone}`);
+    } catch (e) {
+      console.warn('IndexedDB customer delete notice:', e);
+    }
 
     if (isFirebaseConfigured && db) {
       try {

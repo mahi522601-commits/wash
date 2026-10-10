@@ -6,6 +6,7 @@
 
 import { orderService, getOrderBranchKey } from './orderService.js';
 import { parsePinToPinItems } from '../utils/formatters.js';
+import { attendanceService } from './attendanceService.js';
 
 const BACKUP_STORAGE_PREFIX = 'techwash_backup_checkpoint_';
 const LAST_BACKUP_COUNT_KEY = 'techwash_last_backup_order_count';
@@ -305,6 +306,59 @@ export const reportService = {
     const totalInflowCollections = cashReceived + upiReceived + cardReceived + onlineReceived;
     const totalExpectedRealization = totalInflowCollections + totalNetPendingDues;
 
+    // Staff Attendance Summary for Reporting Window
+    let attendanceSummary = {
+      totalStaff: 0,
+      presentCount: 0,
+      halfDayCount: 0,
+      lateCount: 0,
+      absentCount: 0,
+      paidLeaveCount: 0,
+      unmarkedCount: 0,
+      roster: [],
+    };
+
+    try {
+      const targetDateObj = start || new Date();
+      const yr = targetDateObj.getFullYear();
+      const mo = String(targetDateObj.getMonth() + 1).padStart(2, '0');
+      const da = String(targetDateObj.getDate()).padStart(2, '0');
+      const targetDateKey = `${yr}-${mo}-${da}`;
+
+      const dailyAttendance = await attendanceService.getDailyAttendance(targetDateKey, branchFilter);
+      if (Array.isArray(dailyAttendance) && dailyAttendance.length > 0) {
+        const present = dailyAttendance.filter(a => a.status === 'PRESENT').length;
+        const halfDay = dailyAttendance.filter(a => a.status === 'HALF_DAY').length;
+        const late = dailyAttendance.filter(a => a.status === 'LATE').length;
+        const absent = dailyAttendance.filter(a => a.status === 'ABSENT').length;
+        const paidLeave = dailyAttendance.filter(a => a.status === 'PAID_LEAVE').length;
+        const unmarked = dailyAttendance.filter(a => !a.status || a.status === 'UNMARKED').length;
+
+        attendanceSummary = {
+          totalStaff: dailyAttendance.length,
+          presentCount: present + late + halfDay,
+          presentStrictCount: present,
+          halfDayCount: halfDay,
+          lateCount: late,
+          absentCount: absent,
+          paidLeaveCount: paidLeave,
+          unmarkedCount: unmarked,
+          roster: dailyAttendance.map(a => ({
+            employeeId: a.employeeId,
+            name: a.employeeName || a.name || a.employee?.name || 'Staff Member',
+            role: a.employee?.role || a.role || 'Staff',
+            branch: a.employee?.branch || a.branch || 'counter-1',
+            status: a.status || 'UNMARKED',
+            checkInTime: a.checkInTime || '',
+            checkOutTime: a.checkOutTime || '',
+            otHours: a.otHours || 0,
+          })),
+        };
+      }
+    } catch (attErr) {
+      console.warn('[reportService] Attendance summary collection failed non-fatally:', attErr);
+    }
+
     return {
       datePreset,
       dateRangeLabel: this.formatDateRangeLabel(datePreset, start, end),
@@ -342,7 +396,8 @@ export const reportService = {
         },
 
         serviceBreakdown,
-      }
+      },
+      attendance: attendanceSummary,
     };
   },
 

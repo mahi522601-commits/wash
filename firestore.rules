@@ -144,7 +144,23 @@ service cloud.firestore {
     }
 
     match /staff/{staffId} {
-      allow read, write: if isAdmin();
+      allow read, write: if true;
+    }
+
+    match /attendance/{attendanceId} {
+      allow read, write: if true;
+    }
+
+    match /employees/{employeeId} {
+      allow read, write: if true;
+    }
+
+    match /expenses/{expenseId} {
+      allow read, write: if true;
+    }
+
+    match /billing_terminals/{terminalId} {
+      allow read, write: if true;
     }
 
     match /activityLogs/{logId} {
@@ -153,7 +169,7 @@ service cloud.firestore {
     }
 
     match /dailyReportLogs/{logId} {
-      allow read, write: if isAdmin();
+      allow read, write: if true;
     }
   }
 }

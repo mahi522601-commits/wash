@@ -7,6 +7,7 @@ import { db, isFirebaseConfigured } from './firebase.js';
 import { posBridgeService } from './posBridgeService.js';
 import { syncQueueService } from './syncQueueService.js';
 import { posIndexedDB } from './posIndexedDB.js';
+import { localDbService } from './localDbService.js';
 import { 
   collection, 
   doc, 
@@ -424,17 +425,9 @@ export const orderService = {
       assignedStaff: orderPayload.assignedStaff || null,
     };
 
-    // STEP 1: Save transaction to browser IndexedDB FIRST (orders & customers stores)
+    // STEP 1: Save transaction to browser IndexedDB FIRST (orders, customers, payments & dues stores)
     try {
-      await posIndexedDB.saveOrder(fullOrder);
-      if (fullOrder.customer || fullOrder.phone) {
-        await posIndexedDB.saveCustomer({
-          id: fullOrder.customerId,
-          name: fullOrder.customerName,
-          phone: fullOrder.phone,
-          address: fullOrder.address,
-        });
-      }
+      await localDbService.saveLocalOrder(fullOrder);
     } catch (e) {
       console.warn('IndexedDB order write notice:', e);
     }
@@ -511,6 +504,9 @@ export const orderService = {
           }
         });
         ordersList = Array.from(mapById.values());
+        if (ordersList.length > 0) {
+          posIndexedDB.saveBulkItems('orders', ordersList, 'localId').catch(() => {});
+        }
       } catch (e) {
         console.warn('Firestore orders fetch notice:', e);
       }
@@ -780,14 +776,21 @@ export const orderService = {
       statusTimeline: [...(order.statusTimeline || []), newTimelineEntry],
     };
 
-    // STEP 1: Save transaction update to Local Windows Bridge FIRST
+    // STEP 1: Save transaction update to IndexedDB master stores FIRST
+    try {
+      await localDbService.saveLocalOrder(updatedOrder);
+    } catch (e) {
+      console.warn("Local storage update notice:", e);
+    }
+
+    // STEP 2: Save transaction update to Local Windows Bridge
     try {
       await posBridgeService.saveTransaction(updatedOrder, updatedOrder.terminalId || 'counter-1');
     } catch (e) {
       console.warn("Local bridge update status notice:", e);
     }
 
-    // STEP 2: Enqueue update into Sync Queue Service (status: SYNC_PENDING)
+    // STEP 3: Enqueue update into Sync Queue Service (status: SYNC_PENDING)
     syncQueueService.enqueueTransaction(updatedOrder, 'UPDATE');
 
     if (isFirebaseConfigured && db) {
@@ -1419,6 +1422,14 @@ export const orderService = {
       localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(filtered));
     } catch (e) {
       console.warn('Local storage delete order error:', e);
+    }
+
+    try {
+      await posIndexedDB.deleteItem('orders', targetId);
+      await posIndexedDB.deleteSyncItem(targetId);
+      await posIndexedDB.deleteItem('dues', `due-${targetId}`);
+    } catch (e) {
+      console.warn('IndexedDB delete notice:', e);
     }
 
     if (typeof window !== 'undefined') {

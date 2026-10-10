@@ -338,6 +338,37 @@ export function generateDailyReportPDF(reportData) {
         .font('Helvetica')
         .text(`Rs. ${(canc.totalAmount || 0).toLocaleString('en-IN')}`, 425, y + 8);
 
+      y += 38;
+
+      // --- SECTION 7: STAFF ATTENDANCE SUMMARY ---
+      if (reportData.attendance && reportData.attendance.totalStaff > 0) {
+        doc
+          .fillColor(primaryColor)
+          .fontSize(11)
+          .font('Helvetica-Bold')
+          .text('7. STAFF ON-DUTY & ATTENDANCE SUMMARY', 40, y);
+
+        y += 16;
+
+        const att = reportData.attendance;
+        doc
+          .rect(40, y, 515, 28)
+          .fillAndStroke('#f0fdf4', '#86efac');
+
+        const onDutyStr = att.onDutyList.length > 0 ? att.onDutyList.slice(0, 3).join(', ') : 'None';
+        doc
+          .fillColor(textColor)
+          .fontSize(8.5)
+          .font('Helvetica-Bold')
+          .text('Staff on Duty:', 55, y + 8)
+          .font('Helvetica')
+          .text(`${att.presentCount} / ${att.totalStaff} (${onDutyStr})`, 130, y + 8)
+          .font('Helvetica-Bold')
+          .text('Absent / Leave:', 350, y + 8)
+          .font('Helvetica')
+          .text(`${att.absentCount} Staff`, 430, y + 8);
+      }
+
       // --- FOOTER ---
       doc
         .fontSize(8)
