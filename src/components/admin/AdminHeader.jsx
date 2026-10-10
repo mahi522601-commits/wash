@@ -289,14 +289,14 @@ export const AdminHeader = ({ onMenuToggle, onOpenSearch }) => {
           type="button"
           onClick={() => window.dispatchEvent(new CustomEvent('techwash-open-storage-manager'))}
           className="px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white text-xs font-semibold flex items-center gap-1.5 transition-all"
-          title="Open Internal Device Storage Telemetry (TechWashPOS IndexedDB)"
+          title="Internal Storage: C:\TechWash (TechWashPOS IndexedDB)"
         >
           <div className="relative flex items-center justify-center">
             <HardDrive className="w-3.5 h-3.5 text-orange-400" />
             <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping" />
             <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-emerald-500 rounded-full" />
           </div>
-          <span className="hidden xl:inline text-[11px]">Internal DB</span>
+          <span className="hidden xl:inline text-[11px] font-mono text-orange-300">C:\TechWash</span>
         </button>
 
         {/* Dedicated "Today's Tasks" Header Button with Live Badge */}

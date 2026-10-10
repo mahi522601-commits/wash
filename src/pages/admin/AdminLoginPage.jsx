@@ -13,7 +13,8 @@ import {
   EyeOff, 
   AlertCircle, 
   ArrowRight,
-  Loader2
+  Loader2,
+  HardDrive
 } from 'lucide-react';
 
 export const AdminLoginPage = () => {
@@ -60,7 +61,7 @@ export const AdminLoginPage = () => {
         // Non-blocking audit log
       }
 
-      success('Welcome Back', `Authenticated as ${user.displayName || user.email}`);
+      success('Welcome Back', `Authenticated as ${user.displayName || user.email} • Storing in C:\\TechWash (TechWashPOS)`);
       navigate('/admin/dashboard');
     } catch (err) {
       setErrorMessage(err.message || 'Incorrect email or password.');
@@ -210,7 +211,7 @@ export const AdminLoginPage = () => {
                 {isLoading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin text-white" />
-                    <span>Signing in to Command Center...</span>
+                    <span>Saving to C:\TechWash &amp; Signing In...</span>
                   </>
                 ) : (
                   <>
@@ -223,8 +224,24 @@ export const AdminLoginPage = () => {
 
           </form>
 
+          {/* Internal Local Storage Telemetry Badge */}
+          <div className="mt-5 p-3.5 rounded-2xl bg-orange-50/90 border border-orange-200 text-left space-y-1.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                <HardDrive className="w-3.5 h-3.5 text-orange-600" />
+                <span>Internal Storage Location:</span>
+              </div>
+              <span className="px-2 py-0.5 rounded-md bg-orange-500/10 text-orange-700 font-mono text-[11px] font-black border border-orange-300">
+                C:\TechWash
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-600 leading-snug">
+              On admin login, all business records, bills, orders &amp; customers are saved directly to this device at <code className="font-mono text-orange-700 font-bold bg-white px-1 py-0.5 rounded border border-orange-200">C:\TechWash</code> and browser IndexedDB (<strong className="text-slate-800">TechWashPOS</strong>) for instant offline POS &amp; reports.
+            </p>
+          </div>
+
           {/* Secure Environment Guarantee */}
-          <div className="mt-6 pt-5 border-t border-slate-100 text-center">
+          <div className="mt-4 pt-4 border-t border-slate-100 text-center">
             <div className="text-[11px] text-slate-500 font-semibold flex items-center justify-center gap-1.5">
               <ShieldCheck className="w-4 h-4 text-emerald-600" />
               <span>Role-Based Access Control & 256-Bit Encrypted Portal</span>

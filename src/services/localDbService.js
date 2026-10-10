@@ -245,6 +245,13 @@ export const localDbService = {
       paymentCount,
       dueCount,
       settingsCount,
+      storageRoot: 'C:\\TechWash',
+      databaseName: 'TechWashPOS',
+      terminals: {
+        'counter-1': { code: 'TW-POS-01', folder: 'POS-01', path: 'C:\\TechWash\\POS-01' },
+        'counter-2': { code: 'TW-POS-02', folder: 'POS-02', path: 'C:\\TechWash\\POS-02' },
+        'counter-3': { code: 'TW-POS-03', folder: 'POS-03', path: 'C:\\TechWash\\POS-03' },
+      },
     };
   },
 

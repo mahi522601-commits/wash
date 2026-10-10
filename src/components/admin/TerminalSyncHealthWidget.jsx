@@ -176,7 +176,10 @@ export const TerminalSyncHealthWidget = () => {
 
               <div className="text-[10px] text-slate-400 flex items-center justify-between pt-0.5">
                 <span>Last Sync: <strong className="text-slate-700">{lastSyncFormatted}</strong></span>
-                <span className="flex items-center gap-1"><HardDrive className="w-3 h-3 text-slate-400" /> Local Bridge OK</span>
+                <span className="flex items-center gap-1 font-mono text-[10px] text-slate-600 font-semibold" title={`Local Storage Directory: C:\\TechWash\\${term.code.replace('TW-', '')}\\`}>
+                  <HardDrive className="w-3 h-3 text-orange-500" />
+                  C:\TechWash\{term.code.replace('TW-', '')}\
+                </span>
               </div>
             </div>
           );

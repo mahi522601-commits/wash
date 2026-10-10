@@ -117,7 +117,7 @@ export const InternalStorageSyncManager = () => {
 
       success(
         'Internal Storage Activated',
-        `Successfully added ${updatedStats.orderCount} Orders, ${updatedStats.customerCount} Customers, and ${updatedStats.paymentCount} Payments to local internal storage!`
+        `Saved to C:\\TechWash (TechWashPOS): ${updatedStats.orderCount} Orders, ${updatedStats.customerCount} Customers, and ${updatedStats.paymentCount} Payments!`
       );
 
       // Close modal after brief delay
@@ -185,14 +185,42 @@ export const InternalStorageSyncManager = () => {
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-orange-500/20 border border-orange-500/30 text-orange-400 text-[10px] font-bold uppercase tracking-wider">
                   <span>Device Master Storage</span>
                   <span>•</span>
-                  <span>IndexedDB v2</span>
+                  <span>C:\TechWash</span>
                 </div>
                 <h3 className="text-xl font-black font-display text-white tracking-tight">
-                  Activate Internal Master Storage
+                  Activate Internal Master Storage (C:\TechWash)
                 </h3>
                 <p className="text-xs text-slate-400 leading-relaxed">
-                  Tech Wash Command Center requires internal storage permission on this device to store all business records locally for instant offline POS & reporting.
+                  Tech Wash Command Center requires internal storage permission on this device to store all business records locally in <strong className="text-orange-400 font-mono">C:\TechWash</strong> and browser IndexedDB (<strong className="text-slate-200">TechWashPOS</strong>) for instant offline POS &amp; reporting.
                 </p>
+              </div>
+            </div>
+
+            {/* Storage Path Card */}
+            <div className="p-4 rounded-2xl bg-black/40 border border-orange-500/30 space-y-2 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400 font-medium">Local Storage Target:</span>
+                <span className="px-2.5 py-0.5 rounded-md bg-orange-500/20 text-orange-400 font-mono font-bold border border-orange-500/30">
+                  C:\TechWash\
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-[11px] font-mono text-slate-300 pt-1">
+                <div className="p-2 rounded-xl bg-white/5 border border-white/5">
+                  <span className="text-slate-400 text-[10px] block">Database Engine</span>
+                  <span className="text-white font-bold">TechWashPOS</span>
+                </div>
+                <div className="p-2 rounded-xl bg-white/5 border border-white/5">
+                  <span className="text-slate-400 text-[10px] block">Terminal Root</span>
+                  <span className="text-white font-bold">C:\TechWash\POS-XX</span>
+                </div>
+                <div className="p-2 rounded-xl bg-white/5 border border-white/5">
+                  <span className="text-slate-400 text-[10px] block">PDF Invoices</span>
+                  <span className="text-white font-bold">..\Invoices\YYYY-MM-DD\</span>
+                </div>
+                <div className="p-2 rounded-xl bg-white/5 border border-white/5">
+                  <span className="text-slate-400 text-[10px] block">Daily Excel</span>
+                  <span className="text-white font-bold">..\Exports\YYYY-MM-DD.xlsx</span>
+                </div>
               </div>
             </div>
 
@@ -268,7 +296,7 @@ export const InternalStorageSyncManager = () => {
                 </div>
                 <div>
                   <h4 className="font-bold text-base text-white">Internal Storage Telemetry</h4>
-                  <p className="text-[11px] text-slate-400">Database: TechWashPOS (IndexedDB)</p>
+                  <p className="text-[11px] text-slate-400 font-mono">Location: C:\TechWash • TechWashPOS</p>
                 </div>
               </div>
               <button
@@ -278,6 +306,41 @@ export const InternalStorageSyncManager = () => {
               >
                 <X className="w-5 h-5" />
               </button>
+            </div>
+
+            {/* Storage Destination & Folder Structure */}
+            <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-2.5 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-orange-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <HardDrive className="w-3.5 h-3.5" />
+                  Local File &amp; DB Storage Paths
+                </span>
+                <span className="px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-300 font-mono text-[10px] font-bold border border-orange-500/30">
+                  C:\TechWash
+                </span>
+              </div>
+              <div className="space-y-1.5 font-mono text-[11px]">
+                <div className="p-2 rounded-xl bg-black/40 border border-white/5 flex items-center justify-between">
+                  <span className="text-slate-400">Physical Root:</span>
+                  <span className="text-white font-bold">C:\TechWash\</span>
+                </div>
+                <div className="p-2 rounded-xl bg-black/40 border border-white/5 flex items-center justify-between">
+                  <span className="text-slate-400">Main Manikonda (POS-01):</span>
+                  <span className="text-emerald-400 font-bold">C:\TechWash\POS-01\</span>
+                </div>
+                <div className="p-2 rounded-xl bg-black/40 border border-white/5 flex items-center justify-between">
+                  <span className="text-slate-400">Tolichowki (POS-02):</span>
+                  <span className="text-amber-400 font-bold">C:\TechWash\POS-02\</span>
+                </div>
+                <div className="p-2 rounded-xl bg-black/40 border border-white/5 flex items-center justify-between">
+                  <span className="text-slate-400">Ambience Kiosk (POS-03):</span>
+                  <span className="text-purple-400 font-bold">C:\TechWash\POS-03\</span>
+                </div>
+                <div className="p-2 rounded-xl bg-black/40 border border-white/5 flex items-center justify-between">
+                  <span className="text-slate-400">Browser DB Engine:</span>
+                  <span className="text-cyan-400 font-bold">IndexedDB: TechWashPOS</span>
+                </div>
+              </div>
             </div>
 
             {/* Storage Quota & Status Box */}
