@@ -163,6 +163,7 @@ export const AdminExpensesPage = () => {
   const [budgetModalOpen, setBudgetModalOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteTargetType, setDeleteTargetType] = useState('expense'); // 'expense' | 'category' | 'recurring'
+  const [isSavingExpense, setIsSavingExpense] = useState(false);
 
   // Form State: Expense
   const [expenseForm, setExpenseForm] = useState({
@@ -299,22 +300,27 @@ export const AdminExpensesPage = () => {
     };
   }, [loadAllData]);
 
-  // Combined all categories (Built-in + Custom)
+  // Combined all categories (Built-in + Custom, strictly deduplicated by ID)
   const allCategories = useMemo(() => {
-    return [
+    const combined = [
       ...(config.builtInCategories || DEFAULT_EXPENSE_CONFIG.builtInCategories),
       ...(config.customCategories || DEFAULT_EXPENSE_CONFIG.customCategories),
     ];
+    const seen = new Set();
+    return combined.filter(c => {
+      if (!c || !c.id || seen.has(c.id)) return false;
+      seen.add(c.id);
+      return true;
+    });
   }, [config]);
 
-  // When changing category in expense form, auto-fill unit rate and formula
+  // When changing category in expense form, auto-fill unit rate and reset units to 1 to avoid doubling
   const handleCategorySelectInForm = (catId) => {
     const selected = allCategories.find(c => c.id === catId);
     if (!selected) return;
 
     const rate = Number(selected.defaultRate) || 0;
-    const count = Number(expenseForm.unitsCount) || 1;
-    const calcAmount = Math.round(count * rate * 100) / 100;
+    const calcAmount = rate; // Always reset to 1 unit base rate when switching to a different item
     const gstR = Number(expenseForm.gstRate) || 0;
     const gstAmt = gstR > 0 ? Math.round((calcAmount * gstR / (100 + gstR)) * 100) / 100 : 0;
 
@@ -324,11 +330,12 @@ export const AdminExpensesPage = () => {
       categoryName: selected.name,
       icon: selected.icon,
       categoryGroup: selected.categoryGroup,
-      unitType: selected.unitType,
+      unitType: selected.unitType || 'unit',
+      unitsCount: 1,
       unitRate: rate,
       amount: calcAmount,
       gstAmount: gstAmt,
-      title: prev.title || `${selected.name} (${selected.formulaLabel})`,
+      title: `${selected.name} Payment`,
     }));
   };
 
@@ -345,6 +352,35 @@ export const AdminExpensesPage = () => {
       unitsCount: u,
       unitRate: r,
       amount: amt,
+      gstRate: gRate,
+      gstAmount: gAmt,
+    }));
+  };
+
+  // When user directly inputs/changes the Total Amount, keep rate and GST synchronized
+  const handleAmountChange = (newAmount) => {
+    const amt = Math.max(0, Number(newAmount) || 0);
+    const u = Math.max(0.01, Number(expenseForm.unitsCount) || 1);
+    const r = Math.round((amt / u) * 100) / 100;
+    const gRate = Number(expenseForm.gstRate || 0);
+    const gAmt = gRate > 0 ? Math.round((amt * gRate / (100 + gRate)) * 100) / 100 : 0;
+
+    setExpenseForm(prev => ({
+      ...prev,
+      amount: amt,
+      unitRate: r,
+      gstAmount: gAmt,
+    }));
+  };
+
+  // When user changes GST Tax Slab, recalculate only the tax component without altering the base amount
+  const handleGstRateChange = (newGstRate) => {
+    const gRate = Math.max(0, Number(newGstRate) || 0);
+    const amt = Number(expenseForm.amount) || 0;
+    const gAmt = gRate > 0 ? Math.round((amt * gRate / (100 + gRate)) * 100) / 100 : 0;
+
+    setExpenseForm(prev => ({
+      ...prev,
       gstRate: gRate,
       gstAmount: gAmt,
     }));
@@ -413,6 +449,7 @@ export const AdminExpensesPage = () => {
   // Save Expense (Create or Update)
   const handleSaveExpense = async (e) => {
     e.preventDefault();
+    if (isSavingExpense) return;
     if (!expenseForm.title.trim()) {
       error('Title Required', 'Please enter a description for this expense.');
       return;
@@ -422,6 +459,7 @@ export const AdminExpensesPage = () => {
       return;
     }
 
+    setIsSavingExpense(true);
     try {
       const branchDef = BRANCH_OPTIONS.find(b => b.value === expenseForm.branchId) || BRANCH_OPTIONS[1];
       const catDef = allCategories.find(c => c.id === expenseForm.categoryId) || allCategories[0];
@@ -447,6 +485,8 @@ export const AdminExpensesPage = () => {
       loadAllData();
     } catch (err) {
       error('Save Failed', 'Could not save expense entry.');
+    } finally {
+      setIsSavingExpense(false);
     }
   };
 
@@ -2209,9 +2249,10 @@ export const AdminExpensesPage = () => {
                   <input
                     type="number"
                     min="1"
+                    step="any"
                     required
                     value={expenseForm.amount}
-                    onChange={(e) => setExpenseForm({ ...expenseForm, amount: Number(e.target.value) || 0 })}
+                    onChange={(e) => handleAmountChange(e.target.value)}
                     className="w-full p-2 rounded-xl bg-white border-2 border-orange-400 font-mono font-black text-sm text-center text-orange-600"
                   />
                 </div>
@@ -2253,7 +2294,7 @@ export const AdminExpensesPage = () => {
                   <label className="block text-[11px] font-bold text-slate-700 mb-1">GST Tax Slab</label>
                   <select
                     value={expenseForm.gstRate}
-                    onChange={(e) => handleUnitsOrRateChange(expenseForm.unitsCount, expenseForm.unitRate, e.target.value)}
+                    onChange={(e) => handleGstRateChange(e.target.value)}
                     className="w-full p-2 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-900 outline-none"
                   >
                     {GST_RATES.map(r => (
@@ -2327,7 +2368,7 @@ export const AdminExpensesPage = () => {
               <Button type="button" variant="outline" onClick={() => setExpenseModalOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" variant="primary">
+              <Button type="submit" variant="primary" isLoading={isSavingExpense} disabled={isSavingExpense}>
                 {editingExpense ? 'Update Expense' : 'Save Expense Entry'}
               </Button>
             </div>

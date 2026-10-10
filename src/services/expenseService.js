@@ -730,10 +730,16 @@ export const expenseService = {
    */
   async getAllCategories() {
     const config = await this.getExpenseConfig();
-    return [
+    const combined = [
       ...(config.builtInCategories || DEFAULT_EXPENSE_CONFIG.builtInCategories),
       ...(config.customCategories || DEFAULT_EXPENSE_CONFIG.customCategories),
     ];
+    const seen = new Set();
+    return combined.filter(c => {
+      if (!c || !c.id || seen.has(c.id)) return false;
+      seen.add(c.id);
+      return true;
+    });
   },
 
   // ─────────────────────────────────────────────────────────────
@@ -1043,6 +1049,7 @@ export const expenseService = {
       };
 
       const saved = await this.addExpense(newExpense);
+      existingMonthExpenses.push(saved);
       generated.push(saved);
     }
 
@@ -1301,6 +1308,39 @@ export const expenseService = {
       }
     }
 
+    // Deduplicate entries by unique ID and identical submission signature to eliminate doubled records
+    const seenIds = new Set();
+    const seenSignatures = new Set();
+    const dedupedList = [];
+
+    for (const exp of list) {
+      if (!exp || typeof exp !== 'object') continue;
+      const expId = String(exp.id || '').trim();
+      if (expId && seenIds.has(expId)) continue;
+      if (expId) seenIds.add(expId);
+
+      // Signature key for exact identical duplicate records
+      const catKey = String(exp.categoryId || '').toLowerCase().trim();
+      const dateKey = String(exp.date || '').slice(0, 10).trim();
+      const amtKey = Number(exp.amount) || 0;
+      const titleKey = String(exp.title || '').toLowerCase().trim();
+      const branchKey = String(exp.branchId || 'ALL').toLowerCase().trim();
+
+      if (exp.recurringRuleId) {
+        const recSig = `rec|${exp.recurringRuleId}|${dateKey}`;
+        if (seenSignatures.has(recSig)) continue;
+        seenSignatures.add(recSig);
+      }
+
+      const sig = `${catKey}|${dateKey}|${amtKey}|${titleKey}|${branchKey}`;
+      if (seenSignatures.has(sig)) {
+        continue;
+      }
+      seenSignatures.add(sig);
+      dedupedList.push(exp);
+    }
+    list = dedupedList;
+
     // Filter by year & month if provided
     if (year !== null) {
       list = list.filter(exp => {
@@ -1525,7 +1565,12 @@ export const expenseService = {
     let totalOperatingExpenses = 0;
 
     monthExpenses.forEach(exp => {
-      const amt = Number(exp.amount) || 0;
+      const isShared = exp.branchId === 'ALL' || !exp.branchId;
+      // When analyzing an individual counter, shared company overheads are allocated 1/3 so 3 branches sum to consolidated total without tripling
+      const amt = (isShared && branchFilter && branchFilter !== 'ALL')
+        ? Math.round((Number(exp.amount) / 3) * 100) / 100
+        : (Number(exp.amount) || 0);
+
       totalOperatingExpenses += amt;
 
       const catKey = exp.categoryId || 'misc';

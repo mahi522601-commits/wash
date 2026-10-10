@@ -569,6 +569,7 @@ export const orderService = {
 
               list.forEach(o => {
                 if (o && typeof o === 'object') {
+                  if (o.type === 'SNAPSHOT' || o.reportDate || o.runId || o.isSnapshot) return;
                   const oNum = o.orderNumber || o.invoiceNumber || o.bookingId || o.id;
                   if (oNum) {
                     const normKey = String(oNum).toUpperCase().trim();
