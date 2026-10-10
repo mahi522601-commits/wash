@@ -2,8 +2,10 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   expenseService, 
   DEFAULT_EXPENSE_CONFIG,
-  DEFAULT_BUDGET_CONFIG
+  DEFAULT_BUDGET_CONFIG,
+  invalidateExpensesMemoryCache
 } from '../../services/expenseService';
+import { orderService } from '../../services/orderService';
 import { formatCurrency } from '../../utils/formatters';
 import { useToast } from '../../context/ToastContext';
 import { AdminPageHeader } from '../../components/admin/AdminPageHeader';
@@ -227,36 +229,65 @@ export const AdminExpensesPage = () => {
   const loadAllData = useCallback(async () => {
     setLoading(true);
     try {
-      const [cfg, pnl, yearly, allExp, compPnL, bVsA, bCfg, recRules, gstSum] = await Promise.all([
+      // 1. Fetch core datasets in parallel (5 requests only, with memory caching & promise coalescing)
+      const [allOrders, rawExpenses, cfg, bCfg, recRules] = await Promise.all([
+        orderService.getOrders({ limitCount: 5000 }),
+        expenseService.getExpenses(),
         expenseService.getExpenseConfig(),
-        expenseService.getMonthlyPnL({
-          year: selectedYear,
-          month: selectedMonth,
-          branchFilter: selectedBranch,
-        }),
-        expenseService.getYearlyPnLSummary(selectedYear, selectedBranch),
-        expenseService.getExpenses({
-          year: selectedYear,
-          month: selectedMonth,
-          branchFilter: selectedBranch,
-        }),
-        expenseService.getThreeBranchesComparativePnL({
-          year: selectedYear,
-          month: selectedMonth,
-        }),
-        expenseService.getBudgetVsActualComparison({
-          year: selectedYear,
-          month: selectedMonth,
-          branchFilter: selectedBranch,
-        }),
         expenseService.getBudgetConfig(),
         expenseService.getRecurringExpenseRules(),
-        expenseService.getGstItcSummary({
-          year: selectedYear,
-          month: selectedMonth,
-          branchFilter: selectedBranch,
-        }),
       ]);
+
+      // 2. Perform in-memory calculations (0 additional network / IndexedDB queries)
+      const pnl = await expenseService.getMonthlyPnL({
+        year: selectedYear,
+        month: selectedMonth,
+        branchFilter: selectedBranch,
+        preloadedOrders: allOrders,
+        preloadedExpenses: rawExpenses,
+      });
+
+      const yearly = await expenseService.getYearlyPnLSummary(
+        selectedYear,
+        selectedBranch,
+        allOrders,
+        rawExpenses
+      );
+
+      const allExp = await expenseService.getExpenses({
+        year: selectedYear,
+        month: selectedMonth,
+        branchFilter: selectedBranch,
+        preloadedExpenses: rawExpenses,
+      });
+
+      const compPnL = await expenseService.getThreeBranchesComparativePnL({
+        year: selectedYear,
+        month: selectedMonth,
+        preloadedOrders: allOrders,
+        preloadedExpenses: rawExpenses,
+      });
+
+      const allCats = [
+        ...(cfg.builtInCategories || DEFAULT_EXPENSE_CONFIG.builtInCategories),
+        ...(cfg.customCategories || DEFAULT_EXPENSE_CONFIG.customCategories),
+      ];
+
+      const bVsA = await expenseService.getBudgetVsActualComparison({
+        year: selectedYear,
+        month: selectedMonth,
+        branchFilter: selectedBranch,
+        preloadedPnL: pnl,
+        preloadedConfig: bCfg,
+        preloadedCategories: allCats,
+      });
+
+      const gstSum = await expenseService.getGstItcSummary({
+        year: selectedYear,
+        month: selectedMonth,
+        branchFilter: selectedBranch,
+        preloadedExpenses: allExp,
+      });
 
       setConfig(cfg);
       setPnlData(pnl);
@@ -689,14 +720,18 @@ export const AdminExpensesPage = () => {
   // 3-Branch Bar chart data
   const branchComparisonChartData = useMemo(() => {
     if (!comparativePnL?.branches) return [];
-    return comparativePnL.branches.map(b => ({
-      name: b.shortName.split(' (')[0],
-      code: b.code,
-      Revenue: b.pnl.grossRevenue,
-      Expenses: b.pnl.totalOperatingExpenses,
-      Profit: b.pnl.netOperatingProfit,
-      Margin: b.pnl.profitMarginPercentage,
-    }));
+    return comparativePnL.branches.map(b => {
+      const rawName = b.shortName || b.name || b.counterName || b.id || 'Branch';
+      const p = b.pnl || {};
+      return {
+        name: rawName.split(' (')[0],
+        code: b.code || '',
+        Revenue: p.grossRevenue || 0,
+        Expenses: p.totalOperatingExpenses || 0,
+        Profit: p.netOperatingProfit || 0,
+        Margin: p.profitMarginPercentage || 0,
+      };
+    });
   }, [comparativePnL]);
 
   return (
@@ -748,6 +783,20 @@ export const AdminExpensesPage = () => {
             <Button
               variant="outline"
               size="md"
+              icon={RefreshCw}
+              onClick={() => {
+                invalidateExpensesMemoryCache();
+                loadAllData();
+              }}
+              disabled={loading}
+              className={`text-white border-white/20 hover:bg-white/10 ${loading ? 'opacity-60 cursor-not-allowed' : ''}`}
+            >
+              {loading ? 'Refreshing...' : 'Refresh'}
+            </Button>
+
+            <Button
+              variant="outline"
+              size="md"
               icon={Printer}
               onClick={() => setIsPrintModalOpen(true)}
               className="text-white border-white/20 hover:bg-white/10"
@@ -767,6 +816,17 @@ export const AdminExpensesPage = () => {
           </div>
         }
       />
+
+      {/* ── REAL-TIME LOADING BANNER ── */}
+      {loading && (
+        <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-2xl bg-orange-500/10 border border-orange-500/30 text-orange-400 text-sm font-medium animate-pulse">
+          <div className="flex items-center gap-3">
+            <RefreshCw className="w-4 h-4 animate-spin text-orange-400" />
+            <span>Calculating 3-branch P&amp;L matrix, expense ledgers, and operational cost drivers...</span>
+          </div>
+          <span className="text-xs text-orange-400/80 font-mono hidden sm:inline">In-Memory Engine</span>
+        </div>
+      )}
 
       {/* ── 6 SPECIALIZED TABS ── */}
       <Tabs

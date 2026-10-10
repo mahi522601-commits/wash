@@ -217,6 +217,17 @@ export const getOrderBranchKey = (order) => {
   return 'counter-1';
 };
 
+// In-memory request coalescing and short-term cache to prevent duplicate Firestore/IndexedDB thrashing
+let _ordersMemoryCache = null;
+let _ordersMemoryCacheTime = 0;
+let _ordersInFlightPromise = null;
+const ORDERS_CACHE_TTL = 10000; // 10 seconds
+
+export const invalidateOrdersMemoryCache = () => {
+  _ordersMemoryCache = null;
+  _ordersMemoryCacheTime = 0;
+  _ordersInFlightPromise = null;
+};
 
 export const orderService = {
   /**
@@ -454,6 +465,8 @@ export const orderService = {
       localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(updatedLocal));
     } catch (e) {}
 
+    invalidateOrdersMemoryCache();
+
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('techwash-new-order-placed', { detail: fullOrder }));
       window.dispatchEvent(new CustomEvent('techwash-order-updated', { detail: fullOrder }));
@@ -474,118 +487,142 @@ export const orderService = {
   /**
    * Get all orders with optional filtering
    */
-  async getOrders({ status = null, search = '', limitCount = 2000 } = {}) {
-    let ordersList = [];
+  async getOrders({ status = null, search = '', limitCount = 2000, forceRefresh = false } = {}) {
+    const now = Date.now();
+    let mergedList = null;
 
-    // 1. Fetch from Firestore if configured
-    if (isFirebaseConfigured && db) {
-      try {
-        const results = await Promise.allSettled([
-          getDocs(collection(db, 'orders')),
-          getDocs(collection(db, 'bookings'))
-        ]);
-
-        const mapById = new Map();
-        results.forEach(res => {
-          if (res.status === 'fulfilled' && res.value && !res.value.empty) {
-            res.value.docs.forEach(d => {
-              const data = d.data();
-              const docId = d.id;
-              const orderNum = data.orderNumber || data.id || docId;
-              if (orderNum) {
-                const normKey = String(orderNum).toUpperCase().trim();
-                if (!mapById.has(normKey)) {
-                  mapById.set(normKey, { id: docId, ...data });
-                } else {
-                  mapById.set(normKey, { ...data, ...mapById.get(normKey) });
-                }
-              }
-            });
-          }
-        });
-        ordersList = Array.from(mapById.values());
-        if (ordersList.length > 0) {
-          posIndexedDB.saveBulkItems('orders', ordersList, 'localId').catch(() => {});
-        }
-      } catch (e) {
-        console.warn('Firestore orders fetch notice:', e);
-      }
+    if (!forceRefresh && !search && !status && _ordersMemoryCache && (now - _ordersMemoryCacheTime < ORDERS_CACHE_TTL)) {
+      return _ordersMemoryCache.slice(0, limitCount);
     }
 
-    // 2. Fetch and merge Primary IndexedDB 'orders' store
-    const orderMap = new Map();
-    ordersList.forEach(o => {
-      const key = o.orderNumber || o.id || o.localId;
-      if (key) {
-        orderMap.set(String(key).toUpperCase().trim(), o);
-      }
-    });
-
-    try {
-      const dbOrders = await posIndexedDB.getAllOrders();
-      dbOrders.forEach(o => {
-        if (o && typeof o === 'object') {
-          const oNum = o.orderNumber || o.invoiceNumber || o.localId || o.id;
-          if (oNum) {
-            const normKey = String(oNum).toUpperCase().trim();
-            const existing = orderMap.get(normKey);
-            if (!existing) {
-              orderMap.set(normKey, o);
-            } else {
-              const localTime = new Date(o.updatedAt || o.createdAt || 0).getTime();
-              const remoteTime = new Date(existing.updatedAt || existing.createdAt || 0).getTime();
-              if (localTime >= remoteTime) {
-                orderMap.set(normKey, { ...existing, ...o });
-              }
-            }
-          }
-        }
-      });
-    } catch (e) {
-      console.warn('IndexedDB orders read notice:', e);
+    if (!forceRefresh && !search && !status && _ordersInFlightPromise) {
+      const list = await _ordersInFlightPromise;
+      return list.slice(0, limitCount);
     }
 
-    // 3. Fallback scan localStorage
-    try {
-      if (typeof localStorage !== 'undefined') {
-        for (let i = 0; i < localStorage.length; i++) {
-          const keyName = localStorage.key(i);
-          if (!keyName) continue;
-          const lowerKey = keyName.toLowerCase();
-          if (
-            lowerKey.includes('order') || 
-            lowerKey.includes('booking') || 
-            lowerKey.includes('bill')
-          ) {
-            try {
-              const raw = localStorage.getItem(keyName);
-              if (!raw) continue;
-              const parsed = JSON.parse(raw);
-              const list = Array.isArray(parsed) 
-                ? parsed 
-                : (parsed?.orders && Array.isArray(parsed.orders) 
-                   ? parsed.orders 
-                   : (typeof parsed === 'object' ? Object.values(parsed) : []));
+    const fetchPromise = (async () => {
+      let ordersList = [];
 
-              list.forEach(o => {
-                if (o && typeof o === 'object') {
-                  if (o.type === 'SNAPSHOT' || o.reportDate || o.runId || o.isSnapshot) return;
-                  const oNum = o.orderNumber || o.invoiceNumber || o.bookingId || o.id;
-                  if (oNum) {
-                    const normKey = String(oNum).toUpperCase().trim();
-                    if (!orderMap.has(normKey)) {
-                      orderMap.set(normKey, o);
-                    }
+      // 1. Fetch from Firestore if configured
+      if (isFirebaseConfigured && db) {
+        try {
+          const results = await Promise.allSettled([
+            getDocs(collection(db, 'orders')),
+            getDocs(collection(db, 'bookings'))
+          ]);
+
+          const mapById = new Map();
+          results.forEach(res => {
+            if (res.status === 'fulfilled' && res.value && !res.value.empty) {
+              res.value.docs.forEach(d => {
+                const data = d.data();
+                const docId = d.id;
+                const orderNum = data.orderNumber || data.id || docId;
+                if (orderNum) {
+                  const normKey = String(orderNum).toUpperCase().trim();
+                  if (!mapById.has(normKey)) {
+                    mapById.set(normKey, { id: docId, ...data });
+                  } else {
+                    mapById.set(normKey, { ...data, ...mapById.get(normKey) });
                   }
                 }
               });
-            } catch (e) {}
+            }
+          });
+          ordersList = Array.from(mapById.values());
+          if (ordersList.length > 0) {
+            posIndexedDB.saveBulkItems('orders', ordersList, 'localId').catch(() => {});
           }
+        } catch (e) {
+          console.warn('Firestore orders fetch notice:', e);
         }
       }
-    } catch (e) {}
 
-    let mergedList = Array.from(orderMap.values());
+      // 2. Fetch and merge Primary IndexedDB 'orders' store
+      const orderMap = new Map();
+      ordersList.forEach(o => {
+        const key = o.orderNumber || o.id || o.localId;
+        if (key) {
+          orderMap.set(String(key).toUpperCase().trim(), o);
+        }
+      });
+
+      try {
+        const dbOrders = await posIndexedDB.getAllOrders();
+        dbOrders.forEach(o => {
+          if (o && typeof o === 'object') {
+            const oNum = o.orderNumber || o.invoiceNumber || o.localId || o.id;
+            if (oNum) {
+              const normKey = String(oNum).toUpperCase().trim();
+              const existing = orderMap.get(normKey);
+              if (!existing) {
+                orderMap.set(normKey, o);
+              } else {
+                const localTime = new Date(o.updatedAt || o.createdAt || 0).getTime();
+                const remoteTime = new Date(existing.updatedAt || existing.createdAt || 0).getTime();
+                if (localTime >= remoteTime) {
+                  orderMap.set(normKey, { ...existing, ...o });
+                }
+              }
+            }
+          }
+        });
+      } catch (e) {
+        console.warn('IndexedDB orders read notice:', e);
+      }
+
+      // 3. Fallback scan localStorage
+      try {
+        if (typeof localStorage !== 'undefined') {
+          for (let i = 0; i < localStorage.length; i++) {
+            const keyName = localStorage.key(i);
+            if (!keyName) continue;
+            const lowerKey = keyName.toLowerCase();
+            if (
+              lowerKey.includes('order') || 
+              lowerKey.includes('booking') || 
+              lowerKey.includes('bill')
+            ) {
+              try {
+                const raw = localStorage.getItem(keyName);
+                if (!raw) continue;
+                const parsed = JSON.parse(raw);
+                const list = Array.isArray(parsed) 
+                  ? parsed 
+                  : (parsed?.orders && Array.isArray(parsed.orders) 
+                     ? parsed.orders 
+                     : (typeof parsed === 'object' ? Object.values(parsed) : []));
+
+                list.forEach(o => {
+                  if (o && typeof o === 'object') {
+                    if (o.type === 'SNAPSHOT' || o.reportDate || o.runId || o.isSnapshot) return;
+                    const oNum = o.orderNumber || o.invoiceNumber || o.bookingId || o.id;
+                    if (oNum) {
+                      const normKey = String(oNum).toUpperCase().trim();
+                      if (!orderMap.has(normKey)) {
+                        orderMap.set(normKey, o);
+                      }
+                    }
+                  }
+                });
+              } catch (e) {}
+            }
+          }
+        }
+      } catch (e) {}
+
+      const compiled = Array.from(orderMap.values());
+      _ordersMemoryCache = compiled;
+      _ordersMemoryCacheTime = Date.now();
+      return compiled;
+    })();
+
+    _ordersInFlightPromise = fetchPromise;
+    try {
+      mergedList = await fetchPromise;
+    } finally {
+      _ordersInFlightPromise = null;
+    }
 
     // Filter by search query (orderNumber, customer name, phone, address, serviceName)
     if (search) {
@@ -823,6 +860,8 @@ export const orderService = {
     const idx = orders.findIndex(o => o.id === order.id);
     if (idx >= 0) orders[idx] = updatedOrder;
     localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(orders));
+
+    invalidateOrdersMemoryCache();
 
     // Dispatch real-time events so all tabs, POS modals & Admin Order Management sync immediately
     if (typeof window !== 'undefined') {
@@ -1129,6 +1168,8 @@ export const orderService = {
     const idx = orders.findIndex(o => o.id === order.id);
     if (idx >= 0) orders[idx] = updatedOrder;
     localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(orders));
+
+    invalidateOrdersMemoryCache();
 
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('techwash-order-payment-updated', { detail: updatedOrder }));
@@ -1537,6 +1578,8 @@ export const orderService = {
       localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(orders));
     } catch (e) {}
 
+    invalidateOrdersMemoryCache();
+
     // 3. Dispatch global broadcast to refresh all components
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('techwash-orders-updated', { detail: { deletedId: orderId } }));
@@ -1612,6 +1655,8 @@ export const orderService = {
         localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(remaining));
       }
     } catch (e) {}
+
+    invalidateOrdersMemoryCache();
 
     // 4. Dispatch global broadcast events
     if (typeof window !== 'undefined') {

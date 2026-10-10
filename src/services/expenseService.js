@@ -22,6 +22,18 @@ const EXPENSES_STORAGE_KEY = 'techwash_expenses_ledger_v1';
 const EXPENSE_BUDGETS_STORAGE_KEY = 'techwash_expense_budgets_v1';
 const RECURRING_EXPENSES_STORAGE_KEY = 'techwash_recurring_expense_rules_v1';
 
+// In-memory request coalescing and short-term cache for expenses ledger
+let _expensesMemoryCache = null;
+let _expensesMemoryCacheTime = 0;
+let _expensesInFlightPromise = null;
+const EXPENSES_CACHE_TTL = 10000; // 10 seconds
+
+export const invalidateExpensesMemoryCache = () => {
+  _expensesMemoryCache = null;
+  _expensesMemoryCacheTime = 0;
+  _expensesInFlightPromise = null;
+};
+
 export const DEFAULT_EXPENSE_CONFIG = {
   // 11 Official Laundry Operational Cost Drivers
   builtInCategories: [
@@ -810,11 +822,11 @@ export const expenseService = {
   /**
    * Compare Monthly Budget vs Actual Expenses
    */
-  async getBudgetVsActualComparison({ year = new Date().getFullYear(), month = new Date().getMonth(), branchFilter = 'ALL' } = {}) {
+  async getBudgetVsActualComparison({ year = new Date().getFullYear(), month = new Date().getMonth(), branchFilter = 'ALL', preloadedPnL = null, preloadedConfig = null, preloadedCategories = null } = {}) {
     const [budgetConfig, pnlData, allCategories] = await Promise.all([
-      this.getBudgetConfig(),
-      this.getMonthlyPnL({ year, month, branchFilter }),
-      this.getAllCategories(),
+      preloadedConfig ? Promise.resolve(preloadedConfig) : this.getBudgetConfig(),
+      preloadedPnL ? Promise.resolve(preloadedPnL) : this.getMonthlyPnL({ year, month, branchFilter }),
+      preloadedCategories ? Promise.resolve(preloadedCategories) : this.getAllCategories(),
     ]);
 
     const budgets = budgetConfig.monthlyBudgets || DEFAULT_BUDGET_CONFIG.monthlyBudgets;
@@ -1067,8 +1079,8 @@ export const expenseService = {
   /**
    * Aggregate GST Paid, Taxable Purchases, and Claimable Input Tax Credit (ITC)
    */
-  async getGstItcSummary({ year = new Date().getFullYear(), month = new Date().getMonth(), branchFilter = 'ALL' } = {}) {
-    const monthExpenses = await this.getExpenses({ year, month, branchFilter });
+  async getGstItcSummary({ year = new Date().getFullYear(), month = new Date().getMonth(), branchFilter = 'ALL', preloadedExpenses = null } = {}) {
+    const monthExpenses = preloadedExpenses || await this.getExpenses({ year, month, branchFilter });
 
     let totalExpensesGross = 0;
     let totalTaxableValue = 0;
@@ -1281,65 +1293,88 @@ export const expenseService = {
   /**
    * Fetch all Expense ledger entries (with optional month, year & branch filter)
    */
-  async getExpenses({ year = null, month = null, branchFilter = 'ALL', categoryId = null } = {}) {
-    let list = [];
+  async getExpenses({ year = null, month = null, branchFilter = 'ALL', categoryId = null, forceRefresh = false, preloadedExpenses = null } = {}) {
+    let list = null;
+    const now = Date.now();
 
-    if (isFirebaseConfigured && db) {
-      try {
-        const colRef = collection(db, 'expenses');
-        const snap = await getDocs(colRef);
-        list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      } catch (e) {
-        console.warn('Could not fetch expenses from Firebase:', e);
-      }
-    }
+    if (preloadedExpenses && Array.isArray(preloadedExpenses)) {
+      list = preloadedExpenses;
+    } else if (!forceRefresh && _expensesMemoryCache && (now - _expensesMemoryCacheTime < EXPENSES_CACHE_TTL)) {
+      list = _expensesMemoryCache;
+    } else if (!forceRefresh && _expensesInFlightPromise) {
+      list = await _expensesInFlightPromise;
+    } else {
+      const fetchPromise = (async () => {
+        let rawList = [];
 
-    if (!list || list.length === 0) {
-      try {
-        const local = localStorage.getItem(EXPENSES_STORAGE_KEY);
-        if (local) {
-          list = JSON.parse(local);
-        } else {
-          list = INITIAL_SAMPLE_EXPENSES;
-          localStorage.setItem(EXPENSES_STORAGE_KEY, JSON.stringify(list));
+        if (isFirebaseConfigured && db) {
+          try {
+            const colRef = collection(db, 'expenses');
+            const snap = await getDocs(colRef);
+            rawList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          } catch (e) {
+            console.warn('Could not fetch expenses from Firebase:', e);
+          }
         }
-      } catch (e) {
-        list = INITIAL_SAMPLE_EXPENSES;
+
+        if (!rawList || rawList.length === 0) {
+          try {
+            const local = localStorage.getItem(EXPENSES_STORAGE_KEY);
+            if (local) {
+              rawList = JSON.parse(local);
+            } else {
+              rawList = INITIAL_SAMPLE_EXPENSES;
+              localStorage.setItem(EXPENSES_STORAGE_KEY, JSON.stringify(rawList));
+            }
+          } catch (e) {
+            rawList = INITIAL_SAMPLE_EXPENSES;
+          }
+        }
+
+        // Deduplicate entries by unique ID and identical submission signature to eliminate doubled records
+        const seenIds = new Set();
+        const seenSignatures = new Set();
+        const dedupedList = [];
+
+        for (const exp of rawList) {
+          if (!exp || typeof exp !== 'object') continue;
+          const expId = String(exp.id || '').trim();
+          if (expId && seenIds.has(expId)) continue;
+          if (expId) seenIds.add(expId);
+
+          // Signature key for exact identical duplicate records
+          const catKey = String(exp.categoryId || '').toLowerCase().trim();
+          const dateKey = String(exp.date || '').slice(0, 10).trim();
+          const amtKey = Number(exp.amount) || 0;
+          const titleKey = String(exp.title || '').toLowerCase().trim();
+          const branchKey = String(exp.branchId || 'ALL').toLowerCase().trim();
+
+          if (exp.recurringRuleId) {
+            const recSig = `rec|${exp.recurringRuleId}|${dateKey}`;
+            if (seenSignatures.has(recSig)) continue;
+            seenSignatures.add(recSig);
+          }
+
+          const sig = `${catKey}|${dateKey}|${amtKey}|${titleKey}|${branchKey}`;
+          if (seenSignatures.has(sig)) {
+            continue;
+          }
+          seenSignatures.add(sig);
+          dedupedList.push(exp);
+        }
+
+        _expensesMemoryCache = dedupedList;
+        _expensesMemoryCacheTime = Date.now();
+        return dedupedList;
+      })();
+
+      _expensesInFlightPromise = fetchPromise;
+      try {
+        list = await fetchPromise;
+      } finally {
+        _expensesInFlightPromise = null;
       }
     }
-
-    // Deduplicate entries by unique ID and identical submission signature to eliminate doubled records
-    const seenIds = new Set();
-    const seenSignatures = new Set();
-    const dedupedList = [];
-
-    for (const exp of list) {
-      if (!exp || typeof exp !== 'object') continue;
-      const expId = String(exp.id || '').trim();
-      if (expId && seenIds.has(expId)) continue;
-      if (expId) seenIds.add(expId);
-
-      // Signature key for exact identical duplicate records
-      const catKey = String(exp.categoryId || '').toLowerCase().trim();
-      const dateKey = String(exp.date || '').slice(0, 10).trim();
-      const amtKey = Number(exp.amount) || 0;
-      const titleKey = String(exp.title || '').toLowerCase().trim();
-      const branchKey = String(exp.branchId || 'ALL').toLowerCase().trim();
-
-      if (exp.recurringRuleId) {
-        const recSig = `rec|${exp.recurringRuleId}|${dateKey}`;
-        if (seenSignatures.has(recSig)) continue;
-        seenSignatures.add(recSig);
-      }
-
-      const sig = `${catKey}|${dateKey}|${amtKey}|${titleKey}|${branchKey}`;
-      if (seenSignatures.has(sig)) {
-        continue;
-      }
-      seenSignatures.add(sig);
-      dedupedList.push(exp);
-    }
-    list = dedupedList;
 
     // Filter by year & month if provided
     if (year !== null) {
@@ -1420,6 +1455,7 @@ export const expenseService = {
 
     // Save to localStorage cache
     try {
+      invalidateExpensesMemoryCache();
       const all = await this.getExpenses();
       const updated = [payload, ...all.filter(e => e.id !== id)];
       localStorage.setItem(EXPENSES_STORAGE_KEY, JSON.stringify(updated));
@@ -1461,6 +1497,7 @@ export const expenseService = {
     }
 
     try {
+      invalidateExpensesMemoryCache();
       const all = await this.getExpenses();
       const idx = all.findIndex(e => e.id === id);
       if (idx >= 0) {
@@ -1488,6 +1525,7 @@ export const expenseService = {
     }
 
     try {
+      invalidateExpensesMemoryCache();
       const all = await this.getExpenses();
       const filtered = all.filter(e => e.id !== id);
       localStorage.setItem(EXPENSES_STORAGE_KEY, JSON.stringify(filtered));
@@ -1503,12 +1541,12 @@ export const expenseService = {
    * Comprehensive Monthly Profit & Loss (P&L) Reconciliation
    * Reconciles Gross Revenue (Orders & POS) with All Logged & Operational Expenses
    */
-  async getMonthlyPnL({ year = new Date().getFullYear(), month = new Date().getMonth(), branchFilter = 'ALL' } = {}) {
+  async getMonthlyPnL({ year = new Date().getFullYear(), month = new Date().getMonth(), branchFilter = 'ALL', preloadedOrders = null, preloadedExpenses = null } = {}) {
     const parsedYear = Number(year);
     const parsedMonth = Number(month);
 
     // 1. Fetch all orders for this month to calculate Gross Revenue & Volumes
-    const allOrders = await orderService.getOrders({ limitCount: 5000 });
+    const allOrders = preloadedOrders || await orderService.getOrders({ limitCount: 5000 });
     
     const monthOrders = allOrders.filter(order => {
       const d = parseOrderDateSafe(order.createdAt || order.pickupDate);
@@ -1558,7 +1596,7 @@ export const expenseService = {
     });
 
     // 2. Fetch all expenses logged for this month
-    const monthExpenses = await this.getExpenses({ year: parsedYear, month: parsedMonth, branchFilter });
+    const monthExpenses = await this.getExpenses({ year: parsedYear, month: parsedMonth, branchFilter, preloadedExpenses });
 
     // Group expenses by category
     const categoryBreakdownMap = new Map();
@@ -1652,13 +1690,22 @@ export const expenseService = {
   /**
    * 12-Month Year-to-Date (YTD) Historical Trend for Annual P&L Charting
    */
-  async getYearlyPnLSummary(year = new Date().getFullYear(), branchFilter = 'ALL') {
+  async getYearlyPnLSummary(year = new Date().getFullYear(), branchFilter = 'ALL', preloadedOrders = null, preloadedExpenses = null) {
     const parsedYear = Number(year);
     const months = Array.from({ length: 12 }, (_, i) => i);
     const results = [];
 
+    const orders = preloadedOrders || await orderService.getOrders({ limitCount: 5000 });
+    const expenses = preloadedExpenses || await this.getExpenses();
+
     for (const m of months) {
-      const pnl = await this.getMonthlyPnL({ year: parsedYear, month: m, branchFilter });
+      const pnl = await this.getMonthlyPnL({
+        year: parsedYear,
+        month: m,
+        branchFilter,
+        preloadedOrders: orders,
+        preloadedExpenses: expenses,
+      });
       results.push({
         monthIndex: m,
         monthName: pnl.monthLabel.split(' ')[0],
@@ -1692,7 +1739,7 @@ export const expenseService = {
    * 3-Branch Comparative Profit & Loss Reconciliation
    * Separates and compares Counter 1 (Main Branch), Counter 2 (Branch 1 - Tolichowki), and Counter 3 (Pick Up Point - Ambience) side-by-side with Consolidated Total
    */
-  async getThreeBranchesComparativePnL({ year = new Date().getFullYear(), month = new Date().getMonth() } = {}) {
+  async getThreeBranchesComparativePnL({ year = new Date().getFullYear(), month = new Date().getMonth(), preloadedOrders = null, preloadedExpenses = null } = {}) {
     const branchDefs = [
       { 
         id: 'counter-1', 
@@ -1726,11 +1773,14 @@ export const expenseService = {
       },
     ];
 
+    const orders = preloadedOrders || await orderService.getOrders({ limitCount: 5000 });
+    const expenses = preloadedExpenses || await this.getExpenses();
+
     const [consolidated, branch1, branch2, branch3] = await Promise.all([
-      this.getMonthlyPnL({ year, month, branchFilter: 'ALL' }),
-      this.getMonthlyPnL({ year, month, branchFilter: 'counter-1' }),
-      this.getMonthlyPnL({ year, month, branchFilter: 'counter-2' }),
-      this.getMonthlyPnL({ year, month, branchFilter: 'counter-3' }),
+      this.getMonthlyPnL({ year, month, branchFilter: 'ALL', preloadedOrders: orders, preloadedExpenses: expenses }),
+      this.getMonthlyPnL({ year, month, branchFilter: 'counter-1', preloadedOrders: orders, preloadedExpenses: expenses }),
+      this.getMonthlyPnL({ year, month, branchFilter: 'counter-2', preloadedOrders: orders, preloadedExpenses: expenses }),
+      this.getMonthlyPnL({ year, month, branchFilter: 'counter-3', preloadedOrders: orders, preloadedExpenses: expenses }),
     ]);
 
     const branchesPnL = [
