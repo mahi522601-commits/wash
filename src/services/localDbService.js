@@ -6,6 +6,7 @@
 
 import { posIndexedDB } from './posIndexedDB.js';
 import { posBridgeService } from './posBridgeService.js';
+import { generateInvoicePDFBlob } from './pdfInvoiceGenerator.js';
 
 let _activeDirectoryHandle = null;
 
@@ -659,6 +660,27 @@ export const localDbService = {
         await this._writeJsonFile(dHandle, 'payments.json', payments);
       }
 
+      // Automatically generate & write real .pdf format invoices for all orders into Invoices/ and PDFs/
+      for (const ord of orders) {
+        try {
+          const dateKey = (ord.createdAt || new Date().toISOString()).slice(0, 10);
+          const bNum = String(ord.orderNumber || ord.id || ord.localId || 'BILL').trim();
+          const pdfBlob = generateInvoicePDFBlob(ord);
+
+          const targetPresets = [handlesMap['Admin'], handlesMap['POS-01']].filter(Boolean);
+          for (const p of targetPresets) {
+            const dateInvHandle = await p.invoicesHandle.getDirectoryHandle(dateKey, { create: true });
+            await this._writeBinaryFile(dateInvHandle, `${bNum}.pdf`, pdfBlob);
+
+            const pdfsHandle = await p.tHandle.getDirectoryHandle('PDFs', { create: true });
+            const datePdfHandle = await pdfsHandle.getDirectoryHandle(dateKey, { create: true });
+            await this._writeBinaryFile(datePdfHandle, `${bNum}.pdf`, pdfBlob);
+          }
+        } catch (pdfErr) {
+          console.warn('PDF invoice write notice:', pdfErr);
+        }
+      }
+
       // Also write root storage marker
       await this._writeJsonFile(techWashHandle, 'techwash-storage-info.json', {
         name: 'Tech Wash Laundry Master Storage',
@@ -713,8 +735,22 @@ export const localDbService = {
     }
   },
 
+  async _writeBinaryFile(dirHandle, fileName, dataBlobOrBuffer) {
+    try {
+      const fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
+      const writable = await fileHandle.createWritable();
+      await writable.write(dataBlobOrBuffer);
+      await writable.close();
+      return true;
+    } catch (e) {
+      console.warn(`Error writing binary file ${fileName}:`, e);
+      return false;
+    }
+  },
+
   /**
    * Sync an individual order to physical storage if connected
+   * Writes order data to Data/orders.json and genuine .pdf invoice to Invoices/<dateKey>/<billNumber>.pdf
    */
   async writeOrderToPhysicalStorage(order, targetFolder = 'Admin') {
     if (!order) return;
@@ -735,6 +771,9 @@ export const localDbService = {
         const dateKey = (order.createdAt || new Date().toISOString()).slice(0, 10);
         const dayOrders = allOrders.filter(o => (o.createdAt || '').slice(0, 10) === dateKey);
 
+        const billNumber = String(order.orderNumber || order.id || order.localId || 'BILL').trim();
+        const pdfBlob = generateInvoicePDFBlob(order);
+
         for (const fName of foldersToUpdate) {
           try {
             const fHandle = await handle.getDirectoryHandle(fName, { create: true });
@@ -742,21 +781,62 @@ export const localDbService = {
             await this._writeJsonFile(dataHandle, 'orders.json', allOrders);
             await this._writeJsonFile(dataHandle, `${dateKey}.json`, dayOrders);
 
-            // Also save invoice into Invoices/<dateKey>/<billNumber>.json
+            // SAVE AS REAL .pdf IN Invoices/<dateKey>/<billNumber>.pdf
             const invDirHandle = await fHandle.getDirectoryHandle('Invoices', { create: true });
             const dateInvDirHandle = await invDirHandle.getDirectoryHandle(dateKey, { create: true });
-            const billNumber = order.orderNumber || order.id || order.localId;
-            await this._writeJsonFile(dateInvDirHandle, `${billNumber}.json`, order);
+            await this._writeBinaryFile(dateInvDirHandle, `${billNumber}.pdf`, pdfBlob);
 
-            // Also save into dedicated PDFs/<dateKey>/<billNumber>.json
+            // ALSO SAVE AS REAL .pdf IN dedicated PDFs/<dateKey>/<billNumber>.pdf
             const pdfDirHandle = await fHandle.getDirectoryHandle('PDFs', { create: true });
             const datePdfDirHandle = await pdfDirHandle.getDirectoryHandle(dateKey, { create: true });
-            await this._writeJsonFile(datePdfDirHandle, `${billNumber}.json`, order);
+            await this._writeBinaryFile(datePdfDirHandle, `${billNumber}.pdf`, pdfBlob);
           } catch (e) {}
         }
       }
     } catch (e) {
       console.warn('writeOrderToPhysicalStorage notice:', e);
+    }
+  },
+
+  /**
+   * Generates and writes .pdf invoices for all local orders into internal storage
+   */
+  async syncAllInvoicesAsPdfToPhysicalStorage(onProgress = null) {
+    try {
+      const handle = await this.getDirectoryHandle();
+      if (!handle) return { ok: false, error: 'Internal storage folder not connected' };
+
+      const allOrders = await this.getLocalOrders();
+      let generatedCount = 0;
+
+      for (let i = 0; i < allOrders.length; i++) {
+        const ord = allOrders[i];
+        try {
+          const dateKey = (ord.createdAt || new Date().toISOString()).slice(0, 10);
+          const bNum = String(ord.orderNumber || ord.id || ord.localId || 'BILL').trim();
+          const pdfBlob = generateInvoicePDFBlob(ord);
+
+          const folders = ['Admin', 'POS-01'];
+          for (const fName of folders) {
+            const fHandle = await handle.getDirectoryHandle(fName, { create: true });
+            const invDir = await fHandle.getDirectoryHandle('Invoices', { create: true });
+            const dateInvDir = await invDir.getDirectoryHandle(dateKey, { create: true });
+            await this._writeBinaryFile(dateInvDir, `${bNum}.pdf`, pdfBlob);
+
+            const pdfDir = await fHandle.getDirectoryHandle('PDFs', { create: true });
+            const datePdfDir = await pdfDir.getDirectoryHandle(dateKey, { create: true });
+            await this._writeBinaryFile(datePdfDir, `${bNum}.pdf`, pdfBlob);
+          }
+          generatedCount++;
+          if (onProgress) {
+            onProgress(`Generated PDF invoice ${i + 1}/${allOrders.length}: ${bNum}.pdf`);
+          }
+        } catch (e) {}
+      }
+
+      return { ok: true, count: generatedCount };
+    } catch (e) {
+      return { ok: false, error: e.message };
     }
   },
 

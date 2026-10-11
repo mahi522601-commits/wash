@@ -221,6 +221,27 @@ export const InternalStorageSyncManager = () => {
     }
   };
 
+  const handleSyncAllInvoicesPdf = async () => {
+    setIsSyncing(true);
+    setSyncStep('Generating & saving all invoices in .PDF format to C:\\TechWash\\Invoices...');
+    try {
+      const res = await localDbService.syncAllInvoicesAsPdfToPhysicalStorage((msg) => setSyncStep(msg));
+      if (res.ok) {
+        success(
+          'Invoices Saved as .PDF',
+          `Generated and saved ${res.count} invoices in .PDF format inside C:\\TechWash\\Admin\\Invoices and PDFs folders!`
+        );
+      } else {
+        toastError('Storage Notice', res.error || 'Please connect C:\\TechWash folder first.');
+      }
+    } catch (e) {
+      toastError('Invoice PDF Error', e.message);
+    } finally {
+      setIsSyncing(false);
+      setSyncStep('');
+    }
+  };
+
   const formatBytes = (bytes) => {
     if (!bytes || bytes === 0) return '0 MB';
     const mb = bytes / (1024 * 1024);
@@ -482,6 +503,14 @@ export const InternalStorageSyncManager = () => {
                   <span className="text-cyan-300 font-bold">..\Data\customers.json</span>
                 </div>
                 <div className="p-2 rounded-xl bg-black/40 border border-white/5 flex items-center justify-between">
+                  <span className="text-slate-400">Customer Invoices:</span>
+                  <span className="text-orange-400 font-bold">..\Invoices\ (All in .PDF format)</span>
+                </div>
+                <div className="p-2 rounded-xl bg-black/40 border border-white/5 flex items-center justify-between">
+                  <span className="text-slate-400">Dedicated PDFs Folder:</span>
+                  <span className="text-amber-400 font-bold">..\PDFs\ (Date-wise .PDF)</span>
+                </div>
+                <div className="p-2 rounded-xl bg-black/40 border border-white/5 flex items-center justify-between">
                   <span className="text-slate-400">Browser DB Engine:</span>
                   <span className="text-cyan-400 font-bold">IndexedDB: TechWashPOS</span>
                 </div>
@@ -547,6 +576,17 @@ export const InternalStorageSyncManager = () => {
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
                 <span>Re-Sync All Cloud Data Now</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSyncAllInvoicesPdf}
+                disabled={isSyncing}
+                className="w-full py-2.5 px-4 rounded-2xl bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 hover:text-white text-xs font-bold flex items-center justify-center gap-2 transition-colors border border-indigo-500/40 active:scale-95 disabled:opacity-50"
+                title="Generates and saves .PDF format invoices for every bill into C:\TechWash\Invoices and PDFs folders"
+              >
+                <FileText className="w-3.5 h-3.5 text-indigo-400" />
+                <span>Save All Invoices (.PDF) to Internal Storage</span>
               </button>
 
               <button
