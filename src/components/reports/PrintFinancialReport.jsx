@@ -47,6 +47,44 @@ export const PrintFinancialReport = ({
     serviceBreakdown = {},
   } = metrics;
 
+  // Dynamic order-level financial calculation (guarantees accurate totals & balance even if order had 0 totalAmount)
+  const computedStats = orders.reduce((acc, ord) => {
+    let tot = Number(ord.totalAmount || ord.finalPrice || ord.priceSnapshot?.finalTotal || 0);
+    if (tot <= 0 && Array.isArray(ord.items) && ord.items.length > 0) {
+      const s = ord.items.reduce((sum, it) => sum + Number(it.lineTotal !== undefined ? it.lineTotal : ((Number(it.unitPrice) || Number(it.price) || 0) * (Number(it.quantity) || 1))), 0);
+      if (s > 0) tot = s;
+    }
+    if (tot <= 0 && (ord.weightKg || ord.actualWeight || ord.estimatedWeightKg)) {
+      const wt = Number(ord.weightKg || ord.actualWeight || ord.estimatedWeightKg || 0);
+      const rate = Number(ord.pricePerKg || 100);
+      if (wt > 0 && rate > 0) tot = Math.round(wt * rate);
+    }
+    const rec = Number(ord.receivedAmount !== undefined && ord.receivedAmount !== null
+      ? ord.receivedAmount 
+      : (ord.paymentStatus === 'PAID' ? tot : 0));
+    let bal = Number(ord.balanceAmount !== undefined && ord.balanceAmount !== null && ord.balanceAmount > 0
+      ? ord.balanceAmount 
+      : Math.max(0, tot - rec));
+    if (ord.paymentStatus === 'PAID') {
+      bal = 0;
+    }
+
+    acc.gross += tot;
+    acc.received += rec;
+    acc.due += bal;
+    if (bal > 0) acc.dueCount += 1;
+    else acc.paidCount += 1;
+
+    return acc;
+  }, { gross: 0, received: 0, due: 0, paidCount: 0, dueCount: 0 });
+
+  const effectiveGross = Math.max(Number(totalGrossBilled || 0), computedStats.gross);
+  const effectiveInflows = (category1?.totalInflowCollections !== undefined && category1.totalInflowCollections > 0) 
+    ? category1.totalInflowCollections 
+    : computedStats.received;
+  const effectiveDues = Math.max(Number(category2?.totalNetPendingDues || 0), computedStats.due);
+  const effectiveNewDues = Math.max(Number(category2?.totalInitialDuesCreated || 0), computedStats.due);
+
   const branchTitle = (branchFilter === 'POS_ONLY' || branchFilter === 'ALL_POS')
     ? 'All Offline POS Counters (Walk-in Billing)'
     : branchFilter === 'ALL' 
@@ -169,7 +207,7 @@ export const PrintFinancialReport = ({
               Total Realized Inflow (Category 1) =
             </span>
             <span className="font-mono font-black text-sm text-emerald-800 print:text-black">
-              {formatCurrency(category1.totalInflowCollections || 0)}
+              {formatCurrency(effectiveInflows)}
             </span>
           </div>
         </div>
@@ -193,8 +231,8 @@ export const PrintFinancialReport = ({
           <div className="grid grid-cols-3 gap-2 text-[10px]">
             <div className="p-2 rounded-lg bg-white border border-amber-200 print:border-black">
               <span className="text-slate-500 block font-semibold text-[9px]">⏳ New Dues Created</span>
-              <span className="font-mono font-black text-xs text-amber-800 print:text-black">
-                {formatCurrency(category2.totalInitialDuesCreated || 0)}
+              <span className={`font-mono font-black text-xs print:text-black ${effectiveNewDues > 0 ? 'text-amber-800 font-black' : 'text-slate-600'}`}>
+                {formatCurrency(effectiveNewDues)}
               </span>
             </div>
 
@@ -207,8 +245,8 @@ export const PrintFinancialReport = ({
 
             <div className="p-2 rounded-lg bg-white border border-amber-200 print:border-black">
               <span className="text-slate-500 block font-semibold text-[9px]">🔴 Net Pending Due</span>
-              <span className="font-mono font-black text-xs text-rose-700 print:text-black">
-                {formatCurrency(category2.totalNetPendingDues || 0)}
+              <span className={`font-mono font-black text-xs print:text-black ${effectiveDues > 0 ? 'text-rose-700 font-black' : 'text-slate-600'}`}>
+                {formatCurrency(effectiveDues)}
               </span>
             </div>
           </div>
@@ -218,7 +256,7 @@ export const PrintFinancialReport = ({
               Total Business Billed (Category 1 + Due) =
             </span>
             <span className="font-mono font-black text-sm text-[#EA580C] print:text-black">
-              {formatCurrency(totalGrossBilled || 0)}
+              {formatCurrency(effectiveGross)}
             </span>
           </div>
         </div>
@@ -229,7 +267,7 @@ export const PrintFinancialReport = ({
       <div className="grid grid-cols-4 gap-2 mb-3 text-center text-xs">
         <div className="p-2 rounded-lg bg-slate-50 border border-slate-200">
           <span className="text-[9px] text-slate-500 uppercase font-bold block">Total Invoices</span>
-          <span className="font-mono font-black text-sm text-slate-900">{totalOrdersCount}</span>
+          <span className="font-mono font-black text-sm text-slate-900">{totalOrdersCount || orders.length}</span>
         </div>
         <div className="p-2 rounded-lg bg-slate-50 border border-slate-200">
           <span className="text-[9px] text-slate-500 uppercase font-bold block">Garments / Clothes</span>
@@ -242,7 +280,7 @@ export const PrintFinancialReport = ({
         <div className="p-2 rounded-lg bg-slate-50 border border-slate-200">
           <span className="text-[9px] text-slate-500 uppercase font-bold block">Paid vs Due Orders</span>
           <span className="font-mono font-black text-xs text-slate-900">
-            <span className="text-emerald-700">{category2.fullyPaidOrdersCount || 0} Paid</span> • <span className="text-rose-700">{(category2.partialOrdersCount || 0) + (category2.unpaidOrdersCount || 0)} Due</span>
+            <span className="text-emerald-700">{computedStats.paidCount} Paid</span> • <span className={computedStats.dueCount > 0 ? "text-rose-700 font-black" : "text-slate-500"}>{computedStats.dueCount} Due</span>
           </span>
         </div>
       </div>
@@ -312,179 +350,198 @@ export const PrintFinancialReport = ({
           <span>Amounts in INR (₹)</span>
         </div>
 
-        <table className="w-full text-left border-collapse text-[9.5px]">
-          <thead>
-            <tr className="bg-slate-100 text-slate-700 text-[8.5px] font-black uppercase tracking-wider border-b border-slate-200 print:border-black">
-              <th className="py-1.5 px-2 text-center w-7">#</th>
-              <th className="py-1.5 px-2 w-20">Order ID</th>
-              <th className="py-1.5 px-2 w-28">Date & Time</th>
-              <th className="py-1.5 px-2 w-32">Customer & Phone</th>
-              <th className="py-1.5 px-2 w-28">Branch / Channel</th>
-              <th className="py-1.5 px-2">Clothes, Garments & Services (Pin-to-Pin)</th>
-              <th className="py-1.5 px-2 text-right w-16">Total Bill</th>
-              <th className="py-1.5 px-2 text-right w-16">Received</th>
-              <th className="py-1.5 px-2 text-right w-16">Balance Left</th>
-              <th className="py-1.5 px-2 text-center w-20">Mode & Status</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100 text-slate-800 print:divide-slate-300">
-            {orders.length === 0 ? (
-              <tr>
-                <td colSpan="10" className="py-8 text-center text-slate-400 font-semibold text-xs">
-                  No order transactions found for this date range and location filter.
-                </td>
+        <div className="overflow-x-auto w-full print:overflow-visible">
+          <table className="w-full min-w-[760px] text-left border-collapse text-[9.5px]">
+            <thead>
+              <tr className="bg-slate-100 text-slate-700 text-[8.5px] font-black uppercase tracking-wider border-b border-slate-200 print:border-black">
+                <th className="py-1.5 px-2 text-center w-7">#</th>
+                <th className="py-1.5 px-2 w-18 whitespace-nowrap">Order ID</th>
+                <th className="py-1.5 px-2 w-20">Date & Time</th>
+                <th className="py-1.5 px-2 w-28">Customer</th>
+                <th className="py-1.5 px-2 w-20">Branch</th>
+                <th className="py-1.5 px-2 min-w-[170px]">Clothes, Garments & Services (Pin-to-Pin)</th>
+                <th className="py-1.5 px-2 text-right w-16 whitespace-nowrap">Total Bill</th>
+                <th className="py-1.5 px-2 text-right w-16 whitespace-nowrap">Received</th>
+                <th className="py-1.5 px-2 text-right w-22 whitespace-nowrap bg-amber-100/90 text-amber-950 border-l border-r border-amber-300 font-black">
+                  Balance Due
+                </th>
+                <th className="py-1.5 px-2 text-center w-22 whitespace-nowrap">Mode & Status</th>
               </tr>
-            ) : (
-              orders.map((ord, idx) => {
-                const total = Number(ord.totalAmount || ord.finalPrice || ord.priceSnapshot?.finalTotal || 0);
-                const received = Number(ord.receivedAmount !== undefined 
-                  ? ord.receivedAmount 
-                  : (ord.paymentStatus === 'PAID' ? total : 0));
-                const balance = Number(ord.balanceAmount !== undefined 
-                  ? ord.balanceAmount 
-                  : Math.max(0, total - received));
+            </thead>
+            <tbody className="divide-y divide-slate-100 text-slate-800 print:divide-slate-300">
+              {orders.length === 0 ? (
+                <tr>
+                  <td colSpan="10" className="py-8 text-center text-slate-400 font-semibold text-xs">
+                    No order transactions found for this date range and location filter.
+                  </td>
+                </tr>
+              ) : (
+                orders.map((ord, idx) => {
+                  let total = Number(ord.totalAmount || ord.finalPrice || ord.priceSnapshot?.finalTotal || 0);
+                  if (total <= 0 && Array.isArray(ord.items) && ord.items.length > 0) {
+                    const s = ord.items.reduce((sum, it) => sum + Number(it.lineTotal !== undefined ? it.lineTotal : ((Number(it.unitPrice) || Number(it.price) || 0) * (Number(it.quantity) || 1))), 0);
+                    if (s > 0) total = s;
+                  }
+                  if (total <= 0 && (ord.weightKg || ord.actualWeight || ord.estimatedWeightKg)) {
+                    const wt = Number(ord.weightKg || ord.actualWeight || ord.estimatedWeightKg || 0);
+                    const rate = Number(ord.pricePerKg || 100);
+                    if (wt > 0 && rate > 0) total = Math.round(wt * rate);
+                  }
 
-                const isPaid = balance === 0 || ord.paymentStatus === 'PAID';
-                const isPartial = received > 0 && balance > 0;
+                  const received = Number(ord.receivedAmount !== undefined && ord.receivedAmount !== null
+                    ? ord.receivedAmount 
+                    : (ord.paymentStatus === 'PAID' ? total : 0));
+                  let balance = Number(ord.balanceAmount !== undefined && ord.balanceAmount !== null && ord.balanceAmount > 0
+                    ? ord.balanceAmount 
+                    : Math.max(0, total - received));
+                  if (ord.paymentStatus === 'PAID') {
+                    balance = 0;
+                  }
 
-                const pin = parsePinToPinItems(ord);
+                  const isPaid = balance === 0 || (ord.paymentStatus === 'PAID' && balance <= 0);
+                  const isPartial = received > 0 && balance > 0;
 
-                const dateDisplay = new Date(ord.createdAt || Date.now()).toLocaleString('en-IN', {
-                  day: '2-digit',
-                  month: 'short',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                });
+                  const pin = parsePinToPinItems(ord);
 
-                return (
-                  <tr key={ord.id || idx} className="hover:bg-slate-50/80">
-                    <td className="py-2 px-2 text-center text-slate-400 font-mono text-[9px] align-top">
-                      {idx + 1}
-                    </td>
-                    <td className="py-2 px-2 font-mono font-bold text-slate-900 align-top">
-                      {ord.orderNumber || ord.id}
-                    </td>
-                    <td className="py-2 px-2 text-slate-600 whitespace-nowrap align-top">
-                      {dateDisplay}
-                    </td>
-                    <td className="py-2 px-2 align-top">
-                      <div className="font-bold text-slate-900 truncate max-w-[120px]" title={ord.customerName || ord.customer?.name}>
-                        {ord.customerName || ord.customer?.name || 'Valued Customer'}
-                      </div>
-                      <div className="text-slate-500 font-mono text-[8.5px]">
-                        {ord.phone || ord.customer?.phone || ''}
-                      </div>
-                    </td>
-                    <td className="py-2 px-2 text-slate-600 truncate max-w-[110px] align-top" title={ord.storeBranch || ord.terminalCode || 'Counter'}>
-                      {ord.storeBranch ? ord.storeBranch.replace('Tech Wash ', '') : (ord.isWalkIn ? 'POS Counter' : 'Online Website')}
-                    </td>
-                    <td className="py-2 px-2.5 align-top min-w-[240px]">
-                      <div className="space-y-1">
-                        {/* 1. Weighed Scale Batches */}
-                        {pin.scales.length > 0 && (
-                          <div className="flex flex-wrap gap-1">
-                            {pin.scales.map((sc, scIdx) => (
-                              <span
-                                key={scIdx}
-                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-950 border border-emerald-300 text-[9px] font-bold print:bg-slate-100 print:text-black print:border-black shadow-2xs"
-                              >
-                                <span>{sc.emoji}</span>
-                                <span>{sc.serviceTitle}:</span>
-                                <span className="font-mono text-emerald-800 print:text-black">{sc.weight}</span>
-                                {sc.rate && <span className="text-[8px] text-slate-500 print:text-black">({sc.rate})</span>}
-                                <span className="font-mono text-[9.5px] text-emerald-950 print:text-black font-black">= ₹{sc.lineTotal}</span>
+                  const d = new Date(ord.createdAt || Date.now());
+                  const dateStr = !isNaN(d.getTime()) ? d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '—';
+                  const timeStr = !isNaN(d.getTime()) ? d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '';
+
+                  return (
+                    <tr key={ord.id || idx} className="hover:bg-slate-50/80">
+                      <td className="py-2 px-2 text-center text-slate-400 font-mono text-[9px] align-top">
+                        {idx + 1}
+                      </td>
+                      <td className="py-2 px-2 font-mono font-bold text-slate-900 whitespace-nowrap align-top">
+                        {ord.orderNumber || ord.id}
+                      </td>
+                      <td className="py-2 px-2 text-slate-600 whitespace-nowrap align-top">
+                        <div className="font-bold text-slate-900 text-[9px]">{dateStr}</div>
+                        <div className="text-slate-400 font-mono text-[8px]">{timeStr}</div>
+                      </td>
+                      <td className="py-2 px-2 align-top">
+                        <div className="font-bold text-slate-900 truncate max-w-[110px]" title={ord.customerName || ord.customer?.name}>
+                          {ord.customerName || ord.customer?.name || 'Valued Customer'}
+                        </div>
+                        <div className="text-slate-500 font-mono text-[8.5px]">
+                          {ord.phone || ord.customer?.phone || ''}
+                        </div>
+                      </td>
+                      <td className="py-2 px-2 text-slate-600 truncate max-w-[85px] align-top" title={ord.storeBranch || ord.terminalCode || 'Counter'}>
+                        {ord.storeBranch ? ord.storeBranch.replace('Tech Wash ', '') : (ord.isWalkIn ? 'POS Counter' : 'Online Website')}
+                      </td>
+                      <td className="py-2 px-2.5 align-top min-w-[170px]">
+                        <div className="space-y-1">
+                          {/* 1. Weighed Scale Batches */}
+                          {pin.scales.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {pin.scales.map((sc, scIdx) => (
+                                <span
+                                  key={scIdx}
+                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-950 border border-emerald-300 text-[9px] font-bold print:bg-slate-100 print:text-black print:border-black shadow-2xs"
+                                >
+                                  <span>{sc.emoji}</span>
+                                  <span>{sc.serviceTitle}:</span>
+                                  <span className="font-mono text-emerald-800 print:text-black">{sc.weight}</span>
+                                  {sc.rate && <span className="text-[8px] text-slate-500 print:text-black">({sc.rate})</span>}
+                                  <span className="font-mono text-[9.5px] text-emerald-950 print:text-black font-black">= ₹{sc.lineTotal}</span>
+                                </span>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* 2. Weighed Garments Piece Breakdown (NO @₹0 artifacts) */}
+                          {pin.clothes.length > 0 && (
+                            <div className="text-[9px] text-slate-700 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200 print:bg-white print:border-slate-300 leading-tight">
+                              <span className="font-bold text-slate-900">👔 Weighed Garments ({pin.totalClothesCount} pcs): </span>
+                              <span className="text-slate-700 font-medium">
+                                {pin.clothes.map(c => `${c.quantity}x ${c.name}`).join(', ')}
                               </span>
-                            ))}
-                          </div>
-                        )}
+                            </div>
+                          )}
 
-                        {/* 2. Weighed Garments Piece Breakdown (NO @₹0 artifacts) */}
-                        {pin.clothes.length > 0 && (
-                          <div className="text-[9px] text-slate-700 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200 print:bg-white print:border-slate-300 leading-tight">
-                            <span className="font-bold text-slate-900">👔 Weighed Garments ({pin.totalClothesCount} pcs): </span>
-                            <span className="text-slate-700 font-medium">
-                              {pin.clothes.map(c => `${c.quantity}x ${c.name}`).join(', ')}
+                          {/* 3. Itemized Specialty Services & Garments */}
+                          {pin.specialServices.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {pin.specialServices.map((srv, sIdx) => (
+                                <span
+                                  key={sIdx}
+                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-900 border border-indigo-200 text-[8.5px] font-medium print:bg-white print:text-black print:border-slate-400"
+                                >
+                                  <span>{srv.emoji}</span>
+                                  <span className="font-bold">{srv.quantity}x</span>
+                                  <span>{srv.name}</span>
+                                  <span className="font-mono font-bold text-indigo-950 print:text-black">(₹{srv.lineTotal})</span>
+                                </span>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* 4. Express 24H Tag */}
+                          {pin.expressFee > 0 && (
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 border border-amber-300 text-[8px] font-black uppercase">
+                              ⚡ Express 24H (+₹{pin.expressFee})
                             </span>
-                          </div>
-                        )}
+                          )}
 
-                        {/* 3. Itemized Specialty Services & Garments */}
-                        {pin.specialServices.length > 0 && (
-                          <div className="flex flex-wrap gap-1">
-                            {pin.specialServices.map((srv, sIdx) => (
-                              <span
-                                key={sIdx}
-                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-900 border border-indigo-200 text-[8.5px] font-medium print:bg-white print:text-black print:border-slate-400"
-                              >
-                                <span>{srv.emoji}</span>
-                                <span className="font-bold">{srv.quantity}x</span>
-                                <span>{srv.name}</span>
-                                <span className="font-mono font-bold text-indigo-950 print:text-black">(₹{srv.lineTotal})</span>
-                              </span>
-                            ))}
-                          </div>
-                        )}
-
-                        {/* 4. Express 24H Tag */}
-                        {pin.expressFee > 0 && (
-                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 border border-amber-300 text-[8px] font-black uppercase">
-                            ⚡ Express 24H (+₹{pin.expressFee})
-                          </span>
-                        )}
-
-                        {/* 5. Notes if present */}
-                        {ord.notes && (
-                          <div className="text-[8px] text-slate-500 italic truncate max-w-[260px]">
-                            📝 {ord.notes}
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                    <td className="py-2 px-2 text-right font-mono font-bold text-slate-900 align-top">
-                      {formatCurrency(total)}
-                    </td>
-                    <td className="py-2 px-2 text-right font-mono font-bold text-emerald-700 print:text-black align-top">
-                      {formatCurrency(received)}
-                    </td>
-                    <td className={`py-2 px-2 text-right font-mono font-black align-top ${balance > 0 ? 'text-rose-600 print:text-black' : 'text-slate-400'}`}>
-                      {balance > 0 ? formatCurrency(balance) : '₹0'}
-                    </td>
-                    <td className="py-2 px-2 text-center whitespace-nowrap align-top">
-                      <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-black uppercase ${
-                        isPaid 
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : (isPartial ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800')
+                          {/* 5. Notes if present */}
+                          {ord.notes && (
+                            <div className="text-[8px] text-slate-500 italic truncate max-w-[260px]">
+                              📝 {ord.notes}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-2 px-2 text-right font-mono font-bold text-slate-900 align-top whitespace-nowrap">
+                        {formatCurrency(total)}
+                      </td>
+                      <td className="py-2 px-2 text-right font-mono font-bold text-emerald-700 print:text-black align-top whitespace-nowrap">
+                        {formatCurrency(received)}
+                      </td>
+                      <td className={`py-2 px-2 text-right font-mono font-black align-top whitespace-nowrap border-l border-r border-slate-100 ${
+                        balance > 0 
+                          ? 'text-rose-600 bg-rose-50/90 font-black print:bg-white print:text-black' 
+                          : 'text-slate-400 bg-slate-50/30'
                       }`}>
-                        {String(ord.paymentMethod || 'CASH')} • {isPaid ? 'PAID' : (isPartial ? 'PARTIAL' : 'DUE')}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })
+                        {balance > 0 ? formatCurrency(balance) : '₹0'}
+                      </td>
+                      <td className="py-2 px-2 text-center whitespace-nowrap align-top">
+                        <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-black uppercase ${
+                          isPaid 
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : (isPartial ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800')
+                        }`}>
+                          {String(ord.paymentMethod || 'CASH')} • {isPaid ? 'PAID' : (isPartial ? 'PARTIAL' : 'DUE')}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+            {orders.length > 0 && (
+              <tfoot>
+                <tr className="bg-slate-100 font-black text-[9.5px] border-t-2 border-slate-300 text-slate-900 print:border-black">
+                  <td colSpan="6" className="py-2 px-2 text-right uppercase tracking-wider">
+                    Grand Settlement Totals:
+                  </td>
+                  <td className="py-2 px-2 text-right font-mono text-orange-600 print:text-black whitespace-nowrap">
+                    {formatCurrency(effectiveGross)}
+                  </td>
+                  <td className="py-2 px-2 text-right font-mono text-emerald-700 print:text-black whitespace-nowrap">
+                    {formatCurrency(effectiveInflows)}
+                  </td>
+                  <td className="py-2 px-2 text-right font-mono text-rose-600 bg-rose-50/70 border-l border-r border-rose-200 print:text-black whitespace-nowrap">
+                    {formatCurrency(effectiveDues)}
+                  </td>
+                  <td className="py-2 px-2 text-center text-[8.5px] whitespace-nowrap">
+                    {totalOrdersCount || orders.length} Bills
+                  </td>
+                </tr>
+              </tfoot>
             )}
-          </tbody>
-          {orders.length > 0 && (
-            <tfoot>
-              <tr className="bg-slate-100 font-black text-[9.5px] border-t-2 border-slate-300 text-slate-900 print:border-black">
-                <td colSpan="6" className="py-2 px-2 text-right uppercase tracking-wider">
-                  Grand Settlement Totals:
-                </td>
-                <td className="py-2 px-2 text-right font-mono text-orange-600 print:text-black">
-                  {formatCurrency(totalGrossBilled)}
-                </td>
-                <td className="py-2 px-2 text-right font-mono text-emerald-700 print:text-black">
-                  {formatCurrency(category1.totalInflowCollections || 0)}
-                </td>
-                <td className="py-2 px-2 text-right font-mono text-rose-600 print:text-black">
-                  {formatCurrency(category2.totalNetPendingDues || 0)}
-                </td>
-                <td className="py-2 px-2 text-center text-[8.5px]">
-                  {totalOrdersCount} Bills
-                </td>
-              </tr>
-            </tfoot>
-          )}
-        </table>
+          </table>
+        </div>
       </div>
 
       {/* ─────────────────────────────────────────────────────────

@@ -323,13 +323,33 @@ export const reportService = {
     const serviceBreakdown = {};
 
     filteredOrders.forEach(order => {
-      const billTotal = Number(order.totalAmount || order.finalPrice || order.priceSnapshot?.finalTotal || 0);
-      const recAmount = Number(order.receivedAmount !== undefined 
+      let billTotal = Number(order.totalAmount || order.finalPrice || order.priceSnapshot?.finalTotal || 0);
+
+      // Robust fallback: if billTotal is 0 but line items exist, sum them up
+      if (billTotal <= 0 && Array.isArray(order.items) && order.items.length > 0) {
+        const sumItems = order.items.reduce((sum, it) => {
+          const itPrice = Number(it.lineTotal !== undefined ? it.lineTotal : ((Number(it.unitPrice) || Number(it.price) || 0) * (Number(it.quantity) || 1)));
+          return sum + (isNaN(itPrice) ? 0 : itPrice);
+        }, 0);
+        if (sumItems > 0) billTotal = sumItems;
+      }
+
+      if (billTotal <= 0 && (order.weightKg || order.actualWeight || order.estimatedWeightKg)) {
+        const wt = Number(order.weightKg || order.actualWeight || order.estimatedWeightKg || 0);
+        const rate = Number(order.pricePerKg || 100);
+        if (wt > 0 && rate > 0) billTotal = Math.round(wt * rate);
+      }
+
+      const recAmount = Number(order.receivedAmount !== undefined && order.receivedAmount !== null
         ? order.receivedAmount 
         : (order.paymentStatus === 'PAID' ? billTotal : 0));
-      const balAmount = Number(order.balanceAmount !== undefined 
+      let balAmount = Number(order.balanceAmount !== undefined && order.balanceAmount !== null && order.balanceAmount > 0
         ? order.balanceAmount 
         : Math.max(0, billTotal - recAmount));
+
+      if (order.paymentStatus === 'PAID') {
+        balAmount = 0;
+      }
 
       totalGrossBilled += billTotal;
 
@@ -360,9 +380,11 @@ export const reportService = {
         fullyPaidOrdersCount += 1;
       } else if (recAmount > 0) {
         partialOrdersCount += 1;
+        totalInitialDuesCreated += balAmount;
         totalNetPendingDues += balAmount;
       } else {
         unpaidOrdersCount += 1;
+        totalInitialDuesCreated += balAmount;
         totalNetPendingDues += balAmount;
       }
 
