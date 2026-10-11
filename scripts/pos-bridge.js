@@ -549,6 +549,9 @@ const server = http.createServer(async (req, res) => {
         }));
       }
     });
+    return;
+  }
+
   // --- INIT STORAGE ENDPOINT (Creates C:\TechWash folders & saves data files) ---
   if (req.method === 'POST' && pathname === '/api/init-storage') {
     let bodyText = '';
