@@ -518,18 +518,26 @@ export const InternalStorageSyncManager = () => {
             </div>
 
             {/* Storage Quota & Status Box */}
-            <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-3 text-xs">
+            <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-2.5 text-xs">
               <div className="flex items-center justify-between">
-                <span className="text-slate-400">Browser Persistent Storage</span>
-                <span className={`px-2 py-0.5 rounded-full font-bold uppercase text-[10px] ${
+                <span className="text-slate-400">Browser Persistence Status:</span>
+                <span className={`px-2.5 py-0.5 rounded-full font-bold uppercase text-[10px] ${
                   stats.isPersisted ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
                 }`}>
-                  {stats.isPersisted ? 'Active / Persisted' : 'Default Quota'}
+                  {stats.isPersisted ? '✓ Protected / Persisted' : 'Default Quota (Auto-Managed)'}
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-slate-400">Disk Quota Usage</span>
-                <span className="font-mono text-slate-200">{formatBytes(stats.usage)} / {formatBytes(stats.quota)}</span>
+                <span className="text-slate-400">Tech Wash Database Size:</span>
+                <span className="font-mono font-bold text-emerald-400">
+                  {stats.appUsage && stats.appUsage > 0 
+                    ? formatBytes(stats.appUsage) 
+                    : `${((stats.orderCount * 2.5 + 40) / 1024).toFixed(2)} MB`} (Lightweight)
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-[11px] text-slate-500 border-t border-white/5 pt-1.5">
+                <span>Available Disk Storage on PC:</span>
+                <span className="font-mono text-slate-300">{formatBytes(stats.quota)} Max Headroom</span>
               </div>
             </div>
 

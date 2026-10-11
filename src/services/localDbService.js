@@ -214,6 +214,7 @@ export const localDbService = {
   async getStorageStats() {
     let quota = 0;
     let usage = 0;
+    let appUsage = 0;
     let isPersisted = false;
 
     if (typeof navigator !== 'undefined' && navigator.storage) {
@@ -222,6 +223,9 @@ export const localDbService = {
           const estimate = await navigator.storage.estimate();
           usage = estimate.usage || 0;
           quota = estimate.quota || 0;
+          if (estimate.usageDetails && estimate.usageDetails.indexedDB) {
+            appUsage = estimate.usageDetails.indexedDB;
+          }
         }
         if (navigator.storage.persisted) {
           isPersisted = await navigator.storage.persisted();
@@ -249,6 +253,7 @@ export const localDbService = {
     return {
       isPersisted,
       usage,
+      appUsage,
       quota,
       orderCount,
       customerCount,
