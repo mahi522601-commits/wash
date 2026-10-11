@@ -273,16 +273,16 @@ export const InternalStorageSyncManager = () => {
                   <span className="text-white font-bold">TechWashPOS (IndexedDB)</span>
                 </div>
                 <div className="p-2 rounded-xl bg-white/5 border border-white/5">
-                  <span className="text-slate-400 text-[10px] block">Terminal Root</span>
+                  <span className="text-slate-400 text-[10px] block">Admin Orders Root</span>
+                  <span className="text-purple-400 font-bold">C:\TechWash\Admin\</span>
+                </div>
+                <div className="p-2 rounded-xl bg-white/5 border border-white/5">
+                  <span className="text-slate-400 text-[10px] block">Terminal POS Root</span>
                   <span className="text-white font-bold">C:\TechWash\POS-01\</span>
                 </div>
                 <div className="p-2 rounded-xl bg-white/5 border border-white/5">
                   <span className="text-slate-400 text-[10px] block">Sales &amp; Orders</span>
                   <span className="text-emerald-400 font-bold">..\Data\orders.json</span>
-                </div>
-                <div className="p-2 rounded-xl bg-white/5 border border-white/5">
-                  <span className="text-slate-400 text-[10px] block">Customers CRM</span>
-                  <span className="text-cyan-400 font-bold">..\Data\customers.json</span>
                 </div>
               </div>
             </div>
@@ -464,6 +464,10 @@ export const InternalStorageSyncManager = () => {
                 <div className="p-2 rounded-xl bg-black/40 border border-white/5 flex items-center justify-between">
                   <span className="text-slate-400">Physical Root:</span>
                   <span className="text-white font-bold">C:\TechWash\</span>
+                </div>
+                <div className="p-2 rounded-xl bg-black/40 border border-white/5 flex items-center justify-between">
+                  <span className="text-slate-400">Admin Portal (Orders &amp; CRM):</span>
+                  <span className="text-purple-400 font-bold">C:\TechWash\Admin\</span>
                 </div>
                 <div className="p-2 rounded-xl bg-black/40 border border-white/5 flex items-center justify-between">
                   <span className="text-slate-400">Main Manikonda (POS-01):</span>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { receiptService } from '../../services/receiptService';
 import { whatsappNotificationService } from '../../services/whatsappNotificationService';
 import { PrintReceipt } from './PrintReceipt';
@@ -33,6 +34,17 @@ export const ReceiptModal = ({
   const [isCopied, setIsCopied] = useState(false);
 
   useEffect(() => {
+    if (isOpen) {
+      document.body.classList.add('has-open-receipt-modal');
+    } else {
+      document.body.classList.remove('has-open-receipt-modal');
+    }
+    return () => {
+      document.body.classList.remove('has-open-receipt-modal');
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
     if (order && isOpen) {
       receiptService.getReceiptConfig().then((cfg) => {
         setConfig(cfg);
@@ -47,7 +59,10 @@ export const ReceiptModal = ({
   if (!isOpen || !order || !receiptData || !config) return null;
 
   const handlePrint = () => {
-    window.print();
+    setPreviewMode('A4');
+    setTimeout(() => {
+      window.print();
+    }, 50);
   };
 
   const handleSendWhatsAppInvoice = () => {
@@ -67,10 +82,10 @@ export const ReceiptModal = ({
     setTimeout(() => setIsCopied(false), 2500);
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/80 backdrop-blur-sm overflow-y-auto print:p-0 print:bg-white print:static print:inset-auto print:overflow-visible">
+  const modalContent = (
+    <div className="receipt-modal-portal fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/80 backdrop-blur-sm overflow-y-auto print:p-0 print:bg-white print:static print:inset-auto print:overflow-visible print:block">
       
-      <div className="relative w-full max-w-5xl bg-slate-100 rounded-3xl shadow-2xl border border-slate-300 flex flex-col max-h-[92vh] overflow-hidden animate-fade-in print:max-h-none print:shadow-none print:border-none print:bg-white print:rounded-none print:overflow-visible print:w-full print:static">
+      <div className="relative w-full max-w-5xl bg-slate-100 rounded-3xl shadow-2xl border border-slate-300 flex flex-col max-h-[92vh] overflow-hidden animate-fade-in print:max-h-none print:shadow-none print:border-none print:bg-white print:rounded-none print:overflow-visible print:w-full print:static print:block">
         
         {/* Top Control Bar (Hidden when printing) */}
         <div className="p-4 sm:p-5 bg-white border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 shrink-0 print:hidden">
@@ -198,4 +213,9 @@ export const ReceiptModal = ({
 
     </div>
   );
+
+  return typeof document !== 'undefined'
+    ? createPortal(modalContent, document.body)
+    : modalContent;
 };
+

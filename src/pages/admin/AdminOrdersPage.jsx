@@ -1614,7 +1614,8 @@ export const AdminOrdersPage = () => {
   ];
 
   return (
-    <div className="space-y-6 pos-workspace-screen print:hidden no-print">
+    <div className="space-y-6">
+      <div className="space-y-6 print:hidden no-print">
       <AdminPageHeader
         title="Order Lifecycle & Pickup Management"
         subtitle="Manage 10-stage customer milestones, record verified actual weights, assign delivery staff, and track offline POS & online channels."
@@ -2560,6 +2561,7 @@ export const AdminOrdersPage = () => {
           </div>
         )}
       </Modal>
+      </div>
 
       {/* Official Tax Invoice & Print Receipt Modal */}
       <ReceiptModal
@@ -3816,15 +3818,6 @@ export const AdminOrdersPage = () => {
 
         </form>
       </Modal>
-
-      {/* Printable Receipt Modal */}
-      {receiptModalOrder && (
-        <ReceiptModal
-          isOpen={Boolean(receiptModalOrder)}
-          order={receiptModalOrder}
-          onClose={() => setReceiptModalOrder(null)}
-        />
-      )}
 
     </div>
   );

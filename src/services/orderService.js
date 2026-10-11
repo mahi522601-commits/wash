@@ -828,9 +828,16 @@ export const orderService = {
       console.warn("Local storage update notice:", e);
     }
 
+    // STEP 1B: Write updated order directly to physical C:\TechWash storage (Admin & Terminal)
+    try {
+      await localDbService.writeOrderToPhysicalStorage(updatedOrder, 'Admin');
+    } catch (e) {
+      console.warn('Physical storage update notice:', e);
+    }
+
     // STEP 2: Save transaction update to Local Windows Bridge
     try {
-      await posBridgeService.saveTransaction(updatedOrder, updatedOrder.terminalId || 'counter-1');
+      await posBridgeService.saveTransaction(updatedOrder, updatedOrder.terminalId || 'admin');
     } catch (e) {
       console.warn("Local bridge update status notice:", e);
     }
@@ -1444,12 +1451,13 @@ export const orderService = {
   },
 
   /**
-   * Delete order completely from Firebase Firestore and local cache
+   * Delete order completely from Firebase Firestore, IndexedDB, local cache, and internal storage
    */
   async deleteOrder(orderId) {
     if (!orderId) throw new Error('Order ID required for deletion.');
     const targetId = String(orderId).trim();
 
+    // 1. Delete from Firebase Firestore if online
     if (isFirebaseConfigured && db) {
       try {
         await Promise.all([
@@ -1461,8 +1469,19 @@ export const orderService = {
       }
     }
 
+    // 2. Remove from IndexedDB primary stores
     try {
-      const orders = await this.getOrders({ limitCount: 1000 });
+      await posIndexedDB.deleteOrder(targetId);
+      await posIndexedDB.deleteItem('orders', targetId);
+      await posIndexedDB.deleteSyncItem(targetId);
+      await posIndexedDB.deleteItem('dues', `due-${targetId}`);
+    } catch (e) {
+      console.warn('IndexedDB delete notice:', e);
+    }
+
+    // 3. Remove from local storage cache
+    try {
+      const orders = await this.getOrders({ limitCount: 2000, forceRefresh: true });
       const filtered = orders.filter(o => 
         o.id !== targetId && 
         o.orderNumber !== targetId && 
@@ -1473,15 +1492,19 @@ export const orderService = {
       console.warn('Local storage delete order error:', e);
     }
 
-    try {
-      await posIndexedDB.deleteItem('orders', targetId);
-      await posIndexedDB.deleteSyncItem(targetId);
-      await posIndexedDB.deleteItem('dues', `due-${targetId}`);
-    } catch (e) {
-      console.warn('IndexedDB delete notice:', e);
-    }
+    invalidateOrdersMemoryCache();
 
+    // 4. Update physical storage if connected
+    try {
+      const { localDbService } = await import('./localDbService.js');
+      if (localDbService && typeof localDbService.removeOrderFromPhysicalStorage === 'function') {
+        localDbService.removeOrderFromPhysicalStorage(targetId, 'Admin').catch(() => {});
+      }
+    } catch (e) {}
+
+    // 5. Dispatch global broadcast to refresh all components
     if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('techwash-orders-updated', { detail: { deletedId: targetId } }));
       window.dispatchEvent(new CustomEvent('techwash-order-deleted', { detail: { orderId: targetId } }));
       window.dispatchEvent(new CustomEvent('techwash-worker-refresh-tasks', { detail: { orderId: targetId } }));
       try {
@@ -1559,50 +1582,6 @@ export const orderService = {
     return updatedOrder;
   },
 
-  /**
-   * Permanently delete an order from Firebase Firestore and local storage
-   */
-  async deleteOrder(orderId) {
-    if (!orderId) throw new Error('Order ID required for deletion.');
-
-    // 1. Delete from Firebase Firestore
-    if (isFirebaseConfigured && db) {
-      try {
-        await Promise.all([
-          deleteDoc(doc(db, 'orders', orderId)),
-          deleteDoc(doc(db, 'bookings', orderId))
-        ]);
-      } catch (e) {
-        console.warn('Firestore delete order error (continuing local clean):', e);
-      }
-    }
-
-    // 2. Remove from local storage cache
-    try {
-      const orders = (await this.getOrders({ limitCount: 2000 })).filter(
-        o => o.id !== orderId && o.orderNumber !== orderId && o.bookingId !== orderId
-      );
-      localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(orders));
-    } catch (e) {}
-
-    invalidateOrdersMemoryCache();
-
-    // 3. Dispatch global broadcast to refresh all components
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('techwash-orders-updated', { detail: { deletedId: orderId } }));
-      try {
-        if ('BroadcastChannel' in window) {
-          const channel = new BroadcastChannel('techwash_orders_channel');
-          channel.postMessage({ type: 'ORDER_DELETED', orderId });
-          setTimeout(() => {
-            try { channel.close(); } catch (e) {}
-          }, 200);
-        }
-      } catch (e) {}
-    }
-
-    return true;
-  },
 
   /**
    * Permanently delete all orders (or a list of order IDs) from Firebase Firestore, IndexedDB, and local storage

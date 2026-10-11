@@ -17,6 +17,13 @@ if not exist "C:\TechWash" (
     echo [OK] C:\TechWash already exists
 )
 
+if not exist "C:\TechWash\Admin\Data" (
+    mkdir "C:\TechWash\Admin\Data"
+    mkdir "C:\TechWash\Admin\Invoices"
+    mkdir "C:\TechWash\Admin\Exports"
+    echo [OK] Created C:\TechWash\Admin (Order Management - Admin Portal)
+)
+
 if not exist "C:\TechWash\POS-01\Data" (
     mkdir "C:\TechWash\POS-01\Data"
     mkdir "C:\TechWash\POS-01\Invoices"

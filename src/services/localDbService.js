@@ -259,6 +259,7 @@ export const localDbService = {
       storageRoot: 'C:\\TechWash',
       databaseName: 'TechWashPOS',
       terminals: {
+        'admin': { code: 'TW-ADMIN-01', folder: 'Admin', path: 'C:\\TechWash\\Admin' },
         'counter-1': { code: 'TW-POS-01', folder: 'POS-01', path: 'C:\\TechWash\\POS-01' },
         'counter-2': { code: 'TW-POS-02', folder: 'POS-02', path: 'C:\\TechWash\\POS-02' },
         'counter-3': { code: 'TW-POS-03', folder: 'POS-03', path: 'C:\\TechWash\\POS-03' },
@@ -519,12 +520,17 @@ export const localDbService = {
       const dirHandle = await this.getDirectoryHandle();
       if (dirHandle) {
         notify('Mirroring business records to C:\\TechWash on disk...');
+        const adminFolder = await dirHandle.getDirectoryHandle('Admin', { create: true });
+        const adminData = await adminFolder.getDirectoryHandle('Data', { create: true });
         const pos01 = await dirHandle.getDirectoryHandle('POS-01', { create: true });
-        const dataHandle = await pos01.getDirectoryHandle('Data', { create: true });
-        await this._writeJsonFile(dataHandle, 'orders.json', allOrders);
-        await this._writeJsonFile(dataHandle, 'customers.json', customerList);
-        await this._writeJsonFile(dataHandle, 'dues.json', dueList);
-        await this._writeJsonFile(dataHandle, 'payments.json', paymentList);
+        const pos01Data = await pos01.getDirectoryHandle('Data', { create: true });
+
+        for (const dataHandle of [adminData, pos01Data]) {
+          await this._writeJsonFile(dataHandle, 'orders.json', allOrders);
+          await this._writeJsonFile(dataHandle, 'customers.json', customerList);
+          await this._writeJsonFile(dataHandle, 'dues.json', dueList);
+          await this._writeJsonFile(dataHandle, 'payments.json', paymentList);
+        }
       }
     } catch (diskErr) {
       console.warn('Physical disk sync notice:', diskErr);
@@ -620,8 +626,8 @@ export const localDbService = {
         techWashHandle = await rootHandle.getDirectoryHandle('TechWash', { create: true });
       }
 
-      // Automatically create subfolders for all 3 POS terminals:
-      const terminals = ['POS-01', 'POS-02', 'POS-03'];
+      // Automatically create subfolders for Admin and all 3 POS terminals:
+      const terminals = ['Admin', 'POS-01', 'POS-02', 'POS-03'];
       const handlesMap = {};
 
       for (const tName of terminals) {
@@ -640,13 +646,18 @@ export const localDbService = {
         this.getLocalPayments(),
       ]);
 
-      // Write data files into POS-01/Data/
-      const pos01DataHandle = handlesMap['POS-01'].dataHandle;
+      // Write data files into Admin/Data/ and POS-01/Data/
+      const targetDataHandles = [
+        handlesMap['Admin']?.dataHandle,
+        handlesMap['POS-01']?.dataHandle,
+      ].filter(Boolean);
 
-      await this._writeJsonFile(pos01DataHandle, 'orders.json', orders);
-      await this._writeJsonFile(pos01DataHandle, 'customers.json', customers);
-      await this._writeJsonFile(pos01DataHandle, 'dues.json', dues);
-      await this._writeJsonFile(pos01DataHandle, 'payments.json', payments);
+      for (const dHandle of targetDataHandles) {
+        await this._writeJsonFile(dHandle, 'orders.json', orders);
+        await this._writeJsonFile(dHandle, 'customers.json', customers);
+        await this._writeJsonFile(dHandle, 'dues.json', dues);
+        await this._writeJsonFile(dHandle, 'payments.json', payments);
+      }
 
       // Also write root storage marker
       await this._writeJsonFile(techWashHandle, 'techwash-storage-info.json', {
@@ -656,7 +667,7 @@ export const localDbService = {
         customerCount: customers.length,
         dueCount: dues.length,
         paymentCount: payments.length,
-        terminals: ['POS-01', 'POS-02', 'POS-03'],
+        terminals: ['Admin', 'POS-01', 'POS-02', 'POS-03'],
       });
 
       _activeDirectoryHandle = techWashHandle;
@@ -705,25 +716,59 @@ export const localDbService = {
   /**
    * Sync an individual order to physical storage if connected
    */
-  async writeOrderToPhysicalStorage(order) {
+  async writeOrderToPhysicalStorage(order, targetFolder = 'Admin') {
     if (!order) return;
     try {
       const handle = await this.getDirectoryHandle();
       if (handle) {
-        const pos01 = await handle.getDirectoryHandle('POS-01', { create: true });
-        const dataHandle = await pos01.getDirectoryHandle('Data', { create: true });
+        const foldersToUpdate = new Set(['Admin']);
+        if (targetFolder) foldersToUpdate.add(targetFolder);
+        if (order.terminalId === 'counter-1' || !order.terminalId) {
+          foldersToUpdate.add('POS-01');
+        } else if (order.terminalId === 'counter-2') {
+          foldersToUpdate.add('POS-02');
+        } else if (order.terminalId === 'counter-3') {
+          foldersToUpdate.add('POS-03');
+        }
 
-        // Update orders.json
         const allOrders = await this.getLocalOrders();
-        await this._writeJsonFile(dataHandle, 'orders.json', allOrders);
-
-        // Also write daily date file YYYY-MM-DD.json
         const dateKey = (order.createdAt || new Date().toISOString()).slice(0, 10);
         const dayOrders = allOrders.filter(o => (o.createdAt || '').slice(0, 10) === dateKey);
-        await this._writeJsonFile(dataHandle, `${dateKey}.json`, dayOrders);
+
+        for (const fName of foldersToUpdate) {
+          try {
+            const fHandle = await handle.getDirectoryHandle(fName, { create: true });
+            const dataHandle = await fHandle.getDirectoryHandle('Data', { create: true });
+            await this._writeJsonFile(dataHandle, 'orders.json', allOrders);
+            await this._writeJsonFile(dataHandle, `${dateKey}.json`, dayOrders);
+          } catch (e) {}
+        }
       }
     } catch (e) {
       console.warn('writeOrderToPhysicalStorage notice:', e);
+    }
+  },
+
+  /**
+   * Remove an individual order from physical storage files if connected
+   */
+  async removeOrderFromPhysicalStorage(orderId, targetFolder = 'Admin') {
+    if (!orderId) return;
+    try {
+      const handle = await this.getDirectoryHandle();
+      if (handle) {
+        const allOrders = await this.getLocalOrders();
+        const foldersToUpdate = ['Admin', 'POS-01', 'POS-02', 'POS-03'];
+        for (const fName of foldersToUpdate) {
+          try {
+            const fHandle = await handle.getDirectoryHandle(fName, { create: false });
+            const dataHandle = await fHandle.getDirectoryHandle('Data', { create: false });
+            await this._writeJsonFile(dataHandle, 'orders.json', allOrders);
+          } catch (e) {}
+        }
+      }
+    } catch (e) {
+      console.warn('removeOrderFromPhysicalStorage notice:', e);
     }
   },
 
@@ -750,6 +795,13 @@ if not exist "C:\\TechWash" (
     echo [OK] Created C:\\TechWash
 ) else (
     echo [OK] C:\\TechWash already exists
+)
+
+if not exist "C:\\TechWash\\Admin\\Data" (
+    mkdir "C:\\TechWash\\Admin\\Data"
+    mkdir "C:\\TechWash\\Admin\\Invoices"
+    mkdir "C:\\TechWash\\Admin\\Exports"
+    echo [OK] Created C:\\TechWash\\Admin (Order Management - Admin Portal)
 )
 
 if not exist "C:\\TechWash\\POS-01\\Data" (

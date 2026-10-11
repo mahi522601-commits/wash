@@ -13,6 +13,12 @@ import ExcelJS from 'exceljs';
 
 // --- TERMINAL CONFIGURATION & MAPPING ---
 const TERMINAL_PRESETS = {
+  'admin': {
+    terminalId: 'admin',
+    terminalCode: 'TW-ADMIN-01',
+    branch: 'Admin Command Center',
+    folderName: 'Admin',
+  },
   'counter-1': {
     terminalId: 'counter-1',
     terminalCode: 'TW-POS-01',
@@ -115,6 +121,9 @@ function extractLocalDateKey(payload = {}) {
 // --- RESOLVE TERMINAL PRESET HELPER ---
 function resolveTerminalPreset(terminalIdInput) {
   const tId = String(terminalIdInput || '').toLowerCase().trim();
+  if (tId === 'admin' || tId.includes('admin')) {
+    return TERMINAL_PRESETS['admin'];
+  }
   if (tId === 'counter-2' || tId.includes('pos-02') || tId.includes('02') || tId.includes('tolichowki')) {
     return TERMINAL_PRESETS['counter-2'];
   }
@@ -561,22 +570,26 @@ const server = http.createServer(async (req, res) => {
         ensureDirectories();
         const payload = JSON.parse(bodyText || '{}');
         const pos01DataDir = path.join(ROOT_BASE, 'POS-01', 'Data');
-        if (!fs.existsSync(pos01DataDir)) {
-          fs.mkdirSync(pos01DataDir, { recursive: true });
-        }
+        const adminDataDir = path.join(ROOT_BASE, 'Admin', 'Data');
+        if (!fs.existsSync(pos01DataDir)) fs.mkdirSync(pos01DataDir, { recursive: true });
+        if (!fs.existsSync(adminDataDir)) fs.mkdirSync(adminDataDir, { recursive: true });
 
-        if (Array.isArray(payload.orders) && payload.orders.length > 0) {
-          fs.writeFileSync(path.join(pos01DataDir, 'orders.json'), JSON.stringify(payload.orders, null, 2));
-        }
-        if (Array.isArray(payload.customers) && payload.customers.length > 0) {
-          fs.writeFileSync(path.join(pos01DataDir, 'customers.json'), JSON.stringify(payload.customers, null, 2));
-        }
-        if (Array.isArray(payload.dues) && payload.dues.length > 0) {
-          fs.writeFileSync(path.join(pos01DataDir, 'dues.json'), JSON.stringify(payload.dues, null, 2));
-        }
-        if (Array.isArray(payload.payments) && payload.payments.length > 0) {
-          fs.writeFileSync(path.join(pos01DataDir, 'payments.json'), JSON.stringify(payload.payments, null, 2));
-        }
+        const targetDataDirs = [adminDataDir, pos01DataDir];
+
+        targetDataDirs.forEach(dir => {
+          if (Array.isArray(payload.orders) && payload.orders.length > 0) {
+            fs.writeFileSync(path.join(dir, 'orders.json'), JSON.stringify(payload.orders, null, 2));
+          }
+          if (Array.isArray(payload.customers) && payload.customers.length > 0) {
+            fs.writeFileSync(path.join(dir, 'customers.json'), JSON.stringify(payload.customers, null, 2));
+          }
+          if (Array.isArray(payload.dues) && payload.dues.length > 0) {
+            fs.writeFileSync(path.join(dir, 'dues.json'), JSON.stringify(payload.dues, null, 2));
+          }
+          if (Array.isArray(payload.payments) && payload.payments.length > 0) {
+            fs.writeFileSync(path.join(dir, 'payments.json'), JSON.stringify(payload.payments, null, 2));
+          }
+        });
 
         res.writeHead(200, { 'Content-Type': 'application/json' });
         return res.end(JSON.stringify({

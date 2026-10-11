@@ -308,6 +308,11 @@ class PosIndexedDB {
     return this.saveOrder(updated);
   }
 
+  async deleteOrder(localId) {
+    if (!localId) return false;
+    return this.deleteItem('orders', localId);
+  }
+
   // --- CUSTOMERS STORE METHODS ---
 
   async saveCustomer(customer) {
