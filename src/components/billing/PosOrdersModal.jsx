@@ -32,12 +32,15 @@ import {
   LayoutList,
   LayoutGrid,
   Calendar,
+  ChevronLeft,
   DollarSign,
   Wallet,
   Edit3,
   Zap,
-  Sliders
+  Sliders,
+  FileText
 } from 'lucide-react';
+import { generateInvoicePDFBlob } from '../../services/pdfInvoiceGenerator';
 
 export const PosOrdersModal = ({
   isOpen,
@@ -56,6 +59,10 @@ export const PosOrdersModal = ({
   const [paymentFilter, setPaymentFilter] = useState('ALL'); // 'ALL' | 'UNPAID' | 'PAID'
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState('list'); // 'list' | 'cards'
+
+  // Calendar / Date Filter State (defaults to today's date)
+  const [selectedDate, setSelectedDate] = useState(() => normalizeDateString(new Date()));
+  const [dateFilterActive, setDateFilterActive] = useState(true);
 
   // Selected Order for Receipt / Quick Action
   const [receiptOrder, setReceiptOrder] = useState(null);
@@ -104,16 +111,129 @@ export const PosOrdersModal = ({
     }
   }, [isOpen, loadOrders]);
 
+  // Date step helper (navigates day by day without timezone offset distortion)
+  const handleStepDate = (days) => {
+    try {
+      const parts = selectedDate.split('-');
+      const curr = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+      curr.setDate(curr.getDate() + days);
+      const y = curr.getFullYear();
+      const m = String(curr.getMonth() + 1).padStart(2, '0');
+      const d = String(curr.getDate()).padStart(2, '0');
+      setSelectedDate(`${y}-${m}-${d}`);
+      setDateFilterActive(true);
+    } catch (err) {
+      console.warn('Date step error:', err);
+    }
+  };
+
+  const handleSetToday = () => {
+    setSelectedDate(normalizeDateString(new Date()));
+    setDateFilterActive(true);
+  };
+
+  const handleSetYesterday = () => {
+    const yest = new Date();
+    yest.setDate(yest.getDate() - 1);
+    setSelectedDate(normalizeDateString(yest));
+    setDateFilterActive(true);
+  };
+
+  const dateDisplayLabel = useMemo(() => {
+    if (!selectedDate) return 'Today';
+    const todayStr = normalizeDateString(new Date());
+    const yest = new Date();
+    yest.setDate(yest.getDate() - 1);
+    const yesterdayStr = normalizeDateString(yest);
+
+    const parts = selectedDate.split('-');
+    if (parts.length === 3) {
+      const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+      const formatted = d.toLocaleDateString('en-IN', {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric'
+      });
+      if (selectedDate === todayStr) return `Today • ${formatted}`;
+      if (selectedDate === yesterdayStr) return `Yesterday • ${formatted}`;
+      return formatted;
+    }
+    return selectedDate;
+  }, [selectedDate]);
+
+  // Robust date matcher for order records across all schema formats
+  const matchesOrderDate = useCallback((order, targetDate) => {
+    if (!order || !targetDate) return true;
+    const target = String(targetDate).trim();
+
+    if (order.dateKey && String(order.dateKey).trim() === target) return true;
+    if (order.pickupDate && normalizeDateString(order.pickupDate) === target) return true;
+    if (order.schedule?.pickupDate && normalizeDateString(order.schedule.pickupDate) === target) return true;
+    if (order.createdAt) {
+      try {
+        if (normalizeDateString(order.createdAt) === target) return true;
+      } catch (e) {}
+    }
+    if (order.orderDate && normalizeDateString(order.orderDate) === target) return true;
+    if (order.timestamp) {
+      try {
+        if (normalizeDateString(order.timestamp) === target) return true;
+      } catch (e) {}
+    }
+    return false;
+  }, []);
+
   // Branch filter using standardized getOrderBranchKey
   const branchFilteredOrders = useMemo(() => {
     if (branchFilter === 'ALL' || !activeTerminalId || activeTerminalId === 'ALL') return orders;
     return orders.filter(o => getOrderBranchKey(o) === activeTerminalId);
   }, [orders, branchFilter, activeTerminalId]);
 
-  // Stage Categories
+  // Filter orders by date if dateFilterActive is enabled
+  const dateFilteredOrders = useMemo(() => {
+    if (!dateFilterActive || !selectedDate) return branchFilteredOrders;
+    return branchFilteredOrders.filter(o => matchesOrderDate(o, selectedDate));
+  }, [branchFilteredOrders, dateFilterActive, selectedDate, matchesOrderDate]);
+
+  // Day Financial & Metrics Summary
+  const daySummaryMetrics = useMemo(() => {
+    let totalBilled = 0;
+    let totalReceived = 0;
+    let totalBalance = 0;
+    let fullyPaidCount = 0;
+    let unpaidCount = 0;
+
+    dateFilteredOrders.forEach(o => {
+      const total = Number(o.totalAmount || o.finalPrice || o.priceSnapshot?.finalTotal || 0);
+      const received = Number(o.receivedAmount !== undefined ? o.receivedAmount : (o.paymentStatus === 'PAID' ? total : 0));
+      const balance = Number(o.balanceAmount !== undefined ? o.balanceAmount : Math.max(0, total - received));
+
+      totalBilled += total;
+      totalReceived += received;
+      totalBalance += balance;
+
+      if (balance <= 0 && total > 0) {
+        fullyPaidCount++;
+      } else if (balance > 0) {
+        unpaidCount++;
+      }
+    });
+
+    return {
+      count: dateFilteredOrders.length,
+      totalBilled,
+      totalReceived,
+      totalBalance,
+      fullyPaidCount,
+      unpaidCount
+    };
+  }, [dateFilteredOrders]);
+
+  // Stage Categories (calculated from dateFilteredOrders)
   const stageGroups = useMemo(() => {
     const counts = {
-      ALL: branchFilteredOrders.length,
+      ALL: dateFilteredOrders.length,
       INTAKE: 0,
       PROCESSING: 0,
       READY: 0,
@@ -123,7 +243,7 @@ export const PosOrdersModal = ({
       UNPAID: 0
     };
 
-    branchFilteredOrders.forEach(o => {
+    dateFilteredOrders.forEach(o => {
       const stage = o.customerStage || o.status || 'INSPECTION';
       if (stage === 'DELIVERED') counts.DELIVERED++;
       else if (stage === 'CANCELLED') counts.CANCELLED++;
@@ -139,11 +259,11 @@ export const PosOrdersModal = ({
     });
 
     return counts;
-  }, [branchFilteredOrders]);
+  }, [dateFilteredOrders]);
 
   // Filtered Orders List
   const filteredOrders = useMemo(() => {
-    return branchFilteredOrders.filter(o => {
+    return dateFilteredOrders.filter(o => {
       const stage = o.customerStage || o.status || 'INSPECTION';
       const total = Number(o.totalAmount || o.finalPrice || o.priceSnapshot?.finalTotal || 0);
       const received = Number(o.receivedAmount !== undefined ? o.receivedAmount : (o.paymentStatus === 'PAID' ? total : 0));
@@ -176,7 +296,30 @@ export const PosOrdersModal = ({
 
       return true;
     });
-  }, [branchFilteredOrders, stageFilter, paymentFilter, searchQuery]);
+  }, [dateFilteredOrders, stageFilter, paymentFilter, searchQuery]);
+
+  // 1-Page Official Tax Invoice PDF Viewer
+  const handleOpenTaxInvoicePdf = (order) => {
+    if (!order) return;
+    try {
+      const blob = generateInvoicePDFBlob(order);
+      const url = URL.createObjectURL(blob);
+      const win = window.open(url, '_blank');
+      if (!win) {
+        // Fallback if browser pop-up blocked
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `TechWash_Invoice_${order.orderNumber || order.id || 'TW'}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        info('Invoice Downloaded', 'PDF invoice downloaded successfully.');
+      }
+    } catch (err) {
+      console.error('Failed to generate PDF invoice:', err);
+      error('PDF Error', 'Could not generate official 1-page tax invoice.');
+    }
+  };
 
   // Status Management Modal State
   const [statusModalOrder, setStatusModalOrder] = useState(null);
@@ -404,6 +547,153 @@ export const PosOrdersModal = ({
             >
               <X className="w-5 h-5" />
             </button>
+          </div>
+        </div>
+
+        {/* ── CALENDAR & DATE SELECTION BAR ── */}
+        <div className="px-4 sm:px-5 py-2.5 bg-slate-900 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2.5 shrink-0">
+          {/* Date Navigation Controls */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center rounded-xl bg-slate-950 p-1 border border-slate-800 shadow-inner">
+              <button
+                type="button"
+                onClick={() => handleStepDate(-1)}
+                className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition cursor-pointer"
+                title="Previous Day"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSetToday}
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                  dateFilterActive && selectedDate === normalizeDateString(new Date())
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Calendar className="w-3.5 h-3.5" />
+                <span>Today</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSetYesterday}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                  dateFilterActive && selectedDate === (() => { const y = new Date(); y.setDate(y.getDate() - 1); return normalizeDateString(y); })()
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Yesterday
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleStepDate(1)}
+                className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition cursor-pointer"
+                title="Next Day"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Native Date Picker */}
+            <div className="flex items-center gap-1.5 bg-slate-950 px-2.5 py-1 rounded-xl border border-slate-800">
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => {
+                  if (e.target.value) {
+                    setSelectedDate(e.target.value);
+                    setDateFilterActive(true);
+                  }
+                }}
+                className="bg-transparent text-white font-mono text-xs outline-none cursor-pointer [color-scheme:dark]"
+              />
+            </div>
+
+            {/* Filter Mode Toggle: Active Day vs All Dates */}
+            <button
+              type="button"
+              onClick={() => setDateFilterActive(prev => !prev)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition border cursor-pointer flex items-center gap-1.5 ${
+                dateFilterActive
+                  ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40'
+                  : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'
+              }`}
+              title="Toggle single day view vs all dates history"
+            >
+              <span>{dateFilterActive ? '📅 Filtered to Day' : '🌐 All Dates History'}</span>
+            </button>
+          </div>
+
+          {/* Active Date Label Pill */}
+          <div className="flex items-center gap-2">
+            <div className="px-3 py-1 rounded-xl bg-indigo-950/60 border border-indigo-800/60 text-indigo-300 text-xs font-bold font-mono flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />
+              <span>{dateDisplayLabel}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* ── DAY FINANCIAL & BILLS SUMMARY BANNER ── */}
+        <div className="px-4 sm:px-5 py-2 bg-slate-950/70 border-b border-slate-800 grid grid-cols-2 sm:grid-cols-4 gap-2.5 shrink-0">
+          {/* Total Bills */}
+          <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+            <div>
+              <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">Total Bills</span>
+              <span className="text-base font-black text-white font-mono">{daySummaryMetrics.count}</span>
+            </div>
+            <div className="w-8 h-8 rounded-lg bg-indigo-500/15 text-indigo-400 flex items-center justify-center font-bold text-xs">
+              🧾
+            </div>
+          </div>
+
+          {/* Gross Billed */}
+          <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+            <div>
+              <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">Gross Billed</span>
+              <span className="text-base font-black text-amber-300 font-mono">₹{daySummaryMetrics.totalBilled}</span>
+            </div>
+            <div className="w-8 h-8 rounded-lg bg-amber-500/15 text-amber-400 flex items-center justify-center font-bold text-xs">
+              💰
+            </div>
+          </div>
+
+          {/* Collected Inflow */}
+          <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+            <div>
+              <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">Collected Inflow</span>
+              <span className="text-base font-black text-emerald-400 font-mono">₹{daySummaryMetrics.totalReceived}</span>
+            </div>
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/15 text-emerald-400 flex items-center justify-center font-bold text-xs">
+              💵
+            </div>
+          </div>
+
+          {/* Pending Dues */}
+          <div className={`p-2.5 rounded-xl border flex items-center justify-between ${
+            daySummaryMetrics.totalBalance > 0 
+              ? 'bg-rose-950/30 border-rose-800/60' 
+              : 'bg-slate-900 border-slate-800'
+          }`}>
+            <div>
+              <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">
+                Pending Dues {daySummaryMetrics.unpaidCount > 0 && `(${daySummaryMetrics.unpaidCount})`}
+              </span>
+              <span className={`text-base font-black font-mono ${
+                daySummaryMetrics.totalBalance > 0 ? 'text-rose-400' : 'text-slate-400'
+              }`}>
+                ₹{daySummaryMetrics.totalBalance}
+              </span>
+            </div>
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${
+              daySummaryMetrics.totalBalance > 0 ? 'bg-rose-500/20 text-rose-300' : 'bg-slate-800 text-slate-500'
+            }`}>
+              ⚠️
+            </div>
           </div>
         </div>
 
@@ -649,6 +939,9 @@ export const PosOrdersModal = ({
                               Slip: {order.manualBillNumber}
                             </div>
                           )}
+                          <div className="text-[10px] text-slate-400 font-mono">
+                            {formatDate(order.createdAt || order.pickupDate || order.dateKey)}
+                          </div>
                           {order.terminalCode && (
                             <span className="inline-block mt-0.5 px-1.5 py-0.2 rounded bg-orange-500/20 text-orange-300 text-[9px] font-bold">
                               {order.terminalCode}
@@ -750,12 +1043,23 @@ export const PosOrdersModal = ({
                               </button>
                             )}
 
+                            {/* Official 1-Page PDF Tax Invoice */}
+                            <button
+                              type="button"
+                              onClick={() => handleOpenTaxInvoicePdf(order)}
+                              className="px-2 py-1 rounded-lg bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/40 text-orange-300 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                              title="View & Print Official 1-Page PDF Tax Invoice (with Logo & POS Details)"
+                            >
+                              <FileText className="w-3 h-3 text-orange-400" />
+                              <span>PDF</span>
+                            </button>
+
                             {/* Print Bill / Receipt */}
                             <button
                               type="button"
                               onClick={() => setReceiptOrder(order)}
                               className="p-1.5 rounded-lg bg-purple-500/15 hover:bg-purple-500/25 text-purple-300 transition cursor-pointer"
-                              title="Print Tax Invoice / Bill"
+                              title="Print Thermal Slip / Receipt"
                             >
                               <Printer className="w-3.5 h-3.5" />
                             </button>
@@ -823,6 +1127,9 @@ export const PosOrdersModal = ({
                           </div>
                           <div className="font-bold text-slate-200 text-sm mt-0.5">
                             {order.customerName || order.customer?.name || 'Customer'}
+                          </div>
+                          <div className="text-[10px] text-slate-400 font-mono">
+                            {formatDate(order.createdAt || order.pickupDate || order.dateKey)}
                           </div>
                         </div>
 
@@ -901,11 +1208,22 @@ export const PosOrdersModal = ({
                         </button>
                       )}
 
+                      {/* Official 1-Page PDF Tax Invoice */}
+                      <button
+                        type="button"
+                        onClick={() => handleOpenTaxInvoicePdf(order)}
+                        className="p-1.5 px-2 rounded-xl bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/40 text-orange-300 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                        title="View Official 1-Page PDF Tax Invoice (with Logo & POS Details)"
+                      >
+                        <FileText className="w-3.5 h-3.5 text-orange-400" />
+                        <span>PDF</span>
+                      </button>
+
                       <button
                         type="button"
                         onClick={() => setReceiptOrder(order)}
                         className="p-1.5 px-2.5 rounded-xl bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/30 text-purple-300 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
-                        title="Print Invoice"
+                        title="Print Thermal Slip / Receipt"
                       >
                         <Printer className="w-3.5 h-3.5" />
                         <span>Bill</span>

@@ -26,6 +26,7 @@ import { PosQuickNavButtons } from '../../components/billing/PosQuickNavButtons'
 import { PosOrdersModal } from '../../components/billing/PosOrdersModal';
 import { PosTasksModal } from '../../components/billing/PosTasksModal';
 import { PosBalanceDueModal } from '../../components/billing/PosBalanceDueModal';
+import { PosNotificationCenter } from '../../components/billing/PosNotificationCenter';
 import { 
   pricingService, 
   INITIAL_PRICING_CONFIG,
@@ -1463,6 +1464,15 @@ export const BillingMachinePage = () => {
 
             {/* Right: Shift Stats & Counter Actions */}
             <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+              {/* Advanced Real-Time POS Notification Center with Audio Chime & Push */}
+              <PosNotificationCenter
+                terminal={terminal}
+                activeTerminalId={activeTerminalId}
+                onOpenOrder={() => openModalWithUrl('orders')}
+                onOpenReceipt={(order) => setReceiptOrder(order)}
+                onOpenCollect={() => openModalWithUrl('balances')}
+              />
+
               {/* Direct Quick-Access to Orders, Tasks & Balances with Live Notification Numbering */}
               <PosQuickNavButtons 
                 branchId={activeTerminalId}
