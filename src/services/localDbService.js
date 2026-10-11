@@ -5,6 +5,9 @@
  */
 
 import { posIndexedDB } from './posIndexedDB.js';
+import { posBridgeService } from './posBridgeService.js';
+
+let _activeDirectoryHandle = null;
 
 export const localDbService = {
   /**
@@ -236,6 +239,12 @@ export const localDbService = {
       ]);
     } catch (e) {}
 
+    let physicalConnected = false;
+    try {
+      const isConnected = await posIndexedDB.getTerminalSetting('physical_directory_connected');
+      physicalConnected = Boolean(isConnected);
+    } catch (e) {}
+
     return {
       isPersisted,
       usage,
@@ -245,6 +254,8 @@ export const localDbService = {
       paymentCount,
       dueCount,
       settingsCount,
+      physicalConnected,
+      fileSystemSupported: typeof window !== 'undefined' && 'showDirectoryPicker' in window,
       storageRoot: 'C:\\TechWash',
       databaseName: 'TechWashPOS',
       terminals: {
@@ -503,6 +514,32 @@ export const localDbService = {
       settingsToSave.length > 0 ? posIndexedDB.saveBulkItems('terminalSettings', settingsToSave, 'id') : Promise.resolve(),
     ]);
 
+    // 7. Physical Disk / Local Bridge Mirroring
+    try {
+      const dirHandle = await this.getDirectoryHandle();
+      if (dirHandle) {
+        notify('Mirroring business records to C:\\TechWash on disk...');
+        const pos01 = await dirHandle.getDirectoryHandle('POS-01', { create: true });
+        const dataHandle = await pos01.getDirectoryHandle('Data', { create: true });
+        await this._writeJsonFile(dataHandle, 'orders.json', allOrders);
+        await this._writeJsonFile(dataHandle, 'customers.json', customerList);
+        await this._writeJsonFile(dataHandle, 'dues.json', dueList);
+        await this._writeJsonFile(dataHandle, 'payments.json', paymentList);
+      }
+    } catch (diskErr) {
+      console.warn('Physical disk sync notice:', diskErr);
+    }
+
+    // Mirror to Local Windows Bridge if active
+    try {
+      await posBridgeService.initStorage({
+        orders: allOrders,
+        customers: customerList,
+        dues: dueList,
+        payments: paymentList,
+      });
+    } catch (bridgeErr) {}
+
     const finalStats = await this.getStorageStats();
     notify(`Internal storage populated: ${finalStats.orderCount} Orders, ${finalStats.customerCount} Customers, ${finalStats.paymentCount} Payments.`);
 
@@ -521,7 +558,283 @@ export const localDbService = {
         settings: settingsToSave.length,
       }
     };
+  },
+
+  /**
+   * Check if browser supports File System Access API
+   */
+  isFileSystemAccessSupported() {
+    return typeof window !== 'undefined' && 'showDirectoryPicker' in window;
+  },
+
+  /**
+   * Retrieve active directory handle (memory or IndexedDB)
+   */
+  async getDirectoryHandle() {
+    if (_activeDirectoryHandle) {
+      try {
+        const perm = await _activeDirectoryHandle.queryPermission({ mode: 'readwrite' });
+        if (perm === 'granted') return _activeDirectoryHandle;
+      } catch (e) {}
+    }
+
+    try {
+      const stored = await posIndexedDB.getTerminalSetting('physical_directory_handle');
+      if (stored) {
+        try {
+          const perm = await stored.queryPermission({ mode: 'readwrite' });
+          if (perm === 'granted') {
+            _activeDirectoryHandle = stored;
+            return _activeDirectoryHandle;
+          }
+        } catch (permErr) {}
+      }
+    } catch (e) {}
+    return null;
+  },
+
+  /**
+   * Request physical storage folder selection via File System Access API
+   * and auto-creates C:\TechWash\POS-01\Data, Invoices, Exports etc.
+   */
+  async setupPhysicalDirectory(options = {}) {
+    if (!this.isFileSystemAccessSupported()) {
+      return { 
+        ok: false, 
+        error: 'File System Access API is not supported in this browser. Please use the 1-click Windows setup script instead.' 
+      };
+    }
+
+    try {
+      const rootHandle = await window.showDirectoryPicker({
+        id: 'techwash-storage-root',
+        mode: 'readwrite',
+        startIn: 'desktop',
+      });
+
+      // Target TechWash handle:
+      // If user selected or navigated to a folder named 'TechWash', use it directly.
+      // Otherwise, create/open a 'TechWash' subfolder inside the selected folder.
+      let techWashHandle = rootHandle;
+      if (rootHandle.name.toLowerCase() !== 'techwash') {
+        techWashHandle = await rootHandle.getDirectoryHandle('TechWash', { create: true });
+      }
+
+      // Automatically create subfolders for all 3 POS terminals:
+      const terminals = ['POS-01', 'POS-02', 'POS-03'];
+      const handlesMap = {};
+
+      for (const tName of terminals) {
+        const tHandle = await techWashHandle.getDirectoryHandle(tName, { create: true });
+        const dataHandle = await tHandle.getDirectoryHandle('Data', { create: true });
+        const invoicesHandle = await tHandle.getDirectoryHandle('Invoices', { create: true });
+        const exportsHandle = await tHandle.getDirectoryHandle('Exports', { create: true });
+        handlesMap[tName] = { tHandle, dataHandle, invoicesHandle, exportsHandle };
+      }
+
+      // Populate files from IndexedDB immediately:
+      const [orders, customers, dues, payments] = await Promise.all([
+        this.getLocalOrders(),
+        this.getLocalCustomers(),
+        this.getLocalDueBills(),
+        this.getLocalPayments(),
+      ]);
+
+      // Write data files into POS-01/Data/
+      const pos01DataHandle = handlesMap['POS-01'].dataHandle;
+
+      await this._writeJsonFile(pos01DataHandle, 'orders.json', orders);
+      await this._writeJsonFile(pos01DataHandle, 'customers.json', customers);
+      await this._writeJsonFile(pos01DataHandle, 'dues.json', dues);
+      await this._writeJsonFile(pos01DataHandle, 'payments.json', payments);
+
+      // Also write root storage marker
+      await this._writeJsonFile(techWashHandle, 'techwash-storage-info.json', {
+        name: 'Tech Wash Laundry Master Storage',
+        connectedAt: new Date().toISOString(),
+        orderCount: orders.length,
+        customerCount: customers.length,
+        dueCount: dues.length,
+        paymentCount: payments.length,
+        terminals: ['POS-01', 'POS-02', 'POS-03'],
+      });
+
+      _activeDirectoryHandle = techWashHandle;
+
+      // Save connection flags in IndexedDB
+      try {
+        await posIndexedDB.saveTerminalSetting('physical_directory_connected', true);
+        await posIndexedDB.saveTerminalSetting('physical_directory_handle', techWashHandle);
+      } catch (storageSaveErr) {
+        console.warn('Directory handle storage save notice (non-fatal):', storageSaveErr);
+      }
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('techwash-directory-connected', {
+          detail: { folderName: techWashHandle.name, orderCount: orders.length }
+        }));
+      }
+
+      return {
+        ok: true,
+        folderName: techWashHandle.name,
+        orderCount: orders.length,
+        customerCount: customers.length,
+      };
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        return { ok: false, aborted: true, error: 'Folder selection was cancelled.' };
+      }
+      return { ok: false, error: err.message };
+    }
+  },
+
+  async _writeJsonFile(dirHandle, fileName, data) {
+    try {
+      const fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
+      const writable = await fileHandle.createWritable();
+      await writable.write(JSON.stringify(data, null, 2));
+      await writable.close();
+      return true;
+    } catch (e) {
+      console.warn(`Error writing file ${fileName}:`, e);
+      return false;
+    }
+  },
+
+  /**
+   * Sync an individual order to physical storage if connected
+   */
+  async writeOrderToPhysicalStorage(order) {
+    if (!order) return;
+    try {
+      const handle = await this.getDirectoryHandle();
+      if (handle) {
+        const pos01 = await handle.getDirectoryHandle('POS-01', { create: true });
+        const dataHandle = await pos01.getDirectoryHandle('Data', { create: true });
+
+        // Update orders.json
+        const allOrders = await this.getLocalOrders();
+        await this._writeJsonFile(dataHandle, 'orders.json', allOrders);
+
+        // Also write daily date file YYYY-MM-DD.json
+        const dateKey = (order.createdAt || new Date().toISOString()).slice(0, 10);
+        const dayOrders = allOrders.filter(o => (o.createdAt || '').slice(0, 10) === dateKey);
+        await this._writeJsonFile(dataHandle, `${dateKey}.json`, dayOrders);
+      }
+    } catch (e) {
+      console.warn('writeOrderToPhysicalStorage notice:', e);
+    }
+  },
+
+  /**
+   * Generate & download 1-click Windows setup batch script
+   */
+  downloadWindowsFolderSetupScript() {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return;
+
+    const batContent = `@echo off
+title Tech Wash Local Master Storage Auto-Setup
+color 0A
+cls
+echo ===================================================================
+echo     TECH WASH LAUNDRY SERVICES - INTERNAL STORAGE INITIALIZER
+echo ===================================================================
+echo Target Location: C:\\TechWash
+echo.
+echo Creating directories on this computer...
+echo.
+
+if not exist "C:\\TechWash" (
+    mkdir "C:\\TechWash"
+    echo [OK] Created C:\\TechWash
+) else (
+    echo [OK] C:\\TechWash already exists
+)
+
+if not exist "C:\\TechWash\\POS-01\\Data" (
+    mkdir "C:\\TechWash\\POS-01\\Data"
+    mkdir "C:\\TechWash\\POS-01\\Invoices"
+    mkdir "C:\\TechWash\\POS-01\\Exports"
+    echo [OK] Created C:\\TechWash\\POS-01 (Main Branch - Manikonda)
+)
+
+if not exist "C:\\TechWash\\POS-02\\Data" (
+    mkdir "C:\\TechWash\\POS-02\\Data"
+    mkdir "C:\\TechWash\\POS-02\\Invoices"
+    mkdir "C:\\TechWash\\POS-02\\Exports"
+    echo [OK] Created C:\\TechWash\\POS-02 (Branch 1 - Tolichowki)
+)
+
+if not exist "C:\\TechWash\\POS-03\\Data" (
+    mkdir "C:\\TechWash\\POS-03\\Data"
+    mkdir "C:\\TechWash\\POS-03\\Invoices"
+    mkdir "C:\\TechWash\\POS-03\\Exports"
+    echo [OK] Created C:\\TechWash\\POS-03 (Pick Up Point - Ambience)
+)
+
+echo.
+echo ===================================================================
+echo  [SUCCESS] All Tech Wash internal storage folders are ready!
+echo  Location: C:\\TechWash\\
+echo ===================================================================
+echo.
+echo Opening folder in Windows File Explorer...
+explorer C:\\TechWash
+echo.
+pause
+`;
+
+    const blob = new Blob([batContent], { type: 'application/x-bat' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'Create-TechWash-Folders.bat';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  },
+
+  /**
+   * Export all data files as JSON backup download
+   */
+  async exportAllDataAsJson() {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return;
+
+    const [orders, customers, dues, payments] = await Promise.all([
+      this.getLocalOrders(),
+      this.getLocalCustomers(),
+      this.getLocalDueBills(),
+      this.getLocalPayments(),
+    ]);
+
+    const backup = {
+      brand: 'Tech Wash Laundry Services',
+      exportedAt: new Date().toISOString(),
+      counts: {
+        orders: orders.length,
+        customers: customers.length,
+        dues: dues.length,
+        payments: payments.length,
+      },
+      orders,
+      customers,
+      dues,
+      payments,
+    };
+
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `TechWash-Data-Backup-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }
 };
 
 export default localDbService;
+

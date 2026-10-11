@@ -113,4 +113,30 @@ export const posBridgeService = {
       return { ok: false, orders: [], error: err.message };
     }
   },
+
+  /**
+   * Initialize local storage directory tree and files on disk via Local Windows Bridge
+   */
+  async initStorage(payload = {}) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+      const res = await fetch(`${BRIDGE_URL}/api/init-storage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      if (!res.ok) return { ok: false, status: res.status };
+      const data = await res.json();
+      return data;
+    } catch (err) {
+      return { ok: false, offline: true, error: err.message };
+    }
+  },
 };
+
+

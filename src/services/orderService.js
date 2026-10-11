@@ -453,6 +453,13 @@ export const orderService = {
       console.warn('Local bridge PDF/Excel write notice:', e);
     }
 
+    // STEP 3B: Write order directly to physical C:\TechWash storage if folder handle is connected
+    try {
+      await localDbService.writeOrderToPhysicalStorage(fullOrder);
+    } catch (e) {
+      console.warn('Physical storage order write notice:', e);
+    }
+
     // STEP 4: Save in local storage fallback cache & dispatch UI events
     try {
       let localOrders = [];

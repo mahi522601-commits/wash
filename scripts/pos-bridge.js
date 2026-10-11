@@ -70,6 +70,7 @@ function ensureDirectories() {
     const tRoot = path.join(ROOT_BASE, preset.folderName);
     const subDirs = [
       tRoot,
+      path.join(tRoot, 'Data'),
       path.join(tRoot, 'Invoices'),
       path.join(tRoot, 'Exports'),
     ];
@@ -546,6 +547,45 @@ const server = http.createServer(async (req, res) => {
           ok: false,
           error: err.message || 'Internal Bridge Error',
         }));
+      }
+    });
+  // --- INIT STORAGE ENDPOINT (Creates C:\TechWash folders & saves data files) ---
+  if (req.method === 'POST' && pathname === '/api/init-storage') {
+    let bodyText = '';
+    req.on('data', chunk => { bodyText += chunk; });
+    req.on('end', async () => {
+      try {
+        ensureDirectories();
+        const payload = JSON.parse(bodyText || '{}');
+        const pos01DataDir = path.join(ROOT_BASE, 'POS-01', 'Data');
+        if (!fs.existsSync(pos01DataDir)) {
+          fs.mkdirSync(pos01DataDir, { recursive: true });
+        }
+
+        if (Array.isArray(payload.orders) && payload.orders.length > 0) {
+          fs.writeFileSync(path.join(pos01DataDir, 'orders.json'), JSON.stringify(payload.orders, null, 2));
+        }
+        if (Array.isArray(payload.customers) && payload.customers.length > 0) {
+          fs.writeFileSync(path.join(pos01DataDir, 'customers.json'), JSON.stringify(payload.customers, null, 2));
+        }
+        if (Array.isArray(payload.dues) && payload.dues.length > 0) {
+          fs.writeFileSync(path.join(pos01DataDir, 'dues.json'), JSON.stringify(payload.dues, null, 2));
+        }
+        if (Array.isArray(payload.payments) && payload.payments.length > 0) {
+          fs.writeFileSync(path.join(pos01DataDir, 'payments.json'), JSON.stringify(payload.payments, null, 2));
+        }
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({
+          ok: true,
+          message: 'All storage directories and data files initialized in C:\\TechWash',
+          root: ROOT_BASE,
+          folder: pos01DataDir,
+        }));
+      } catch (err) {
+        console.error('Local Bridge init-storage error:', err);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({ ok: false, error: err.message }));
       }
     });
     return;
