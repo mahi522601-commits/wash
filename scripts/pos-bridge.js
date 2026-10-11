@@ -11,6 +11,7 @@ import path from 'node:path';
 import PDFDocument from 'pdfkit';
 import ExcelJS from 'exceljs';
 import JSZip from 'jszip';
+import { generateInvoicePDFUint8Array } from '../src/services/pdfInvoiceGenerator.js';
 
 // --- TERMINAL CONFIGURATION & MAPPING ---
 const TERMINAL_PRESETS = {
@@ -153,201 +154,13 @@ function getActualLogoPath() {
 
 // --- GENERATE CUSTOMER INVOICE PDF ---
 function generateInvoicePDFBuffer(order) {
-  return new Promise((resolve, reject) => {
-    try {
-      const doc = new PDFDocument({ size: 'A4', margin: 36 });
-      const buffers = [];
-      doc.on('data', chunk => buffers.push(chunk));
-      doc.on('end', () => resolve(Buffer.concat(buffers)));
-      doc.on('error', err => reject(err));
-
-      const primaryNavy = '#0f172a';
-      const brandBlue = '#2563eb';
-      const textColor = '#1e293b';
-      const mutedText = '#64748b';
-      const lightBg = '#f8fafc';
-      const borderGray = '#cbd5e1';
-
-      // 1. HEADER SECTION & BRAND LOGO
-      const logoPath = getActualLogoPath();
-      let headerY = 36;
-
-      if (logoPath) {
-        try {
-          doc.image(logoPath, 36, 36, { fit: [140, 50] });
-        } catch (e) {
-          doc.fontSize(18).font('Helvetica-Bold').fillColor(primaryNavy).text('TECH WASH', 36, 36);
-        }
-      } else {
-        doc.fontSize(18).font('Helvetica-Bold').fillColor(primaryNavy).text('TECH WASH', 36, 36);
-      }
-
-      // Business Info Block next to logo
-      doc.fontSize(12).font('Helvetica-Bold').fillColor(primaryNavy).text('TECH WASH LAUNDRY SERVICES', 190, 36);
-      doc.fontSize(8).font('Helvetica').fillColor(mutedText)
-        .text('Premium Eco Laundry, Hydrocarbon Dry Cleaning & 3D Steam Pressing', 190, 52)
-        .text('Plot 42, Manikonda Main Rd, Hyderabad | Support: +91 98765 43210 | www.techwash.in', 190, 64);
-
-      // Title & Invoice Meta Box (Right aligned)
-      doc.rect(400, 34, 159, 58).fillAndStroke('#eff6ff', '#bfdbfe');
-      doc.fillColor(brandBlue).fontSize(10).font('Helvetica-Bold').text('CUSTOMER TAX INVOICE', 405, 40, { width: 149, align: 'center' });
-
-      const rawInvNum = order.invoiceNumber || order.orderNumber || order.id || 'INV-00001';
-      const invNum = rawInvNum.toUpperCase().startsWith('INV-') ? rawInvNum : `INV-${rawInvNum}`;
-      doc.fontSize(8).font('Helvetica-Bold').fillColor(primaryNavy)
-        .text(`INV #: ${invNum}`, 405, 54, { width: 149, align: 'center' })
-        .text(`Order #: ${order.orderNumber || order.id}`, 405, 66, { width: 149, align: 'center' });
-
-      const dateObj = order.createdAt ? new Date(order.createdAt) : new Date();
-      const dateStr = dateObj.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-      const timeStr = dateObj.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
-      doc.fontSize(7.5).font('Helvetica').fillColor(mutedText)
-        .text(`${dateStr} | ${timeStr}`, 405, 78, { width: 149, align: 'center' });
-
-      let y = 104;
-
-      // 2. STORE BRANCH & CUSTOMER DETAILS CARDS
-      // Left Card: Customer Details
-      doc.rect(36, y, 256, 75).fillAndStroke(lightBg, borderGray);
-      doc.fillColor(primaryNavy).fontSize(8.5).font('Helvetica-Bold').text('CUSTOMER DETAILS', 46, y + 8);
-      
-      const custName = order.customerName || order.customer?.name || 'Valued Customer';
-      const custPhone = order.phone || order.customer?.phone || 'N/A';
-      const custId = order.customerId || (custPhone !== 'N/A' ? `cust-${custPhone}` : 'N/A');
-      const custAddr = (order.address || order.customer?.address || 'In-Store Walk-in Drop').slice(0, 50);
-
-      doc.fontSize(8).font('Helvetica').fillColor(textColor)
-        .text(`Name: `, 46, y + 22, { continued: true }).font('Helvetica-Bold').text(custName)
-        .font('Helvetica').text(`Mobile: `, 46, y + 34, { continued: true }).font('Helvetica-Bold').text(custPhone)
-        .font('Helvetica').text(`Customer ID: `, 46, y + 46, { continued: true }).font('Helvetica-Bold').text(custId)
-        .font('Helvetica').text(`Address: `, 46, y + 58, { continued: true }).text(custAddr);
-
-      // Right Card: Store & Terminal Info
-      doc.rect(303, y, 256, 75).fillAndStroke(lightBg, borderGray);
-      doc.fillColor(primaryNavy).fontSize(8.5).font('Helvetica-Bold').text('STORE & TERMINAL DETAILS', 313, y + 8);
-
-      const branchName = order.storeBranch || activePreset.branch;
-      const termCode = order.terminalCode || activePreset.terminalCode;
-      const termId = order.terminalId || activePreset.terminalId;
-      const cashier = order.cashierName || 'Cashier #1';
-
-      doc.fontSize(8).font('Helvetica').fillColor(textColor)
-        .text(`Branch: `, 313, y + 22, { continued: true }).font('Helvetica-Bold').text(branchName)
-        .font('Helvetica').text(`Terminal: `, 313, y + 34, { continued: true }).font('Helvetica-Bold').text(`${termCode} (${termId})`)
-        .font('Helvetica').text(`Cashier: `, 313, y + 46, { continued: true }).font('Helvetica-Bold').text(cashier)
-        .font('Helvetica').text(`Pickup/Delivery: `, 313, y + 58, { continued: true }).text(`${order.pickupDate || 'Today'} -> ${order.deliveryDate || 'Standard'}`);
-
-      y += 88;
-
-      // 3. ITEM SERVICE TABLE
-      // Table Header Bar
-      doc.rect(36, y, 523, 20).fill(primaryNavy);
-      doc.fillColor('#ffffff').fontSize(8).font('Helvetica-Bold');
-      doc.text('S.No', 42, y + 6);
-      doc.text('Service & Treatment', 75, y + 6);
-      doc.text('Garment / Description', 185, y + 6);
-      doc.text('Qty / Wt', 355, y + 6, { width: 55, align: 'right' });
-      doc.text('Rate', 420, y + 6, { width: 60, align: 'right' });
-      doc.text('Amount (₹)', 490, y + 6, { width: 62, align: 'right' });
-
-      y += 20;
-
-      const items = order.items || [];
-      if (items.length === 0) {
-        items.push({
-          name: order.serviceName || order.service || 'Laundry Service',
-          quantity: order.actualWeight || order.estimatedWeightKg || 1,
-          unitPrice: order.totalAmount || order.finalPrice || 0,
-          lineTotal: order.totalAmount || order.finalPrice || 0,
-        });
-      }
-
-      items.forEach((it, idx) => {
-        const bg = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
-        doc.rect(36, y, 523, 18).fillAndStroke(bg, '#f1f5f9');
-
-        const serviceTitle = (it.serviceName || order.serviceName || order.service || 'Laundry Care').slice(0, 22);
-        const desc = (it.name || it.subServiceName || 'Garment Item').slice(0, 32);
-        const qty = it.weight ? `${it.weight} Kg` : (it.quantity ? `${it.quantity} Pcs` : '1 Pcs');
-        const uPrice = Number(it.unitPrice !== undefined ? it.unitPrice : (it.price || 0));
-        const lTotal = Number(it.lineTotal !== undefined ? it.lineTotal : (uPrice * (Number(it.quantity) || 1)));
-
-        doc.fillColor(textColor).fontSize(7.5).font('Helvetica');
-        doc.text(String(idx + 1), 42, y + 5);
-        doc.text(serviceTitle, 75, y + 5);
-        doc.text(desc, 185, y + 5);
-        doc.text(qty, 355, y + 5, { width: 55, align: 'right' });
-        doc.text(`₹${uPrice.toFixed(2)}`, 420, y + 5, { width: 60, align: 'right' });
-        doc.font('Helvetica-Bold').text(`₹${lTotal.toFixed(2)}`, 490, y + 5, { width: 62, align: 'right' });
-        y += 18;
-      });
-
-      y += 12;
-
-      // 4. FINANCIAL SUMMARY & PAYMENT DETAILS BOXES
-      // Left Box: Payment Details
-      const total = Number(order.totalAmount || order.finalPrice || order.priceSnapshot?.finalTotal || 0);
-      const rec = Number(order.receivedAmount !== undefined ? order.receivedAmount : (order.paymentStatus === 'PAID' ? total : 0));
-      const bal = Number(order.balanceAmount !== undefined ? order.balanceAmount : Math.max(0, total - rec));
-      const payStatus = order.paymentStatus || (bal === 0 ? 'PAID' : (rec > 0 ? 'PARTIAL' : 'PENDING'));
-
-      doc.rect(36, y, 256, 75).fillAndStroke(lightBg, borderGray);
-      doc.fillColor(primaryNavy).fontSize(8.5).font('Helvetica-Bold').text('PAYMENT DETAILS', 46, y + 8);
-
-      const statusColor = payStatus === 'PAID' ? '#15803d' : (payStatus === 'PARTIAL' ? '#b45309' : '#b91c1c');
-      doc.fontSize(8).font('Helvetica').fillColor(textColor)
-        .text('Payment Status: ', 46, y + 24, { continued: true })
-        .font('Helvetica-Bold').fillColor(statusColor).text(payStatus)
-        .fillColor(textColor).font('Helvetica').text('Payment Method: ', 46, y + 38, { continued: true })
-        .font('Helvetica-Bold').text(order.paymentMethod || 'CASH')
-        .font('Helvetica').text('Payment Ref: ', 46, y + 52, { continued: true })
-        .text(order.paymentReference || order.transactionId || 'N/A');
-
-      // Right Box: Financial Summary
-      doc.rect(303, y, 256, 75).fillAndStroke('#f8fafc', borderGray);
-      doc.fillColor(textColor).fontSize(8);
-
-      const subtotal = Number(order.priceSnapshot?.itemsSubtotal || total);
-      const discount = Number(order.priceSnapshot?.discountAmount || order.discount || 0);
-
-      doc.font('Helvetica').text('Subtotal:', 313, y + 8);
-      doc.font('Helvetica').text(`₹${subtotal.toFixed(2)}`, 490, y + 8, { width: 60, align: 'right' });
-
-      if (discount > 0) {
-        doc.font('Helvetica').text('Discount:', 313, y + 20);
-        doc.font('Helvetica').fillColor('#b91c1c').text(`- ₹${discount.toFixed(2)}`, 490, y + 20, { width: 60, align: 'right' });
-      } else {
-        doc.font('Helvetica').text('Tax (GST):', 313, y + 20);
-        doc.font('Helvetica').text(`₹0.00`, 490, y + 20, { width: 60, align: 'right' });
-      }
-
-      doc.fillColor(primaryNavy).font('Helvetica-Bold').fontSize(9).text('GRAND TOTAL:', 313, y + 34);
-      doc.font('Helvetica-Bold').fontSize(9).text(`₹${total.toFixed(2)}`, 490, y + 34, { width: 60, align: 'right' });
-
-      doc.fillColor(textColor).font('Helvetica').fontSize(8).text('Amount Paid:', 313, y + 48);
-      doc.font('Helvetica-Bold').text(`₹${rec.toFixed(2)}`, 490, y + 48, { width: 60, align: 'right' });
-
-      doc.font('Helvetica-Bold').text('Balance Due:', 313, y + 60);
-      doc.fillColor(bal > 0 ? '#b91c1c' : '#15803d');
-      doc.font('Helvetica-Bold').text(`₹${bal.toFixed(2)}`, 490, y + 60, { width: 60, align: 'right' });
-
-      y += 88;
-
-      // 5. FOOTER & CARE NOTES
-      doc.rect(36, y, 523, 1).fill('#e2e8f0');
-      y += 8;
-
-      doc.fillColor(mutedText).fontSize(7.5).font('Helvetica');
-      doc.text('Garment Care Note: All items processed using 100% RO softened water, eco-friendly bio-detergents, and low-heat drying. Please verify item count upon delivery.', 36, y, { width: 523, align: 'center' });
-      y += 12;
-      doc.fillColor(primaryNavy).fontSize(8.5).font('Helvetica-Bold');
-      doc.text('Thank you for choosing Tech Wash Laundry Services!', 36, y, { width: 523, align: 'center' });
-
-      doc.end();
-    } catch (err) {
-      reject(err);
-    }
-  });
+  try {
+    const uint8 = generateInvoicePDFUint8Array(order);
+    return Buffer.from(uint8.buffer, uint8.byteOffset, uint8.byteLength);
+  } catch (err) {
+    console.error('generateInvoicePDFUint8Array error in bridge:', err);
+    throw err;
+  }
 }
 
 // --- UPDATE OR APPEND DAILY EXCEL FILE ---

@@ -1,16 +1,50 @@
 /**
  * Tech Wash Laundry Services — Client-Side Pure JavaScript PDF Tax Invoice Generator
  * Generates official, 100% compliant PDF 1.4 binary documents without server dependencies.
- * Produces standard vector A4 format (595.28 x 841.89 pt) compatible with all PDF viewers.
+ * Produces standard vector A4 format (595.28 x 841.89 pt) with crisp embedded logo.
  */
+
+import { TECHWASH_LOGO_JPEG_BASE64 } from './logoAssetBase64.js';
+
+let cachedLogoBytes = null;
+function getLogoJpegBytes() {
+  if (cachedLogoBytes) return cachedLogoBytes;
+  if (typeof Buffer !== 'undefined') {
+    cachedLogoBytes = new Uint8Array(Buffer.from(TECHWASH_LOGO_JPEG_BASE64, 'base64'));
+  } else if (typeof atob !== 'undefined') {
+    const binStr = atob(TECHWASH_LOGO_JPEG_BASE64);
+    const len = binStr.length;
+    const arr = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      arr[i] = binStr.charCodeAt(i);
+    }
+    cachedLogoBytes = arr;
+  }
+  return cachedLogoBytes;
+}
 
 function sanitizePdfText(str) {
   if (str === null || str === undefined) return '';
-  return String(str)
-    .replace(/[\\()]/g, '\\$&')
+  const s = String(str)
     .replace(/₹/g, 'Rs. ')
+    .replace(/[()]/g, ch => ch === '(' ? '[' : ']')
     .replace(/[^\x20-\x7E]/g, ' ')
     .trim();
+  return s;
+}
+
+function formatDateSafe(val) {
+  if (!val) return 'Today';
+  const d = new Date(val);
+  if (isNaN(d.getTime())) return sanitizePdfText(val);
+  return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function formatTimeSafe(val) {
+  if (!val) return '';
+  const d = new Date(val);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
 }
 
 /**
@@ -31,21 +65,25 @@ export function generateInvoicePDFBlob(order) {
 export function generateInvoicePDFUint8Array(order) {
   if (!order) order = {};
 
+  const logoBytes = getLogoJpegBytes();
+
   const bNum = sanitizePdfText(order.orderNumber || order.id || 'TW-00001');
   const rawInv = order.invoiceNumber || bNum;
   const invNum = sanitizePdfText(rawInv.toUpperCase().startsWith('INV-') ? rawInv : `INV-${rawInv}`);
 
   const cName = sanitizePdfText(order.customerName || order.customer?.name || 'Valued Customer');
   const cPhone = sanitizePdfText(order.phone || order.customer?.phone || 'N/A');
-  const cAddr = sanitizePdfText((order.address || order.customer?.address || 'In-Store Counter Drop-off').slice(0, 48));
+  const cAddr = sanitizePdfText((order.address || order.customer?.address || 'In-Store Counter Drop-off').slice(0, 52));
 
   const branch = sanitizePdfText(order.storeBranch || 'Tech Wash Main Branch — Manikonda');
-  const terminal = sanitizePdfText(order.terminalCode || order.terminalId || 'POS-01');
-  const cashier = sanitizePdfText(order.cashierName || 'Counter Cashier');
+  const terminal = sanitizePdfText(order.terminalCode || order.terminalId || 'TW-POS-01');
+  const cashier = sanitizePdfText(order.cashierName || 'Cashier #1');
 
-  const d = new Date(order.createdAt || Date.now());
-  const dateStr = !isNaN(d.getTime()) ? d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Today';
-  const timeStr = !isNaN(d.getTime()) ? d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }) : '';
+  const dateStr = formatDateSafe(order.createdAt || Date.now());
+  const timeStr = formatTimeSafe(order.createdAt || Date.now());
+
+  const pDate = formatDateSafe(order.pickupDate || order.schedule?.pickupDate || order.createdAt);
+  const dDate = formatDateSafe(order.deliveryDate || order.schedule?.deliveryDate || (Date.now() + 86400000 * 2));
 
   // Order Financial Calculations
   let total = Number(order.totalAmount || order.finalPrice || order.priceSnapshot?.finalTotal || 0);
@@ -67,18 +105,19 @@ export function generateInvoicePDFUint8Array(order) {
   if (order.paymentStatus === 'PAID') bal = 0;
 
   const isPaid = bal === 0 || (order.paymentStatus === 'PAID' && bal <= 0);
-  const payStatus = isPaid ? 'PAID' : (rec > 0 ? 'PARTIAL' : 'DUE');
+  const payStatus = isPaid ? 'FULLY PAID' : (rec > 0 ? 'PARTIAL PAYMENT' : 'PAYMENT DUE');
   const payMethod = sanitizePdfText(String(order.paymentMethod || 'CASH').toUpperCase());
 
   // Extract / Normalize Line Items
   const items = [];
   if (Array.isArray(order.items) && order.items.length > 0) {
     order.items.forEach(it => {
-      const name = sanitizePdfText(it.name || it.serviceTitle || it.subServiceName || 'Garment Care');
+      const sTitle = sanitizePdfText(it.serviceName || order.serviceName || order.service || 'Laundry Care');
+      const name = sanitizePdfText(it.name || it.subServiceName || 'Garment Item');
       const qty = it.weight ? `${it.weight} Kg` : `${it.quantity || 1} Pcs`;
       const rate = Number(it.unitPrice !== undefined ? it.unitPrice : (it.price || it.rate || 0));
       const lTotal = Number(it.lineTotal !== undefined ? it.lineTotal : (rate * (Number(it.quantity) || 1)));
-      items.push({ name, qty, rate, lineTotal: lTotal });
+      items.push({ sTitle, name, qty, rate, lineTotal: lTotal });
     });
   }
 
@@ -87,13 +126,14 @@ export function generateInvoicePDFUint8Array(order) {
     const sName = sanitizePdfText(order.serviceName || order.service || 'Laundry Service');
     const wt = order.actualWeight || order.estimatedWeightKg || order.weightKg;
     const qty = wt ? `${wt} Kg` : '1 Batch';
-    items.push({ name: sName, qty, rate: total, lineTotal: total });
+    items.push({ sTitle: sName, name: 'Standard Processing Batch', qty, rate: total, lineTotal: total });
   }
 
   // Add Express Fee if present
   if (order.expressDelivery?.applied && order.expressDelivery?.fee > 0) {
     items.push({
-      name: 'Express 24-Hour Processing Surcharge',
+      sTitle: 'Express Care',
+      name: '24-Hour Express Turnaround',
       qty: '1 Fee',
       rate: Number(order.expressDelivery.fee),
       lineTotal: Number(order.expressDelivery.fee),
@@ -103,117 +143,160 @@ export function generateInvoicePDFUint8Array(order) {
   // --- PDF GRAPHICS COMMANDS ---
   let s = '';
 
-  // 1. BRAND HEADER (Deep Navy)
-  s += '0.06 0.09 0.16 rg 36 764 523 44 re f\n';
-  s += 'BT /F2 13 Tf 1 1 1 rg 46 788 Td (TECH WASH LAUNDRY SERVICES) Tj ET\n';
-  s += 'BT /F1 7.5 Tf 0.85 0.9 0.95 rg 46 774 Td (Premium Eco-Laundry, Hydrocarbon Dry Cleaning & 3D Steam Pressing) Tj ET\n';
-  s += `BT /F2 9.5 Tf 1 0.7 0.2 rg 390 788 Td (TAX INVOICE: ${bNum}) Tj ET\n`;
-  s += `BT /F1 7.5 Tf 0.85 0.9 0.95 rg 390 774 Td (${dateStr} | ${timeStr}) Tj ET\n`;
+  function textAt(font, size, colorRgb, x, y, str) {
+    return `BT /${font} ${size} Tf ${colorRgb} rg ${x} ${y} Td (${str}) Tj ET\n`;
+  }
 
-  // 2. CONTACT STRIP (Light Orange/Cream)
-  s += '0.99 0.96 0.93 rg 36 746 523 16 re f\n';
-  s += '0.95 0.8 0.6 RG 0.5 w 36 746 523 16 re S\n';
-  s += 'BT /F1 7 Tf 0.5 0.25 0.05 rg 46 752 Td (Hyderabad, Telangana | Customer Care: +91 63048 45567 | Email: care@techwashlaundry.com | www.techwash.in) Tj ET\n';
+  // 1. BRAND HEADER WITH LOGO IMAGE (Top Left: x: 36, y: 738, w: 62, h: 62)
+  if (logoBytes && logoBytes.length > 0) {
+    s += 'q 62 0 0 62 36 738 cm /Im1 Do Q\n';
+  }
 
-  // 3. TWO METADATA CARDS (Customer & Store)
-  const cardY = 672;
-  // Left: Customer Box
-  s += `0.97 0.98 0.99 rg 36 ${cardY} 256 68 re f\n`;
-  s += `0.8 0.85 0.9 RG 0.8 w 36 ${cardY} 256 68 re S\n`;
-  s += `0.1 0.2 0.4 rg 36 ${cardY + 54} 256 14 re f\n`;
-  s += `BT /F2 8 Tf 1 1 1 rg 46 ${cardY + 58} Td (CUSTOMER DETAILS) Tj ET\n`;
-  s += `BT /F2 8 Tf 0.1 0.15 0.2 rg 46 ${cardY + 40} Td (Name: ) Tj /F1 8 Tf (${cName}) Tj ET\n`;
-  s += `BT /F2 8 Tf 0.1 0.15 0.2 rg 46 ${cardY + 26} Td (Mobile: ) Tj /F1 8 Tf (${cPhone}) Tj ET\n`;
-  s += `BT /F1 7.5 Tf 0.35 0.4 0.45 rg 46 ${cardY + 12} Td (Address: ${cAddr}) Tj ET\n`;
+  // Company Brand Details
+  s += textAt('F2', 14.5, '0.06 0.09 0.16', 108, 788, 'TECH WASH LAUNDRY SERVICES');
+  s += textAt('F2', 8, '0.15 0.39 0.92', 108, 775, 'Premium Eco-Laundry  Hydrocarbon Dry Cleaning  3D Steam Pressing');
+  s += textAt('F1', 7.5, '0.3 0.35 0.4', 108, 763, 'Plot 42, Shaikpet Main Rd, Sri Ram Nagar, Manikonda, Hyderabad - 500089');
+  s += textAt('F1', 7.5, '0.4 0.45 0.5', 108, 751, 'Phone: +91 63048 45567 | care@techwashlaundry.com | www.techwashlaundry.com');
+  s += textAt('F1', 7, '0.5 0.55 0.6', 108, 740, 'GSTIN / State: 36 Telangana | Computer Generated Official Tax Invoice');
 
-  // Right: Store & Terminal Box
-  s += `0.97 0.98 0.99 rg 303 ${cardY} 256 68 re f\n`;
-  s += `0.8 0.85 0.9 RG 0.8 w 303 ${cardY} 256 68 re S\n`;
-  s += `0.1 0.2 0.4 rg 303 ${cardY + 54} 256 14 re f\n`;
-  s += `BT /F2 8 Tf 1 1 1 rg 313 ${cardY + 58} Td (STORE & TERMINAL DETAILS) Tj ET\n`;
-  s += `BT /F2 8 Tf 0.1 0.15 0.2 rg 313 ${cardY + 40} Td (Branch: ) Tj /F1 8 Tf (${branch.slice(0, 32)}) Tj ET\n`;
-  s += `BT /F2 8 Tf 0.1 0.15 0.2 rg 313 ${cardY + 26} Td (Terminal: ) Tj /F1 8 Tf (${terminal}) Tj /F2 8 Tf (  Cashier: ) Tj /F1 8 Tf (${cashier}) Tj ET\n`;
-  s += `BT /F1 7.5 Tf 0.35 0.4 0.45 rg 313 ${cardY + 12} Td (Inv Ref: ${invNum}) Tj ET\n`;
+  // Invoice Meta Box (Top Right)
+  s += '0.97 0.98 0.99 rg 400 735 159 65 re f\n';
+  s += '0.8 0.85 0.9 RG 0.8 w 400 735 159 65 re S\n';
+  s += '0.06 0.09 0.16 rg 400 782 159 18 re f\n';
+  s += textAt('F2', 9.5, '1 1 1', 442, 787, 'TAX INVOICE');
+  s += textAt('F2', 8.5, '0.06 0.09 0.16', 408, 768, `Invoice #: ${bNum}`);
+  s += textAt('F1', 7.5, '0.3 0.35 0.4', 408, 753, `Date: ${dateStr} | ${timeStr}`);
+  s += textAt('F1', 7, '0.4 0.45 0.5', 408, 740, `POS: ${terminal} | ${cashier}`);
 
-  // 4. ITEM SERVICE TABLE
-  let tblY = 642;
-  s += `0.06 0.09 0.16 rg 36 ${tblY} 523 18 re f\n`;
-  s += `BT /F2 7.5 Tf 1 1 1 rg 42 ${tblY + 6} Td (#) Tj ET\n`;
-  s += `BT /F2 7.5 Tf 1 1 1 rg 65 ${tblY + 6} Td (Service & Garment Description) Tj ET\n`;
-  s += `BT /F2 7.5 Tf 1 1 1 rg 335 ${tblY + 6} Td (Qty / Weight) Tj ET\n`;
-  s += `BT /F2 7.5 Tf 1 1 1 rg 415 ${tblY + 6} Td (Rate) Tj ET\n`;
-  s += `BT /F2 7.5 Tf 1 1 1 rg 485 ${tblY + 6} Td (Line Total) Tj ET\n`;
+  // Divider Accent Line
+  s += '0.15 0.39 0.92 rg 36 726 523 2 re f\n';
 
-  tblY -= 17;
+  // 2. TWO METADATA CARDS (Customer Details & Order Schedule)
+  const cardY = 648;
+  // Left Card: Customer Details
+  s += `0.98 0.99 1.0 rg 36 ${cardY} 256 70 re f\n`;
+  s += `0.8 0.85 0.92 RG 0.8 w 36 ${cardY} 256 70 re S\n`;
+  s += `0.06 0.09 0.16 rg 36 ${cardY + 54} 256 16 re f\n`;
+  s += textAt('F2', 8, '1 1 1', 46, cardY + 58, 'CUSTOMER DETAILS & BILL TO');
+  s += textAt('F2', 8.5, '0.1 0.15 0.2', 46, cardY + 40, `Name: ${cName}`);
+  s += textAt('F2', 8, '0.05 0.35 0.8', 46, cardY + 26, `Mobile: +91 ${cPhone}`);
+  s += textAt('F1', 7.5, '0.35 0.4 0.45', 46, cardY + 12, `Address: ${cAddr}`);
+
+  // Right Card: Order Fulfillment Schedule
+  s += `0.98 0.99 1.0 rg 303 ${cardY} 256 70 re f\n`;
+  s += `0.8 0.85 0.92 RG 0.8 w 303 ${cardY} 256 70 re S\n`;
+  s += `0.06 0.09 0.16 rg 303 ${cardY + 54} 256 16 re f\n`;
+  s += textAt('F2', 8, '1 1 1', 313, cardY + 58, 'ORDER SCHEDULE & FULFILLMENT');
+  s += textAt('F1', 8, '0.1 0.15 0.2', 313, cardY + 40, `Branch: ${branch.slice(0, 32)}`);
+  s += textAt('F1', 8, '0.1 0.15 0.2', 313, cardY + 26, `Intake: ${pDate}   Ready: ${dDate}`);
+  s += textAt('F1', 7.5, '0.35 0.4 0.45', 313, cardY + 12, `Source: ${order.orderSource || 'OFFLINE POS'} | Status: ${order.status || 'CONFIRMED'}`);
+
+  // 3. ITEM SERVICE TABLE
+  let tblY = 618;
+  s += `0.06 0.09 0.16 rg 36 ${tblY} 523 20 re f\n`;
+  s += textAt('F2', 8, '1 1 1', 42, tblY + 6, 'S.No');
+  s += textAt('F2', 8, '1 1 1', 70, tblY + 6, 'Service & Treatment');
+  s += textAt('F2', 8, '1 1 1', 195, tblY + 6, 'Garment / Item Description');
+  s += textAt('F2', 8, '1 1 1', 355, tblY + 6, 'Qty / Wt');
+  s += textAt('F2', 8, '1 1 1', 420, tblY + 6, 'Rate');
+  s += textAt('F2', 8, '1 1 1', 490, tblY + 6, 'Line Total');
+
+  tblY -= 19;
   const maxRows = Math.min(items.length, 12);
+  const rowHeight = maxRows > 8 ? 16 : 19;
+
   for (let idx = 0; idx < maxRows; idx++) {
     const it = items[idx];
     const rowBg = idx % 2 === 0 ? '1 1 1' : '0.98 0.98 0.99';
-    s += `${rowBg} rg 36 ${tblY} 523 17 re f\n`;
-    s += `0.88 0.9 0.93 RG 0.5 w 36 ${tblY} 523 17 re S\n`;
+    s += `${rowBg} rg 36 ${tblY} 523 ${rowHeight} re f\n`;
+    s += `0.88 0.9 0.93 RG 0.5 w 36 ${tblY} 523 ${rowHeight} re S\n`;
 
-    s += `BT /F1 7.5 Tf 0.3 0.35 0.4 rg 42 ${tblY + 5} Td (${idx + 1}) Tj ET\n`;
-    s += `BT /F2 7.5 Tf 0.1 0.15 0.2 rg 65 ${tblY + 5} Td (${it.name.slice(0, 42)}) Tj ET\n`;
-    s += `BT /F1 7.5 Tf 0.25 0.3 0.35 rg 335 ${tblY + 5} Td (${it.qty}) Tj ET\n`;
-    s += `BT /F1 7.5 Tf 0.25 0.3 0.35 rg 415 ${tblY + 5} Td (Rs. ${it.rate.toFixed(2)}) Tj ET\n`;
-    s += `BT /F2 8 Tf 0.08 0.12 0.2 rg 485 ${tblY + 5} Td (Rs. ${it.lineTotal.toFixed(2)}) Tj ET\n`;
-    tblY -= 17;
+    const textOffset = rowHeight > 16 ? 6 : 4;
+    s += textAt('F1', 7.5, '0.3 0.35 0.4', 44, tblY + textOffset, String(idx + 1));
+    s += textAt('F2', 8, '0.1 0.15 0.2', 70, tblY + textOffset, it.sTitle.slice(0, 24));
+    s += textAt('F1', 8, '0.2 0.25 0.3', 195, tblY + textOffset, it.name.slice(0, 30));
+    s += textAt('F1', 8, '0.25 0.3 0.35', 355, tblY + textOffset, it.qty);
+    s += textAt('F1', 8, '0.25 0.3 0.35', 415, tblY + textOffset, `Rs. ${it.rate.toFixed(2)}`);
+    s += textAt('F2', 8.5, '0.08 0.12 0.2', 485, tblY + textOffset, `Rs. ${it.lineTotal.toFixed(2)}`);
+    tblY -= rowHeight;
   }
 
-  // 5. PAYMENT & SETTLEMENT CARDS
-  tblY -= 10;
-  const sumY = Math.max(tblY - 70, 160);
+  // 4. FINANCIAL SETTLEMENT & PAYMENT CARDS
+  tblY -= 12;
+  const sumY = Math.max(tblY - 78, 160);
 
-  // Left: Payment Method & Status Card
-  s += `0.97 0.98 0.99 rg 36 ${sumY} 256 70 re f\n`;
-  s += `0.8 0.85 0.9 RG 0.8 w 36 ${sumY} 256 70 re S\n`;
-  s += `0.1 0.2 0.4 rg 36 ${sumY + 56} 256 14 re f\n`;
-  s += `BT /F2 8 Tf 1 1 1 rg 46 ${sumY + 60} Td (PAYMENT STATUS & RECONCILIATION) Tj ET\n`;
+  // Left Box: Payment Details
+  s += `0.98 0.99 1.0 rg 36 ${sumY} 256 78 re f\n`;
+  s += `0.8 0.85 0.92 RG 0.8 w 36 ${sumY} 256 78 re S\n`;
+  s += `0.06 0.09 0.16 rg 36 ${sumY + 62} 256 16 re f\n`;
+  s += textAt('F2', 8, '1 1 1', 46, sumY + 66, 'PAYMENT SETTLEMENT & RECONCILIATION');
 
-  const statusColor = isPaid ? '0.08 0.5 0.2' : (rec > 0 ? '0.7 0.4 0.05' : '0.75 0.1 0.1');
-  s += `BT /F2 8.5 Tf 0.15 0.2 0.25 rg 46 ${sumY + 40} Td (Payment Status: ) Tj /F2 9 Tf ${statusColor} rg (${payStatus}) Tj ET\n`;
-  s += `BT /F2 8 Tf 0.15 0.2 0.25 rg 46 ${sumY + 26} Td (Payment Mode: ) Tj /F1 8.5 Tf 0.1 0.15 0.2 rg (${payMethod}) Tj ET\n`;
-  s += `BT /F1 7.5 Tf 0.4 0.45 0.5 rg 46 ${sumY + 12} Td (Audit Ledger: Zero omissions verified) Tj ET\n`;
+  const stColorBg = isPaid ? '0.08 0.5 0.2' : (rec > 0 ? '0.7 0.4 0.05' : '0.75 0.1 0.1');
+  s += `${stColorBg} rg 46 ${sumY + 38} 130 18 re f\n`;
+  s += textAt('F2', 8.5, '1 1 1', 52, sumY + 43, payStatus);
 
-  // Right: Financial Summary Box
-  s += `0.97 0.98 0.99 rg 303 ${sumY} 256 70 re f\n`;
-  s += `0.8 0.85 0.9 RG 0.8 w 303 ${sumY} 256 70 re S\n`;
+  s += textAt('F2', 8, '0.15 0.2 0.25', 46, sumY + 22, `Payment Mode: ${payMethod}`);
+  s += textAt('F1', 7, '0.4 0.45 0.5', 46, sumY + 8, 'All accounts reconciled  Official Tax Invoice');
 
-  s += `BT /F1 8 Tf 0.2 0.25 0.3 rg 313 ${sumY + 52} Td (Gross Bill Amount:) Tj /F2 8.5 Tf 0.1 0.15 0.2 rg 475 ${sumY + 52} Td (Rs. ${total.toFixed(2)}) Tj ET\n`;
-  s += `BT /F1 8 Tf 0.2 0.25 0.3 rg 313 ${sumY + 36} Td (Amount Paid (Inflow):) Tj /F2 8.5 Tf 0.08 0.5 0.2 rg 475 ${sumY + 36} Td (Rs. ${rec.toFixed(2)}) Tj ET\n`;
+  // Right Box: Financial Summary Breakdown
+  s += `0.98 0.99 1.0 rg 303 ${sumY} 256 78 re f\n`;
+  s += `0.8 0.85 0.92 RG 0.8 w 303 ${sumY} 256 78 re S\n`;
 
-  // Highlight Balance Left Row
-  s += `0.98 0.94 0.94 rg 305 ${sumY + 4} 252 22 re f\n`;
-  s += `0.85 0.6 0.6 RG 0.5 w 305 ${sumY + 4} 252 22 re S\n`;
+  s += textAt('F1', 8, '0.2 0.25 0.3', 313, sumY + 62, 'Subtotal (Gross Billed):');
+  s += textAt('F2', 8, '0.1 0.15 0.2', 485, sumY + 62, `Rs. ${total.toFixed(2)}`);
+
+  s += textAt('F1', 8, '0.2 0.25 0.3', 313, sumY + 48, 'Taxes / GST:');
+  s += textAt('F1', 8, '0.1 0.15 0.2', 505, sumY + 48, 'Rs. 0.00');
+
+  s += `0.85 0.88 0.92 RG 0.5 w 313 ${sumY + 42} 236 0 re S\n`;
+
+  s += textAt('F2', 9.5, '0.06 0.09 0.16', 313, sumY + 28, 'GRAND TOTAL:');
+  s += textAt('F2', 10, '0.06 0.09 0.16', 480, sumY + 28, `Rs. ${total.toFixed(2)}`);
+
+  // Net Balance Due Pill
+  const balBg = bal > 0 ? '0.98 0.92 0.92' : '0.92 0.98 0.94';
+  const balBorder = bal > 0 ? '0.85 0.5 0.5' : '0.5 0.8 0.6';
   const balColor = bal > 0 ? '0.75 0.1 0.1' : '0.08 0.5 0.2';
-  s += `BT /F2 9 Tf 0.6 0.1 0.1 rg 313 ${sumY + 10} Td (Net Balance Due Left:) Tj /F2 10 Tf ${balColor} rg 465 ${sumY + 10} Td (Rs. ${bal.toFixed(2)}) Tj ET\n`;
+  s += `${balBg} rg 305 ${sumY + 4} 252 18 re f\n`;
+  s += `${balBorder} RG 0.5 w 305 ${sumY + 4} 252 18 re S\n`;
+  s += textAt('F2', 8.5, balColor, 313, sumY + 9, 'Net Balance Due:');
+  s += textAt('F2', 9.5, balColor, 485, sumY + 9, `Rs. ${bal.toFixed(2)}`);
 
-  // 6. VERIFICATION & GUARANTEE FOOTER
-  const footY = 90;
-  s += `0.88 0.9 0.93 RG 0.5 w 36 ${footY + 40} 523 0 re S\n`;
-  s += `BT /F2 7.5 Tf 0.15 0.2 0.25 rg 46 ${footY + 28} Td (Store Cashier / Operator Signature:) Tj ET\n`;
+  // 5. HYGIENE & CARE BANNER
+  const bannerY = sumY - 32;
+  s += `0.95 0.97 0.99 rg 36 ${bannerY} 523 22 re f\n`;
+  s += `0.8 0.88 0.95 RG 0.5 w 36 ${bannerY} 523 22 re S\n`;
+  s += textAt('F2', 7.5, '0.1 0.3 0.6', 46, bannerY + 12, 'HYGIENE PROMISE: Processed with 100% RO softened water & eco-friendly bio-detergents.');
+  s += textAt('F1', 6.5, '0.4 0.45 0.5', 46, bannerY + 4, 'German Hydrocarbon dry cleaning technology safe on delicate fabrics, silk, and wool.');
+
+  // 6. SIGNATURES & TERMS FOOTER
+  const footY = 56;
+  s += `0.88 0.9 0.93 RG 0.5 w 36 ${footY + 42} 523 0 re S\n`;
+  s += textAt('F2', 7.5, '0.15 0.2 0.25', 46, footY + 28, 'Store Cashier / Operator Signature:');
   s += `0.6 0.65 0.7 RG 0.5 w 46 ${footY + 12} 150 0 re S\n`;
 
-  s += `BT /F2 7.5 Tf 0.15 0.2 0.25 rg 340 ${footY + 28} Td (Customer Verification & Acknowledgement:) Tj ET\n`;
+  s += textAt('F2', 7.5, '0.15 0.2 0.25', 340, footY + 28, 'Customer Verification & Acknowledgement:');
   s += `0.6 0.65 0.7 RG 0.5 w 340 ${footY + 12} 180 0 re S\n`;
 
-  // Hygiene guarantee text
-  s += 'BT /F1 6.5 Tf 0.45 0.5 0.55 rg 36 60 Td (HYGIENE GUARANTEE: Processed with 100% RO softened water and eco-friendly bio-detergents. Please verify garment count upon handover.) Tj ET\n';
-  s += 'BT /F2 7.5 Tf 0.06 0.09 0.16 rg 36 46 Td (Thank you for choosing Tech Wash Laundry Services! Hyderabad, Telangana - www.techwash.in) Tj ET\n';
+  s += textAt('F1', 6.5, '0.45 0.5 0.55', 36, 34, 'TERMS: Please verify garment count upon handover. Tech Wash is not liable for items uncollected after 30 days.');
+  s += textAt('F2', 7.5, '0.06 0.09 0.16', 36, 22, 'Thank you for choosing Tech Wash Laundry Services! Hyderabad, Telangana  www.techwashlaundry.com  Care: +91 63048 45567');
 
   // --- ASSEMBLE PDF OBJECTS & OFFSETS ---
-  const streamBytes = new TextEncoder().encode(s);
+  const enc = new TextEncoder();
+  const streamBytes = enc.encode(s);
   const streamLen = streamBytes.length;
 
   const obj1 = '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n';
   const obj2 = '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n';
-  const obj3 = '3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Contents 4 0 R /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> >>\nendobj\n';
+  const obj3 = '3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Contents 4 0 R /Resources << /Font << /F1 5 0 R /F2 6 0 R >> /XObject << /Im1 7 0 R >> >> >>\nendobj\n';
   const obj4Header = `4 0 obj\n<< /Length ${streamLen} >>\nstream\n`;
   const obj4Footer = '\nendstream\nendobj\n';
   const obj5 = '5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n';
   const obj6 = '6 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>\nendobj\n';
+  const obj7Header = `7 0 obj\n<< /Type /XObject /Subtype /Image /Width 320 /Height 320 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${logoBytes.length} >>\nstream\n`;
+  const obj7Footer = '\nendstream\nendobj\n';
 
-  const enc = new TextEncoder();
+  const header = enc.encode('%PDF-1.4\n');
   const bObj1 = enc.encode(obj1);
   const bObj2 = enc.encode(obj2);
   const bObj3 = enc.encode(obj3);
@@ -221,39 +304,26 @@ export function generateInvoicePDFUint8Array(order) {
   const bObj4F = enc.encode(obj4Footer);
   const bObj5 = enc.encode(obj5);
   const bObj6 = enc.encode(obj6);
+  const bObj7H = enc.encode(obj7Header);
+  const bObj7F = enc.encode(obj7Footer);
 
-  const header = enc.encode('%PDF-1.4\n');
-
-  // Track byte offsets for xref
   const offsets = [];
   let curr = header.length;
 
-  offsets.push(curr); // Obj 1
-  curr += bObj1.length;
+  offsets.push(curr); curr += bObj1.length;
+  offsets.push(curr); curr += bObj2.length;
+  offsets.push(curr); curr += bObj3.length;
+  offsets.push(curr); curr += bObj4H.length + streamBytes.length + bObj4F.length;
+  offsets.push(curr); curr += bObj5.length;
+  offsets.push(curr); curr += bObj6.length;
+  offsets.push(curr); curr += bObj7H.length + logoBytes.length + bObj7F.length;
 
-  offsets.push(curr); // Obj 2
-  curr += bObj2.length;
-
-  offsets.push(curr); // Obj 3
-  curr += bObj3.length;
-
-  offsets.push(curr); // Obj 4
-  curr += bObj4H.length + streamBytes.length + bObj4F.length;
-
-  offsets.push(curr); // Obj 5
-  curr += bObj5.length;
-
-  offsets.push(curr); // Obj 6
-  curr += bObj6.length;
-
-  const startxref = curr;
-
-  let xrefStr = 'xref\n0 7\n0000000000 65535 f \n';
+  // Strict 20-byte entries for PDF xref table
+  let xrefStr = 'xref\n0 8\n0000000000 65535 f \n';
   for (let i = 0; i < offsets.length; i++) {
     xrefStr += String(offsets[i]).padStart(10, '0') + ' 00000 n \n';
   }
-  xrefStr += `trailer\n<< /Size 7 /Root 1 0 R >>\nstartxref\n${startxref}\n%%EOF\n`;
-
+  xrefStr += `trailer\n<< /Size 8 /Root 1 0 R >>\nstartxref\n${curr}\n%%EOF\n`;
   const bXref = enc.encode(xrefStr);
 
   const totalLen = curr + bXref.length;
@@ -271,6 +341,10 @@ export function generateInvoicePDFUint8Array(order) {
 
   finalBytes.set(bObj5, pos); pos += bObj5.length;
   finalBytes.set(bObj6, pos); pos += bObj6.length;
+
+  finalBytes.set(bObj7H, pos); pos += bObj7H.length;
+  finalBytes.set(logoBytes, pos); pos += logoBytes.length;
+  finalBytes.set(bObj7F, pos); pos += bObj7F.length;
 
   finalBytes.set(bXref, pos);
 
