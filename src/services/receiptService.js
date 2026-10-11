@@ -188,7 +188,9 @@ export const receiptService = {
       ),
       storePhone: order.storePhone || (
         (order.storeBranch && order.storeBranch.includes('Branch 1'))
-          ? '+91 9000813444'
+          ? '+91 90008 13444'
+          : (order.storeBranch && order.storeBranch.includes('Pick Up Point'))
+          ? '+91 98667 40179'
           : '+91 63048 45567'
       ),
       terminalCode: order.terminalCode || (order.isWalkIn ? 'TW-POS-01' : null),

@@ -1,7 +1,8 @@
 /**
  * Tech Wash Laundry Services — Client-Side Pure JavaScript PDF Tax Invoice Generator
  * Generates official, 100% compliant PDF 1.4 binary documents without server dependencies.
- * Produces standard vector A4 format (595.28 x 841.89 pt) with crisp embedded logo.
+ * Produces standard vector A4 format (595.28 x 841.89 pt) with crisp embedded logo
+ * and verified terminal contact numbers (POS-1: 6304845567, POS-2: 9000813444, POS-3: 9866740179).
  */
 
 import { TECHWASH_LOGO_JPEG_BASE64 } from './logoAssetBase64.js';
@@ -21,6 +22,46 @@ function getLogoJpegBytes() {
     cachedLogoBytes = arr;
   }
   return cachedLogoBytes;
+}
+
+export const TERMINAL_CONTACT_MAP = {
+  'counter-1': {
+    code: 'TW-POS-01',
+    posLabel: 'POS-1',
+    branch: 'Tech Wash Main Branch — Manikonda',
+    address: 'Plot 42, Shaikpet Main Rd, Sri Ram Nagar, Manikonda, Hyderabad - 500089',
+    phone: '+91 63048 45567',
+    rawPhone: '6304845567',
+  },
+  'counter-2': {
+    code: 'TW-POS-02',
+    posLabel: 'POS-2',
+    branch: 'Tech Wash Laundry Services — Branch 1 (Tolichowki)',
+    address: 'Beside Dreamscape Hotel, Tolichowki, OU Colony, Hyderabad - 500008',
+    phone: '+91 90008 13444',
+    rawPhone: '9000813444',
+  },
+  'counter-3': {
+    code: 'TW-POS-03',
+    posLabel: 'POS-3',
+    branch: 'Tech Wash Pick Up Point — Ambience Courtyard',
+    address: 'Beside Ambience Courtyard, Shaikpet / Manikonda, Hyderabad - 500089',
+    phone: '+91 98667 40179',
+    rawPhone: '9866740179',
+  },
+};
+
+export function resolveTerminalInfo(order = {}) {
+  const tCode = String(order.terminalCode || order.terminalId || '').toUpperCase();
+  const bName = String(order.storeBranch || '').toLowerCase();
+
+  if (tCode.includes('POS-02') || tCode.includes('POS2') || tCode.includes('COUNTER-2') || bName.includes('branch 1') || bName.includes('tolichowki')) {
+    return TERMINAL_CONTACT_MAP['counter-2'];
+  }
+  if (tCode.includes('POS-03') || tCode.includes('POS3') || tCode.includes('COUNTER-3') || bName.includes('pick up point') || bName.includes('ambience')) {
+    return TERMINAL_CONTACT_MAP['counter-3'];
+  }
+  return TERMINAL_CONTACT_MAP['counter-1'];
 }
 
 function sanitizePdfText(str) {
@@ -66,6 +107,7 @@ export function generateInvoicePDFUint8Array(order) {
   if (!order) order = {};
 
   const logoBytes = getLogoJpegBytes();
+  const termInfo = resolveTerminalInfo(order);
 
   const bNum = sanitizePdfText(order.orderNumber || order.id || 'TW-00001');
   const rawInv = order.invoiceNumber || bNum;
@@ -75,9 +117,10 @@ export function generateInvoicePDFUint8Array(order) {
   const cPhone = sanitizePdfText(order.phone || order.customer?.phone || 'N/A');
   const cAddr = sanitizePdfText((order.address || order.customer?.address || 'In-Store Counter Drop-off').slice(0, 52));
 
-  const branch = sanitizePdfText(order.storeBranch || 'Tech Wash Main Branch — Manikonda');
-  const terminal = sanitizePdfText(order.terminalCode || order.terminalId || 'TW-POS-01');
+  const branch = sanitizePdfText(order.storeBranch || termInfo.branch);
+  const terminal = sanitizePdfText(order.terminalCode || order.terminalId || termInfo.code);
   const cashier = sanitizePdfText(order.cashierName || 'Cashier #1');
+  const storePhone = sanitizePdfText(order.storePhone || termInfo.phone);
 
   const dateStr = formatDateSafe(order.createdAt || Date.now());
   const timeStr = formatTimeSafe(order.createdAt || Date.now());
@@ -155,9 +198,9 @@ export function generateInvoicePDFUint8Array(order) {
   // Company Brand Details
   s += textAt('F2', 14.5, '0.06 0.09 0.16', 108, 788, 'TECH WASH LAUNDRY SERVICES');
   s += textAt('F2', 8, '0.15 0.39 0.92', 108, 775, 'Premium Eco-Laundry  Hydrocarbon Dry Cleaning  3D Steam Pressing');
-  s += textAt('F1', 7.5, '0.3 0.35 0.4', 108, 763, 'Plot 42, Shaikpet Main Rd, Sri Ram Nagar, Manikonda, Hyderabad - 500089');
-  s += textAt('F1', 7.5, '0.4 0.45 0.5', 108, 751, 'Phone: +91 63048 45567 | care@techwashlaundry.com | www.techwashlaundry.com');
-  s += textAt('F1', 7, '0.5 0.55 0.6', 108, 740, 'GSTIN / State: 36 Telangana | Computer Generated Official Tax Invoice');
+  s += textAt('F1', 7.5, '0.3 0.35 0.4', 108, 763, termInfo.address);
+  s += textAt('F2', 7.5, '0.06 0.09 0.16', 108, 751, 'Helpline: POS-1: 6304845567 | POS-2: 9000813444 | POS-3: 9866740179');
+  s += textAt('F1', 7, '0.5 0.55 0.6', 108, 740, 'GSTIN / State: 36 Telangana | www.techwashlaundry.com | Official Tax Invoice');
 
   // Invoice Meta Box (Top Right)
   s += '0.97 0.98 0.99 rg 400 735 159 65 re f\n';
@@ -182,14 +225,14 @@ export function generateInvoicePDFUint8Array(order) {
   s += textAt('F2', 8, '0.05 0.35 0.8', 46, cardY + 26, `Mobile: +91 ${cPhone}`);
   s += textAt('F1', 7.5, '0.35 0.4 0.45', 46, cardY + 12, `Address: ${cAddr}`);
 
-  // Right Card: Order Fulfillment Schedule
+  // Right Card: Order Fulfillment Schedule & Terminal Info
   s += `0.98 0.99 1.0 rg 303 ${cardY} 256 70 re f\n`;
   s += `0.8 0.85 0.92 RG 0.8 w 303 ${cardY} 256 70 re S\n`;
   s += `0.06 0.09 0.16 rg 303 ${cardY + 54} 256 16 re f\n`;
-  s += textAt('F2', 8, '1 1 1', 313, cardY + 58, 'ORDER SCHEDULE & FULFILLMENT');
+  s += textAt('F2', 8, '1 1 1', 313, cardY + 58, `STORE & TERMINAL: ${termInfo.posLabel}`);
   s += textAt('F1', 8, '0.1 0.15 0.2', 313, cardY + 40, `Branch: ${branch.slice(0, 32)}`);
-  s += textAt('F1', 8, '0.1 0.15 0.2', 313, cardY + 26, `Intake: ${pDate}   Ready: ${dDate}`);
-  s += textAt('F1', 7.5, '0.35 0.4 0.45', 313, cardY + 12, `Source: ${order.orderSource || 'OFFLINE POS'} | Status: ${order.status || 'CONFIRMED'}`);
+  s += textAt('F2', 8, '0.05 0.35 0.8', 313, cardY + 26, `Counter Ph: ${storePhone}`);
+  s += textAt('F1', 7.5, '0.35 0.4 0.45', 313, cardY + 12, `Drop: ${pDate}  Ready: ${dDate} | ${order.status || 'CONFIRMED'}`);
 
   // 3. ITEM SERVICE TABLE
   let tblY = 618;
@@ -279,7 +322,7 @@ export function generateInvoicePDFUint8Array(order) {
   s += `0.6 0.65 0.7 RG 0.5 w 340 ${footY + 12} 180 0 re S\n`;
 
   s += textAt('F1', 6.5, '0.45 0.5 0.55', 36, 34, 'TERMS: Please verify garment count upon handover. Tech Wash is not liable for items uncollected after 30 days.');
-  s += textAt('F2', 7.5, '0.06 0.09 0.16', 36, 22, 'Thank you for choosing Tech Wash Laundry Services! Hyderabad, Telangana  www.techwashlaundry.com  Care: +91 63048 45567');
+  s += textAt('F2', 7.5, '0.06 0.09 0.16', 36, 22, `Tech Wash POS Contacts: POS-1: 6304845567 | POS-2: 9000813444 | POS-3: 9866740179`);
 
   // --- ASSEMBLE PDF OBJECTS & OFFSETS ---
   const enc = new TextEncoder();

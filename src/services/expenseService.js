@@ -1768,7 +1768,7 @@ export const expenseService = {
         counterName: 'Counter 3 — Pick Up Point (Ambience Courtyard)', 
         shortName: 'Pick Up Point (Ambience Courtyard)', 
         address: 'Beside Ambience Courtyard, Hyderabad, Telangana, 500089',
-        phone: '+91 63048 45567',
+        phone: '+91 98667 40179',
         color: 'purple' 
       },
     ];

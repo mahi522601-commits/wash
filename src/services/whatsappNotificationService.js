@@ -144,7 +144,7 @@ export const whatsappNotificationService = {
         : 'Shaikpet Main Rd, Sri Ram Nagar Colony, Manikonda, Hyderabad, Telangana 500089'
     );
     const storePhone = order.storePhone || (
-      storeBranch.includes('Branch 1') ? '+91 90008 13444' : '+91 63048 45567'
+      storeBranch.includes('Branch 1') ? '+91 90008 13444' : storeBranch.includes('Pick Up Point') ? '+91 98667 40179' : '+91 63048 45567'
     );
 
     const address = order.address || order.customer?.address || order.pickupLocation?.formattedAddress || 'Doorstep address on file';
@@ -355,7 +355,7 @@ ${customNote ? `📝 *Update Note:* ${customNote}\n` : ''}${actualWeight ? `⚖�
         : 'Shaikpet Main Rd, Sri Ram Nagar Colony, Manikonda, Hyderabad, Telangana 500089'
     );
     const storePhone = order.storePhone || receiptData.storePhone || (
-      storeBranch.includes('Branch 1') ? '+91 90008 13444' : '+91 63048 45567'
+      storeBranch.includes('Branch 1') ? '+91 90008 13444' : storeBranch.includes('Pick Up Point') ? '+91 98667 40179' : '+91 63048 45567'
     );
     const terminalCode = order.terminalCode || (order.isWalkIn ? 'TW-POS-01' : 'ONLINE-HUB');
     const cashierName = order.cashierName || 'Cashier #1';

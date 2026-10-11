@@ -20,24 +20,28 @@ const TERMINAL_PRESETS = {
     terminalCode: 'TW-ADMIN-01',
     branch: 'Admin Command Center',
     folderName: 'Admin',
+    phone: '+91 63048 45567',
   },
   'counter-1': {
     terminalId: 'counter-1',
     terminalCode: 'TW-POS-01',
     branch: 'Main Branch — Manikonda',
     folderName: 'POS-01',
+    phone: '+91 63048 45567',
   },
   'counter-2': {
     terminalId: 'counter-2',
     terminalCode: 'TW-POS-02',
     branch: 'Branch 1 — Tolichowki',
     folderName: 'POS-02',
+    phone: '+91 90008 13444',
   },
   'counter-3': {
     terminalId: 'counter-3',
     terminalCode: 'TW-POS-03',
     branch: 'Pick Up Point — Ambience',
     folderName: 'POS-03',
+    phone: '+91 98667 40179',
   },
 };
 
