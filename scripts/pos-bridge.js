@@ -10,6 +10,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import PDFDocument from 'pdfkit';
 import ExcelJS from 'exceljs';
+import JSZip from 'jszip';
 
 // --- TERMINAL CONFIGURATION & MAPPING ---
 const TERMINAL_PRESETS = {
@@ -435,6 +436,280 @@ async function updateDailyExcelFile(excelPath, order) {
   await workbook.xlsx.writeFile(excelPath);
 }
 
+// --- GENERATE DAILY SHIFT SUMMARY PDF ---
+function generateShiftPDFBuffer(dateKey, orders = [], targetPreset = activePreset) {
+  return new Promise((resolve, reject) => {
+    try {
+      const doc = new PDFDocument({ size: 'A4', margin: 36 });
+      const buffers = [];
+      doc.on('data', chunk => buffers.push(chunk));
+      doc.on('end', () => resolve(Buffer.concat(buffers)));
+      doc.on('error', err => reject(err));
+
+      const primaryNavy = '#0f172a';
+      const brandBlue = '#2563eb';
+      const textColor = '#1e293b';
+      const mutedText = '#64748b';
+      const lightBg = '#f8fafc';
+      const borderGray = '#cbd5e1';
+
+      // 1. Header & Logo
+      const logoPath = getActualLogoPath();
+      if (logoPath) {
+        try { doc.image(logoPath, 36, 36, { fit: [140, 50] }); } catch (e) {
+          doc.fontSize(18).font('Helvetica-Bold').fillColor(primaryNavy).text('TECH WASH', 36, 36);
+        }
+      } else {
+        doc.fontSize(18).font('Helvetica-Bold').fillColor(primaryNavy).text('TECH WASH', 36, 36);
+      }
+
+      doc.fontSize(12).font('Helvetica-Bold').fillColor(primaryNavy).text('TECH WASH LAUNDRY SERVICES', 190, 36);
+      doc.fontSize(8).font('Helvetica').fillColor(mutedText)
+        .text('Premium Eco Laundry & Dry Cleaning Operations', 190, 52)
+        .text('Daily Shift Handover, Sales Closing Reconciliation & Summary Statement', 190, 64);
+
+      // Shift Meta Box
+      doc.rect(380, 34, 179, 58).fillAndStroke('#eff6ff', '#bfdbfe');
+      doc.fillColor(brandBlue).fontSize(10).font('Helvetica-Bold').text('DAILY SHIFT CLOSING', 385, 40, { width: 169, align: 'center' });
+      doc.fontSize(8.5).font('Helvetica-Bold').fillColor(primaryNavy)
+        .text(`Date: ${dateKey}`, 385, 54, { width: 169, align: 'center' })
+        .text(`Store: ${targetPreset.branch}`, 385, 66, { width: 169, align: 'center' });
+      doc.fontSize(7.5).font('Helvetica').fillColor(mutedText)
+        .text(`Generated: ${new Date().toLocaleTimeString('en-IN')}`, 385, 78, { width: 169, align: 'center' });
+
+      let y = 104;
+
+      // 2. Cumulative Financial Totals
+      let totalGross = 0;
+      let totalRec = 0;
+      let totalBal = 0;
+      let cashRec = 0;
+      let upiRec = 0;
+      let cardRec = 0;
+      let totalGarments = 0;
+
+      orders.forEach(o => {
+        const tot = Number(o.totalAmount || o.finalPrice || o.priceSnapshot?.finalTotal || 0);
+        const rec = Number(o.receivedAmount !== undefined ? o.receivedAmount : (o.paymentStatus === 'PAID' ? tot : 0));
+        const bal = Number(o.balanceAmount !== undefined ? o.balanceAmount : Math.max(0, tot - rec));
+        totalGross += tot;
+        totalRec += rec;
+        totalBal += bal;
+
+        const pm = String(o.paymentMethod || 'CASH').toUpperCase();
+        if (pm === 'CASH') cashRec += rec;
+        else if (pm.includes('UPI') || pm.includes('QR')) upiRec += rec;
+        else if (pm.includes('CARD') || pm.includes('POS')) cardRec += rec;
+        else cashRec += rec;
+
+        if (Array.isArray(o.items)) {
+          o.items.forEach(it => { totalGarments += Number(it.quantity) || 1; });
+        }
+      });
+
+      // KPI Metric Cards
+      const cardW = 125;
+      const cardH = 50;
+      // Box 1: Total Bills
+      doc.rect(36, y, cardW, cardH).fillAndStroke(lightBg, borderGray);
+      doc.fontSize(7.5).font('Helvetica-Bold').fillColor(mutedText).text('TOTAL BILLS', 46, y + 8);
+      doc.fontSize(14).font('Helvetica-Bold').fillColor(primaryNavy).text(String(orders.length), 46, y + 20);
+      doc.fontSize(7).font('Helvetica').fillColor(mutedText).text(`${totalGarments} Garments Processed`, 46, y + 36);
+
+      // Box 2: Gross Billed
+      doc.rect(169, y, cardW, cardH).fillAndStroke(lightBg, borderGray);
+      doc.fontSize(7.5).font('Helvetica-Bold').fillColor(mutedText).text('GROSS BILLED VOLUME', 179, y + 8);
+      doc.fontSize(14).font('Helvetica-Bold').fillColor(brandBlue).text(`₹${totalGross.toFixed(2)}`, 179, y + 20);
+      doc.fontSize(7).font('Helvetica').fillColor(mutedText).text('Total Order Value', 179, y + 36);
+
+      // Box 3: Collections
+      doc.rect(302, y, cardW, cardH).fillAndStroke('#f0fdf4', '#bbf7d0');
+      doc.fontSize(7.5).font('Helvetica-Bold').fillColor('#15803d').text('COLLECTED INFLOWS', 312, y + 8);
+      doc.fontSize(14).font('Helvetica-Bold').fillColor('#15803d').text(`₹${totalRec.toFixed(2)}`, 312, y + 20);
+      doc.fontSize(7).font('Helvetica').fillColor('#166534').text(`Cash: ₹${cashRec} | UPI: ₹${upiRec}`, 312, y + 36);
+
+      // Box 4: Pending Dues
+      doc.rect(435, y, cardW, cardH).fillAndStroke('#fef2f2', '#fecaca');
+      doc.fontSize(7.5).font('Helvetica-Bold').fillColor('#b91c1c').text('PENDING BALANCE DUES', 445, y + 8);
+      doc.fontSize(14).font('Helvetica-Bold').fillColor('#b91c1c').text(`₹${totalBal.toFixed(2)}`, 445, y + 20);
+      doc.fontSize(7).font('Helvetica').fillColor('#991b1b').text('Customer Outstanding', 445, y + 36);
+
+      y += 62;
+
+      // 3. Itemized Bills Table
+      doc.rect(36, y, 523, 18).fill(primaryNavy);
+      doc.fillColor('#ffffff').fontSize(7.5).font('Helvetica-Bold');
+      doc.text('S.No', 42, y + 5);
+      doc.text('Bill / Order #', 70, y + 5);
+      doc.text('Time', 140, y + 5);
+      doc.text('Customer Name', 180, y + 5);
+      doc.text('Mobile', 270, y + 5);
+      doc.text('Gross (₹)', 340, y + 5, { width: 55, align: 'right' });
+      doc.text('Paid (₹)', 405, y + 5, { width: 50, align: 'right' });
+      doc.text('Due (₹)', 465, y + 5, { width: 45, align: 'right' });
+      doc.text('Mode', 520, y + 5, { width: 35, align: 'center' });
+
+      y += 18;
+
+      orders.slice(0, 30).forEach((ord, idx) => {
+        const bg = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
+        doc.rect(36, y, 523, 15).fillAndStroke(bg, '#f1f5f9');
+
+        const bNum = String(ord.orderNumber || ord.id || idx + 1).slice(0, 14);
+        const timeStr = ord.createdAt ? new Date(ord.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }) : '--';
+        const cName = String(ord.customerName || ord.customer?.name || 'Customer').slice(0, 16);
+        const cPhone = String(ord.phone || ord.customer?.phone || '').slice(0, 10);
+        const gAmt = Number(ord.totalAmount || ord.finalPrice || 0);
+        const pAmt = Number(ord.receivedAmount !== undefined ? ord.receivedAmount : (ord.paymentStatus === 'PAID' ? gAmt : 0));
+        const dAmt = Number(ord.balanceAmount !== undefined ? ord.balanceAmount : Math.max(0, gAmt - pAmt));
+        const pMod = String(ord.paymentMethod || 'CASH').slice(0, 5);
+
+        doc.fillColor(textColor).fontSize(7).font('Helvetica');
+        doc.text(String(idx + 1), 42, y + 4);
+        doc.font('Helvetica-Bold').text(bNum, 70, y + 4);
+        doc.font('Helvetica').text(timeStr, 140, y + 4);
+        doc.text(cName, 180, y + 4);
+        doc.text(cPhone, 270, y + 4);
+        doc.text(`₹${gAmt.toFixed(2)}`, 340, y + 4, { width: 55, align: 'right' });
+        doc.fillColor('#15803d').text(`₹${pAmt.toFixed(2)}`, 405, y + 4, { width: 50, align: 'right' });
+        doc.fillColor(dAmt > 0 ? '#b91c1c' : textColor).text(`₹${dAmt.toFixed(2)}`, 465, y + 4, { width: 45, align: 'right' });
+        doc.fillColor(mutedText).text(pMod, 520, y + 4, { width: 35, align: 'center' });
+
+        y += 15;
+      });
+
+      if (orders.length > 30) {
+        doc.rect(36, y, 523, 14).fill('#f8fafc');
+        doc.fillColor(mutedText).fontSize(7).text(`+ ${orders.length - 30} additional bills recorded in Excel Ledger & daily Invoices folder.`, 42, y + 3);
+        y += 16;
+      }
+
+      y += 12;
+
+      // 4. Reconciliation Sign-off box
+      doc.rect(36, y, 523, 50).fillAndStroke(lightBg, borderGray);
+      doc.fillColor(primaryNavy).fontSize(8).font('Helvetica-Bold').text('SHIFT CASH & AUDIT VERIFICATION', 46, y + 6);
+      doc.fontSize(7.5).font('Helvetica').fillColor(textColor)
+        .text(`Physical Cash in Drawer: ₹${cashRec.toFixed(2)}  |  Digital / UPI Inflows: ₹${upiRec.toFixed(2)}  |  Card Inflows: ₹${cardRec.toFixed(2)}`, 46, y + 18)
+        .text('Staff / Cashier Signature: __________________________        Store Manager / Owner Signature: __________________________', 46, y + 34);
+
+      y += 56;
+      doc.fontSize(7).fillColor(mutedText).text('Tech Wash Laundry Services — Confidential Shift Report for Owners & Management', 36, y, { width: 523, align: 'center' });
+
+      doc.end();
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+
+// --- GENERATE MONTHLY EXCEL FILE ---
+async function generateMonthlyExcelFile(excelPath, monthKey, orders = [], targetPreset = activePreset) {
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'Tech Wash Laundry Services';
+  workbook.created = new Date();
+
+  // Sheet 1: Monthly Bills Register
+  const ws = workbook.addWorksheet('Monthly Bills Register');
+  ws.columns = [
+    { header: 'S.No', key: 'sno', width: 8 },
+    { header: 'Order Number', key: 'orderNumber', width: 16 },
+    { header: 'Invoice Number', key: 'invoiceNumber', width: 18 },
+    { header: 'Date', key: 'date', width: 14 },
+    { header: 'Time', key: 'time', width: 12 },
+    { header: 'Store Branch', key: 'branch', width: 28 },
+    { header: 'Terminal', key: 'terminal', width: 18 },
+    { header: 'Customer Name', key: 'customerName', width: 22 },
+    { header: 'Customer Mobile', key: 'phone', width: 16 },
+    { header: 'Service', key: 'service', width: 22 },
+    { header: 'Garments Breakdown', key: 'items', width: 35 },
+    { header: 'Weight (Kg)', key: 'weight', width: 12 },
+    { header: 'Gross Billed (₹)', key: 'gross', width: 16 },
+    { header: 'Received Amount (₹)', key: 'received', width: 18 },
+    { header: 'Balance Due (₹)', key: 'balance', width: 16 },
+    { header: 'Payment Mode', key: 'mode', width: 14 },
+    { header: 'Payment Status', key: 'status', width: 16 },
+  ];
+
+  ws.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+  ws.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F172A' } };
+
+  let totalGross = 0;
+  let totalRec = 0;
+  let totalBal = 0;
+
+  orders.forEach((o, idx) => {
+    const d = o.createdAt ? new Date(o.createdAt) : new Date();
+    const g = Number(o.totalAmount || o.finalPrice || 0);
+    const r = Number(o.receivedAmount !== undefined ? o.receivedAmount : (o.paymentStatus === 'PAID' ? g : 0));
+    const b = Number(o.balanceAmount !== undefined ? o.balanceAmount : Math.max(0, g - r));
+    totalGross += g;
+    totalRec += r;
+    totalBal += b;
+
+    const itemsSummary = (o.items || []).map(it => `${it.quantity || 1}x ${it.name}`).join(', ');
+
+    ws.addRow({
+      sno: idx + 1,
+      orderNumber: o.orderNumber || o.id || '',
+      invoiceNumber: o.invoiceNumber || o.orderNumber || '',
+      date: d.toLocaleDateString('en-IN'),
+      time: d.toLocaleTimeString('en-IN'),
+      branch: o.storeBranch || targetPreset.branch,
+      terminal: o.terminalCode || targetPreset.terminalCode,
+      customerName: o.customerName || o.customer?.name || 'Customer',
+      phone: o.phone || o.customer?.phone || '',
+      service: o.serviceName || o.service || 'Laundry Service',
+      items: itemsSummary,
+      weight: o.actualWeight || o.estimatedWeightKg || '',
+      gross: g,
+      received: r,
+      balance: b,
+      mode: o.paymentMethod || 'CASH',
+      status: o.paymentStatus || (b === 0 ? 'PAID' : 'PENDING'),
+    });
+  });
+
+  // Summary row
+  const sumRow = ws.addRow({
+    sno: '',
+    orderNumber: 'TOTALS',
+    invoiceNumber: `${orders.length} Bills`,
+    date: '',
+    time: '',
+    branch: '',
+    terminal: '',
+    customerName: '',
+    phone: '',
+    service: '',
+    items: '',
+    weight: '',
+    gross: totalGross,
+    received: totalRec,
+    balance: totalBal,
+    mode: '',
+    status: '',
+  });
+  sumRow.font = { bold: true };
+
+  // Sheet 2: Summary Dashboard
+  const sumWs = workbook.addWorksheet('Summary KPIs');
+  sumWs.columns = [
+    { header: 'Performance Metric', key: 'metric', width: 32 },
+    { header: 'Value', key: 'value', width: 24 },
+  ];
+  sumWs.getRow(1).font = { bold: true };
+  sumWs.addRow({ metric: 'Month Period', value: monthKey });
+  sumWs.addRow({ metric: 'Store Location', value: targetPreset.branch });
+  sumWs.addRow({ metric: 'Total Bills Count', value: orders.length });
+  sumWs.addRow({ metric: 'Gross Sales Volume (₹)', value: totalGross });
+  sumWs.addRow({ metric: 'Total Cash / UPI Collections (₹)', value: totalRec });
+  sumWs.addRow({ metric: 'Net Pending Customer Dues (₹)', value: totalBal });
+
+  await workbook.xlsx.writeFile(excelPath);
+  return excelPath;
+}
+
 // --- HTTP SERVER SETUP ---
 const server = http.createServer(async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -527,21 +802,45 @@ const server = http.createServer(async (req, res) => {
           updatedAt: new Date().toISOString(),
         };
 
-        // 3. Generate & Save Customer Invoice PDF
-        const rawInvName = String(orderRecord.invoiceNumber || orderRecord.orderNumber || localId).trim();
+        // 3. Generate & Save Customer Invoice PDF (Saved with Bill Number inside Date folder)
+        const billNumber = String(orderRecord.orderNumber || orderRecord.id || localId).trim();
+        const rawInvName = String(orderRecord.invoiceNumber || billNumber).trim();
         const formattedInvName = rawInvName.toUpperCase().startsWith('INV-') ? rawInvName : `INV-${rawInvName}`;
-        const pdfFilePath = path.join(dateInvoiceDir, `${sanitizeFilename(formattedInvName)}.pdf`);
+        
+        // Exact Bill Number PDF (e.g. TW-00001.pdf)
+        const pdfFilePath = path.join(dateInvoiceDir, `${sanitizeFilename(billNumber)}.pdf`);
         const pdfBuffer = await generateInvoicePDFBuffer(orderRecord);
         fs.writeFileSync(pdfFilePath, pdfBuffer);
 
-        // 4. Update Daily Excel Spreadsheet
+        // Also save formatted INV-<BillNumber>.pdf if distinct
+        if (sanitizeFilename(formattedInvName) !== sanitizeFilename(billNumber)) {
+          const altPdfPath = path.join(dateInvoiceDir, `${sanitizeFilename(formattedInvName)}.pdf`);
+          try { fs.writeFileSync(altPdfPath, pdfBuffer); } catch (e) {}
+        }
+
+        // Mirror directly to Admin\Invoices\<dateKey>\<billNumber>.pdf
+        try {
+          const adminDateInvoiceDir = path.join(ROOT_BASE, 'Admin', 'Invoices', dateKey);
+          if (!fs.existsSync(adminDateInvoiceDir)) {
+            fs.mkdirSync(adminDateInvoiceDir, { recursive: true });
+          }
+          fs.writeFileSync(path.join(adminDateInvoiceDir, `${sanitizeFilename(billNumber)}.pdf`), pdfBuffer);
+        } catch (e) {}
+
+        // 4. Update Daily Excel Spreadsheet for Terminal and Admin
         const excelFilePath = path.join(terminalExportsDir, `${dateKey}.xlsx`);
         await updateDailyExcelFile(excelFilePath, orderRecord);
+        try {
+          const adminExportsDir = path.join(ROOT_BASE, 'Admin', 'Exports');
+          if (!fs.existsSync(adminExportsDir)) fs.mkdirSync(adminExportsDir, { recursive: true });
+          await updateDailyExcelFile(path.join(adminExportsDir, `${dateKey}.xlsx`), orderRecord);
+        } catch (e) {}
 
         res.writeHead(200, { 'Content-Type': 'application/json' });
         return res.end(JSON.stringify({
           ok: true,
           localId,
+          billNumber,
           status: 'LOCAL_SAVED',
           paths: {
             pdf: pdfFilePath,
@@ -556,6 +855,163 @@ const server = http.createServer(async (req, res) => {
           ok: false,
           error: err.message || 'Internal Bridge Error',
         }));
+      }
+    });
+    return;
+  }
+
+  // --- EXPORT SHIFT BUNDLE ENDPOINT (Saves all bills of same day into daily folder & zip for company owners) ---
+  if (req.method === 'POST' && pathname === '/api/export-shift-bundle') {
+    let bodyText = '';
+    req.on('data', chunk => { bodyText += chunk; });
+    req.on('end', async () => {
+      try {
+        const payload = JSON.parse(bodyText || '{}');
+        const incomingTerminalId = req.headers['x-terminal-id'] || payload.terminalId || activeTerminalId;
+        const targetPreset = resolveTerminalPreset(incomingTerminalId);
+        const dateKey = payload.dateKey || new Date().toISOString().slice(0, 10);
+
+        const terminalStorageRoot = path.join(ROOT_BASE, targetPreset.folderName);
+        const shiftExportDir = path.join(terminalStorageRoot, 'Exports', dateKey);
+        const shiftInvoicesDir = path.join(shiftExportDir, 'Invoices');
+
+        if (!fs.existsSync(shiftExportDir)) fs.mkdirSync(shiftExportDir, { recursive: true });
+        if (!fs.existsSync(shiftInvoicesDir)) fs.mkdirSync(shiftInvoicesDir, { recursive: true });
+
+        // Admin mirror directory
+        const adminShiftExportDir = path.join(ROOT_BASE, 'Admin', 'Exports', dateKey);
+        const adminShiftInvoicesDir = path.join(adminShiftExportDir, 'Invoices');
+        if (!fs.existsSync(adminShiftExportDir)) fs.mkdirSync(adminShiftExportDir, { recursive: true });
+        if (!fs.existsSync(adminShiftInvoicesDir)) fs.mkdirSync(adminShiftInvoicesDir, { recursive: true });
+
+        const orders = Array.isArray(payload.orders) ? payload.orders : [];
+
+        // 1. Generate & Save each order's PDF into Exports/<dateKey>/Invoices/<billNumber>.pdf and build ZIP
+        const zip = new JSZip();
+        const zipInvoices = zip.folder('Invoices');
+
+        for (const order of orders) {
+          const bNum = String(order.orderNumber || order.id || 'BILL').trim();
+          const cleanName = `${sanitizeFilename(bNum)}.pdf`;
+          const pdfBuffer = await generateInvoicePDFBuffer(order);
+          fs.writeFileSync(path.join(shiftInvoicesDir, cleanName), pdfBuffer);
+          fs.writeFileSync(path.join(adminShiftInvoicesDir, cleanName), pdfBuffer);
+          zipInvoices.file(cleanName, pdfBuffer);
+        }
+
+        // 2. Generate Shift Summary Statement PDF
+        const shiftPdfBuffer = await generateShiftPDFBuffer(dateKey, orders, targetPreset);
+        const shiftPdfPath = path.join(shiftExportDir, `Shift-Statement-${dateKey}.pdf`);
+        fs.writeFileSync(shiftPdfPath, shiftPdfBuffer);
+        fs.writeFileSync(path.join(adminShiftExportDir, `Shift-Statement-${dateKey}.pdf`), shiftPdfBuffer);
+        zip.file(`Shift-Statement-${dateKey}.pdf`, shiftPdfBuffer);
+
+        // 3. Generate Daily Sales Excel Ledger
+        const excelPath = path.join(shiftExportDir, `Daily-Sales-Ledger-${dateKey}.xlsx`);
+        const wb = new ExcelJS.Workbook();
+        wb.creator = 'Tech Wash Laundry Services';
+        wb.created = new Date();
+        const ws = wb.addWorksheet('Daily Shift Ledger');
+        ws.columns = [
+          { header: 'Order Number', key: 'orderNumber', width: 16 },
+          { header: 'Invoice Number', key: 'invoiceNumber', width: 18 },
+          { header: 'Date', key: 'date', width: 14 },
+          { header: 'Customer Name', key: 'customerName', width: 22 },
+          { header: 'Customer Mobile', key: 'phone', width: 16 },
+          { header: 'Primary Service', key: 'service', width: 22 },
+          { header: 'Gross (₹)', key: 'gross', width: 14 },
+          { header: 'Received (₹)', key: 'received', width: 14 },
+          { header: 'Balance (₹)', key: 'balance', width: 14 },
+          { header: 'Payment Mode', key: 'mode', width: 14 },
+          { header: 'Status', key: 'status', width: 14 },
+        ];
+        ws.getRow(1).font = { bold: true };
+        orders.forEach(o => {
+          ws.addRow({
+            orderNumber: o.orderNumber || o.id,
+            invoiceNumber: o.invoiceNumber || o.orderNumber || '',
+            date: dateKey,
+            customerName: o.customerName || o.customer?.name || 'Customer',
+            phone: o.phone || o.customer?.phone || '',
+            service: o.serviceName || o.service || 'Laundry Care',
+            gross: Number(o.totalAmount || o.finalPrice || 0),
+            received: Number(o.receivedAmount !== undefined ? o.receivedAmount : (o.paymentStatus === 'PAID' ? (o.totalAmount || 0) : 0)),
+            balance: Number(o.balanceAmount || 0),
+            mode: o.paymentMethod || 'CASH',
+            status: o.paymentStatus || 'SETTLED',
+          });
+        });
+        await wb.xlsx.writeFile(excelPath);
+        await wb.xlsx.writeFile(path.join(adminShiftExportDir, `Daily-Sales-Ledger-${dateKey}.xlsx`));
+
+        const excelBuffer = await wb.xlsx.writeBuffer();
+        zip.file(`Daily-Sales-Ledger-${dateKey}.xlsx`, excelBuffer);
+
+        // 4. Generate & Save ZIP Archive
+        const zipBuffer = await zip.generateAsync({ type: 'nodebuffer' });
+        const zipPath = path.join(shiftExportDir, `Daily-Shift-Bundle-${dateKey}.zip`);
+        fs.writeFileSync(zipPath, zipBuffer);
+        fs.writeFileSync(path.join(adminShiftExportDir, `Daily-Shift-Bundle-${dateKey}.zip`), zipBuffer);
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({
+          ok: true,
+          dateKey,
+          totalBills: orders.length,
+          folderPath: shiftExportDir,
+          zipPath,
+          message: `Shift bundle with all ${orders.length} bill PDFs and Excel saved to ${shiftExportDir}`,
+        }));
+      } catch (err) {
+        console.error('Export shift bundle error:', err);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({ ok: false, error: err.message }));
+      }
+    });
+    return;
+  }
+
+  // --- EXPORT MONTHLY EXCEL ENDPOINT ---
+  if (req.method === 'POST' && pathname === '/api/export-monthly-excel') {
+    let bodyText = '';
+    req.on('data', chunk => { bodyText += chunk; });
+    req.on('end', async () => {
+      try {
+        const payload = JSON.parse(bodyText || '{}');
+        const incomingTerminalId = req.headers['x-terminal-id'] || payload.terminalId || activeTerminalId;
+        const targetPreset = resolveTerminalPreset(incomingTerminalId);
+        const monthKey = payload.monthKey || new Date().toISOString().slice(0, 7);
+
+        const terminalStorageRoot = path.join(ROOT_BASE, targetPreset.folderName);
+        const terminalExportsDir = path.join(terminalStorageRoot, 'Exports');
+        if (!fs.existsSync(terminalExportsDir)) fs.mkdirSync(terminalExportsDir, { recursive: true });
+
+        const excelFileName = `TechWash-Monthly-Report-${monthKey}.xlsx`;
+        const excelFilePath = path.join(terminalExportsDir, excelFileName);
+
+        const orders = Array.isArray(payload.orders) ? payload.orders : [];
+        await generateMonthlyExcelFile(excelFilePath, monthKey, orders, targetPreset);
+
+        // Mirror to Admin/Exports/
+        try {
+          const adminExportsDir = path.join(ROOT_BASE, 'Admin', 'Exports');
+          if (!fs.existsSync(adminExportsDir)) fs.mkdirSync(adminExportsDir, { recursive: true });
+          await generateMonthlyExcelFile(path.join(adminExportsDir, excelFileName), monthKey, orders, targetPreset);
+        } catch (e) {}
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({
+          ok: true,
+          monthKey,
+          totalBills: orders.length,
+          path: excelFilePath,
+          fileName: excelFileName,
+          message: `Monthly Excel report generated at ${excelFilePath}`,
+        }));
+      } catch (err) {
+        console.error('Export monthly excel error:', err);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({ ok: false, error: err.message }));
       }
     });
     return;

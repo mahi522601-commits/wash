@@ -127,10 +127,11 @@ export const reportService = {
    * Filter and aggregate order data for a specific date range and branch/terminal
    */
   async generateFinancialReport({
-    datePreset = 'today', // 'today' | 'tomorrow' | 'yesterday' | '7days' | '30days' | 'all' | 'custom' | 'single'
+    datePreset = 'today', // 'today' | 'tomorrow' | 'yesterday' | '7days' | '30days' | 'all' | 'custom' | 'single' | 'month'
     startDate = null,
     endDate = null,
     targetDate = null,
+    selectedMonth = null,
     branchFilter = 'ALL', // 'ALL' | 'POS_ONLY' | 'ALL_POS' | 'counter-1' | 'counter-2' | 'counter-3' | 'ONLINE_WEBSITE'
     channelFilter = 'ALL', // 'ALL' | 'POS_ONLY' | 'ONLINE_ONLY'
     onlyOfflinePos = false,
@@ -183,6 +184,17 @@ export const reportService = {
       end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
       reportDateKey = getLocalDateKey(now);
       dateRangeLabel = `Last 30 Days (${past30.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} – ${now.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })})`;
+    } else if (datePreset === 'month') {
+      const monthStr = selectedMonth || (targetDate ? targetDate.slice(0, 7) : getLocalDateKey(now).slice(0, 7));
+      const parts = monthStr.split('-');
+      const mYear = parseInt(parts[0], 10) || now.getFullYear();
+      const mMonth = parseInt(parts[1], 10) || (now.getMonth() + 1);
+      start = new Date(mYear, mMonth - 1, 1, 0, 0, 0, 0);
+      end = new Date(mYear, mMonth, 0, 23, 59, 59, 999);
+      reportDateKey = `MONTH_${monthStr}`;
+      const monthDate = new Date(mYear, mMonth - 1, 1);
+      const monthLabel = monthDate.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+      dateRangeLabel = `Month of ${monthLabel}`;
     } else if (datePreset === 'all') {
       start = null;
       end = null;
@@ -796,6 +808,7 @@ export const reportService = {
     branchFilter = 'ALL', 
     channelFilter = 'POS_ONLY',
     onlyOfflinePos = true,
+    monthFilter = null,
     limitDays = 90 
   } = {}) {
     let allOrders = [];
@@ -830,6 +843,8 @@ export const reportService = {
       const rawDate = order.createdAt || order.created_at || order.orderDate || order.date || order.timestamp || order.pickupDate || order.schedule?.pickupDate;
       const orderDateObj = parseOrderDateSafe(rawDate) || (order.updatedAt ? parseOrderDateSafe(order.updatedAt) : new Date());
       const dateKey = getLocalDateKey(orderDateObj);
+
+      if (monthFilter && !dateKey.startsWith(monthFilter)) return;
 
       if (!dateGroups[dateKey]) {
         dateGroups[dateKey] = {
@@ -881,6 +896,7 @@ export const reportService = {
       storedSnapshots.forEach(snap => {
         if (!snap || !snap.date) return;
         const dKey = snap.date;
+        if (monthFilter && !dKey.startsWith(monthFilter)) return;
         const existing = dateGroups[dKey];
         if (!existing || (existing.totalBills === 0 && (snap.totalBills > 0 || snap.ordersCount > 0))) {
           const snapDate = parseOrderDateSafe(snap.date) || new Date();
@@ -907,26 +923,28 @@ export const reportService = {
       console.warn('[reportService] Stored shift snapshots merge notice:', e);
     }
 
-    // 4. Always ensure Today's active shift is present in the ledger
+    // 4. Ensure Today's active shift is present in the ledger if matching month
     const todayObj = new Date();
     const todayKey = getLocalDateKey(todayObj);
-    if (!dateGroups[todayKey]) {
-      dateGroups[todayKey] = {
-        dateKey: todayKey,
-        dateObj: todayObj,
-        dateLabel: todayObj.toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' }),
-        orders: [],
-        totalBills: 0,
-        grossBilled: 0,
-        collected: 0,
-        pendingDues: 0,
-        cash: 0,
-        upi: 0,
-        card: 0,
-        online: 0,
-        pieces: 0,
-        weightKg: 0,
-      };
+    if (!monthFilter || todayKey.startsWith(monthFilter)) {
+      if (!dateGroups[todayKey]) {
+        dateGroups[todayKey] = {
+          dateKey: todayKey,
+          dateObj: todayObj,
+          dateLabel: todayObj.toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' }),
+          orders: [],
+          totalBills: 0,
+          grossBilled: 0,
+          collected: 0,
+          pendingDues: 0,
+          cash: 0,
+          upi: 0,
+          card: 0,
+          online: 0,
+          pieces: 0,
+          weightKg: 0,
+        };
+      }
     }
 
     // Sort by date descending (newest first)
@@ -1024,5 +1042,345 @@ export const reportService = {
     });
 
     return [headers.join(','), ...rows].join('\n');
-  }
+  },
+
+  /**
+   * Generate & download comprehensive Monthly Excel (.xlsx) workbook for the given month
+   */
+  async exportMonthlyExcel(reportData, monthKey = null, terminalId = 'ALL') {
+    if (!reportData || !reportData.orders) return;
+    const targetMonth = monthKey || reportData.selectedMonth || (reportData.startDate ? reportData.startDate.slice(0, 7) : new Date().toISOString().slice(0, 7));
+    const orders = reportData.orders || [];
+
+    try {
+      const ExcelJSModule = await import('exceljs');
+      const ExcelJS = ExcelJSModule.default || ExcelJSModule;
+      const workbook = new ExcelJS.Workbook();
+      workbook.creator = 'Tech Wash Laundry Services';
+      workbook.created = new Date();
+
+      // Sheet 1: Monthly Bills Register
+      const ws = workbook.addWorksheet('Monthly Bills Register');
+      ws.columns = [
+        { header: 'S.No', key: 'sno', width: 8 },
+        { header: 'Order Number', key: 'orderNumber', width: 16 },
+        { header: 'Invoice Number', key: 'invoiceNumber', width: 18 },
+        { header: 'Date', key: 'date', width: 14 },
+        { header: 'Time', key: 'time', width: 12 },
+        { header: 'Store Branch', key: 'branch', width: 28 },
+        { header: 'Terminal', key: 'terminal', width: 18 },
+        { header: 'Customer Name', key: 'customerName', width: 22 },
+        { header: 'Customer Mobile', key: 'phone', width: 16 },
+        { header: 'Service', key: 'service', width: 22 },
+        { header: 'Garments Breakdown', key: 'items', width: 35 },
+        { header: 'Weight (Kg)', key: 'weight', width: 12 },
+        { header: 'Gross Billed (₹)', key: 'gross', width: 16 },
+        { header: 'Received Amount (₹)', key: 'received', width: 18 },
+        { header: 'Balance Due (₹)', key: 'balance', width: 16 },
+        { header: 'Payment Mode', key: 'mode', width: 14 },
+        { header: 'Payment Status', key: 'status', width: 16 },
+      ];
+
+      ws.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      ws.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F172A' } };
+
+      let totalGross = 0;
+      let totalRec = 0;
+      let totalBal = 0;
+
+      orders.forEach((o, idx) => {
+        const d = parseOrderDateSafe(o.createdAt) || new Date();
+        const g = Number(o.totalAmount || o.finalPrice || 0);
+        const r = Number(o.receivedAmount !== undefined ? o.receivedAmount : (o.paymentStatus === 'PAID' ? g : 0));
+        const b = Number(o.balanceAmount !== undefined ? o.balanceAmount : Math.max(0, g - r));
+        totalGross += g;
+        totalRec += r;
+        totalBal += b;
+
+        const pin = parsePinToPinItems(o);
+        const itemsSummary = pin.textSummary || (o.items || []).map(it => `${it.quantity || 1}x ${it.name}`).join(', ');
+
+        ws.addRow({
+          sno: idx + 1,
+          orderNumber: o.orderNumber || o.id || '',
+          invoiceNumber: o.invoiceNumber || o.orderNumber || '',
+          date: d.toLocaleDateString('en-IN'),
+          time: d.toLocaleTimeString('en-IN'),
+          branch: o.storeBranch || 'Main Branch',
+          terminal: o.terminalCode || 'POS-01',
+          customerName: o.customerName || o.customer?.name || 'Customer',
+          phone: o.phone || o.customer?.phone || '',
+          service: o.serviceName || o.service || 'Laundry Service',
+          items: itemsSummary,
+          weight: o.actualWeight || o.estimatedWeightKg || '',
+          gross: g,
+          received: r,
+          balance: b,
+          mode: o.paymentMethod || 'CASH',
+          status: o.paymentStatus || (b === 0 ? 'PAID' : 'PENDING'),
+        });
+      });
+
+      const sumRow = ws.addRow({
+        sno: '',
+        orderNumber: 'TOTALS',
+        invoiceNumber: `${orders.length} Bills`,
+        date: '',
+        time: '',
+        branch: '',
+        terminal: '',
+        customerName: '',
+        phone: '',
+        service: '',
+        items: '',
+        weight: '',
+        gross: totalGross,
+        received: totalRec,
+        balance: totalBal,
+        mode: '',
+        status: '',
+      });
+      sumRow.font = { bold: true };
+
+      // Sheet 2: Executive Summary
+      const sumWs = workbook.addWorksheet('Month Executive Summary');
+      sumWs.columns = [
+        { header: 'Performance Metric', key: 'metric', width: 34 },
+        { header: 'Value', key: 'value', width: 26 },
+      ];
+      sumWs.getRow(1).font = { bold: true };
+      sumWs.addRow({ metric: 'Month Period', value: targetMonth });
+      sumWs.addRow({ metric: 'Total Orders / Bills', value: orders.length });
+      sumWs.addRow({ metric: 'Gross Sales Volume (₹)', value: totalGross });
+      sumWs.addRow({ metric: 'Total Inflow Collections (₹)', value: totalRec });
+      sumWs.addRow({ metric: 'Cash Collections (₹)', value: reportData.metrics?.category1?.cashReceived || 0 });
+      sumWs.addRow({ metric: 'UPI Collections (₹)', value: reportData.metrics?.category1?.upiReceived || 0 });
+      sumWs.addRow({ metric: 'Card Collections (₹)', value: reportData.metrics?.category1?.cardReceived || 0 });
+      sumWs.addRow({ metric: 'Net Outstanding Customer Dues (₹)', value: totalBal });
+      sumWs.addRow({ metric: 'Garments Processed', value: reportData.metrics?.totalPiecesCount || 0 });
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      this.downloadFile(
+        buffer,
+        `TechWash-Monthly-Bills-${targetMonth}.xlsx`,
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      );
+
+      // Also notify local bridge to save on disk if reachable
+      try {
+        const { posBridgeService } = await import('./posBridgeService.js');
+        posBridgeService.exportMonthlyExcel({ monthKey: targetMonth, terminalId, orders }).catch(() => {});
+      } catch (e) {}
+
+      return { success: true, totalBills: orders.length, fileName: `TechWash-Monthly-Bills-${targetMonth}.xlsx` };
+    } catch (err) {
+      console.warn('exportMonthlyExcel error, falling back to CSV:', err);
+      const csv = this.convertOrdersToCSV(orders);
+      this.downloadFile(csv, `TechWash-Monthly-Bills-${targetMonth}.csv`, 'text/csv;charset=utf-8;');
+      return { success: true, totalBills: orders.length, fileName: `TechWash-Monthly-Bills-${targetMonth}.csv` };
+    }
+  },
+
+  /**
+   * Package all bills of the same day + Shift Report Statement + Excel/CSV ledger into a ZIP archive
+   * for sending to company owners via WhatsApp/Email. Also mirrors into C:\TechWash\<Terminal>\Exports\<dateKey>\
+   */
+  async packageDailyShiftBundle(dayGroup, branchFilter = 'ALL') {
+    if (!dayGroup) return null;
+    const dateKey = dayGroup.dateKey || (dayGroup.dateObj ? getLocalDateKey(dayGroup.dateObj) : getLocalDateKey());
+    const dateLabel = dayGroup.dateLabel || dateKey;
+    const orders = dayGroup.orders || [];
+
+    // Trigger local bridge export in background (creates C:\TechWash\<Terminal>\Exports\<dateKey>\ with all bill PDFs)
+    try {
+      const { posBridgeService } = await import('./posBridgeService.js');
+      posBridgeService.exportShiftBundle({ dateKey, terminalId: branchFilter, orders }).catch(() => {});
+    } catch (e) {}
+
+    // In browser: Build complete ZIP bundle with Shift statement, Excel/CSV, and all individual bill receipts
+    try {
+      const JSZipModule = await import('jszip');
+      const JSZip = JSZipModule.default || JSZipModule;
+      const zip = new JSZip();
+
+      // 1. Shift Statement HTML (Printable & High Definition)
+      const shiftHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Tech Wash Shift Statement - ${dateKey}</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 40px; color: #1e293b; background: #fff; }
+    .header { border-bottom: 2px solid #0f172a; padding-bottom: 16px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: flex-start; }
+    h1 { margin: 0; font-size: 22px; color: #0f172a; }
+    .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+    .kpi { padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc; }
+    .kpi-title { font-size: 11px; font-weight: bold; color: #64748b; text-transform: uppercase; }
+    .kpi-val { font-size: 20px; font-weight: 800; color: #0f172a; margin-top: 4px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 16px; }
+    th { background: #0f172a; color: #fff; padding: 8px 10px; text-align: left; }
+    td { padding: 8px 10px; border-bottom: 1px solid #f1f5f9; }
+    tr:nth-child(even) td { background: #f8fafc; }
+    .text-right { text-align: right; }
+    .footer { margin-top: 32px; border: 1px solid #cbd5e1; border-radius: 8px; padding: 16px; background: #f8fafc; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <h1>TECH WASH LAUNDRY SERVICES</h1>
+      <p style="margin:4px 0 0; font-size: 13px; color: #64748b;">Daily Shift Closing & Reconciliation Report</p>
+    </div>
+    <div style="text-align: right;">
+      <div style="font-size: 14px; font-weight: bold; color: #2563eb;">DATE: ${dateLabel}</div>
+      <div style="font-size: 11px; color: #64748b;">Generated: ${new Date().toLocaleString('en-IN')}</div>
+    </div>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi">
+      <div class="kpi-title">Total Bills</div>
+      <div class="kpi-val">${dayGroup.totalBills || orders.length}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-title">Gross Billed</div>
+      <div class="kpi-val">₹${(dayGroup.grossBilled || 0).toFixed(2)}</div>
+    </div>
+    <div class="kpi" style="background: #f0fdf4; border-color: #bbf7d0;">
+      <div class="kpi-title" style="color: #15803d;">Collected Inflows</div>
+      <div class="kpi-val" style="color: #15803d;">₹${(dayGroup.collected || 0).toFixed(2)}</div>
+    </div>
+    <div class="kpi" style="background: #fef2f2; border-color: #fecaca;">
+      <div class="kpi-title" style="color: #b91c1c;">Pending Dues</div>
+      <div class="kpi-val" style="color: #b91c1c;">₹${(dayGroup.pendingDues || 0).toFixed(2)}</div>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>S.No</th>
+        <th>Bill / Order #</th>
+        <th>Customer</th>
+        <th>Mobile</th>
+        <th>Service</th>
+        <th class="text-right">Gross (₹)</th>
+        <th class="text-right">Paid (₹)</th>
+        <th class="text-right">Due (₹)</th>
+        <th>Payment Mode</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${orders.map((o, idx) => {
+        const tot = Number(o.totalAmount || o.finalPrice || 0);
+        const rec = Number(o.receivedAmount !== undefined ? o.receivedAmount : (o.paymentStatus === 'PAID' ? tot : 0));
+        const bal = Number(o.balanceAmount !== undefined ? o.balanceAmount : Math.max(0, tot - rec));
+        return `<tr>
+          <td>${idx + 1}</td>
+          <td><strong>${o.orderNumber || o.id}</strong></td>
+          <td>${o.customerName || o.customer?.name || 'Customer'}</td>
+          <td>${o.phone || o.customer?.phone || '-'}</td>
+          <td>${o.serviceName || o.service || 'Laundry'}</td>
+          <td class="text-right">₹${tot.toFixed(2)}</td>
+          <td class="text-right" style="color: #15803d; font-weight: bold;">₹${rec.toFixed(2)}</td>
+          <td class="text-right" style="color: ${bal > 0 ? '#b91c1c' : '#64748b'};">₹${bal.toFixed(2)}</td>
+          <td>${o.paymentMethod || 'CASH'}</td>
+        </tr>`;
+      }).join('')}
+    </tbody>
+  </table>
+
+  <div class="footer">
+    <strong>SHIFT RECONCILIATION & CASH DRAWER SIGN-OFF</strong><br>
+    <span style="font-size: 12px; color: #475569;">
+      Cash Inflow: ₹${(dayGroup.cash || 0).toFixed(2)} | UPI / Digital: ₹${(dayGroup.upi || 0).toFixed(2)} | Card: ₹${(dayGroup.card || 0).toFixed(2)}
+    </span><br><br>
+    <div style="display: flex; justify-content: space-between; font-size: 12px; color: #64748b; margin-top: 12px;">
+      <span>Staff Signature: _______________________</span>
+      <span>Owner / Manager Signature: _______________________</span>
+    </div>
+  </div>
+</body>
+</html>`;
+
+      zip.file(`Shift-Statement-${dateKey}.html`, shiftHtml);
+
+      // 2. Daily Sales CSV Ledger
+      const csv = this.convertOrdersToCSV(orders);
+      zip.file(`Daily-Sales-Ledger-${dateKey}.csv`, csv);
+
+      // 3. Subfolder "Invoices/" containing all individual bills for that day
+      const invoicesFolder = zip.folder('Invoices');
+      orders.forEach((o, idx) => {
+        const bNum = o.orderNumber || o.id || `BILL-${idx + 1}`;
+        const tot = Number(o.totalAmount || o.finalPrice || 0);
+        const rec = Number(o.receivedAmount !== undefined ? o.receivedAmount : (o.paymentStatus === 'PAID' ? tot : 0));
+        const bal = Number(o.balanceAmount !== undefined ? o.balanceAmount : Math.max(0, tot - rec));
+        const itemsList = (o.items || []).map(it => `<tr><td>${it.name || 'Garment'}</td><td style="text-align:right;">${it.quantity || 1}</td><td style="text-align:right;">₹${Number(it.unitPrice || it.price || 0).toFixed(2)}</td><td style="text-align:right;">₹${Number(it.lineTotal || 0).toFixed(2)}</td></tr>`).join('');
+
+        const invHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Invoice - ${bNum}</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 30px; color: #1e293b; }
+    .card { border: 1px solid #e2e8f0; border-radius: 8px; padding: 24px; max-width: 600px; margin: 0 auto; }
+    h2 { margin: 0; color: #0f172a; font-size: 20px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 13px; }
+    th { border-bottom: 2px solid #0f172a; padding: 6px; text-align: left; }
+    td { border-bottom: 1px solid #f1f5f9; padding: 6px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div style="display:flex; justify-content:space-between; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px;">
+      <div>
+        <h2>TECH WASH LAUNDRY</h2>
+        <div style="font-size: 12px; color: #64748b;">Customer Tax Invoice</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-weight: bold; color: #2563eb;">${bNum}</div>
+        <div style="font-size: 11px; color: #64748b;">${dateLabel}</div>
+      </div>
+    </div>
+    <div style="margin-top: 12px; font-size: 13px;">
+      <strong>Customer:</strong> ${o.customerName || o.customer?.name || 'Customer'}<br>
+      <strong>Mobile:</strong> ${o.phone || o.customer?.phone || '-'}<br>
+      <strong>Service:</strong> ${o.serviceName || o.service || 'Laundry Service'}
+    </div>
+    <table>
+      <thead>
+        <tr><th>Item</th><th style="text-align:right;">Qty</th><th style="text-align:right;">Rate</th><th style="text-align:right;">Amount</th></tr>
+      </thead>
+      <tbody>${itemsList || `<tr><td colspan="4">Laundry Service — ₹${tot.toFixed(2)}</td></tr>`}</tbody>
+    </table>
+    <div style="margin-top: 16px; border-top: 1px solid #e2e8f0; padding-top: 12px; text-align: right; font-size: 13px;">
+      <div>Subtotal: ₹${tot.toFixed(2)}</div>
+      <div style="font-size: 16px; font-weight: bold; margin-top: 4px;">Grand Total: ₹${tot.toFixed(2)}</div>
+      <div style="color: #15803d; font-weight: bold;">Amount Paid: ₹${rec.toFixed(2)} (${o.paymentMethod || 'CASH'})</div>
+      ${bal > 0 ? `<div style="color: #b91c1c; font-weight: bold;">Balance Due: ₹${bal.toFixed(2)}</div>` : '<div style="color: #15803d;">Payment Settled (₹0 Due)</div>'}
+    </div>
+  </div>
+</body>
+</html>`;
+        invoicesFolder.file(`${bNum}.html`, invHtml);
+      });
+
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const fileName = `TechWash-Shift-${dateKey}-All-Bills.zip`;
+      this.downloadFile(zipBlob, fileName, 'application/zip');
+
+      return {
+        success: true,
+        fileName,
+        dateKey,
+        totalBills: orders.length,
+        message: `Shift bundle for ${dateLabel} containing all ${orders.length} bill invoices packaged and downloaded successfully.`
+      };
+    } catch (err) {
+      console.error('packageDailyShiftBundle error:', err);
+      return { success: false, error: err.message };
+    }
+  },
 };

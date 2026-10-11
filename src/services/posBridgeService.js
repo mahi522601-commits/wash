@@ -137,6 +137,64 @@ export const posBridgeService = {
       return { ok: false, offline: true, error: err.message };
     }
   },
+
+  /**
+   * Export daily shift bundle (all bill PDFs of the day + shift statement + Excel ledger) to local computer C:\TechWash
+   */
+  async exportShiftBundle({ dateKey, terminalId = 'counter-1', orders = [] }) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 12000); // 12s for PDF batch
+
+      const res = await fetch(`${BRIDGE_URL}/api/export-shift-bundle`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-terminal-id': terminalId || 'counter-1',
+        },
+        body: JSON.stringify({ dateKey, terminalId, orders }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      if (!res.ok) {
+        const errText = await res.text();
+        return { ok: false, error: `Bridge returned status ${res.status}: ${errText.slice(0, 80)}` };
+      }
+      return await res.json();
+    } catch (err) {
+      return { ok: false, offline: true, error: err.message };
+    }
+  },
+
+  /**
+   * Export Monthly Excel Report to local computer C:\TechWash\<Terminal>\Exports\
+   */
+  async exportMonthlyExcel({ monthKey, terminalId = 'admin', orders = [] }) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+      const res = await fetch(`${BRIDGE_URL}/api/export-monthly-excel`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-terminal-id': terminalId || 'admin',
+        },
+        body: JSON.stringify({ monthKey, terminalId, orders }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      if (!res.ok) {
+        const errText = await res.text();
+        return { ok: false, error: `Bridge returned status ${res.status}: ${errText.slice(0, 80)}` };
+      }
+      return await res.json();
+    } catch (err) {
+      return { ok: false, offline: true, error: err.message };
+    }
+  },
 };
 
 

@@ -72,6 +72,12 @@ export const AdminReportsPage = () => {
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
 
+  // Month Bills State
+  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [ledgerMonthFilter, setLedgerMonthFilter] = useState('');
+  const [isExportingExcel, setIsExportingExcel] = useState(false);
+  const [isBundlingShift, setIsBundlingShift] = useState(false);
+
   // Date-wise Shift Ledger State
   const [dateWiseLedger, setDateWiseLedger] = useState([]);
   const [loadingLedger, setLoadingLedger] = useState(false);
@@ -105,6 +111,7 @@ export const AdminReportsPage = () => {
         branchFilter,
         channelFilter,
         onlyOfflinePos: channelFilter === 'POS_ONLY',
+        monthFilter: ledgerMonthFilter || null,
         limitDays: 90 
       });
       setDateWiseLedger(days || []);
@@ -113,7 +120,7 @@ export const AdminReportsPage = () => {
     } finally {
       setLoadingLedger(false);
     }
-  }, [branchFilter, channelFilter]);
+  }, [branchFilter, channelFilter, ledgerMonthFilter]);
 
   // Load Itemized Report Data
   const loadReport = useCallback(async () => {
@@ -121,6 +128,7 @@ export const AdminReportsPage = () => {
     try {
       const data = await reportService.generateFinancialReport({
         datePreset,
+        selectedMonth,
         startDate: customStartDate || null,
         endDate: customEndDate || null,
         targetDate: specificDate || null,
@@ -143,7 +151,7 @@ export const AdminReportsPage = () => {
       setLoading(false);
       setIsRefreshing(false);
     }
-  }, [datePreset, branchFilter, channelFilter, customStartDate, customEndDate, specificDate, searchQuery, error]);
+  }, [datePreset, selectedMonth, branchFilter, channelFilter, customStartDate, customEndDate, specificDate, searchQuery, error]);
 
   // Sync state when URL params change
   useEffect(() => {
@@ -204,6 +212,40 @@ export const AdminReportsPage = () => {
       'text/csv;charset=utf-8;'
     );
     success('CSV Exported', 'Orders ledger downloaded successfully.');
+  };
+
+  // Export Comprehensive Monthly Excel (.xlsx) Register
+  const handleExportMonthExcel = async () => {
+    if (!reportData?.orders || reportData.orders.length === 0) {
+      info('No Data', `There are no orders found for month ${selectedMonth}.`);
+      return;
+    }
+    setIsExportingExcel(true);
+    try {
+      const res = await reportService.exportMonthlyExcel(reportData, selectedMonth, branchFilter);
+      success('Excel Generated!', `Monthly bills register downloaded: ${res.fileName}`);
+    } catch (err) {
+      error('Export Error', 'Failed to generate monthly Excel register: ' + err.message);
+    } finally {
+      setIsExportingExcel(false);
+    }
+  };
+
+  // Quick Action: Package Daily Shift Bundle (All bills of same day + statement + Excel in 1 ZIP)
+  const handlePackageShiftBundle = async (dayGroup) => {
+    setIsBundlingShift(true);
+    try {
+      const res = await reportService.packageDailyShiftBundle(dayGroup, branchFilter);
+      if (res?.success) {
+        success('Shift Bundle Ready!', `Downloaded ${res.fileName} with all ${res.totalBills} bill receipts for company owners.`);
+      } else {
+        error('Package Error', res?.error || 'Could not package shift bundle.');
+      }
+    } catch (err) {
+      error('Package Error', 'Failed to generate shift bundle: ' + err.message);
+    } finally {
+      setIsBundlingShift(false);
+    }
   };
 
   // Quick Action: View & Print Single Day Shift PDF
@@ -369,6 +411,22 @@ export const AdminReportsPage = () => {
             >
               <Download className="w-4 h-4" />
               <span>Export CSV</span>
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={isExportingExcel}
+              onClick={handleExportMonthExcel}
+              className="flex items-center gap-1.5 border-emerald-300 text-emerald-800 bg-emerald-50 hover:bg-emerald-100 font-bold"
+              title="Download formatted Monthly Bills Register for Microsoft Excel (.xlsx)"
+            >
+              {isExportingExcel ? (
+                <div className="w-3.5 h-3.5 rounded-full border-2 border-emerald-600 border-t-transparent animate-spin" />
+              ) : (
+                <FileText className="w-4 h-4 text-emerald-600" />
+              )}
+              <span>Export Month Excel (.xlsx)</span>
             </Button>
 
             <Button
@@ -541,6 +599,31 @@ export const AdminReportsPage = () => {
                     <option value="ONLINE_WEBSITE">🌐 Online Website Orders Only</option>
                     <option value="ALL">🏢 Master Consolidated (Offline POS + Online)</option>
                   </select>
+                </div>
+
+                {/* Month Filter for Shifts */}
+                <div className="min-w-[170px]">
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1 uppercase tracking-wider">
+                    Filter by Month:
+                  </label>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="month"
+                      value={ledgerMonthFilter}
+                      onChange={(e) => setLedgerMonthFilter(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-800 outline-none focus:border-orange-500"
+                    />
+                    {ledgerMonthFilter && (
+                      <button
+                        type="button"
+                        onClick={() => setLedgerMonthFilter('')}
+                        className="px-2 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold"
+                        title="Clear month filter"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {/* Search within Dates */}
@@ -826,6 +909,18 @@ export const AdminReportsPage = () => {
                                 >
                                   <Download className="w-3.5 h-3.5" />
                                 </button>
+
+                                {/* 5. Daily Shift Folder (All Bills of same day packaged for company owners) */}
+                                <button
+                                  type="button"
+                                  disabled={isBundlingShift}
+                                  onClick={() => handlePackageShiftBundle(day)}
+                                  className="px-2.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[11px] transition shadow-xs flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                                  title={`Package all ${day.totalBills} bill PDFs, Excel ledger & shift statement into daily folder / ZIP for company owners`}
+                                >
+                                  <Archive className="w-3 h-3" />
+                                  <span>Shift Folder</span>
+                                </button>
                               </div>
                             </td>
                           </tr>
@@ -858,6 +953,7 @@ export const AdminReportsPage = () => {
                     { key: 'tomorrow', label: 'Tomorrow (Pickups)', emoji: '⏳' },
                     { key: '7days', label: 'Last 7 Days', emoji: '📊' },
                     { key: '30days', label: 'Last 30 Days (View All)', emoji: '🌟' },
+                    { key: 'month', label: 'Month View', emoji: '🗓️' },
                     { key: 'all', label: 'All History', emoji: '📚' },
                     { key: 'single', label: 'Specific Date', emoji: '🗓️' },
                     { key: 'custom', label: 'Custom Range', emoji: '↔️' },
@@ -881,6 +977,22 @@ export const AdminReportsPage = () => {
                       <span>{tab.label}</span>
                     </button>
                   ))}
+
+                  {/* Quick Month Picker Input */}
+                  {datePreset === 'month' && (
+                    <div className="inline-flex items-center gap-1.5 ml-1 bg-emerald-50 px-2 py-1 rounded-xl border border-emerald-300">
+                      <span className="text-[10px] font-bold text-emerald-900">Select Month:</span>
+                      <input
+                        type="month"
+                        value={selectedMonth}
+                        onChange={(e) => {
+                          setSelectedMonth(e.target.value);
+                          setDatePreset('month');
+                        }}
+                        className="px-2 py-0.5 rounded-lg border border-emerald-400 text-xs font-bold text-emerald-950 bg-white outline-none"
+                      />
+                    </div>
+                  )}
 
                   {/* Quick Specific Date Input */}
                   {datePreset === 'single' && (

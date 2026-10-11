@@ -23,7 +23,9 @@ import {
   CheckCircle2,
   RefreshCw,
   Clock,
-  Save
+  Save,
+  FileSpreadsheet,
+  Archive
 } from 'lucide-react';
 
 export const FinancialReportModal = ({
@@ -48,7 +50,10 @@ export const FinancialReportModal = ({
   const [selectedBranch, setSelectedBranch] = useState(reportData?.branchFilter || 'ALL_POS');
   const [selectedPreset, setSelectedPreset] = useState(reportData?.datePreset || 'today');
   const [customDate, setCustomDate] = useState('');
+  const [selectedMonth, setSelectedMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const [isReloading, setIsReloading] = useState(false);
+  const [isExportingExcel, setIsExportingExcel] = useState(false);
+  const [isBundlingShift, setIsBundlingShift] = useState(false);
 
   const handleSaveShiftModal = async () => {
     try {
@@ -66,6 +71,7 @@ export const FinancialReportModal = ({
       setActiveReport(reportData);
       setSelectedBranch(reportData.branchFilter || 'ALL_POS');
       setSelectedPreset(reportData.datePreset || 'today');
+      if (reportData.selectedMonth) setSelectedMonth(reportData.selectedMonth);
     }
   }, [reportData]);
 
@@ -77,9 +83,12 @@ export const FinancialReportModal = ({
     setSelectedBranch(branch);
     setSelectedPreset(preset);
     try {
+      const isMonth = preset === 'month';
+      const monthKey = isMonth ? (targetDate || selectedMonth || new Date().toISOString().slice(0, 7)) : null;
       const data = await reportService.generateFinancialReport({
         datePreset: preset,
-        targetDate: targetDate || (preset === 'single' ? customDate : null),
+        targetDate: preset === 'single' ? (targetDate || customDate) : null,
+        selectedMonth: monthKey,
         branchFilter: branch,
         channelFilter: branch === 'ONLINE_WEBSITE' ? 'ONLINE_ONLY' : (branch === 'POS_ONLY' ? 'POS_ONLY' : 'ALL'),
         onlyOfflinePos: branch === 'POS_ONLY',
@@ -92,6 +101,59 @@ export const FinancialReportModal = ({
       error('Filter Error', 'Failed to refresh financial settlement ledger.');
     } finally {
       setIsReloading(false);
+    }
+  };
+
+  const handleExportExcel = async () => {
+    if (!activeReport?.orders || activeReport.orders.length === 0) {
+      info('No Data', 'There are no bills to export for this report.');
+      return;
+    }
+    setIsExportingExcel(true);
+    try {
+      const monthKey = selectedPreset === 'month'
+        ? selectedMonth
+        : (activeReport.targetDate ? activeReport.targetDate.slice(0, 7) : new Date().toISOString().slice(0, 7));
+      const res = await reportService.exportMonthlyExcel(activeReport, monthKey, selectedBranch);
+      if (res?.success) {
+        success('Excel Exported', `Generated ${res.fileName} with ${res.totalBills} bills.`);
+      }
+    } catch (err) {
+      error('Export Failed', err.message || 'Could not export Excel file.');
+    } finally {
+      setIsExportingExcel(false);
+    }
+  };
+
+  const handlePackageShiftBundle = async () => {
+    if (!activeReport?.orders || activeReport.orders.length === 0) {
+      info('No Data', 'There are no bills to package for this shift.');
+      return;
+    }
+    setIsBundlingShift(true);
+    try {
+      const dayKey = activeReport.dateKey || (activeReport.targetDate ? activeReport.targetDate.split('T')[0] : new Date().toISOString().split('T')[0]);
+      const dayGroup = {
+        dateKey: dayKey,
+        dateLabel: activeReport.dateRangeLabel || dayKey,
+        orders: activeReport.orders || [],
+        grossBilled: activeReport.metrics?.totalGrossBilled || 0,
+        collected: activeReport.metrics?.category1?.totalInflowCollections || 0,
+        pendingDues: activeReport.metrics?.category2?.totalNetPendingDues || 0,
+        cash: activeReport.metrics?.category1?.cashReceived || 0,
+        upi: activeReport.metrics?.category1?.upiReceived || 0,
+        card: activeReport.metrics?.category1?.cardReceived || 0,
+      };
+      const res = await reportService.packageDailyShiftBundle(dayGroup, selectedBranch);
+      if (res?.success) {
+        success('Shift Bundle Packaged!', res.message || 'Saved ZIP package with shift statement and all bill invoices.');
+      } else {
+        error('Package Error', res?.error || 'Failed to package shift bundle.');
+      }
+    } catch (err) {
+      error('Package Error', err.message || 'Failed to package shift bundle.');
+    } finally {
+      setIsBundlingShift(false);
     }
   };
 
@@ -218,6 +280,28 @@ export const FinancialReportModal = ({
             >
               <Download className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Export CSV</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleExportExcel}
+              disabled={isExportingExcel}
+              className="px-3 py-1.5 rounded-xl bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border border-emerald-500/40"
+              title="Export complete bills ledger to formatted Microsoft Excel (.xlsx)"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+              <span>{isExportingExcel ? 'Exporting...' : 'Export Excel (.xlsx)'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handlePackageShiftBundle}
+              disabled={isBundlingShift}
+              className="px-3 py-1.5 rounded-xl bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border border-indigo-500/40"
+              title="Package shift statement and all customer invoices into ZIP for company owners"
+            >
+              <Archive className="w-3.5 h-3.5 text-indigo-400" />
+              <span>{isBundlingShift ? 'Bundling...' : '📦 Package Shift'}</span>
             </button>
 
             <button
@@ -387,6 +471,34 @@ export const FinancialReportModal = ({
             >
               All Time
             </button>
+
+            {/* Month View Preset */}
+            <button
+              type="button"
+              onClick={() => handleFilterChange(selectedBranch, 'month', selectedMonth)}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1 ${
+                selectedPreset === 'month'
+                  ? 'bg-cyan-600 text-white shadow-xs font-bold'
+                  : 'bg-slate-700/80 text-slate-300 hover:bg-slate-700 hover:text-white'
+              }`}
+            >
+              <span>🗓️ Month</span>
+            </button>
+
+            {selectedPreset === 'month' && (
+              <div className="flex items-center gap-1 bg-slate-900 px-1.5 py-0.5 rounded-lg border border-cyan-500/50">
+                <input
+                  type="month"
+                  value={selectedMonth}
+                  onChange={(e) => {
+                    setSelectedMonth(e.target.value);
+                    handleFilterChange(selectedBranch, 'month', e.target.value);
+                  }}
+                  className="bg-transparent text-white text-[11px] font-mono outline-none cursor-pointer"
+                  title="Select month (YYYY-MM)"
+                />
+              </div>
+            )}
 
             {/* Custom Date Input */}
             <div className="flex items-center gap-1 bg-slate-900 px-1.5 py-0.5 rounded-lg border border-slate-700">

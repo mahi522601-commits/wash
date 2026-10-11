@@ -73,7 +73,8 @@ import {
   Calendar,
   Sun,
   Moon,
-  Bell
+  Bell,
+  FileSpreadsheet
 } from 'lucide-react';
 
 export const WALK_IN_SERVICES = [
@@ -358,7 +359,9 @@ export const AdminOrdersPage = () => {
   const [selectedStatus, setSelectedStatus] = useState('ALL');
   const [branchFilter, setBranchFilter] = useState(initialBranch); // 'ALL' | 'counter-1' | 'counter-2' | 'counter-3' | 'ONLINE_WEBSITE'
   const [channelFilter, setChannelFilter] = useState(initialChannel); // 'ALL' | 'ONLINE_WEBSITE' | 'OFFLINE_POS'
+  const [monthFilter, setMonthFilter] = useState(''); // 'YYYY-MM' or ''
   const [searchQuery, setSearchQuery] = useState('');
+  const [isExportingExcel, setIsExportingExcel] = useState(false);
   const [activeOrder, setActiveOrder] = useState(null);
   const [receiptModalOrder, setReceiptModalOrder] = useState(null);
   const [assignModalOrder, setAssignModalOrder] = useState(null);
@@ -619,7 +622,7 @@ export const AdminOrdersPage = () => {
     : (walkInForm.paymentStatus === 'PAID' ? walkInFinalTotal : 0);
   const walkInBalanceDue = Math.max(0, walkInFinalTotal - (isNaN(walkInReceived) ? 0 : walkInReceived));
 
-  // Comprehensive Multi-Branch & Channel filtering
+  // Comprehensive Multi-Branch, Channel, Month, Status & Search filtering
   const filteredOrders = useMemo(() => {
     return orders.filter(ord => {
       const isPos = ord.isWalkIn || ord.orderSource === 'OFFLINE_POS' || ord.orderSource === 'WALK_IN' || !!ord.terminalId || !!ord.terminalCode;
@@ -638,9 +641,35 @@ export const AdminOrdersPage = () => {
         }
       }
 
+      // 3. Month Filter (e.g. "2026-10")
+      if (monthFilter) {
+        const orderDateStr = ord.createdAt || ord.date || ord.pickupDate || '';
+        const orderMonth = orderDateStr.slice(0, 7);
+        if (orderMonth !== monthFilter) return false;
+      }
+
+      // 4. Milestone / Status Filter
+      if (selectedStatus && selectedStatus !== 'ALL') {
+        const st = ord.customerStage || ord.status;
+        if (st !== selectedStatus) return false;
+      }
+
+      // 5. Search Query
+      if (searchQuery && searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const num = (ord.orderNumber || ord.id || '').toLowerCase();
+        const manualSlip = (ord.manualBillNumber || '').toLowerCase();
+        const name = (ord.customerName || ord.customer?.name || '').toLowerCase();
+        const ph = (ord.phone || ord.customer?.phone || '').toLowerCase();
+        const addr = (ord.address || ord.customer?.address || '').toLowerCase();
+        if (!num.includes(q) && !manualSlip.includes(q) && !name.includes(q) && !ph.includes(q) && !addr.includes(q)) {
+          return false;
+        }
+      }
+
       return true;
     });
-  }, [orders, channelFilter, branchFilter]);
+  }, [orders, channelFilter, branchFilter, monthFilter, selectedStatus, searchQuery]);
 
   const onlineOrdersCount = useMemo(() => {
     return orders.filter(o => !o.isWalkIn && o.orderSource !== 'OFFLINE_POS' && o.orderSource !== 'WALK_IN' && !o.terminalId).length;
@@ -1317,21 +1346,47 @@ export const AdminOrdersPage = () => {
   };
 
   const exportCSV = () => {
-    if (orders.length === 0) {
+    const targetOrders = filteredOrders.length > 0 ? filteredOrders : orders;
+    if (targetOrders.length === 0) {
       error('No Data', 'No orders available to export.');
       return;
     }
     const headers = ['Order Number,Customer Name,Phone,Service,Est Weight,Actual Weight,Est Amount,Final Amount,Customer Stage,Internal Stage,Payment Status,Created At'];
-    const rows = orders.map(o => `"${o.orderNumber}","${o.customerName || o.customer?.name || ''}","${o.phone || o.customer?.phone || ''}","${o.service || o.serviceName || ''}","${o.estimatedWeightKg || o.estimatedWeight || ''}","${o.actualWeight || ''}","${o.estimatedPrice || o.priceSnapshot?.finalTotal || ''}","${o.finalPrice || o.totalAmount || ''}","${o.customerStage || o.status}","${o.internalStage || ''}","${o.paymentStatus}","${o.createdAt}"`);
+    const rows = targetOrders.map(o => `"${o.orderNumber}","${o.customerName || o.customer?.name || ''}","${o.phone || o.customer?.phone || ''}","${o.service || o.serviceName || ''}","${o.estimatedWeightKg || o.estimatedWeight || ''}","${o.actualWeight || ''}","${o.estimatedPrice || o.priceSnapshot?.finalTotal || ''}","${o.finalPrice || o.totalAmount || ''}","${o.customerStage || o.status}","${o.internalStage || ''}","${o.paymentStatus}","${o.createdAt}"`);
     const csvContent = 'data:text/csv;charset=utf-8,' + [headers, ...rows].join('\n');
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `techwash_orders_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `techwash_orders_${monthFilter || new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    success('Export Complete', 'Orders exported to CSV.');
+    success('Export Complete', `Exported ${targetOrders.length} orders to CSV.`);
+  };
+
+  const handleExportMonthExcel = async () => {
+    const targetOrders = filteredOrders.length > 0 ? filteredOrders : orders;
+    if (targetOrders.length === 0) {
+      error('No Orders', 'No orders available to export.');
+      return;
+    }
+    setIsExportingExcel(true);
+    try {
+      const { reportService } = await import('../../services/reportService');
+      const targetMonth = monthFilter || new Date().toISOString().slice(0, 7);
+      const res = await reportService.exportMonthlyExcel(
+        { orders: targetOrders, metrics: {} },
+        targetMonth,
+        branchFilter
+      );
+      if (res?.success) {
+        success('Excel Export Complete', `Exported ${res.fileName} with ${res.totalBills} bills.`);
+      }
+    } catch (err) {
+      error('Export Error', err.message || 'Failed to export Excel.');
+    } finally {
+      setIsExportingExcel(false);
+    }
   };
 
   const columns = [
@@ -1640,6 +1695,17 @@ export const AdminOrdersPage = () => {
         </Button>
         <Button variant="outline" size="md" icon={Download} onClick={exportCSV}>
           Export CSV
+        </Button>
+        <Button 
+          variant="outline" 
+          size="md" 
+          icon={FileSpreadsheet} 
+          onClick={handleExportMonthExcel}
+          disabled={isExportingExcel}
+          className="bg-emerald-50 border-emerald-300 text-emerald-800 hover:bg-emerald-100 font-bold cursor-pointer"
+          title="Export filtered/month orders to formatted Microsoft Excel (.xlsx)"
+        >
+          {isExportingExcel ? 'Exporting...' : 'Export Month Excel (.xlsx)'}
         </Button>
         {orders.length > 0 && (
           <Button 
@@ -1998,15 +2064,42 @@ export const AdminOrdersPage = () => {
           ))}
         </div>
 
-        <div className="relative w-full sm:w-72">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            placeholder="Search by ID, name, phone, address..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs focus:ring-2 focus:ring-purple-500 font-medium"
-          />
+        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+          {/* Month Filter Picker */}
+          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl shrink-0">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+              <Calendar className="w-3.5 h-3.5 text-orange-500" />
+              Month:
+            </span>
+            <input
+              type="month"
+              value={monthFilter}
+              onChange={(e) => setMonthFilter(e.target.value)}
+              className="bg-white border border-slate-200 rounded-lg px-2 py-0.5 text-xs font-mono font-bold text-slate-800 outline-none"
+              title="Filter bills by month (YYYY-MM)"
+            />
+            {monthFilter && (
+              <button
+                type="button"
+                onClick={() => setMonthFilter('')}
+                className="text-[10px] text-rose-500 hover:text-rose-700 font-bold ml-1 cursor-pointer"
+                title="Clear month filter"
+              >
+                ✕ Clear
+              </button>
+            )}
+          </div>
+
+          <div className="relative w-full sm:w-72">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Search by ID, name, phone, address..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs focus:ring-2 focus:ring-purple-500 font-medium"
+            />
+          </div>
         </div>
       </div>
 

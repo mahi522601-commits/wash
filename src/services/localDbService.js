@@ -741,6 +741,12 @@ export const localDbService = {
             const dataHandle = await fHandle.getDirectoryHandle('Data', { create: true });
             await this._writeJsonFile(dataHandle, 'orders.json', allOrders);
             await this._writeJsonFile(dataHandle, `${dateKey}.json`, dayOrders);
+
+            // Also save invoice into Invoices/<dateKey>/<billNumber>.json
+            const invDirHandle = await fHandle.getDirectoryHandle('Invoices', { create: true });
+            const dateInvDirHandle = await invDirHandle.getDirectoryHandle(dateKey, { create: true });
+            const billNumber = order.orderNumber || order.id || order.localId;
+            await this._writeJsonFile(dateInvDirHandle, `${billNumber}.json`, order);
           } catch (e) {}
         }
       }
