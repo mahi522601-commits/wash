@@ -1191,13 +1191,37 @@ export const reportService = {
     const dateLabel = dayGroup.dateLabel || dateKey;
     const orders = dayGroup.orders || [];
 
-    // Trigger local bridge export in background (creates C:\TechWash\<Terminal>\Exports\<dateKey>\ with all bill PDFs)
+    // 1. Trigger local bridge export to create C:\TechWash folders and get real PDF bundle
+    let bridgeResult = null;
     try {
       const { posBridgeService } = await import('./posBridgeService.js');
-      posBridgeService.exportShiftBundle({ dateKey, terminalId: branchFilter, orders }).catch(() => {});
+      bridgeResult = await posBridgeService.exportShiftBundle({ dateKey, terminalId: branchFilter, orders });
     } catch (e) {}
 
-    // In browser: Build complete ZIP bundle with Shift statement, Excel/CSV, and all individual bill receipts
+    // If bridge produced the ZIP containing all binary PDFs, download it directly!
+    if (bridgeResult?.ok && bridgeResult?.zipBase64) {
+      try {
+        const binaryString = atob(bridgeResult.zipBase64);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        const blob = new Blob([bytes], { type: 'application/zip' });
+        const fileName = `TechWash-Shift-${dateKey}-All-Bills.zip`;
+        this.downloadFile(blob, fileName, 'application/zip');
+        return {
+          success: true,
+          fileName,
+          dateKey,
+          totalBills: orders.length,
+          message: `Shift package with all ${orders.length} bill PDFs and Excel saved to C:\\TechWash and downloaded.`
+        };
+      } catch (err) {
+        console.warn('Error parsing bridge ZIP base64, falling back to browser generator:', err);
+      }
+    }
+
+    // 2. In browser fallback: Build complete ZIP bundle with PDFs/, Invoices/, and Shift statement
     try {
       const JSZipModule = await import('jszip');
       const JSZip = JSZipModule.default || JSZipModule;
@@ -1309,7 +1333,8 @@ export const reportService = {
       const csv = this.convertOrdersToCSV(orders);
       zip.file(`Daily-Sales-Ledger-${dateKey}.csv`, csv);
 
-      // 3. Subfolder "Invoices/" containing all individual bills for that day
+      // 3. Subfolders "PDFs/" and "Invoices/" containing all individual bills of that day
+      const pdfsFolder = zip.folder('PDFs');
       const invoicesFolder = zip.folder('Invoices');
       orders.forEach((o, idx) => {
         const bNum = o.orderNumber || o.id || `BILL-${idx + 1}`;
@@ -1330,10 +1355,19 @@ export const reportService = {
     table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 13px; }
     th { border-bottom: 2px solid #0f172a; padding: 6px; text-align: left; }
     td { border-bottom: 1px solid #f1f5f9; padding: 6px; }
+    @media print {
+      body { margin: 0; padding: 0; }
+      .no-print { display: none !important; }
+      .card { border: none; padding: 0; }
+      @page { size: A4; margin: 15mm; }
+    }
   </style>
 </head>
 <body>
   <div class="card">
+    <div class="no-print" style="margin-bottom: 12px; text-align: right;">
+      <button onclick="window.print()" style="padding: 6px 14px; background: #2563eb; color: #fff; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 12px;">🖨️ Print / Save as PDF</button>
+    </div>
     <div style="display:flex; justify-content:space-between; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px;">
       <div>
         <h2>TECH WASH LAUNDRY</h2>
@@ -1365,6 +1399,7 @@ export const reportService = {
 </body>
 </html>`;
         invoicesFolder.file(`${bNum}.html`, invHtml);
+        pdfsFolder.file(`${bNum}.html`, invHtml);
       });
 
       const zipBlob = await zip.generateAsync({ type: 'blob' });

@@ -747,6 +747,11 @@ export const localDbService = {
             const dateInvDirHandle = await invDirHandle.getDirectoryHandle(dateKey, { create: true });
             const billNumber = order.orderNumber || order.id || order.localId;
             await this._writeJsonFile(dateInvDirHandle, `${billNumber}.json`, order);
+
+            // Also save into dedicated PDFs/<dateKey>/<billNumber>.json
+            const pdfDirHandle = await fHandle.getDirectoryHandle('PDFs', { create: true });
+            const datePdfDirHandle = await pdfDirHandle.getDirectoryHandle(dateKey, { create: true });
+            await this._writeJsonFile(datePdfDirHandle, `${billNumber}.json`, order);
           } catch (e) {}
         }
       }
@@ -806,6 +811,7 @@ if not exist "C:\\TechWash" (
 if not exist "C:\\TechWash\\Admin\\Data" (
     mkdir "C:\\TechWash\\Admin\\Data"
     mkdir "C:\\TechWash\\Admin\\Invoices"
+    mkdir "C:\\TechWash\\Admin\\PDFs"
     mkdir "C:\\TechWash\\Admin\\Exports"
     echo [OK] Created C:\\TechWash\\Admin (Order Management - Admin Portal)
 )
@@ -813,6 +819,7 @@ if not exist "C:\\TechWash\\Admin\\Data" (
 if not exist "C:\\TechWash\\POS-01\\Data" (
     mkdir "C:\\TechWash\\POS-01\\Data"
     mkdir "C:\\TechWash\\POS-01\\Invoices"
+    mkdir "C:\\TechWash\\POS-01\\PDFs"
     mkdir "C:\\TechWash\\POS-01\\Exports"
     echo [OK] Created C:\\TechWash\\POS-01 (Main Branch - Manikonda)
 )
@@ -820,6 +827,7 @@ if not exist "C:\\TechWash\\POS-01\\Data" (
 if not exist "C:\\TechWash\\POS-02\\Data" (
     mkdir "C:\\TechWash\\POS-02\\Data"
     mkdir "C:\\TechWash\\POS-02\\Invoices"
+    mkdir "C:\\TechWash\\POS-02\\PDFs"
     mkdir "C:\\TechWash\\POS-02\\Exports"
     echo [OK] Created C:\\TechWash\\POS-02 (Branch 1 - Tolichowki)
 )
@@ -827,6 +835,7 @@ if not exist "C:\\TechWash\\POS-02\\Data" (
 if not exist "C:\\TechWash\\POS-03\\Data" (
     mkdir "C:\\TechWash\\POS-03\\Data"
     mkdir "C:\\TechWash\\POS-03\\Invoices"
+    mkdir "C:\\TechWash\\POS-03\\PDFs"
     mkdir "C:\\TechWash\\POS-03\\Exports"
     echo [OK] Created C:\\TechWash\\POS-03 (Pick Up Point - Ambience)
 )

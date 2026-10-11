@@ -79,6 +79,7 @@ function ensureDirectories() {
       tRoot,
       path.join(tRoot, 'Data'),
       path.join(tRoot, 'Invoices'),
+      path.join(tRoot, 'PDFs'),
       path.join(tRoot, 'Exports'),
     ];
     subDirs.forEach(d => {
@@ -827,6 +828,17 @@ const server = http.createServer(async (req, res) => {
           fs.writeFileSync(path.join(adminDateInvoiceDir, `${sanitizeFilename(billNumber)}.pdf`), pdfBuffer);
         } catch (e) {}
 
+        // 3b. Also save into dedicated PDFs\<dateKey>\<billNumber>.pdf for Terminal and Admin
+        try {
+          const terminalDatePdfDir = path.join(terminalStorageRoot, 'PDFs', dateKey);
+          if (!fs.existsSync(terminalDatePdfDir)) fs.mkdirSync(terminalDatePdfDir, { recursive: true });
+          fs.writeFileSync(path.join(terminalDatePdfDir, `${sanitizeFilename(billNumber)}.pdf`), pdfBuffer);
+
+          const adminDatePdfDir = path.join(ROOT_BASE, 'Admin', 'PDFs', dateKey);
+          if (!fs.existsSync(adminDatePdfDir)) fs.mkdirSync(adminDatePdfDir, { recursive: true });
+          fs.writeFileSync(path.join(adminDatePdfDir, `${sanitizeFilename(billNumber)}.pdf`), pdfBuffer);
+        } catch (e) {}
+
         // 4. Update Daily Excel Spreadsheet for Terminal and Admin
         const excelFilePath = path.join(terminalExportsDir, `${dateKey}.xlsx`);
         await updateDailyExcelFile(excelFilePath, orderRecord);
@@ -874,28 +886,53 @@ const server = http.createServer(async (req, res) => {
         const terminalStorageRoot = path.join(ROOT_BASE, targetPreset.folderName);
         const shiftExportDir = path.join(terminalStorageRoot, 'Exports', dateKey);
         const shiftInvoicesDir = path.join(shiftExportDir, 'Invoices');
+        const shiftPDFsDir = path.join(shiftExportDir, 'PDFs');
 
         if (!fs.existsSync(shiftExportDir)) fs.mkdirSync(shiftExportDir, { recursive: true });
         if (!fs.existsSync(shiftInvoicesDir)) fs.mkdirSync(shiftInvoicesDir, { recursive: true });
+        if (!fs.existsSync(shiftPDFsDir)) fs.mkdirSync(shiftPDFsDir, { recursive: true });
 
         // Admin mirror directory
         const adminShiftExportDir = path.join(ROOT_BASE, 'Admin', 'Exports', dateKey);
         const adminShiftInvoicesDir = path.join(adminShiftExportDir, 'Invoices');
+        const adminShiftPDFsDir = path.join(adminShiftExportDir, 'PDFs');
         if (!fs.existsSync(adminShiftExportDir)) fs.mkdirSync(adminShiftExportDir, { recursive: true });
         if (!fs.existsSync(adminShiftInvoicesDir)) fs.mkdirSync(adminShiftInvoicesDir, { recursive: true });
+        if (!fs.existsSync(adminShiftPDFsDir)) fs.mkdirSync(adminShiftPDFsDir, { recursive: true });
 
         const orders = Array.isArray(payload.orders) ? payload.orders : [];
 
-        // 1. Generate & Save each order's PDF into Exports/<dateKey>/Invoices/<billNumber>.pdf and build ZIP
+        // 1. Generate & Save each order's PDF into Exports/<dateKey>/PDFs/<billNumber>.pdf, Invoices/<billNumber>.pdf, and ZIP
         const zip = new JSZip();
+        const zipPDFs = zip.folder('PDFs');
         const zipInvoices = zip.folder('Invoices');
 
         for (const order of orders) {
           const bNum = String(order.orderNumber || order.id || 'BILL').trim();
           const cleanName = `${sanitizeFilename(bNum)}.pdf`;
           const pdfBuffer = await generateInvoicePDFBuffer(order);
+
+          // Save in shift export PDFs directory
+          fs.writeFileSync(path.join(shiftPDFsDir, cleanName), pdfBuffer);
+          fs.writeFileSync(path.join(adminShiftPDFsDir, cleanName), pdfBuffer);
+
+          // Save in shift export Invoices directory
           fs.writeFileSync(path.join(shiftInvoicesDir, cleanName), pdfBuffer);
           fs.writeFileSync(path.join(adminShiftInvoicesDir, cleanName), pdfBuffer);
+
+          // Also mirror to root terminal & admin PDFs directory: PDFs/<dateKey>/<billNumber>.pdf
+          try {
+            const rootTermPdfDir = path.join(terminalStorageRoot, 'PDFs', dateKey);
+            if (!fs.existsSync(rootTermPdfDir)) fs.mkdirSync(rootTermPdfDir, { recursive: true });
+            fs.writeFileSync(path.join(rootTermPdfDir, cleanName), pdfBuffer);
+
+            const rootAdminPdfDir = path.join(ROOT_BASE, 'Admin', 'PDFs', dateKey);
+            if (!fs.existsSync(rootAdminPdfDir)) fs.mkdirSync(rootAdminPdfDir, { recursive: true });
+            fs.writeFileSync(path.join(rootAdminPdfDir, cleanName), pdfBuffer);
+          } catch (e) {}
+
+          // Add to ZIP folders
+          zipPDFs.file(cleanName, pdfBuffer);
           zipInvoices.file(cleanName, pdfBuffer);
         }
 
@@ -960,6 +997,7 @@ const server = http.createServer(async (req, res) => {
           totalBills: orders.length,
           folderPath: shiftExportDir,
           zipPath,
+          zipBase64: zipBuffer.toString('base64'),
           message: `Shift bundle with all ${orders.length} bill PDFs and Excel saved to ${shiftExportDir}`,
         }));
       } catch (err) {
