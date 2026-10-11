@@ -1459,12 +1459,13 @@ export const AdminReportsPage = () => {
                                 {balance > 0 ? formatCurrency(balance) : '₹0'}
                               </td>
                               <td className="py-3 px-3 text-center whitespace-nowrap">
-                                <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
                                   isPaid
                                     ? 'bg-emerald-100 text-emerald-800'
                                     : (isPartial ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800')
-                                }`}>
-                                  {String(ord.paymentMethod || 'CASH')} • {isPaid ? 'PAID' : (isPartial ? 'PARTIAL' : 'DUE')}
+                                }`} title={`${ord.paymentMethod || 'CASH'} • ${isPaid ? 'PAID' : (isPartial ? 'PARTIAL' : 'DUE')}`}>
+                                  <span className="text-xs leading-none">{String(ord.paymentMethod || '').toUpperCase().includes('UPI') || String(ord.paymentMethod || '').toUpperCase().includes('PHONE') || String(ord.paymentMethod || '').toUpperCase().includes('PAY') || String(ord.paymentMethod || '').toUpperCase().includes('QR') ? '📱' : String(ord.paymentMethod || '').toUpperCase().includes('CARD') ? '💳' : String(ord.paymentMethod || '').toUpperCase().includes('ONLINE') ? '🌐' : '💵'}</span>
+                                  <span>{isPaid ? 'PAID' : (isPartial ? 'PARTIAL' : 'DUE')}</span>
                                 </span>
                               </td>
                               <td className="py-3 px-3 text-center">

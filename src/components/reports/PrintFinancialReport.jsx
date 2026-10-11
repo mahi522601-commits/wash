@@ -18,6 +18,20 @@ import {
   Scale
 } from 'lucide-react';
 
+const getPaymentModeBadge = (method) => {
+  const m = String(method || 'CASH').toUpperCase();
+  if (m.includes('UPI') || m.includes('PHONE') || m.includes('PAY') || m.includes('QR') || m.includes('GPAY')) {
+    return { emoji: '📱', label: 'PhonePe / UPI' };
+  }
+  if (m.includes('CARD') || m.includes('POS') || m.includes('SWIPE')) {
+    return { emoji: '💳', label: 'Card Swipe' };
+  }
+  if (m.includes('ONLINE') || m.includes('WEB')) {
+    return { emoji: '🌐', label: 'Online Gateway' };
+  }
+  return { emoji: '💵', label: 'Cash' };
+};
+
 export const PrintFinancialReport = ({
   reportData,
   className = '',
@@ -351,21 +365,21 @@ export const PrintFinancialReport = ({
         </div>
 
         <div className="overflow-x-auto w-full print:overflow-visible">
-          <table className="w-full min-w-[760px] text-left border-collapse text-[9.5px]">
+          <table className="w-full text-left border-collapse text-[9.5px]">
             <thead>
               <tr className="bg-slate-100 text-slate-700 text-[8.5px] font-black uppercase tracking-wider border-b border-slate-200 print:border-black">
-                <th className="py-1.5 px-2 text-center w-7">#</th>
-                <th className="py-1.5 px-2 w-18 whitespace-nowrap">Order ID</th>
-                <th className="py-1.5 px-2 w-20">Date & Time</th>
-                <th className="py-1.5 px-2 w-28">Customer</th>
-                <th className="py-1.5 px-2 w-20">Branch</th>
-                <th className="py-1.5 px-2 min-w-[170px]">Clothes, Garments & Services (Pin-to-Pin)</th>
-                <th className="py-1.5 px-2 text-right w-16 whitespace-nowrap">Total Bill</th>
-                <th className="py-1.5 px-2 text-right w-16 whitespace-nowrap">Received</th>
-                <th className="py-1.5 px-2 text-right w-22 whitespace-nowrap bg-amber-100/90 text-amber-950 border-l border-r border-amber-300 font-black">
-                  Balance Due
+                <th className="py-1.5 px-1 text-center w-6">#</th>
+                <th className="py-1.5 px-1.5 w-16 whitespace-nowrap">Order ID</th>
+                <th className="py-1.5 px-1.5 w-16 whitespace-nowrap">Date/Time</th>
+                <th className="py-1.5 px-1.5 w-22">Customer</th>
+                <th className="py-1.5 px-1.5 w-16">Branch</th>
+                <th className="py-1.5 px-2">Clothes, Garments & Services (Pin-to-Pin)</th>
+                <th className="py-1.5 px-1.5 text-right w-14 whitespace-nowrap">Total</th>
+                <th className="py-1.5 px-1.5 text-right w-14 whitespace-nowrap">Rec'd</th>
+                <th className="py-1.5 px-1.5 text-right w-16 whitespace-nowrap bg-amber-100/90 text-amber-950 border-l border-r border-amber-300 font-black">
+                  Bal Due
                 </th>
-                <th className="py-1.5 px-2 text-center w-22 whitespace-nowrap">Mode & Status</th>
+                <th className="py-1.5 px-1 text-center w-12 whitespace-nowrap">Pay</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-800 print:divide-slate-300">
@@ -402,6 +416,7 @@ export const PrintFinancialReport = ({
                   const isPartial = received > 0 && balance > 0;
 
                   const pin = parsePinToPinItems(ord);
+                  const modeInfo = getPaymentModeBadge(ord.paymentMethod);
 
                   const d = new Date(ord.createdAt || Date.now());
                   const dateStr = !isNaN(d.getTime()) ? d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '—';
@@ -409,28 +424,28 @@ export const PrintFinancialReport = ({
 
                   return (
                     <tr key={ord.id || idx} className="hover:bg-slate-50/80">
-                      <td className="py-2 px-2 text-center text-slate-400 font-mono text-[9px] align-top">
+                      <td className="py-2 px-1 text-center text-slate-400 font-mono text-[9px] align-top">
                         {idx + 1}
                       </td>
-                      <td className="py-2 px-2 font-mono font-bold text-slate-900 whitespace-nowrap align-top">
+                      <td className="py-2 px-1.5 font-mono font-bold text-slate-900 whitespace-nowrap align-top text-[9px]">
                         {ord.orderNumber || ord.id}
                       </td>
-                      <td className="py-2 px-2 text-slate-600 whitespace-nowrap align-top">
-                        <div className="font-bold text-slate-900 text-[9px]">{dateStr}</div>
-                        <div className="text-slate-400 font-mono text-[8px]">{timeStr}</div>
+                      <td className="py-2 px-1.5 text-slate-600 whitespace-nowrap align-top">
+                        <div className="font-bold text-slate-900 text-[8.5px] whitespace-nowrap">{dateStr}</div>
+                        <div className="text-slate-400 font-mono text-[7.5px] whitespace-nowrap">{timeStr}</div>
                       </td>
-                      <td className="py-2 px-2 align-top">
-                        <div className="font-bold text-slate-900 truncate max-w-[110px]" title={ord.customerName || ord.customer?.name}>
-                          {ord.customerName || ord.customer?.name || 'Valued Customer'}
+                      <td className="py-2 px-1.5 align-top">
+                        <div className="font-bold text-slate-900 truncate max-w-[85px] text-[9px]" title={ord.customerName || ord.customer?.name}>
+                          {ord.customerName || ord.customer?.name || 'Customer'}
                         </div>
-                        <div className="text-slate-500 font-mono text-[8.5px]">
+                        <div className="text-slate-500 font-mono text-[8px] whitespace-nowrap">
                           {ord.phone || ord.customer?.phone || ''}
                         </div>
                       </td>
-                      <td className="py-2 px-2 text-slate-600 truncate max-w-[85px] align-top" title={ord.storeBranch || ord.terminalCode || 'Counter'}>
-                        {ord.storeBranch ? ord.storeBranch.replace('Tech Wash ', '') : (ord.isWalkIn ? 'POS Counter' : 'Online Website')}
+                      <td className="py-2 px-1.5 text-slate-600 truncate max-w-[70px] align-top text-[8.5px]" title={ord.storeBranch || ord.terminalCode || 'Counter'}>
+                        {ord.storeBranch ? ord.storeBranch.replace('Tech Wash ', '').replace('Laundry ', '').replace('Branch', 'Br.') : (ord.isWalkIn ? 'Counter' : 'Online')}
                       </td>
-                      <td className="py-2 px-2.5 align-top min-w-[170px]">
+                      <td className="py-2 px-2 align-top">
                         <div className="space-y-1">
                           {/* 1. Weighed Scale Batches */}
                           {pin.scales.length > 0 && (
@@ -492,26 +507,30 @@ export const PrintFinancialReport = ({
                           )}
                         </div>
                       </td>
-                      <td className="py-2 px-2 text-right font-mono font-bold text-slate-900 align-top whitespace-nowrap">
+                      <td className="py-2 px-1.5 text-right font-mono font-bold text-slate-900 align-top whitespace-nowrap text-[9px]">
                         {formatCurrency(total)}
                       </td>
-                      <td className="py-2 px-2 text-right font-mono font-bold text-emerald-700 print:text-black align-top whitespace-nowrap">
+                      <td className="py-2 px-1.5 text-right font-mono font-bold text-emerald-700 print:text-black align-top whitespace-nowrap text-[9px]">
                         {formatCurrency(received)}
                       </td>
-                      <td className={`py-2 px-2 text-right font-mono font-black align-top whitespace-nowrap border-l border-r border-slate-100 ${
+                      <td className={`py-2 px-1.5 text-right font-mono font-black align-top whitespace-nowrap border-l border-r border-slate-100 text-[9px] ${
                         balance > 0 
                           ? 'text-rose-600 bg-rose-50/90 font-black print:bg-white print:text-black' 
                           : 'text-slate-400 bg-slate-50/30'
                       }`}>
                         {balance > 0 ? formatCurrency(balance) : '₹0'}
                       </td>
-                      <td className="py-2 px-2 text-center whitespace-nowrap align-top">
-                        <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-black uppercase ${
-                          isPaid 
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : (isPartial ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800')
-                        }`}>
-                          {String(ord.paymentMethod || 'CASH')} • {isPaid ? 'PAID' : (isPartial ? 'PARTIAL' : 'DUE')}
+                      <td className="py-2 px-1 text-center whitespace-nowrap align-top">
+                        <span
+                          className={`inline-flex items-center justify-center gap-0.5 px-1 py-0.5 rounded text-[8px] font-black uppercase whitespace-nowrap ${
+                            isPaid 
+                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                              : (isPartial ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-rose-100 text-rose-800 border border-rose-200')
+                          }`}
+                          title={`${modeInfo.label} (${ord.paymentMethod || 'CASH'}) • ${isPaid ? 'PAID' : (isPartial ? 'PARTIAL' : 'DUE')}`}
+                        >
+                          <span className="text-[10px] leading-none">{modeInfo.emoji}</span>
+                          <span className="text-[7.5px] font-black tracking-tight">{isPaid ? 'PAID' : (isPartial ? 'PART' : 'DUE')}</span>
                         </span>
                       </td>
                     </tr>
@@ -525,16 +544,16 @@ export const PrintFinancialReport = ({
                   <td colSpan="6" className="py-2 px-2 text-right uppercase tracking-wider">
                     Grand Settlement Totals:
                   </td>
-                  <td className="py-2 px-2 text-right font-mono text-orange-600 print:text-black whitespace-nowrap">
+                  <td className="py-2 px-1.5 text-right font-mono text-orange-600 print:text-black whitespace-nowrap text-[9px]">
                     {formatCurrency(effectiveGross)}
                   </td>
-                  <td className="py-2 px-2 text-right font-mono text-emerald-700 print:text-black whitespace-nowrap">
+                  <td className="py-2 px-1.5 text-right font-mono text-emerald-700 print:text-black whitespace-nowrap text-[9px]">
                     {formatCurrency(effectiveInflows)}
                   </td>
-                  <td className="py-2 px-2 text-right font-mono text-rose-600 bg-rose-50/70 border-l border-r border-rose-200 print:text-black whitespace-nowrap">
+                  <td className="py-2 px-1.5 text-right font-mono text-rose-600 bg-rose-50/70 border-l border-r border-rose-200 print:text-black whitespace-nowrap text-[9px]">
                     {formatCurrency(effectiveDues)}
                   </td>
-                  <td className="py-2 px-2 text-center text-[8.5px] whitespace-nowrap">
+                  <td className="py-2 px-1 text-center text-[7.5px] font-bold text-slate-500 whitespace-nowrap">
                     {totalOrdersCount || orders.length} Bills
                   </td>
                 </tr>
