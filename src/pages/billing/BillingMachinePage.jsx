@@ -97,7 +97,7 @@ const INITIAL_BILL_STATE = {
   manualBillNumber: '', // 4-digit manual offline slip/token number (e.g. 1042)
   customerName: '',
   phone: '',
-  email: '',
+  counterNumber: '1', // Counter 1 (TW-POS-01)
   notes: '',
   serviceId: 'srv-dry-cleaning',
   serviceName: 'Premium Dry Cleaning',
@@ -233,6 +233,7 @@ export const BillingMachinePage = () => {
   const { success, error, info } = useToast();
 
   const activeTerminalId = terminalAuthService.normalizeTerminalId(terminalId);
+  const defaultCounterNumber = activeTerminalId === 'counter-2' ? '2' : (activeTerminalId === 'counter-3' ? '3' : '1');
 
   // Terminal & Auth State
   const initialTerminalDef = DEFAULT_BILLING_TERMINALS.find(t => t.id === activeTerminalId) || DEFAULT_BILLING_TERMINALS[0];
@@ -243,7 +244,10 @@ export const BillingMachinePage = () => {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   // Bill Form State
-  const [billForm, setBillForm] = useState(INITIAL_BILL_STATE);
+  const [billForm, setBillForm] = useState(() => ({
+    ...INITIAL_BILL_STATE,
+    counterNumber: defaultCounterNumber,
+  }));
   const [itemSearch, setItemSearch] = useState('');
   const [subCategoryFilter, setSubCategoryFilter] = useState('ALL');
   
@@ -1015,12 +1019,14 @@ export const BillingMachinePage = () => {
         ? 'PAID' 
         : (effectiveReceived > 0 ? 'PARTIAL' : 'PENDING');
 
-      const branchDef = DEFAULT_BILLING_TERMINALS.find(t => t.id === activeTerminalId) || DEFAULT_BILLING_TERMINALS[0];
-      const resolvedTerminalId = terminal?.id || activeTerminalId || branchDef.id;
-      const resolvedTerminalCode = terminal?.code || branchDef.code;
-      const resolvedStoreBranch = terminal?.locationName || branchDef.locationName;
-      const resolvedStoreAddress = terminal?.address || branchDef.address;
-      const resolvedCashier = terminal?.assignedOperator || session?.operatorName || branchDef.assignedOperator;
+      const resolvedCounterNum = String(billForm.counterNumber || defaultCounterNumber || '1');
+      const targetTermId = resolvedCounterNum === '2' ? 'counter-2' : (resolvedCounterNum === '3' ? 'counter-3' : 'counter-1');
+      const branchDef = DEFAULT_BILLING_TERMINALS.find(t => t.id === targetTermId) || DEFAULT_BILLING_TERMINALS[0];
+      const resolvedTerminalId = branchDef.id;
+      const resolvedTerminalCode = branchDef.code;
+      const resolvedStoreBranch = branchDef.locationName;
+      const resolvedStoreAddress = branchDef.address;
+      const resolvedCashier = branchDef.assignedOperator || terminal?.assignedOperator || session?.operatorName;
 
       // Construct explicit line items
       const finalItems = [];
@@ -1096,11 +1102,12 @@ export const BillingMachinePage = () => {
         storeAddress: resolvedStoreAddress,
         storePhone: terminal?.phone || branchDef.phone,
         cashierName: resolvedCashier,
+        counterNumber: resolvedCounterNum,
         customer: {
           name: (billForm.customerName || '').trim().toUpperCase(),
           phone: cleanPhone,
           whatsapp: cleanPhone,
-          email: billForm.email.trim(),
+          counterNumber: resolvedCounterNum,
           address: `In-Store Walk-in Drop (${resolvedStoreBranch})`,
           storeBranch: resolvedStoreBranch,
           storeAddress: resolvedStoreAddress,
@@ -1175,8 +1182,11 @@ export const BillingMachinePage = () => {
         }, 500);
       }
 
-      // Reset bill form for next customer
-      setBillForm(INITIAL_BILL_STATE);
+      // Reset bill form for next customer (retaining active counter number)
+      setBillForm({
+        ...INITIAL_BILL_STATE,
+        counterNumber: resolvedCounterNum,
+      });
     } catch (err) {
       error('Billing Error', err.message || 'Failed to generate in-store invoice.');
     } finally {
@@ -1728,13 +1738,24 @@ export const BillingMachinePage = () => {
                 </div>
 
                 <div>
-                  <label className="block text-slate-700 font-bold mb-1 text-xs">Email (Optional)</label>
-                  <Input
-                    type="email"
-                    placeholder="customer@example.com"
-                    value={billForm.email}
-                    onChange={(e) => setBillForm({ ...billForm, email: e.target.value })}
-                  />
+                  <label className="block text-slate-700 font-bold mb-1 text-xs flex items-center justify-between">
+                    <span className="flex items-center gap-1.5 text-slate-800">
+                      <Laptop className="w-3.5 h-3.5 text-orange-600" />
+                      <span>Counter Number *</span>
+                    </span>
+                    <span className="text-[10px] text-orange-600 font-bold bg-orange-50 px-1.5 py-0.2 rounded border border-orange-200">
+                      POS-0{billForm.counterNumber || defaultCounterNumber}
+                    </span>
+                  </label>
+                  <select
+                    value={billForm.counterNumber || defaultCounterNumber}
+                    onChange={(e) => setBillForm({ ...billForm, counterNumber: e.target.value })}
+                    className="w-full h-10 px-3 py-2 rounded-xl border border-slate-300 bg-white font-bold text-slate-800 text-xs shadow-2xs focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 cursor-pointer"
+                  >
+                    <option value="1">Counter 1 — TW-POS-01 (Main Manikonda)</option>
+                    <option value="2">Counter 2 — TW-POS-02 (Branch 1 Tolichowki)</option>
+                    <option value="3">Counter 3 — TW-POS-03 (Pick Up Point Ambience)</option>
+                  </select>
                 </div>
               </div>
 

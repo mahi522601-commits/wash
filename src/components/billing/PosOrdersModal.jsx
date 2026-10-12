@@ -3,7 +3,8 @@ import {
   orderService, 
   getOrderBranchKey,
   ORDER_CUSTOMER_STAGES,
-  normalizeDateString
+  normalizeDateString,
+  invalidateOrdersMemoryCache
 } from '../../services/orderService';
 import { auditService } from '../../services/auditService';
 import { whatsappNotificationService } from '../../services/whatsappNotificationService';
@@ -53,16 +54,16 @@ export const PosOrdersModal = ({
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Filters
-  const [branchFilter, setBranchFilter] = useState('LOCAL'); // 'LOCAL' | 'ALL'
+  // Filters (Defaults to ALL stores and ALL dates so every order is visible immediately)
+  const [branchFilter, setBranchFilter] = useState('ALL'); // 'ALL' | 'LOCAL'
   const [stageFilter, setStageFilter] = useState('ALL');
   const [paymentFilter, setPaymentFilter] = useState('ALL'); // 'ALL' | 'UNPAID' | 'PAID'
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState('list'); // 'list' | 'cards'
 
-  // Calendar / Date Filter State (defaults to today's date)
+  // Calendar / Date Filter State (defaults to false so all orders load without single-day cutoff)
   const [selectedDate, setSelectedDate] = useState(() => normalizeDateString(new Date()));
-  const [dateFilterActive, setDateFilterActive] = useState(true);
+  const [dateFilterActive, setDateFilterActive] = useState(false);
 
   // Selected Order for Receipt / Quick Action
   const [receiptOrder, setReceiptOrder] = useState(null);
@@ -77,7 +78,10 @@ export const PosOrdersModal = ({
   const loadOrders = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await orderService.getOrders({ limitCount: 1000 });
+      if (typeof invalidateOrdersMemoryCache === 'function') {
+        invalidateOrdersMemoryCache();
+      }
+      const data = await orderService.getOrders({ forceRefresh: true, limitCount: 2000 });
       setOrders(data || []);
     } catch (err) {
       console.warn('Failed to load POS orders:', err);
@@ -555,6 +559,20 @@ export const PosOrdersModal = ({
           {/* Date Navigation Controls */}
           <div className="flex items-center gap-2 flex-wrap">
             <div className="flex items-center rounded-xl bg-slate-950 p-1 border border-slate-800 shadow-inner">
+              {/* All Orders Button */}
+              <button
+                type="button"
+                onClick={() => setDateFilterActive(false)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                  !dateFilterActive
+                    ? 'bg-indigo-600 text-white shadow-xs ring-1 ring-indigo-400'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title="View All Orders across all dates"
+              >
+                <span>🌐 All Orders (All Dates)</span>
+              </button>
+
               <button
                 type="button"
                 onClick={() => handleStepDate(-1)}
@@ -615,25 +633,29 @@ export const PosOrdersModal = ({
             </div>
 
             {/* Filter Mode Toggle: Active Day vs All Dates */}
-            <button
-              type="button"
-              onClick={() => setDateFilterActive(prev => !prev)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition border cursor-pointer flex items-center gap-1.5 ${
-                dateFilterActive
-                  ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40'
-                  : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'
-              }`}
-              title="Toggle single day view vs all dates history"
-            >
-              <span>{dateFilterActive ? '📅 Filtered to Day' : '🌐 All Dates History'}</span>
-            </button>
+            {dateFilterActive ? (
+              <button
+                type="button"
+                onClick={() => setDateFilterActive(false)}
+                className="px-3 py-1.5 rounded-xl text-xs font-bold transition border cursor-pointer flex items-center gap-1.5 bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30"
+                title="Filtered to single day - Click to view all orders"
+              >
+                <span>📅 Filtered: {dateDisplayLabel}</span>
+                <span className="text-[10px] underline ml-1 font-mono font-bold">(Show All)</span>
+              </button>
+            ) : (
+              <div className="px-3 py-1 rounded-xl bg-emerald-950/60 border border-emerald-800/60 text-emerald-300 text-xs font-bold font-mono flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span>Showing All Orders ({branchFilteredOrders.length} bills)</span>
+              </div>
+            )}
           </div>
 
           {/* Active Date Label Pill */}
           <div className="flex items-center gap-2">
             <div className="px-3 py-1 rounded-xl bg-indigo-950/60 border border-indigo-800/60 text-indigo-300 text-xs font-bold font-mono flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />
-              <span>{dateDisplayLabel}</span>
+              <span>{dateFilterActive ? dateDisplayLabel : 'All Dates History'}</span>
             </div>
           </div>
         </div>
@@ -818,21 +840,21 @@ export const PosOrdersModal = ({
             <div className="inline-flex rounded-xl bg-slate-950 p-1 border border-slate-800 text-xs">
               <button
                 type="button"
-                onClick={() => setBranchFilter('LOCAL')}
+                onClick={() => setBranchFilter('ALL')}
                 className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
-                  branchFilter === 'LOCAL' ? 'bg-orange-500 text-white' : 'text-slate-400 hover:text-white'
+                  branchFilter === 'ALL' ? 'bg-orange-500 text-white shadow-xs' : 'text-slate-400 hover:text-white'
                 }`}
               >
-                This Branch ({terminal?.code || 'Local'})
+                All Stores & Counters
               </button>
               <button
                 type="button"
-                onClick={() => setBranchFilter('ALL')}
+                onClick={() => setBranchFilter('LOCAL')}
                 className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
-                  branchFilter === 'ALL' ? 'bg-orange-500 text-white' : 'text-slate-400 hover:text-white'
+                  branchFilter === 'LOCAL' ? 'bg-orange-500 text-white shadow-xs' : 'text-slate-400 hover:text-white'
                 }`}
               >
-                All Stores
+                This Branch ({terminal?.code || 'Local'})
               </button>
             </div>
 
@@ -942,11 +964,18 @@ export const PosOrdersModal = ({
                           <div className="text-[10px] text-slate-400 font-mono">
                             {formatDate(order.createdAt || order.pickupDate || order.dateKey)}
                           </div>
-                          {order.terminalCode && (
-                            <span className="inline-block mt-0.5 px-1.5 py-0.2 rounded bg-orange-500/20 text-orange-300 text-[9px] font-bold">
-                              {order.terminalCode}
-                            </span>
-                          )}
+                          <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+                            {order.terminalCode && (
+                              <span className="px-1.5 py-0.2 rounded bg-orange-500/20 text-orange-300 text-[9px] font-bold">
+                                {order.terminalCode}
+                              </span>
+                            )}
+                            {(order.counterNumber || order.customer?.counterNumber) && (
+                              <span className="px-1.5 py-0.2 rounded bg-blue-500/20 text-blue-300 text-[9px] font-bold">
+                                Counter {order.counterNumber || order.customer?.counterNumber}
+                              </span>
+                            )}
+                          </div>
                         </td>
 
                         {/* Customer */}
@@ -1122,6 +1151,11 @@ export const PosOrdersModal = ({
                             {order.terminalCode && (
                               <span className="px-1.5 py-0.2 rounded-md bg-orange-500/20 text-orange-300 text-[10px] font-bold">
                                 {order.terminalCode}
+                              </span>
+                            )}
+                            {(order.counterNumber || order.customer?.counterNumber) && (
+                              <span className="px-1.5 py-0.2 rounded-md bg-blue-500/20 text-blue-300 text-[10px] font-bold">
+                                Counter {order.counterNumber || order.customer?.counterNumber}
                               </span>
                             )}
                           </div>
