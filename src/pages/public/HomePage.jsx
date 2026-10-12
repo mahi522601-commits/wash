@@ -54,63 +54,9 @@ export const HomePage = () => {
 
   const structuredData = {
     '@context': 'https://schema.org',
-    '@graph': [
-      {
-        '@type': 'DryCleaningOrLaundry',
-        '@id': `${BASE_URL}/#localbusiness`,
-        name: 'Tech Wash Laundry Services - Best Laundry in Manikonda',
-        legalName: BUSINESS_INFO.legalName,
-        url: BASE_URL,
-        logo: BUSINESS_INFO.logo,
-        image: BUSINESS_INFO.image,
-        telephone: BUSINESS_INFO.telephone,
-        email: BUSINESS_INFO.email,
-        priceRange: BUSINESS_INFO.priceRange,
-        currenciesAccepted: BUSINESS_INFO.currenciesAccepted,
-        paymentAccepted: BUSINESS_INFO.paymentAccepted,
-        address: {
-          ...BUSINESS_INFO.address,
-          addressLocality: 'Manikonda, Hyderabad',
-          postalCode: '500089',
-        },
-        geo: BUSINESS_INFO.geo,
-        openingHoursSpecification: BUSINESS_INFO.openingHoursSpecification,
-        sameAs: BUSINESS_INFO.sameAs,
-        aggregateRating: {
-          '@type': 'AggregateRating',
-          ratingValue: '4.9',
-          reviewCount: '284',
-          bestRating: '5',
-          worstRating: '1',
-        },
-        areaServed: [
-          { '@type': 'AdministrativeArea', name: 'Manikonda, Hyderabad' },
-          { '@type': 'AdministrativeArea', name: 'Puppalaguda, Hyderabad' },
-          { '@type': 'AdministrativeArea', name: 'OU Colony, Manikonda' },
-          { '@type': 'AdministrativeArea', name: 'Secretariat Colony, Manikonda' },
-          { '@type': 'AdministrativeArea', name: 'Lanco Hills Road, Manikonda' },
-          { '@type': 'AdministrativeArea', name: 'Alkapoor Township, Manikonda' },
-          { '@type': 'AdministrativeArea', name: 'Shaikpet, Hyderabad' },
-        ],
-        hasOfferCatalog: {
-          '@type': 'OfferCatalog',
-          name: 'Tech Wash Garment Care Services',
-          itemListElement: SEO_SERVICES.map((s, idx) => ({
-            '@type': 'Offer',
-            itemOffered: {
-              '@type': 'Service',
-              name: s.name,
-              description: s.metaDescription,
-            },
-            priceCurrency: 'INR',
-            description: s.pricingDisplay,
-          })),
-        },
-      },
-      {
-        '@type': 'FAQPage',
-        '@id': `${BASE_URL}/#faq`,
-        mainEntity: [
+    '@type': 'FAQPage',
+    '@id': `${BASE_URL}/#faq`,
+    mainEntity: [
           {
             '@type': 'Question',
             name: 'Which is the best laundry service in Manikonda, Hyderabad?',
@@ -144,9 +90,7 @@ export const HomePage = () => {
             },
           },
         ],
-      },
-    ],
-  };
+      };
 
   return (
     <>
