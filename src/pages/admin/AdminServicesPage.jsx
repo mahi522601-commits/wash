@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { serviceService } from '../../services/serviceService';
 import { auditService } from '../../services/auditService';
 import { useAuth } from '../../context/AuthContext';
@@ -12,10 +13,12 @@ import { Input, Textarea, Select } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { Tabs } from '../../components/ui/Tabs';
 import { Badge } from '../../components/ui/Badge';
+import { Card } from '../../components/ui/Card';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { StatusBadge } from '../../components/admin/StatusBadge';
 import { ServicePreviewModal } from '../../components/public/ServicePreviewModal';
 import { EmojiPicker } from '../../components/common/EmojiPicker';
+import { ImageUpload } from '../../components/ui/ImageUpload';
 import { pricingService } from '../../services/pricingConfig';
 import { 
   Sparkles, 
@@ -31,7 +34,12 @@ import {
   Search, 
   Sliders, 
   DollarSign, 
-  Image as ImageIcon 
+  Image as ImageIcon,
+  LayoutGrid,
+  Table as TableIcon,
+  ArrowRight,
+  ExternalLink,
+  ChevronRight
 } from 'lucide-react';
 
 const EDITOR_TABS = [
@@ -102,6 +110,11 @@ export const AdminServicesPage = () => {
   const [currentService, setCurrentService] = useState(INITIAL_SERVICE_STATE);
   const [isSaving, setIsSaving] = useState(false);
   
+  // Search, filter & view modes
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('ALL');
+  const [viewMode, setViewMode] = useState('table'); // 'table' | 'cards'
+
   // Modals
   const [previewOpen, setPreviewOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -137,9 +150,19 @@ export const AdminServicesPage = () => {
     setEditorOpen(true);
   };
 
-  const handleOpenEdit = (srv) => {
-    setCurrentService(JSON.parse(JSON.stringify(srv)));
-    setActiveTab('basic');
+  const handleOpenEdit = (srv, targetTab = 'basic') => {
+    if (!srv) return;
+    const cloned = JSON.parse(JSON.stringify(srv));
+    setCurrentService({
+      ...INITIAL_SERVICE_STATE,
+      ...cloned,
+      subServices: Array.isArray(cloned.subServices) ? cloned.subServices : [],
+      features: Array.isArray(cloned.features) ? cloned.features : INITIAL_SERVICE_STATE.features,
+      benefits: Array.isArray(cloned.benefits) ? cloned.benefits : INITIAL_SERVICE_STATE.benefits,
+      processSteps: Array.isArray(cloned.processSteps) ? cloned.processSteps : INITIAL_SERVICE_STATE.processSteps,
+      faqs: Array.isArray(cloned.faqs) ? cloned.faqs : INITIAL_SERVICE_STATE.faqs,
+    });
+    setActiveTab(targetTab);
     setEditorOpen(true);
   };
 
@@ -314,22 +337,44 @@ export const AdminServicesPage = () => {
     setCurrentService({ ...currentService, processSteps: updated });
   };
 
+  // Filtering services
+  const filteredServices = services.filter((srv) => {
+    const matchesSearch = !searchQuery || 
+      (srv.title && srv.title.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (srv.category && srv.category.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (srv.slug && srv.slug.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesCategory = selectedCategory === 'ALL' || srv.category === selectedCategory;
+    return matchesSearch && matchesCategory;
+  });
+
+  const categories = ['ALL', ...new Set(services.map(s => s.category).filter(Boolean))];
+
   const columns = [
     {
-      title: 'Service',
+      title: 'Service & Slug',
       key: 'title',
+      className: 'min-w-[240px]',
       render: (val, row) => (
-        <div className="flex items-center gap-3">
+        <div 
+          className="flex items-center gap-3 cursor-pointer group"
+          onClick={() => handleOpenEdit(row)}
+          title="Click to edit service"
+        >
           {row.heroImage ? (
-            <img src={row.heroImage} alt={val} className="w-10 h-10 rounded-xl object-cover" />
+            <img src={row.heroImage} alt={val} className="w-11 h-11 rounded-2xl object-cover shadow-2xs group-hover:ring-2 ring-brand-500 transition-all shrink-0" />
           ) : (
-            <div className="w-10 h-10 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center font-bold text-xs">
-              TW
+            <div className="w-11 h-11 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center font-bold text-base shadow-2xs group-hover:scale-105 transition-transform shrink-0">
+              {row.emoji || '🧺'}
             </div>
           )}
-          <div>
-            <div className="font-bold text-slate-900 text-xs sm:text-sm">{val}</div>
-            <div className="text-[11px] text-slate-400 font-mono">/services/{row.slug}</div>
+          <div className="min-w-0">
+            <div className="font-bold text-slate-900 text-sm group-hover:text-brand-600 flex items-center gap-1.5 transition-colors">
+              <span>{val}</span>
+              <span className="opacity-0 group-hover:opacity-100 text-[10px] bg-brand-100 text-brand-700 font-bold px-1.5 py-0.5 rounded-md transition-opacity">
+                Edit ✏️
+              </span>
+            </div>
+            <div className="text-[11px] text-slate-400 font-mono truncate">/services/{row.slug}</div>
           </div>
         </div>
       ),
@@ -337,54 +382,100 @@ export const AdminServicesPage = () => {
     {
       title: 'Category',
       key: 'category',
+      className: 'min-w-[130px]',
       render: (val) => <Badge variant="royal" size="sm">{val}</Badge>,
     },
     {
-      title: 'Pricing Model',
+      title: 'Starting Rate',
       key: 'startingPrice',
+      className: 'min-w-[130px]',
       render: (price, row) => (
         <div>
           <span className="font-bold text-xs text-slate-900">{price ? formatCurrency(price) : 'Quote'}</span>
-          <span className="text-[11px] text-slate-400 block">{row.pricingType}</span>
+          <span className="text-[11px] text-slate-400 block capitalize">{row.pricingType || 'per piece'}</span>
         </div>
+      ),
+    },
+    {
+      title: 'Sub-Services & Tariffs',
+      key: 'subServices',
+      className: 'min-w-[150px]',
+      render: (subs, row) => (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleOpenEdit(row, 'subservices');
+          }}
+          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-brand-50 text-slate-700 hover:text-brand-700 text-xs font-semibold border border-slate-200 transition-colors cursor-pointer"
+          title="Click to view and edit sub-services & tariffs"
+        >
+          <Layers className="w-3.5 h-3.5 text-brand-600" />
+          <span>{Array.isArray(subs) ? `${subs.length} Options` : '0 Options'}</span>
+        </button>
       ),
     },
     {
       title: 'Process Stages',
       key: 'processSteps',
-      render: (steps) => (
-        <span className="text-xs font-semibold text-slate-600">
+      className: 'min-w-[120px]',
+      render: (steps, row) => (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleOpenEdit(row, 'process');
+          }}
+          className="text-xs font-semibold text-slate-600 hover:text-brand-600 cursor-pointer"
+          title="Click to edit 6-stage roadmap"
+        >
           {steps ? `${steps.length} Stages` : '—'}
-        </span>
+        </button>
       ),
     },
     {
       title: 'Status',
       key: 'status',
+      className: 'min-w-[110px]',
       render: (val) => <StatusBadge status={val} />,
     },
     {
       title: 'Actions',
       key: 'id',
+      headerClassName: 'sticky right-0 bg-slate-50/95 backdrop-blur-xs text-right pr-6 shadow-[-6px_0_12px_-4px_rgba(0,0,0,0.06)] min-w-[180px]',
+      className: 'sticky right-0 bg-white/95 backdrop-blur-xs text-right pr-6 shadow-[-6px_0_12px_-4px_rgba(0,0,0,0.06)] min-w-[180px]',
       render: (id, row) => (
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center justify-end gap-1.5">
           <button
-            onClick={() => handleOpenEdit(row)}
-            className="p-1.5 rounded-lg text-slate-600 hover:text-brand-600 hover:bg-slate-100"
-            title="Edit Service"
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleOpenEdit(row);
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-700 active:scale-95 text-white font-bold text-xs shadow-xs hover:shadow-md transition-all cursor-pointer"
+            title="Edit Service & Tariffs"
           >
-            <Edit3 className="w-4 h-4" />
+            <Edit3 className="w-3.5 h-3.5" />
+            <span>Edit</span>
           </button>
           <button
-            onClick={() => handleDuplicate(row)}
-            className="p-1.5 rounded-lg text-slate-600 hover:text-royal-600 hover:bg-slate-100"
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDuplicate(row);
+            }}
+            className="p-1.5 rounded-xl text-slate-500 hover:text-royal-600 hover:bg-slate-100 transition-colors cursor-pointer"
             title="Duplicate Service"
           >
             <Copy className="w-4 h-4" />
           </button>
           <button
-            onClick={() => setDeleteTarget(row)}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setDeleteTarget(row);
+            }}
+            className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
             title="Delete Service"
           >
             <Trash2 className="w-4 h-4" />
@@ -398,42 +489,240 @@ export const AdminServicesPage = () => {
     <div className="space-y-6">
       <AdminPageHeader
         title="Services & Process CMS"
-        subtitle="Manage dynamic public service pages, 6-stage garment roadmaps, YouTube embeds, and pricing models."
+        subtitle="Manage dynamic public service pages, 6-stage garment roadmaps, YouTube embeds, sub-services, and pricing models."
         actionLabel="Create New Service"
         actionIcon={Plus}
         onAction={handleOpenCreate}
       />
 
-      {/* Sync & Stats Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-2xl bg-white border border-slate-200 shadow-xs">
-        <div className="flex items-center gap-2">
-          <Badge variant="emerald" size="md">
-            {services.length} Services Configured
-          </Badge>
-          <span className="text-xs text-slate-500 hidden sm:inline">
-            • All 8 official garment care offerings synchronized with Firebase
-          </span>
+      {/* Cross-Link Banner between Services CMS and Pricing Master */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-gradient-to-r from-brand-50 to-indigo-50 border border-brand-200/80 shadow-2xs">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-xl bg-brand-600 text-white flex items-center justify-center font-bold text-sm shadow-xs shrink-0">
+            ✨
+          </div>
+          <div>
+            <div className="text-xs font-bold text-slate-900">
+              Services CMS & Sub-Service Tariffs
+            </div>
+            <p className="text-[11px] text-slate-600">
+              Click <span className="font-bold text-brand-700">"Edit"</span> or click on any row below to configure covers, sub-services, YouTube embeds, and 6-stage care workflows.
+            </p>
+          </div>
         </div>
-
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          icon={Sparkles}
-          onClick={handleSeedServices}
-          className="text-xs"
+        <Link
+          to="/admin/pricing"
+          className="inline-flex items-center gap-1.5 text-xs font-bold text-brand-700 hover:text-brand-800 bg-white px-3.5 py-2 rounded-xl border border-brand-200 shadow-2xs hover:shadow-xs transition-all shrink-0"
         >
-          Sync / Restore 8 Default Services
-        </Button>
+          <DollarSign className="w-3.5 h-3.5 text-brand-600" />
+          <span>Open Pricing Master (Per-Garment Rates)</span>
+          <ArrowRight className="w-3.5 h-3.5" />
+        </Link>
       </div>
 
-      {/* Services Table */}
-      <Table
-        columns={columns}
-        data={services}
-        isLoading={loading}
-        emptyMessage="No services created yet. Click 'Create New Service' to add your first garment care offering."
-      />
+      {/* Controls Bar: Search, Category Filter, and View Mode Toggle */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-4 rounded-2xl bg-white border border-slate-200 shadow-xs">
+        <div className="flex flex-wrap items-center gap-2 flex-1">
+          {/* Search Bar */}
+          <div className="relative flex-1 min-w-[200px] max-w-sm">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
+            <input
+              type="text"
+              placeholder="Search services (e.g. Dry Cleaning, Ironing)..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-8 pr-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-brand-500"
+            />
+          </div>
+
+          {/* Category Filter */}
+          <div className="flex items-center gap-1 overflow-x-auto pb-1 max-w-full">
+            {categories.map((cat) => (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => setSelectedCategory(cat)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                  selectedCategory === cat
+                    ? 'bg-slate-900 text-white shadow-xs'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                {cat === 'ALL' ? 'All Services' : cat}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* View Mode Toggle and Restore Button */}
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
+            <button
+              type="button"
+              onClick={() => setViewMode('table')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                viewMode === 'table' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              }`}
+              title="Table View"
+            >
+              <TableIcon className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Table</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('cards')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                viewMode === 'cards' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              }`}
+              title="Card Grid View"
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Cards</span>
+            </button>
+          </div>
+
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            icon={Sparkles}
+            onClick={handleSeedServices}
+            className="text-xs"
+          >
+            Sync 8 Defaults
+          </Button>
+        </div>
+      </div>
+
+      {/* Services Content: TABLE VIEW */}
+      {viewMode === 'table' ? (
+        <Table
+          columns={columns}
+          data={filteredServices}
+          isLoading={loading}
+          onRowClick={(row) => handleOpenEdit(row)}
+          emptyMessage="No matching services found. Click 'Create New Service' or change your filter."
+        />
+      ) : (
+        /* Services Content: CARDS VIEW */
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {filteredServices.map((srv) => (
+            <Card
+              key={srv.id || srv.slug}
+              className="p-5 bg-white border border-slate-200/90 rounded-3xl hover:border-brand-300 hover:shadow-md transition-all flex flex-col justify-between group space-y-4"
+            >
+              <div className="space-y-3">
+                {/* Card Top: Image / Avatar + Badges */}
+                <div className="relative aspect-[16/9] w-full rounded-2xl overflow-hidden bg-slate-100 border border-slate-200/60">
+                  {srv.heroImage ? (
+                    <img
+                      src={srv.heroImage}
+                      alt={srv.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-4xl bg-brand-50 text-brand-600">
+                      {srv.emoji || '🧺'}
+                    </div>
+                  )}
+                  <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5">
+                    <Badge variant="royal" size="xs">
+                      {srv.category}
+                    </Badge>
+                  </div>
+                  <div className="absolute top-2.5 right-2.5">
+                    <StatusBadge status={srv.status} />
+                  </div>
+                </div>
+
+                {/* Card Details */}
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">{srv.emoji || '🧺'}</span>
+                    <h3 className="font-bold text-slate-900 text-sm font-display truncate">
+                      {srv.title}
+                    </h3>
+                  </div>
+                  <div className="text-[11px] text-slate-400 font-mono mt-0.5 truncate">
+                    /services/{srv.slug}
+                  </div>
+                  {srv.shortDescription && (
+                    <p className="text-xs text-slate-500 mt-2 line-clamp-2 leading-relaxed">
+                      {srv.shortDescription}
+                    </p>
+                  )}
+                </div>
+
+                {/* Rates & Badges Summary */}
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
+                  <div>
+                    <span className="text-slate-400 block text-[10px] font-semibold uppercase">Starting Rate</span>
+                    <span className="font-bold text-slate-900">
+                      {srv.startingPrice ? formatCurrency(srv.startingPrice) : 'Quote'}
+                    </span>
+                    <span className="text-[10px] text-slate-400 ml-1 capitalize">({srv.pricingType})</span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleOpenEdit(srv, 'subservices')}
+                    className="px-2.5 py-1 rounded-xl bg-brand-50 hover:bg-brand-100 text-brand-700 text-[11px] font-bold border border-brand-200 transition-colors"
+                    title="Edit sub-services"
+                  >
+                    {Array.isArray(srv.subServices) ? `${srv.subServices.length} Sub-Services` : '0 Sub-Services'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Card Footer: Prominent Edit Button & Actions */}
+              <div className="pt-3 border-t border-slate-100 space-y-2">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  icon={Edit3}
+                  onClick={() => handleOpenEdit(srv)}
+                  className="w-full justify-center shadow-xs"
+                >
+                  Edit Service & Tariffs
+                </Button>
+
+                <div className="flex items-center justify-between gap-1 pt-1">
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    icon={Eye}
+                    onClick={() => {
+                      setCurrentService(srv);
+                      setPreviewOpen(true);
+                    }}
+                    className="text-slate-500 hover:text-slate-800"
+                  >
+                    Preview
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    icon={Copy}
+                    onClick={() => handleDuplicate(srv)}
+                    className="text-slate-500 hover:text-royal-600"
+                  >
+                    Duplicate
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    icon={Trash2}
+                    onClick={() => setDeleteTarget(srv)}
+                    className="text-rose-500 hover:text-rose-700 hover:bg-rose-50"
+                  >
+                    Delete
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {/* TABBED SERVICE EDITOR MODAL */}
       <Modal

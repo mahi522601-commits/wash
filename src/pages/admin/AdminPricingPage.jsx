@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { pricingService, INITIAL_PRICING_CONFIG, DEFAULT_PER_KG_SUB_SERVICES, DEFAULT_WEIGHED_GARMENTS } from '../../services/pricingConfig';
 import { auditService } from '../../services/auditService';
 import { useAuth } from '../../context/AuthContext';
@@ -821,6 +822,17 @@ export const AdminPricingPage = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <Link to="/admin/services">
+            <Button
+              variant="outline"
+              size="md"
+              icon={Sparkles}
+              className="border-indigo-300 text-indigo-700 hover:bg-indigo-50 font-bold"
+            >
+              Services CMS (Edit Roadmaps)
+            </Button>
+          </Link>
+
           <Button
             variant="outline"
             size="md"

@@ -8,6 +8,7 @@ export const Table = ({
   isLoading = false,
   emptyMessage = 'No records found',
   className = '',
+  onRowClick = null,
 }) => {
   if (isLoading) {
     return (
@@ -27,12 +28,12 @@ export const Table = ({
 
   return (
     <div className={`w-full overflow-hidden bg-white rounded-3xl border border-slate-200/80 shadow-xs ${className}`}>
-      <div className="overflow-x-auto scrollbar-none">
-        <table className="w-full min-w-[900px] text-left text-sm text-slate-700">
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[760px] text-left text-sm text-slate-700">
           <thead className="bg-slate-50 text-xs uppercase font-semibold text-slate-500 border-b border-slate-200/80 tracking-wider">
             <tr>
               {columns.map((col, idx) => (
-                <th key={col.key || idx} className={`py-3.5 px-4 sm:px-6 ${col.className || ''}`}>
+                <th key={col.key || idx} className={`py-3.5 px-4 sm:px-6 ${col.headerClassName || col.className || ''}`}>
                   {col.title}
                 </th>
               ))}
@@ -40,7 +41,22 @@ export const Table = ({
           </thead>
           <tbody className="divide-y divide-slate-100">
             {data.map((row, rowIdx) => (
-              <tr key={row[keyField] || rowIdx} className="hover:bg-slate-50/70 transition-colors">
+              <tr 
+                key={row[keyField] || row.id || rowIdx} 
+                onClick={(e) => {
+                  if (onRowClick) {
+                    if (e.target.closest('button, a, input, select, textarea, [data-prevent-row-click]')) {
+                      return;
+                    }
+                    onRowClick(row, rowIdx);
+                  }
+                }}
+                className={`transition-colors ${
+                  onRowClick 
+                    ? 'cursor-pointer hover:bg-brand-50/40 active:bg-brand-100/50' 
+                    : 'hover:bg-slate-50/70'
+                }`}
+              >
                 {columns.map((col, colIdx) => (
                   <td key={col.key || colIdx} className={`py-4 px-4 sm:px-6 align-middle ${col.className || ''}`}>
                     {col.render ? col.render(row[col.key], row, rowIdx) : row[col.key]}
