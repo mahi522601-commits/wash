@@ -58,9 +58,9 @@ export const AreaDetailPage = () => {
     );
   }
 
-  const pageTitle = `Laundry Services in Manikonda, Hyderabad | Techwash Laundry`;
-  const pageH1 = `Laundry Services in Manikonda, Hyderabad`;
-  const pageDescription = `Professional wash and iron, dry cleaning, laundry, and garment care services in Manikonda, Hyderabad. Techwash Laundry offers convenient garment cleaning and ironing with pickup and delivery options.`;
+  const pageTitle = `Best Laundry Service in Manikonda, Hyderabad | Techwash Laundry`;
+  const pageH1 = `Best Laundry Service in Manikonda, Hyderabad`;
+  const pageDescription = `Rated #1 Best Laundry Service in Manikonda, Hyderabad. Techwash Laundry provides 100% RO soft-water washing, eco-friendly hydrocarbon dry cleaning, 3D steam ironing, and fast doorstep pickup across Manikonda (Puppalaguda, OU Colony, Secretariat Colony, Lanco Hills).`;
   const canonicalUrl = `${BASE_URL}/areas/manikonda`;
 
   // Schema.org Structured Data

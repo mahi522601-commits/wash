@@ -191,9 +191,9 @@ function generateSitemaps() {
       allUrls.push(serviceAreaUrl);
       // Determine priority based on Manikonda SEO priority specification
       let priority = '0.85';
-      if (srv.slug === 'laundry-service') priority = '0.95';
+      if (srv.slug === 'laundry-service') priority = '1.0';
       else if (srv.slug === 'wash-and-iron') priority = '0.95';
-      else if (srv.slug === 'dry-cleaning') priority = '0.90';
+      else if (srv.slug === 'dry-cleaning') priority = '0.95';
       else if (srv.slug === 'laundry-pickup-and-delivery') priority = '0.90';
       else if (srv.slug === 'ironing-service') priority = '0.88';
       else if (srv.slug === 'wash-and-fold') priority = '0.88';
