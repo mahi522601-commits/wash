@@ -1158,7 +1158,15 @@ export const orderService = {
       ]
     };
 
-    // STEP 1: Save transaction update to Local Windows Bridge FIRST
+    // STEP 1: Save transaction update to IndexedDB and physical C:\TechWash storage
+    try {
+      await localDbService.saveLocalOrder(updatedOrder);
+      await localDbService.writeOrderToPhysicalStorage(updatedOrder, 'Admin');
+    } catch (e) {
+      console.warn("Local physical storage update payment notice:", e);
+    }
+
+    // STEP 1B: Save transaction update to Local Windows Bridge FIRST
     try {
       await posBridgeService.saveTransaction(updatedOrder, updatedOrder.terminalId || 'counter-1');
     } catch (e) {

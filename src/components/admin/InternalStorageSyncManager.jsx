@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { localDbService } from '../../services/localDbService';
+import { posIndexedDB } from '../../services/posIndexedDB';
 import { useToast } from '../../context/ToastContext';
 import { 
   HardDrive, 
@@ -20,6 +21,8 @@ import {
 } from 'lucide-react';
 
 const STORAGE_PROMPTED_KEY = 'techwash_storage_permission_prompted_v3';
+const STORAGE_COMPLETED_KEY = 'techwash_storage_completed';
+const STORAGE_DISMISSED_KEY = 'techwash_storage_dismissed';
 
 export const InternalStorageSyncManager = () => {
   const { success, info, error: toastError } = useToast();
@@ -28,6 +31,7 @@ export const InternalStorageSyncManager = () => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [isConnectingFolder, setIsConnectingFolder] = useState(false);
   const [syncStep, setSyncStep] = useState('');
+  const [dontAskAgain, setDontAskAgain] = useState(true);
   const [stats, setStats] = useState({
     isPersisted: false,
     usage: 0,
@@ -40,6 +44,20 @@ export const InternalStorageSyncManager = () => {
     physicalConnected: false,
     fileSystemSupported: false,
   });
+
+  const markSetupCompleted = async () => {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(STORAGE_COMPLETED_KEY, 'true');
+        localStorage.setItem(STORAGE_DISMISSED_KEY, 'true');
+        localStorage.setItem(STORAGE_PROMPTED_KEY, 'true');
+        localStorage.setItem('techwash_storage_permission_prompted', 'true');
+      }
+      await posIndexedDB.saveTerminalSetting('storage_setup_completed', true);
+    } catch (e) {
+      console.warn('markSetupCompleted notice:', e);
+    }
+  };
 
   const loadStats = async () => {
     try {
@@ -59,19 +77,36 @@ export const InternalStorageSyncManager = () => {
       const currentStats = await loadStats();
       if (!isMounted) return;
 
-      const hasPrompted = typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_PROMPTED_KEY) : null;
-      
-      // If never prompted on this PC, or if local IndexedDB has 0 orders, show permission modal automatically
-      if (!hasPrompted || (currentStats && currentStats.orderCount === 0)) {
-        try {
-          await localDbService.requestPersistentStorage();
-        } catch (e) {}
+      // Check if user has already completed or dismissed setup on this browser
+      let isCompleted = false;
+      if (typeof localStorage !== 'undefined') {
+        isCompleted = 
+          localStorage.getItem(STORAGE_COMPLETED_KEY) === 'true' ||
+          localStorage.getItem(STORAGE_DISMISSED_KEY) === 'true' ||
+          localStorage.getItem(STORAGE_PROMPTED_KEY) === 'true' ||
+          localStorage.getItem('techwash_storage_permission_prompted') === 'true';
+      }
 
-        setModalOpen(true);
-      } else {
+      if (!isCompleted) {
+        try {
+          const dbSetting = await posIndexedDB.getTerminalSetting('storage_setup_completed');
+          if (dbSetting) isCompleted = true;
+        } catch (e) {}
+      }
+
+      // If already completed or dismissed even once on this computer, NEVER open modal again!
+      if (isCompleted) {
         // Automatically run background refresh to keep IndexedDB up-to-date
         localDbService.syncAllCloudDataToLocalDb().catch(() => {});
+        return;
       }
+
+      // First-time device initialization prompt
+      try {
+        await localDbService.requestPersistentStorage();
+      } catch (e) {}
+
+      setModalOpen(true);
     };
 
     checkAndPromptStorage();
@@ -119,9 +154,7 @@ export const InternalStorageSyncManager = () => {
           `Created and verified C:\\TechWash folders on this PC with ${res.orderCount || 0} Orders & Customers!`
         );
         await loadStats();
-        if (typeof localStorage !== 'undefined') {
-          localStorage.setItem(STORAGE_PROMPTED_KEY, 'true');
-        }
+        await markSetupCompleted();
         // Run sync to ensure latest cloud records are mirrored to disk
         localDbService.syncAllCloudDataToLocalDb().catch(() => {});
         setTimeout(() => setModalOpen(false), 1500);
@@ -136,16 +169,14 @@ export const InternalStorageSyncManager = () => {
   };
 
   // 2. 1-Click Windows Batch Script Generator (.bat)
-  const handleDownloadWindowsScript = () => {
+  const handleDownloadWindowsScript = async () => {
     try {
       localDbService.downloadWindowsFolderSetupScript();
       info(
         'Script Downloaded',
         'Double-click Create-TechWash-Folders.bat to auto-create all C:\\TechWash folders on this PC in 1 second!'
       );
-      if (typeof localStorage !== 'undefined') {
-        localStorage.setItem(STORAGE_PROMPTED_KEY, 'true');
-      }
+      await markSetupCompleted();
       // Also sync cloud data into IndexedDB
       handleGrantPermissionAndSync();
     } catch (e) {
@@ -176,9 +207,7 @@ export const InternalStorageSyncManager = () => {
       });
 
       const updatedStats = await loadStats();
-      if (typeof localStorage !== 'undefined') {
-        localStorage.setItem(STORAGE_PROMPTED_KEY, 'true');
-      }
+      await markSetupCompleted();
 
       success(
         'Internal Storage Synced',
@@ -198,10 +227,8 @@ export const InternalStorageSyncManager = () => {
     }
   };
 
-  const handleSkip = () => {
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(STORAGE_PROMPTED_KEY, 'true');
-    }
+  const handleSkip = async () => {
+    await markSetupCompleted();
     setModalOpen(false);
     localDbService.syncAllCloudDataToLocalDb().catch(() => {});
   };
@@ -261,23 +288,35 @@ export const InternalStorageSyncManager = () => {
             <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
 
             {/* Modal Header */}
-            <div className="flex items-start gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-orange-500 to-amber-500 text-white flex items-center justify-center shadow-lg shadow-orange-500/30 shrink-0">
-                <HardDrive className="w-7 h-7" />
-              </div>
-              <div className="space-y-1">
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-orange-500/20 border border-orange-500/30 text-orange-400 text-[10px] font-bold uppercase tracking-wider">
-                  <span>Device Master Storage</span>
-                  <span>•</span>
-                  <span>C:\TechWash</span>
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-start gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-orange-500 to-amber-500 text-white flex items-center justify-center shadow-lg shadow-orange-500/30 shrink-0">
+                  <HardDrive className="w-7 h-7" />
                 </div>
-                <h3 className="text-xl font-black font-display text-white tracking-tight">
-                  Activate Internal Master Storage (C:\TechWash)
-                </h3>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  Tech Wash stores all business data locally on this computer in <strong className="text-orange-400 font-mono">C:\TechWash</strong> and browser IndexedDB (<strong className="text-white">TechWashPOS</strong>). Choose how you would like to initialize storage on this PC:
-                </p>
+                <div className="space-y-1">
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-orange-500/20 border border-orange-500/30 text-orange-400 text-[10px] font-bold uppercase tracking-wider">
+                    <span>Device Master Storage</span>
+                    <span>•</span>
+                    <span>C:\TechWash</span>
+                  </div>
+                  <h3 className="text-xl font-black font-display text-white tracking-tight">
+                    Activate Internal Master Storage (C:\TechWash)
+                  </h3>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Tech Wash stores all business data locally on this computer in <strong className="text-orange-400 font-mono">C:\TechWash</strong> and browser IndexedDB (<strong className="text-white">TechWashPOS</strong>). Once completed, this prompt will never appear again.
+                  </p>
+                </div>
               </div>
+
+              {/* Close Button */}
+              <button
+                type="button"
+                onClick={handleSkip}
+                className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition cursor-pointer shrink-0"
+                title="Close & Don't Show Again"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
 
             {/* Target Storage Paths Information Card */}
@@ -394,17 +433,24 @@ export const InternalStorageSyncManager = () => {
             </div>
 
             {/* Bottom Controls */}
-            <div className="flex items-center justify-between pt-2 border-t border-white/10 text-xs">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-white/10 text-xs">
+              <label className="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white select-none">
+                <input
+                  type="checkbox"
+                  checked={dontAskAgain}
+                  onChange={(e) => setDontAskAgain(e.target.checked)}
+                  className="rounded border-slate-700 bg-slate-800 text-orange-500 focus:ring-orange-500 cursor-pointer"
+                />
+                <span>Don't show this popup again on this computer</span>
+              </label>
+
               <button
                 type="button"
                 onClick={handleSkip}
-                className="text-slate-400 hover:text-white transition-colors"
+                className="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-slate-200 hover:text-white font-semibold transition border border-white/15 cursor-pointer whitespace-nowrap"
               >
                 Skip / Continue in Background
               </button>
-              <span className="text-[11px] text-slate-400">
-                You can change storage settings anytime from the top bar.
-              </span>
             </div>
 
           </div>

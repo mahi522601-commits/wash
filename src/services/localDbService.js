@@ -773,12 +773,23 @@ export const localDbService = {
         }
 
         const allOrders = await this.getLocalOrders();
-        const dateKey = (order.createdAt || new Date().toISOString()).slice(0, 10);
-        const dayOrders = allOrders.filter(o => (o.createdAt || '').slice(0, 10) === dateKey);
+        
+        let dateKey = order.dateKey;
+        if (!dateKey || !/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) {
+          if (order.createdAt) dateKey = String(order.createdAt).slice(0, 10);
+          else if (order.pickupDate) dateKey = String(order.pickupDate).slice(0, 10);
+          else dateKey = new Date().toISOString().slice(0, 10);
+        }
 
-        const billNumber = String(order.orderNumber || order.id || order.localId || 'BILL').trim();
+        const dayOrders = allOrders.filter(o => {
+          const oDate = o.dateKey || (o.createdAt ? String(o.createdAt).slice(0, 10) : '') || '';
+          return oDate === dateKey;
+        });
+
+        const billNumber = String(order.orderNumber || order.manualBillNumber || order.id || order.localId || 'BILL').trim();
         const pdfBlob = generateInvoicePDFBlob(order);
 
+        // 1. Update Subfolders: Admin, POS-01, POS-02, POS-03
         for (const fName of foldersToUpdate) {
           try {
             const fHandle = await handle.getDirectoryHandle(fName, { create: true });
@@ -797,6 +808,17 @@ export const localDbService = {
             await this._writeBinaryFile(datePdfDirHandle, `${billNumber}.pdf`, pdfBlob);
           } catch (e) {}
         }
+
+        // 2. Mirror into Root Invoices/<dateKey>/ and PDFs/<dateKey>/ for fast 1-click access
+        try {
+          const rootInvHandle = await handle.getDirectoryHandle('Invoices', { create: true });
+          const rootDateInvHandle = await rootInvHandle.getDirectoryHandle(dateKey, { create: true });
+          await this._writeBinaryFile(rootDateInvHandle, `${billNumber}.pdf`, pdfBlob);
+
+          const rootPdfHandle = await handle.getDirectoryHandle('PDFs', { create: true });
+          const rootDatePdfHandle = await rootPdfHandle.getDirectoryHandle(dateKey, { create: true });
+          await this._writeBinaryFile(rootDatePdfHandle, `${billNumber}.pdf`, pdfBlob);
+        } catch (e) {}
       }
     } catch (e) {
       console.warn('writeOrderToPhysicalStorage notice:', e);
