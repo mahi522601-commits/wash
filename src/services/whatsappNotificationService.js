@@ -316,6 +316,7 @@ Thank you for choosing Tech Wash!`;
 
     // ALWAYS use live production domain
     const trackingUrl = `${LIVE_PRODUCTION_DOMAIN}/track-order?id=${encodeURIComponent(orderNumber)}`;
+    const googleReviewUrl = 'https://www.google.com/maps/search/?api=1&query=Tech+Wash+Laundry+Services+Shaikpet+Main+Rd+Sri+Ram+Nagar+Colony+Manikonda+Hyderabad+500089';
 
     return `✨ *TECH WASH LAUNDRY SERVICES* ✨
 ----------------------------------------
@@ -329,6 +330,9 @@ ${customNote ? `📝 *Update Note:* ${customNote}\n` : ''}${actualWeight ? `⚖�
 
 📲 *TRACK LIVE MILESTONES:*
 👉 ${trackingUrl}
+
+⭐ *LOVE OUR SERVICE? RATE US 5★ ON GOOGLE MAPS:*
+👉 ${googleReviewUrl}
 
 📞 *Questions?* Reply to this WhatsApp or call +91 63048 45567.`;
   },
@@ -541,6 +545,9 @@ Payment Mode: ${paymentLabel}
 ========================================
 VIEW & DOWNLOAD OFFICIAL PDF / TRACK LIVE STATUS:
 👉 ${invoiceUrl}
+
+⭐ RATE TECH WASH 5★ ON GOOGLE MAPS (MANIKONDA):
+👉 https://www.google.com/maps/search/?api=1&query=Tech+Wash+Laundry+Services+Shaikpet+Main+Rd+Sri+Ram+Nagar+Colony+Manikonda+Hyderabad+500089
 
 Store Helpline: ${storePhone}
 Support Email: care@techwashlaundry.com

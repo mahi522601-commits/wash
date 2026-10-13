@@ -45,17 +45,17 @@ export const DEFAULT_SETTINGS = {
     showFaqSection: true,
   },
   seo: {
-    metaTitle: 'Tech Wash Laundry Services — Next-Gen Premium Garment Care & Dry Cleaning',
-    metaDescription: 'Technology-driven laundry, eco-friendly dry cleaning, steam pressing, and shoe care with doorstep pickup and 24-hr express delivery.',
-    keywords: 'laundry service, dry cleaning, steam ironing, shoe laundry, garment care, doorstep laundry pickup',
-    ogImageUrl: '',
-    canonicalUrl: 'https://techwashlaundry.com',
+    metaTitle: 'Best Laundry Service in Manikonda, Hyderabad | Tech Wash',
+    metaDescription: 'Rated #1 Best Laundry Service in Manikonda, Hyderabad. Tech Wash provides 100% RO soft-water laundry, eco-friendly hydrocarbon dry cleaning, 3D steam ironing & express doorstep pickup across Manikonda.',
+    keywords: 'best laundry service in manikonda, laundry service in manikonda, best dry cleaners in manikonda, dry cleaning manikonda, steam ironing manikonda, curtain washing manikonda, laundry pickup and delivery manikonda',
+    ogImageUrl: 'https://www.techwashlaundry.com/techwashlogo.webp',
+    canonicalUrl: 'https://www.techwashlaundry.com',
   },
   social: {
     instagram: 'https://instagram.com/techwashlaundry',
     facebook: 'https://facebook.com/techwashlaundry',
     youtube: 'https://youtube.com',
-    googleBusiness: 'https://maps.google.com',
+    googleBusiness: 'https://www.google.com/maps/search/?api=1&query=Tech+Wash+Laundry+Services+Shaikpet+Main+Rd+Sri+Ram+Nagar+Colony+Manikonda+Hyderabad+500089',
   },
   workingHours: {
     weekdays: '9:30 AM - 9:30 PM',
