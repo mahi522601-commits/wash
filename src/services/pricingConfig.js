@@ -3,7 +3,7 @@
  * Authoritative pricing dictionary, weight estimation matrices, and dimensional calculators.
  * Synchronizes with Firestore `settings/pricing` if configured, with exact default fallbacks.
  */
-import { db, isFirebaseConfigured } from './firebase';
+import { db, isFirebaseConfigured } from './firebase.js';
 import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 
 export const INITIAL_PRICING_CONFIG = {
@@ -395,6 +395,36 @@ export const DEFAULT_WEIGHED_GARMENTS = INITIAL_PRICING_CONFIG.weighedGarments;
 const PRICING_STORAGE_KEY = 'techwash_pricing_config_v2';
 const PRICING_BROADCAST_CHANNEL = 'techwash_pricing_channel';
 
+export const STANDARD_SERVICE_IDS = new Set([
+  'dry-cleaning',
+  'ironing',
+  'steam-ironing',
+  'starch-and-iron',
+  'wash-and-iron',
+  'wash-and-fold',
+  'saree-rolling',
+  'saree-spa',
+  'curtain-washing',
+  'curtain-cleaning',
+  'curtain-spa',
+  'shoe-washing',
+  'shoe-cleaning',
+  'shoe-spa',
+  'carpet-washing',
+  'carpet-cleaning',
+]);
+
+export const isBuiltInStandardService = (srvOrId) => {
+  if (!srvOrId) return false;
+  if (typeof srvOrId === 'string') {
+    const clean = srvOrId.toLowerCase().trim().replace(/^srv-/, '');
+    return STANDARD_SERVICE_IDS.has(clean);
+  }
+  const cleanId = (srvOrId.id || '').toLowerCase().trim().replace(/^srv-/, '');
+  const cleanSlug = (srvOrId.slug || '').toLowerCase().trim().replace(/^srv-/, '');
+  return STANDARD_SERVICE_IDS.has(cleanId) || STANDARD_SERVICE_IDS.has(cleanSlug);
+};
+
 /**
  * Builds the dynamic Walk-In Services list based on current pricingConfig + any custom services
  */
@@ -443,9 +473,7 @@ export const buildWalkInServicesFromPricing = (config = INITIAL_PRICING_CONFIG, 
   const standardIds = new Set(baseServices.map(s => s.id));
   const mergedCustom = [...customList, ...dynamicExtras].filter(s => {
     if (!s || !s.id) return false;
-    const cleanId = (s.id || '').replace(/^srv-/, '');
-    const standardClean = ['dry-cleaning', 'ironing', 'starch-and-iron', 'wash-and-iron', 'wash-and-fold', 'saree-rolling', 'curtain-washing', 'shoe-washing', 'carpet-washing'];
-    return !standardIds.has(s.id) && !standardClean.includes(cleanId);
+    return !standardIds.has(s.id) && !isBuiltInStandardService(s);
   });
 
   const formattedCustom = mergedCustom.map(cs => ({
@@ -745,7 +773,7 @@ export const buildMasterCatalogFromPricing = (config = INITIAL_PRICING_CONFIG, e
 
   const processedCustomIds = new Set();
   allCustom.forEach(cs => {
-    if (!cs || !cs.id || processedCustomIds.has(cs.id)) return;
+    if (!cs || !cs.id || processedCustomIds.has(cs.id) || isBuiltInStandardService(cs)) return;
     processedCustomIds.add(cs.id);
 
     const srvId = cs.id.startsWith('srv-') ? cs.id : `srv-${cs.id}`;
@@ -858,56 +886,72 @@ export const recalculateServicesInConfig = (config) => {
   const carpetRate = Number(cfg.carpets?.ratePerSqFt) || 45;
   const sareeRate = Number(cfg.sareeRolling?.rate) || 150;
 
-  if (Array.isArray(cfg.services)) {
-    cfg.services = cfg.services.map(srv => {
-      const cleanId = (srv.id || '').replace(/^srv-/, '');
-      if (cleanId === 'dry-cleaning') {
-        return { ...srv, startingPrice: dcMin, startingPriceDisplay: `Starts at ₹${dcMin}` };
-      }
-      if (cleanId === 'ironing') {
-        return { ...srv, startingPrice: irMin, startingPriceDisplay: `Starts at ₹${irMin}` };
-      }
-      if (cleanId === 'starch-and-iron') {
-        return { ...srv, startingPrice: starchMin, startingPriceDisplay: `Starts at ₹${starchMin}` };
-      }
-      if (cleanId === 'wash-and-fold') {
-        return { ...srv, startingPrice: foldRate, startingPriceDisplay: `Starts at ₹${foldRate} / Kg` };
-      }
-      if (cleanId === 'wash-and-iron') {
-        return { ...srv, startingPrice: ironRate, startingPriceDisplay: `Starts at ₹${ironRate} / Kg` };
-      }
-      if (cleanId === 'saree-rolling') {
-        return {
-          ...srv,
-          rate: sareeRate,
-          startingPrice: sareeRate,
-          startingPriceDisplay: sareeRate ? `Starts at ₹${sareeRate}` : 'Price to be confirmed',
-        };
-      }
-      if (cleanId === 'curtain-washing') {
-        return {
-          ...srv,
-          startingPrice: curtainMin,
-          startingPriceDisplay: `Starts at ₹${curtainMin}`,
-          subServices: [
-            { id: 'curtain-dc', key: 'dryCleaning', name: 'Curtain Dry Cleaning', price: curtainDCRate, emoji: '🧺' },
-            { id: 'curtain-wi', key: 'washAndIron', name: 'Curtain Wash & Iron', price: curtainWIRate, emoji: '🫧' },
-            { id: 'curtain-ir', key: 'iron', name: 'Curtain Iron', price: curtainIRRate, emoji: '✨' },
-            { id: 'curtain-wf', key: 'washAndFold', name: 'Curtain Wash & Fold', price: curtainWFRate, emoji: '👕' },
-          ]
-        };
-      }
-      if (cleanId === 'shoe-washing') {
-        return { ...srv, startingPrice: shoeRate, startingPriceDisplay: `₹${shoeRate} / pair`, ratePerPair: shoeRate };
-      }
-      if (cleanId === 'carpet-washing') {
-        return { ...srv, startingPrice: carpetRate, startingPriceDisplay: `₹${carpetRate} / sq. ft.`, ratePerSqFt: carpetRate };
-      }
-      return srv;
-    });
-  }
+  const existingServices = Array.isArray(cfg.services) ? cfg.services : [];
+  cfg.services = INITIAL_PRICING_CONFIG.services.map(defSrv => {
+    const cleanId = defSrv.id;
+    const match = existingServices.find(s => (s.id || '').replace(/^srv-/, '') === cleanId || s.slug === defSrv.slug);
+    const srv = match
+      ? { ...defSrv, ...match, id: defSrv.id, slug: defSrv.slug, pricingType: defSrv.pricingType }
+      : { ...defSrv };
 
-  cfg.customServices = Array.isArray(cfg.customServices) ? cfg.customServices : [];
+    if (cleanId === 'dry-cleaning') {
+      return { ...srv, startingPrice: dcMin, startingPriceDisplay: `Starts at ₹${dcMin}` };
+    }
+    if (cleanId === 'ironing') {
+      return { ...srv, startingPrice: irMin, startingPriceDisplay: `Starts at ₹${irMin}` };
+    }
+    if (cleanId === 'starch-and-iron') {
+      return { ...srv, startingPrice: starchMin, startingPriceDisplay: `Starts at ₹${starchMin}` };
+    }
+    if (cleanId === 'wash-and-fold') {
+      return {
+        ...srv,
+        baseRates: srv.baseRates || defSrv.baseRates,
+        startingPrice: foldRate,
+        startingPriceDisplay: `Starts at ₹${foldRate} / Kg`,
+      };
+    }
+    if (cleanId === 'wash-and-iron') {
+      return {
+        ...srv,
+        baseRates: srv.baseRates || defSrv.baseRates,
+        startingPrice: ironRate,
+        startingPriceDisplay: `Starts at ₹${ironRate} / Kg`,
+      };
+    }
+    if (cleanId === 'saree-rolling') {
+      return {
+        ...srv,
+        rate: sareeRate,
+        startingPrice: sareeRate,
+        startingPriceDisplay: sareeRate ? `Starts at ₹${sareeRate}` : 'Price to be confirmed',
+      };
+    }
+    if (cleanId === 'curtain-washing') {
+      return {
+        ...srv,
+        startingPrice: curtainMin,
+        startingPriceDisplay: `Starts at ₹${curtainMin}`,
+        subServices: [
+          { id: 'curtain-dc', key: 'dryCleaning', name: 'Curtain Dry Cleaning', price: curtainDCRate, emoji: '🧺' },
+          { id: 'curtain-wi', key: 'washAndIron', name: 'Curtain Wash & Iron', price: curtainWIRate, emoji: '🫧' },
+          { id: 'curtain-ir', key: 'iron', name: 'Curtain Iron', price: curtainIRRate, emoji: '✨' },
+          { id: 'curtain-wf', key: 'washAndFold', name: 'Curtain Wash & Fold', price: curtainWFRate, emoji: '👕' },
+        ]
+      };
+    }
+    if (cleanId === 'shoe-washing') {
+      return { ...srv, startingPrice: shoeRate, startingPriceDisplay: `₹${shoeRate} / pair`, ratePerPair: shoeRate };
+    }
+    if (cleanId === 'carpet-washing') {
+      return { ...srv, startingPrice: carpetRate, startingPriceDisplay: `₹${carpetRate} / sq. ft.`, ratePerSqFt: carpetRate };
+    }
+    return srv;
+  });
+
+  cfg.customServices = (Array.isArray(cfg.customServices) ? cfg.customServices : []).filter(
+    cs => cs && cs.id && !isBuiltInStandardService(cs)
+  );
   cfg.customItems = Array.isArray(cfg.customItems) ? cfg.customItems : [];
 
   return cfg;

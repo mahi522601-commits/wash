@@ -19,7 +19,7 @@ import { StatusBadge } from '../../components/admin/StatusBadge';
 import { ServicePreviewModal } from '../../components/public/ServicePreviewModal';
 import { EmojiPicker } from '../../components/common/EmojiPicker';
 import { ImageUpload } from '../../components/ui/ImageUpload';
-import { pricingService } from '../../services/pricingConfig';
+import { pricingService, isBuiltInStandardService } from '../../services/pricingConfig';
 import { 
   Sparkles, 
   Plus, 
@@ -224,37 +224,39 @@ export const AdminServicesPage = () => {
       const isNew = !currentService.id;
       const saved = await serviceService.saveService(currentService);
 
-      // Sync custom service / sub-services to pricingConfig
+      // Sync custom service / sub-services to pricingConfig ONLY for genuine custom services
       try {
-        const currentConfig = await pricingService.getPricingConfig();
-        let customList = Array.isArray(currentConfig.customServices) ? currentConfig.customServices : [];
-        const srvId = saved.id;
-        const existingIdx = customList.findIndex(c => c.id === srvId || c.id === srvId.replace(/^srv-/, ''));
+        if (!isBuiltInStandardService(saved)) {
+          const currentConfig = await pricingService.getPricingConfig();
+          let customList = Array.isArray(currentConfig.customServices) ? currentConfig.customServices : [];
+          const srvId = saved.id;
+          const existingIdx = customList.findIndex(c => c.id === srvId || c.id === srvId.replace(/^srv-/, ''));
 
-        const customObj = {
-          id: srvId,
-          name: saved.title || saved.name,
-          title: saved.title || saved.name,
-          slug: saved.slug,
-          startingPrice: Number(saved.startingPrice || 99),
-          pricingType: saved.pricingType === 'per kg' ? 'per_kg' : 'per_item',
-          emoji: saved.emoji || saved.icon || '✨',
-          icon: saved.emoji || saved.icon || '✨',
-          categoryTag: saved.category || 'Special Care',
-          shortDescription: saved.shortDescription || '',
-          subServices: Array.isArray(saved.subServices) ? saved.subServices : [],
-        };
+          const customObj = {
+            id: srvId,
+            name: saved.title || saved.name,
+            title: saved.title || saved.name,
+            slug: saved.slug,
+            startingPrice: Number(saved.startingPrice || 99),
+            pricingType: saved.pricingType === 'per kg' ? 'per_kg' : 'per_item',
+            emoji: saved.emoji || saved.icon || '✨',
+            icon: saved.emoji || saved.icon || '✨',
+            categoryTag: saved.category || 'Special Care',
+            shortDescription: saved.shortDescription || '',
+            subServices: Array.isArray(saved.subServices) ? saved.subServices : [],
+          };
 
-        if (existingIdx >= 0) {
-          customList[existingIdx] = { ...customList[existingIdx], ...customObj };
-        } else {
-          customList.push(customObj);
+          if (existingIdx >= 0) {
+            customList[existingIdx] = { ...customList[existingIdx], ...customObj };
+          } else {
+            customList.push(customObj);
+          }
+
+          await pricingService.updatePricingConfig({
+            ...currentConfig,
+            customServices: customList,
+          });
         }
-
-        await pricingService.updatePricingConfig({
-          ...currentConfig,
-          customServices: customList,
-        });
       } catch (e) {
         console.warn("Pricing config sync error:", e);
       }

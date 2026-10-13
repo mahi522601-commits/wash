@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { serviceService, DEFAULT_SERVICES } from '../../services/serviceService';
-import { pricingService, INITIAL_PRICING_CONFIG, DEFAULT_PER_KG_SUB_SERVICES } from '../../services/pricingConfig';
+import { pricingService, INITIAL_PRICING_CONFIG, DEFAULT_PER_KG_SUB_SERVICES, isBuiltInStandardService } from '../../services/pricingConfig';
 import { formatCurrency } from '../../utils/formatters';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
@@ -49,7 +49,9 @@ export const PricingPage = () => {
   }, []);
 
   const customCategories = useMemo(() => {
-    const list = Array.isArray(pricingConfig.customServices) ? pricingConfig.customServices : [];
+    const list = (Array.isArray(pricingConfig.customServices) ? pricingConfig.customServices : []).filter(
+      cs => cs && cs.id && !isBuiltInStandardService(cs)
+    );
     return list.map(cs => ({
       id: cs.id,
       label: cs.name || cs.title,
@@ -1150,7 +1152,7 @@ export const PricingPage = () => {
               SECTION 8: CUSTOM SERVICES & BESPOKE CARE
           ═════════════════════════════════════════════════════════ */}
           {(Array.isArray(pricingConfig.customServices) && pricingConfig.customServices.length > 0) && (
-            pricingConfig.customServices.map((cs) => {
+            pricingConfig.customServices.filter(cs => cs && cs.id && !isBuiltInStandardService(cs)).map((cs) => {
               if (selectedCategory !== 'ALL' && selectedCategory !== cs.id) return null;
               const subItems = Array.isArray(cs.subServices) && cs.subServices.length > 0
                 ? cs.subServices

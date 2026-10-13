@@ -474,10 +474,13 @@ function applyPricingConfigToServices(serviceList) {
       startingPriceDisplay = `₹${carpetRate} / sq. ft.`;
     }
 
-    // Check if matching custom service exists in pricing config to update subServices
-    const customMatch = (config.customServices || []).find(cs => cs.id === srv.id || cs.id === cleanId || cs.slug === srv.slug);
-    if (customMatch && Array.isArray(customMatch.subServices)) {
-      subServices = customMatch.subServices;
+    // Check if matching custom service exists in pricing config to update subServices (ONLY for non-canonical custom services)
+    const isBuiltInCanonical = Boolean(CANONICAL_SERVICE_KEYS[cleanId] || CANONICAL_SERVICE_KEYS[srv.slug]);
+    if (!isBuiltInCanonical) {
+      const customMatch = (config.customServices || []).find(cs => cs.id === srv.id || cs.id === cleanId || cs.slug === srv.slug);
+      if (customMatch && Array.isArray(customMatch.subServices)) {
+        subServices = customMatch.subServices;
+      }
     }
 
     return {
@@ -495,6 +498,10 @@ function applyPricingConfigToServices(serviceList) {
 
   customServices.forEach(cs => {
     if (!cs || !cs.id) return;
+    const cleanCsId = (cs.id || '').toLowerCase().trim().replace(/^srv-/, '');
+    const cleanCsSlug = (cs.slug || '').toLowerCase().trim().replace(/^srv-/, '');
+    if (CANONICAL_SERVICE_KEYS[cleanCsId] || CANONICAL_SERVICE_KEYS[cleanCsSlug]) return;
+
     const srvId = cs.id.startsWith('srv-') ? cs.id : `srv-${cs.id}`;
     const slug = cs.slug || slugify(cs.name || cs.title || 'custom-service');
 
@@ -680,16 +687,52 @@ export const serviceService = {
    */
   async getServiceBySlug(slug) {
     const services = await this.getServices({ publishedOnly: false });
+    const raw = String(slug || '').toLowerCase().trim();
+    const clean = raw.replace(/^srv-/, '');
     const slugAliases = {
       'ro-soft-water-laundry': 'wash-and-iron',
       'steam-ironing-and-form-press': 'ironing',
       'premium-dry-cleaning': 'dry-cleaning',
       'laundry': 'wash-and-iron',
+      'laundry-service': 'wash-and-iron',
+      'laundry-pickup-and-delivery': 'wash-and-iron',
+      'laundry-pickup-delivery': 'wash-and-iron',
+      'wash-iron': 'wash-and-iron',
+      'wash-fold': 'wash-and-fold',
+      'wash-and-fold-laundry': 'wash-and-fold',
       'steam-iron': 'ironing',
-      'stains-remover': 'dry-cleaning'
+      'steam-ironing': 'ironing',
+      'ironing-service': 'ironing',
+      'iron': 'ironing',
+      'stains-remover': 'dry-cleaning',
+      'dry-clean': 'dry-cleaning',
+      'dryclean': 'dry-cleaning',
+      'starch-iron': 'starch-and-iron',
+      'starch': 'starch-and-iron',
+      'shoe-cleaning': 'shoe-washing',
+      'shoes': 'shoe-washing',
+      'shoe-spa': 'shoe-washing',
+      'curtain-cleaning': 'curtain-washing',
+      'curtains': 'curtain-washing',
+      'curtain-spa': 'curtain-washing',
+      'carpet-cleaning': 'carpet-washing',
+      'carpets': 'carpet-washing',
+      'saree': 'saree-rolling',
+      'saree-spa': 'saree-rolling',
     };
-    const normalizedSlug = slugAliases[slug] || slug;
-    return services.find(s => s.slug === normalizedSlug || s.slug === slug || s.id === slug) || services[0] || null;
+    const normalizedSlug = slugAliases[clean] || slugAliases[raw] || clean;
+    return (
+      services.find(
+        s =>
+          s.slug === normalizedSlug ||
+          s.slug === raw ||
+          s.id === raw ||
+          s.id === `srv-${normalizedSlug}` ||
+          (s.id || '').replace(/^srv-/, '') === normalizedSlug
+      ) ||
+      services[0] ||
+      null
+    );
   },
 
   /**

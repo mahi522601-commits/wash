@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import confetti from 'canvas-confetti';
-import { INITIAL_PRICING_CONFIG, pricingService } from '../../services/pricingConfig';
+import { INITIAL_PRICING_CONFIG, pricingService, isBuiltInStandardService } from '../../services/pricingConfig';
 import { 
   orderService, 
   TIME_PERIODS, 
@@ -109,35 +109,50 @@ export const findMatchingService = (serviceParam, servicesList = []) => {
   const direct = servicesList.find(s => s.id === raw || s.slug === raw || s.id === clean || s.slug === clean);
   if (direct) return direct;
 
-  // 2. Synonyms and fuzzy aliases
+  // 2. Synonyms, SEO slugs, and fuzzy aliases
   const aliasMap = {
     'steam-ironing': 'ironing',
+    'steam-iron': 'ironing',
+    'ironing-service': 'ironing',
+    'steam-ironing-and-form-press': 'ironing',
     'iron': 'ironing',
     'ironing': 'ironing',
+    'starch-and-iron': 'starch-and-iron',
+    'starch-iron': 'starch-and-iron',
+    'starch': 'starch-and-iron',
     'wash-iron': 'wash-and-iron',
     'wash-and-iron': 'wash-and-iron',
+    'ro-soft-water-laundry': 'wash-and-iron',
+    'laundry': 'wash-and-iron',
+    'laundry-service': 'wash-and-iron',
+    'laundry-pickup-and-delivery': 'wash-and-iron',
+    'laundry-pickup-delivery': 'wash-and-iron',
     'wash-fold': 'wash-and-fold',
     'wash-and-fold': 'wash-and-fold',
     'wash-and-fold-laundry': 'wash-and-fold',
     'curtain-cleaning': 'curtain-washing',
     'curtain-washing': 'curtain-washing',
     'curtains': 'curtain-washing',
+    'curtain-spa': 'curtain-washing',
     'shoe-cleaning': 'shoe-washing',
     'shoe-washing': 'shoe-washing',
     'shoes': 'shoe-washing',
+    'shoe-spa': 'shoe-washing',
     'carpet-cleaning': 'carpet-washing',
     'carpet-washing': 'carpet-washing',
     'carpets': 'carpet-washing',
     'saree': 'saree-rolling',
     'saree-rolling': 'saree-rolling',
+    'saree-spa': 'saree-rolling',
     'dryclean': 'dry-cleaning',
     'dry-cleaning': 'dry-cleaning',
     'dry-clean': 'dry-cleaning',
+    'premium-dry-cleaning': 'dry-cleaning',
   };
 
   const targetId = aliasMap[clean] || aliasMap[raw];
   if (targetId) {
-    const aliasMatch = servicesList.find(s => s.id === targetId || s.slug === targetId);
+    const aliasMatch = servicesList.find(s => s.id === targetId || s.slug === targetId || (s.id || '').replace(/^srv-/, '') === targetId);
     if (aliasMatch) return aliasMatch;
   }
 
@@ -151,7 +166,7 @@ export const findMatchingService = (serviceParam, servicesList = []) => {
 };
 
 export const BookPickupPage = () => {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { success, error, info } = useToast();
   const { settings } = useSettings();
@@ -220,14 +235,14 @@ export const BookPickupPage = () => {
   });
 
   const [pickupLocation, setPickupLocation] = useState(null);
-  const [address, setAddress] = useState({
+  const [address, setAddress] = useState(() => ({
     street: '',
     building: '',
-    locality: '',
+    locality: searchParams.get('locality') || '',
     city: 'Hyderabad',
     pincode: '',
     landmark: '',
-  });
+  }));
 
   const [schedule, setSchedule] = useState(() => {
     const pickupDate = new Date(Date.now() + 86400000).toISOString().split('T')[0];
@@ -255,7 +270,7 @@ export const BookPickupPage = () => {
   // Mobile Bottom Drawer Open State
   const [isMobileBagOpen, setIsMobileBagOpen] = useState(false);
 
-  // Load config & handle URL prefill
+  // Load config & subscribe once on mount
   useEffect(() => {
     pricingService.getPricingConfig().then(cfg => {
       if (cfg) setPricingConfig(cfg);
@@ -276,37 +291,22 @@ export const BookPickupPage = () => {
     };
     window.addEventListener('techwash-payment-config-updated', handlePaymentConfigUpdate);
 
-    const prefillService = searchParams.get('service');
-    if (prefillService) {
-      const match = findMatchingService(prefillService, pricingConfig.services || INITIAL_PRICING_CONFIG.services);
-      if (match) {
-        setSelectedServiceId(match.id);
-        setCurrentStep(2); // Jump straight to Step 2
-      }
-    }
-
-    try {
-      const couponParam = searchParams.get('coupon');
-      if (couponParam) {
-        setCouponCode(couponParam);
-        if (couponParam === 'TECHWASH20') {
-          setAppliedCoupon({ code: 'TECHWASH20', type: 'percentage', value: 20 });
-        }
-      }
-    } catch (e) {}
-
     analyticsService.trackEvent('booking_start');
 
     return () => {
       unsubPricing();
       window.removeEventListener('techwash-payment-config-updated', handlePaymentConfigUpdate);
     };
-  }, [searchParams]);
+  }, []);
 
-  // All services including dynamic custom services
+  // All services including dynamic custom services (strictly deduplicated against built-in services)
   const allAvailableServices = useMemo(() => {
-    const base = pricingConfig.services || INITIAL_PRICING_CONFIG.services;
-    const custom = Array.isArray(pricingConfig.customServices) ? pricingConfig.customServices : [];
+    const base = Array.isArray(pricingConfig.services) && pricingConfig.services.length >= 9
+      ? pricingConfig.services
+      : INITIAL_PRICING_CONFIG.services;
+    const custom = (Array.isArray(pricingConfig.customServices) ? pricingConfig.customServices : []).filter(
+      cs => cs && cs.id && !isBuiltInStandardService(cs)
+    );
     const formattedCustom = custom.map(cs => ({
       id: cs.id,
       slug: cs.slug || cs.id,
@@ -324,10 +324,41 @@ export const BookPickupPage = () => {
     return [...base, ...formattedCustom];
   }, [pricingConfig.services, pricingConfig.customServices]);
 
+  // Sync URL query params (?service=, ?locality=, ?coupon=) with active state
+  const urlServiceParam = searchParams.get('service');
+  const urlLocalityParam = searchParams.get('locality');
+  const urlCouponParam = searchParams.get('coupon');
+
+  useEffect(() => {
+    if (urlServiceParam) {
+      const match = findMatchingService(urlServiceParam, allAvailableServices);
+      if (match) {
+        setSelectedServiceId(match.id);
+        setActiveSubCategory('all');
+        setSearchFilter('');
+        setCurrentStep(prev => (prev === 1 ? 2 : prev));
+      }
+    }
+  }, [urlServiceParam, allAvailableServices]);
+
+  useEffect(() => {
+    if (urlLocalityParam) {
+      setAddress(prev => (prev.locality ? prev : { ...prev, locality: urlLocalityParam }));
+    }
+    if (urlCouponParam) {
+      setCouponCode(urlCouponParam);
+      if (urlCouponParam.toUpperCase() === 'TECHWASH20') {
+        setAppliedCoupon({ code: 'TECHWASH20', type: 'percentage', value: 20, maxDiscount: 200 });
+      }
+    }
+  }, [urlLocalityParam, urlCouponParam]);
+
   // Current active service definition
   const currentService = useMemo(() => {
-    return allAvailableServices.find(s => s.id === selectedServiceId || s.slug === selectedServiceId) || allAvailableServices[0];
+    return findMatchingService(selectedServiceId, allAvailableServices) || allAvailableServices[0];
   }, [allAvailableServices, selectedServiceId]);
+
+  const cleanServiceId = (currentService?.id || '').replace(/^srv-/, '');
 
   // ----------------------------------------------------
   // ITEM QUANTITY HANDLERS
@@ -416,18 +447,18 @@ export const BookPickupPage = () => {
     let unpricedMessage = '';
     let totalItemCount = 0;
 
-    if (currentService.pricingType === 'ITEMIZED') {
+    if (cleanServiceId === 'dry-cleaning' || cleanServiceId === 'ironing' || cleanServiceId === 'starch-and-iron') {
       // Dry Cleaning, Ironing, or Starch & Iron
-      const catalog = currentService.id === 'dry-cleaning' 
+      const catalog = cleanServiceId === 'dry-cleaning' 
         ? pricingConfig.dryCleaning 
-        : ((currentService.id === 'starch-and-iron' || currentService.id === 'srv-starch-and-iron')
+        : (cleanServiceId === 'starch-and-iron'
             ? (pricingConfig['starch-and-iron'] || pricingConfig.starchAndIron || {})
             : pricingConfig.ironing);
 
       const allCatalogItems = [
-        ...(catalog.men || []),
-        ...(catalog.women || []),
-        ...(catalog.common || []),
+        ...(catalog?.men || []),
+        ...(catalog?.women || []),
+        ...(catalog?.common || []),
       ];
 
       Object.entries(itemizedQuantities).forEach(([itemId, qty]) => {
@@ -466,10 +497,12 @@ export const BookPickupPage = () => {
           unit: 'bundle',
         });
       }
-    } else if (currentService.pricingType === 'PER_KG') {
+    } else if (cleanServiceId === 'wash-and-iron' || cleanServiceId === 'wash-and-fold') {
       // Wash & Iron OR Wash & Fold
-      const menRate = currentService.baseRates.men;
-      const womenRate = currentService.baseRates.women;
+      const defaultMenRate = cleanServiceId === 'wash-and-fold' ? 100 : 130;
+      const defaultWomenRate = cleanServiceId === 'wash-and-fold' ? 130 : 160;
+      const menRate = currentService.baseRates?.men || defaultMenRate;
+      const womenRate = currentService.baseRates?.women || defaultWomenRate;
       const effectiveRate = clothingFor === 'women' ? womenRate : menRate;
 
       if (perKgMode === 'doorstep') {
@@ -505,8 +538,8 @@ export const BookPickupPage = () => {
         });
       } else {
         // Manual item counting
-        const menStandards = pricingConfig.weightStandards.men || [];
-        const womenStandards = pricingConfig.weightStandards.women || [];
+        const menStandards = pricingConfig.weightStandards?.men || [];
+        const womenStandards = pricingConfig.weightStandards?.women || [];
 
         let menGrams = 0;
         let womenGrams = 0;
@@ -565,7 +598,7 @@ export const BookPickupPage = () => {
         const womenKg = womenGrams / 1000;
         itemsSubtotal = Math.round((menKg * menRate) + (womenKg * womenRate));
       }
-    } else if (currentService.pricingType === 'UNPRICED' || currentService.id === 'saree-rolling' || currentService.id === 'srv-saree-rolling') {
+    } else if (cleanServiceId === 'saree-rolling') {
       // Saree Rolling
       const sareeRate = Number(pricingConfig.sareeRolling?.rate) || null;
       if (sareeRate) {
@@ -596,7 +629,7 @@ export const BookPickupPage = () => {
           note: 'Price to be confirmed by pickup executive after fabric inspection',
         });
       }
-    } else if (currentService.id === 'curtain-washing' || currentService.id === 'srv-curtain-spa') {
+    } else if (cleanServiceId === 'curtain-washing' || cleanServiceId === 'curtain-spa') {
       // Curtains (4 Official Sub-Services: Dry Cleaning, Wash & Iron, Iron, Wash & Fold)
       const curtainPricing = pricingConfig.curtains || {
         dryCleaning: 200,
@@ -631,7 +664,21 @@ export const BookPickupPage = () => {
           });
         }
       });
-    } else if (currentService.pricingType === 'DIMENSIONAL_AREA' || currentService.id === 'carpet-washing') {
+
+      if (totalItemCount === 0) {
+        hasUnpricedItems = true;
+        unpricedMessage = 'Curtain panels will be counted and tagged at doorstep';
+        totalItemCount = 1;
+        lineItems.push({
+          id: 'curtain-doorstep-count',
+          name: `${currentService.name} (Tally at Doorstep)`,
+          emoji: currentService.emoji || '🪟',
+          quantity: 1,
+          unconfirmed: true,
+          unit: 'bundle',
+        });
+      }
+    } else if (cleanServiceId === 'carpet-washing') {
       // Carpets
       const ratePerSqFt = pricingConfig.carpets?.ratePerSqFt || 45;
       carpetItems.forEach((c, idx) => {
@@ -651,9 +698,9 @@ export const BookPickupPage = () => {
           unit: 'piece',
         });
       });
-    } else if (currentService.pricingType === 'PER_PAIR') {
+    } else if (cleanServiceId === 'shoe-washing' || cleanServiceId === 'shoe-spa') {
       // Shoe Washing
-      const ratePerPair = pricingConfig.shoes.ratePerPair || 350;
+      const ratePerPair = pricingConfig.shoes?.ratePerPair || 350;
       const lineTotal = shoePairs * ratePerPair;
       itemsSubtotal += lineTotal;
       totalItemCount = shoePairs;
@@ -744,6 +791,7 @@ export const BookPickupPage = () => {
     };
   }, [
     currentService,
+    cleanServiceId,
     pricingConfig,
     clothingFor,
     itemizedQuantities,
@@ -773,6 +821,28 @@ export const BookPickupPage = () => {
     }
   };
 
+  // Service & Step 1 Navigation Helpers (keeps URL ?service= in sync)
+  const handleSelectService = (service) => {
+    if (!service) return;
+    setSelectedServiceId(service.id);
+    setActiveSubCategory('all');
+    setSearchFilter('');
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set('service', service.slug || service.id);
+    setSearchParams(nextParams, { replace: true });
+    setCurrentStep(2);
+    window.scrollTo({ top: 100, behavior: 'smooth' });
+  };
+
+  const handleGoToStep1 = () => {
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('service');
+    setSearchParams(nextParams, { replace: true });
+    setCurrentStep(1);
+    setIsMobileBagOpen(false);
+    window.scrollTo({ top: 100, behavior: 'smooth' });
+  };
+
   // Step Navigation
   const handleNextStep = () => {
     if (currentStep === 1) {
@@ -780,8 +850,7 @@ export const BookPickupPage = () => {
         error('Select Service', 'Please choose a service to get started.');
         return;
       }
-      setCurrentStep(2);
-      window.scrollTo({ top: 100, behavior: 'smooth' });
+      handleSelectService(currentService);
       return;
     }
 
@@ -824,6 +893,10 @@ export const BookPickupPage = () => {
   };
 
   const handlePrevStep = () => {
+    if (currentStep === 2) {
+      handleGoToStep1();
+      return;
+    }
     if (currentStep > 1) {
       setCurrentStep(prev => prev - 1);
       setIsMobileBagOpen(false);
@@ -1132,7 +1205,14 @@ export const BookPickupPage = () => {
                   <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                     <button
                       type="button"
-                      onClick={() => isPast && setCurrentStep(step.id)}
+                      onClick={() => {
+                        if (!isPast) return;
+                        if (step.id === 1) {
+                          handleGoToStep1();
+                        } else {
+                          setCurrentStep(step.id);
+                        }
+                      }}
                       disabled={!isPast && !isCurrent}
                       className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center text-[11px] sm:text-xs font-bold transition-all ${
                         isPast
@@ -1144,7 +1224,14 @@ export const BookPickupPage = () => {
                     >
                       {isPast ? <Check className="w-3.5 h-3.5" /> : step.id}
                     </button>
-                    <span className={`text-[10px] sm:text-xs font-bold tracking-wide ${isCurrent ? 'text-slate-900 font-bold' : isPast ? 'text-slate-700 cursor-pointer' : 'text-slate-400'}`}>
+                    <span
+                      onClick={() => {
+                        if (!isPast) return;
+                        if (step.id === 1) handleGoToStep1();
+                        else setCurrentStep(step.id);
+                      }}
+                      className={`text-[10px] sm:text-xs font-bold tracking-wide ${isCurrent ? 'text-slate-900 font-bold' : isPast ? 'text-slate-700 cursor-pointer' : 'text-slate-400'}`}
+                    >
                       <span className="hidden sm:inline">{step.label}</span>
                       <span className="sm:hidden">{step.shortLabel}</span>
                     </span>
@@ -1196,15 +1283,11 @@ export const BookPickupPage = () => {
                   {/* 2-Column Responsive Service Grid */}
                   <div className="grid grid-cols-2 sm:grid-cols-2 gap-2.5 sm:gap-4">
                     {allAvailableServices.map((service) => {
-                      const isSelected = selectedServiceId === service.id;
+                      const isSelected = currentService?.id === service.id;
                       return (
                         <div
                           key={service.id}
-                          onClick={() => {
-                            setSelectedServiceId(service.id);
-                            setCurrentStep(2);
-                            window.scrollTo({ top: 100, behavior: 'smooth' });
-                          }}
+                          onClick={() => handleSelectService(service)}
                           className={`p-3.5 sm:p-5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between relative group active:scale-[0.98] ${
                             isSelected
                               ? 'border-brand-600 bg-brand-50/40 shadow-luxury ring-2 ring-brand-400/20'
@@ -1273,7 +1356,7 @@ export const BookPickupPage = () => {
 
                     <button
                       type="button"
-                      onClick={() => setCurrentStep(1)}
+                      onClick={handleGoToStep1}
                       className="text-xs font-bold text-brand-600 hover:text-brand-700 hover:underline shrink-0"
                     >
                       ← Change Service
@@ -1310,7 +1393,7 @@ export const BookPickupPage = () => {
                   {/* -------------------------------------------------------- */}
                   {/* DRY CLEANING, IRONING & STARCH & IRON FLOW               */}
                   {/* -------------------------------------------------------- */}
-                  {(currentService.id === 'dry-cleaning' || currentService.id === 'ironing' || currentService.id === 'starch-and-iron' || currentService.id === 'srv-starch-and-iron') && (
+                  {(cleanServiceId === 'dry-cleaning' || cleanServiceId === 'ironing' || cleanServiceId === 'starch-and-iron') && (
                     <div className="space-y-6">
                       
                       {/* Persona Filter: Who are these clothes for? */}
@@ -1351,7 +1434,7 @@ export const BookPickupPage = () => {
                       {/* Category Chips Bar */}
                       <div>
                         <div className="flex items-center gap-1.5 overflow-x-auto pb-2 scrollbar-thin">
-                          {(SUBCATEGORY_TABS[currentService.id === 'dry-cleaning' ? 'dryCleaning' : (currentService.id === 'starch-and-iron' || currentService.id === 'srv-starch-and-iron' ? 'starch-and-iron' : 'ironing')] || []).map(cat => {
+                          {(SUBCATEGORY_TABS[cleanServiceId === 'dry-cleaning' ? 'dryCleaning' : (cleanServiceId === 'starch-and-iron' ? 'starch-and-iron' : 'ironing')] || []).map(cat => {
                             const isActive = activeSubCategory === cat.id;
                             return (
                               <button
@@ -1387,20 +1470,20 @@ export const BookPickupPage = () => {
                       {/* Visual Item Cards Grid - Free flowing on mobile, no scroll traps */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
                         {(() => {
-                          const catalog = currentService.id === 'dry-cleaning' 
+                          const catalog = cleanServiceId === 'dry-cleaning' 
                             ? pricingConfig.dryCleaning 
-                            : ((currentService.id === 'starch-and-iron' || currentService.id === 'srv-starch-and-iron')
+                            : (cleanServiceId === 'starch-and-iron'
                                 ? (pricingConfig['starch-and-iron'] || pricingConfig.starchAndIron || {})
                                 : pricingConfig.ironing);
 
                           let list = [];
                           if (clothingFor === 'men') {
-                            list = [...(catalog.men || []), ...(catalog.common || [])];
+                            list = [...(catalog?.men || []), ...(catalog?.common || [])];
                           } else if (clothingFor === 'women') {
-                            list = [...(catalog.women || []), ...(catalog.common || [])];
+                            list = [...(catalog?.women || []), ...(catalog?.common || [])];
                           } else {
                             // mixed
-                            list = [...(catalog.men || []), ...(catalog.women || []), ...(catalog.common || [])];
+                            list = [...(catalog?.men || []), ...(catalog?.women || []), ...(catalog?.common || [])];
                           }
 
                           // Remove duplicate IDs if any
@@ -1479,7 +1562,7 @@ export const BookPickupPage = () => {
                   {/* -------------------------------------------------------- */}
                   {/* WASH & IRON & WASH & FOLD (PER-KG SERVICES)              */}
                   {/* -------------------------------------------------------- */}
-                  {(currentService.id === 'wash-and-iron' || currentService.id === 'wash-and-fold') && (
+                  {(cleanServiceId === 'wash-and-iron' || cleanServiceId === 'wash-and-fold') && (
                     <div className="space-y-6">
                       
                       {/* Charged by weight badge */}
@@ -1842,9 +1925,9 @@ export const BookPickupPage = () => {
                   )}
 
                   {/* -------------------------------------------------------- */}
-                  {/* SAREE ROLLING FLOW (UNPRICED)                            */}
+                  {/* SAREE ROLLING FLOW (UNPRICED / RATE)                     */}
                   {/* -------------------------------------------------------- */}
-                  {currentService.id === 'saree-rolling' && (
+                  {cleanServiceId === 'saree-rolling' && (
                     <div className="space-y-6">
                       <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200 space-y-5">
                         <div className="flex items-center justify-between">
@@ -1855,7 +1938,7 @@ export const BookPickupPage = () => {
                                 How many sarees?
                               </h3>
                               <span className="text-xs font-bold text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full inline-block mt-1">
-                                Price to be confirmed
+                                {pricingConfig.sareeRolling?.rate ? `${formatCurrency(pricingConfig.sareeRolling.rate)} / saree` : 'Price to be confirmed'}
                               </span>
                             </div>
                           </div>
@@ -1891,7 +1974,7 @@ export const BookPickupPage = () => {
                   {/* -------------------------------------------------------- */}
                   {/* CURTAIN CARE FLOW (4 OFFICIAL SUB-SERVICES)              */}
                   {/* -------------------------------------------------------- */}
-                  {currentService.id === 'curtain-washing' && (
+                  {(cleanServiceId === 'curtain-washing' || cleanServiceId === 'curtain-spa') && (
                     <div className="space-y-6">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
                         <div>
@@ -2014,11 +2097,11 @@ export const BookPickupPage = () => {
                   {/* -------------------------------------------------------- */}
                   {/* SHOE WASHING FLOW (PER-PAIR)                             */}
                   {/* -------------------------------------------------------- */}
-                  {currentService.id === 'shoe-washing' && (
+                  {(cleanServiceId === 'shoe-washing' || cleanServiceId === 'shoe-spa') && (
                     <div className="space-y-6">
                       <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200 space-y-5">
                         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-800 text-xs font-bold">
-                          <span>₹350 / pair</span>
+                          <span>₹{pricingConfig.shoes?.ratePerPair || 350} / pair</span>
                         </div>
 
                         <div className="flex items-center justify-between">
@@ -2071,10 +2154,10 @@ export const BookPickupPage = () => {
 
                         <div className="p-3.5 rounded-xl bg-white border border-slate-200 flex justify-between items-center text-xs">
                           <span className="text-slate-600">
-                            {shoePairs} {shoePairs === 1 ? 'pair' : 'pairs'} × ₹350
+                            {shoePairs} {shoePairs === 1 ? 'pair' : 'pairs'} × ₹{pricingConfig.shoes?.ratePerPair || 350}
                           </span>
                           <span className="text-base font-black text-brand-700 font-display">
-                            {formatCurrency(shoePairs * 350)}
+                            {formatCurrency(shoePairs * (pricingConfig.shoes?.ratePerPair || 350))}
                           </span>
                         </div>
                       </div>
@@ -2084,12 +2167,12 @@ export const BookPickupPage = () => {
                   {/* -------------------------------------------------------- */}
                   {/* CARPET WASHING FLOW (DIMENSIONAL)                        */}
                   {/* -------------------------------------------------------- */}
-                  {currentService.id === 'carpet-washing' && (
+                  {cleanServiceId === 'carpet-washing' && (
                     <div className="space-y-6">
                       <div className="flex items-center justify-between">
                         <div>
                           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-800 text-xs font-bold">
-                            <span>₹45 / sq. ft.</span>
+                            <span>₹{pricingConfig.carpets?.ratePerSqFt || 45} / sq. ft.</span>
                           </div>
                           <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600 mt-2">
                             Enter Carpet Dimensions
@@ -2103,8 +2186,9 @@ export const BookPickupPage = () => {
 
                       <div className="space-y-3">
                         {carpetItems.map((c, idx) => {
+                          const rateSqFt = pricingConfig.carpets?.ratePerSqFt || 45;
                           const area = Math.max(1, c.length * c.width);
-                          const linePrice = area * 45 * (c.quantity || 1);
+                          const linePrice = area * rateSqFt * (c.quantity || 1);
                           return (
                             <div key={c.id} className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
                               <div className="flex items-center justify-between">
@@ -2168,7 +2252,7 @@ export const BookPickupPage = () => {
                               <div className="p-3 rounded-xl bg-white border border-slate-200/80 text-xs space-y-1">
                                 <div className="flex justify-between text-slate-600">
                                   <span>{c.length} × {c.width} = <strong>{area} sq. ft.</strong></span>
-                                  <span>{area} × ₹45 {c.quantity > 1 ? `× ${c.quantity}` : ''}</span>
+                                  <span>{area} × ₹{rateSqFt} {c.quantity > 1 ? `× ${c.quantity}` : ''}</span>
                                 </div>
                                 <div className="flex justify-between items-baseline pt-1 border-t border-slate-100 font-bold text-slate-900">
                                   <span>Estimated price:</span>
@@ -2346,10 +2430,7 @@ export const BookPickupPage = () => {
                         type="button"
                         variant="outline"
                         size="md"
-                        onClick={() => {
-                          setCurrentStep(1);
-                          window.scrollTo({ top: 100, behavior: 'smooth' });
-                        }}
+                        onClick={handleGoToStep1}
                         className="flex-1 sm:flex-initial"
                       >
                         ← Services
