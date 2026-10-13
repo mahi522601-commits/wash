@@ -28,11 +28,6 @@ export const FloatingOffersWidget = () => {
   const [copiedCode, setCopiedCode] = useState(null);
   const [showFirstVisitTeaser, setShowFirstVisitTeaser] = useState(false);
 
-  // Suppress on booking page and internal admin/worker consoles
-  if (pathname === '/book-pickup' || pathname.startsWith('/admin') || pathname.startsWith('/worker')) {
-    return null;
-  }
-
   // Load active offers from CMS
   useEffect(() => {
     offerService.getActiveOffers().then((list) => {
@@ -72,7 +67,9 @@ export const FloatingOffersWidget = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen]);
 
-  if (offers.length === 0) return null;
+  // Suppress on booking page and internal admin/worker consoles (after all hooks have executed)
+  const isSuppressed = pathname === '/book-pickup' || pathname.startsWith('/admin') || pathname.startsWith('/worker');
+  if (isSuppressed || offers.length === 0) return null;
 
   const currentOffer = offers[currentIndex] || offers[0];
 

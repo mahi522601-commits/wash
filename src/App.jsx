@@ -103,10 +103,10 @@ const PublicLayout = ({ children }) => {
       <FloatingActionHub onOpenAssistant={() => setAssistantOpen(true)} />
 
       {/* Premium Floating Special Offers Widget */}
-      <FloatingOffersWidget />
+      {pathname !== '/book-pickup' && <FloatingOffersWidget />}
 
       {/* Premium First-Visit 1:1 Square Campaign Offer Modal */}
-      <FirstVisitOfferModal />
+      {pathname !== '/book-pickup' && <FirstVisitOfferModal />}
 
       {/* Floating PWA / .APK Mobile App Install Bar */}
       <FloatingAppInstallBar />

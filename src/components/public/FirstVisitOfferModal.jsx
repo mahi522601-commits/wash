@@ -22,11 +22,6 @@ export const FirstVisitOfferModal = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  // Suppress on booking flow or administrative consoles
-  if (pathname === '/book-pickup' || pathname.startsWith('/admin') || pathname.startsWith('/worker')) {
-    return null;
-  }
-
   useEffect(() => {
     const initPopup = async () => {
       const config = await offerService.getPopupConfig();
@@ -77,7 +72,9 @@ export const FirstVisitOfferModal = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen]);
 
-  if (!isOpen || !offer) return null;
+  // Suppress on booking flow or administrative consoles (after all hooks have executed)
+  const isSuppressed = pathname === '/book-pickup' || pathname.startsWith('/admin') || pathname.startsWith('/worker');
+  if (isSuppressed || !isOpen || !offer) return null;
 
   const handleClose = () => {
     setIsOpen(false);
