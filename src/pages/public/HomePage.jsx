@@ -25,9 +25,9 @@ export const HomePage = () => {
   const { settings } = useSettings();
 
   const [heroSlides, setHeroSlides] = useState([]);
-  const [services, setServices] = useState([]);
+  const [services, setServices] = useState(() => serviceService.getDefaultServices());
   const [locations, setLocations] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const loadHomeData = async () => {
@@ -38,7 +38,7 @@ export const HomePage = () => {
           settingsService.getLocations(),
         ]);
         setHeroSlides(slides);
-        setServices(srvList);
+        if (Array.isArray(srvList) && srvList.length > 0) setServices(srvList);
         setLocations(locList);
       } catch (e) {
         console.warn("Home data load error:", e);

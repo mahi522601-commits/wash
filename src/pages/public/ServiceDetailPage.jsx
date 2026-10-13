@@ -115,9 +115,21 @@ export const ServiceDetailPage = () => {
   }
 
   const navigate = useNavigate();
-  const [service, setService] = useState(null);
-  const [relatedServices, setRelatedServices] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const defaultServices = serviceService.getDefaultServices();
+  const findInitialService = (targetSlug) => {
+    const raw = String(targetSlug || '').toLowerCase().trim().replace(/^srv-/, '');
+    return (
+      defaultServices.find(s => s.slug === raw || (s.id || '').replace(/^srv-/, '') === raw || raw.includes(s.slug) || s.slug.includes(raw)) ||
+      defaultServices[0]
+    );
+  };
+
+  const [service, setService] = useState(() => findInitialService(slug));
+  const [relatedServices, setRelatedServices] = useState(() => {
+    const init = findInitialService(slug);
+    return defaultServices.filter(s => s.id !== init?.id).slice(0, 3);
+  });
+  const [loading, setLoading] = useState(false);
   const [openFaqIndex, setOpenFaqIndex] = useState(0);
 
   // Interactive Stage Simulator State
@@ -129,11 +141,14 @@ export const ServiceDetailPage = () => {
   const [isExpress, setIsExpress] = useState(false);
 
   useEffect(() => {
+    const initialMatch = findInitialService(slug);
+    if (initialMatch) setService(initialMatch);
+
     const fetchServiceData = () => {
       serviceService.getServiceBySlug(slug)
         .then((data) => {
-          setService(data);
           if (data) {
+            setService(data);
             serviceService.getServices({ publishedOnly: true })
               .then((all) => setRelatedServices(all.filter(s => s.id !== data.id).slice(0, 3)));
           }
@@ -141,7 +156,6 @@ export const ServiceDetailPage = () => {
         .finally(() => setLoading(false));
     };
 
-    setLoading(true);
     fetchServiceData();
 
     const unsub = pricingService.subscribeToPricing(() => {

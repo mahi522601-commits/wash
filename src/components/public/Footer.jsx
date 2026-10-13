@@ -34,14 +34,15 @@ export const Footer = () => {
   ];
 
   const serviceCategories = [
-    { label: 'Dry Cleaning', path: '/services/dry-cleaning' },
-    { label: 'Ironing Service', path: '/services/ironing-service' },
-    { label: 'Wash & Iron (Per-Kg)', path: '/services/wash-and-iron' },
-    { label: 'Wash & Fold (Per-Kg)', path: '/services/wash-and-fold' },
-    { label: 'Saree Rolling', path: '/services/saree-rolling' },
-    { label: 'Shoe Cleaning', path: '/services/shoe-cleaning' },
-    { label: 'Curtain Cleaning', path: '/services/curtain-cleaning' },
-    { label: 'Carpet Cleaning', path: '/services/carpet-cleaning' },
+    { label: 'Dry Cleaning', path: '/book-pickup?service=dry-cleaning' },
+    { label: 'Ironing Service', path: '/book-pickup?service=ironing' },
+    { label: 'Starch & Iron', path: '/book-pickup?service=starch-and-iron' },
+    { label: 'Wash & Iron (Per-Kg)', path: '/book-pickup?service=wash-and-iron' },
+    { label: 'Wash & Fold (Per-Kg)', path: '/book-pickup?service=wash-and-fold' },
+    { label: 'Saree Rolling', path: '/book-pickup?service=saree-rolling' },
+    { label: 'Shoe Cleaning', path: '/book-pickup?service=shoe-washing' },
+    { label: 'Curtain Cleaning', path: '/book-pickup?service=curtain-washing' },
+    { label: 'Carpet Cleaning', path: '/book-pickup?service=carpet-washing' },
   ];
 
   const priorityAreas = [

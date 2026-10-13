@@ -73,12 +73,12 @@ import { BillingMachinePage } from './pages/billing/BillingMachinePage';
 // Background Automated 9:30 PM WhatsApp Dispatcher Scheduler
 import { dailyReportScheduler } from './services/dailyReportScheduler';
 
-// Scroll to top helper with instant jump on route change
+// Scroll to top helper with instant jump on route or query parameter change
 const ScrollToTop = () => {
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-  }, [pathname]);
+  }, [pathname, search]);
   return null;
 };
 

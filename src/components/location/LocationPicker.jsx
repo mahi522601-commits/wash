@@ -26,6 +26,7 @@ import {
 export const LocationPicker = ({
   initialLocation,
   onLocationConfirmed,
+  onAddressChange,
   onCancel,
 }) => {
   // Mode: 'CHOOSER' | 'GPS_DETECTING' | 'MAP_CONFIRM' | 'MANUAL_FORM' | 'SAVED_LIST'
@@ -64,6 +65,31 @@ export const LocationPicker = ({
   useEffect(() => {
     setSavedAddresses(locationService.getSavedAddresses());
   }, []);
+
+  // Sync address changes upstream in real-time so manual address entry never blocks booking
+  useEffect(() => {
+    if (typeof onAddressChange === 'function') {
+      const hasContent = Boolean(
+        addressDetails.houseNumber ||
+        addressDetails.street ||
+        addressDetails.area ||
+        addressDetails.locality ||
+        addressDetails.formattedAddress ||
+        searchQuery
+      );
+      if (hasContent) {
+        onAddressChange({
+          building: addressDetails.houseNumber || '',
+          street: addressDetails.street || searchQuery || '',
+          locality: addressDetails.area || addressDetails.locality || '',
+          city: addressDetails.city || 'Hyderabad',
+          pincode: addressDetails.postalCode || '',
+          landmark: addressDetails.landmark || '',
+          formattedAddress: addressDetails.formattedAddress || '',
+        });
+      }
+    }
+  }, [addressDetails, searchQuery]);
 
   // 1. TRIGGER LIVE GPS DETECTION FLOW
   const handleUseCurrentLocation = async () => {

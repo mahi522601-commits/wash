@@ -336,10 +336,12 @@ export const BookPickupPage = () => {
         setSelectedServiceId(match.id);
         setActiveSubCategory('all');
         setSearchFilter('');
-        setCurrentStep(prev => (prev === 1 ? 2 : prev));
+        setCurrentStep(2);
       }
+    } else {
+      setCurrentStep(1);
     }
-  }, [urlServiceParam, allAvailableServices]);
+  }, [urlServiceParam]);
 
   useEffect(() => {
     if (urlLocalityParam) {
@@ -877,9 +879,18 @@ export const BookPickupPage = () => {
         error('Invalid WhatsApp', 'Please enter a valid 10-digit WhatsApp number.');
         return;
       }
-      if (!pickupLocation && (!address.street.trim() || !address.locality.trim())) {
-        error('Address Required', 'Please detect live GPS location or enter your street and locality.');
+      const hasAnyAddress = Boolean(
+        pickupLocation ||
+        address.street.trim() ||
+        address.locality.trim() ||
+        address.building.trim()
+      );
+      if (!hasAnyAddress) {
+        error('Address Required', 'Please detect live GPS location or enter your pickup address.');
         return;
+      }
+      if (!address.locality.trim()) {
+        setAddress(prev => ({ ...prev, locality: prev.street.trim() || 'Manikonda, Hyderabad' }));
       }
       if (!schedule.pickupDate || !schedule.pickupSlot) {
         error('Select Slot', 'Please choose your preferred pickup date and time window.');
@@ -2444,7 +2455,7 @@ export const BookPickupPage = () => {
                         onClick={handleNextStep}
                         className="flex-1 sm:flex-initial justify-center shadow-md shadow-brand-500/20"
                       >
-                        Proceed to Address ➔
+                        Proceed to Address
                       </Button>
                     </div>
                   </div>
@@ -2586,6 +2597,13 @@ export const BookPickupPage = () => {
                             landmark: loc.landmark || '',
                           });
                           success('Location Confirmed', 'Pickup coordinates locked.');
+                        }}
+                        onAddressChange={(addr) => {
+                          setAddress(prev => ({
+                            ...prev,
+                            ...addr,
+                            locality: addr.locality || prev.locality || '',
+                          }));
                         }}
                       />
                     )}
@@ -2983,7 +3001,7 @@ export const BookPickupPage = () => {
                     iconPosition="right"
                     onClick={handleNextStep}
                   >
-                    Continue →
+                    Continue
                   </Button>
                 ) : (
                   <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -3146,7 +3164,7 @@ export const BookPickupPage = () => {
                 icon={currentStep === 4 ? CheckCircle2 : ArrowRight}
                 iconPosition="right"
               >
-                {currentStep === 4 ? '📦 CONFIRM PICKUP' : 'Continue →'}
+                {currentStep === 4 ? '📦 CONFIRM PICKUP' : 'Continue'}
               </Button>
 
               <div className="pt-1 text-center text-[11px] text-slate-400 flex items-center justify-center gap-1">
@@ -3192,7 +3210,7 @@ export const BookPickupPage = () => {
               icon={currentStep === 4 ? CheckCircle2 : ArrowRight}
               iconPosition="right"
             >
-              {currentStep === 4 ? 'Confirm' : 'Continue →'}
+              {currentStep === 4 ? 'Confirm' : 'Continue'}
             </Button>
           </div>
         </div>

@@ -376,7 +376,11 @@ const CANONICAL_SERVICE_KEYS = {
   'premium-dry-cleaning': 'srv-dry-cleaning',
   'ironing': 'srv-ironing',
   'steam-ironing': 'srv-ironing',
+  'ironing-service': 'srv-ironing',
   'iron': 'srv-ironing',
+  'starch-and-iron': 'srv-starch-and-iron',
+  'starch-iron': 'srv-starch-and-iron',
+  'starch & iron': 'srv-starch-and-iron',
   'wash-and-iron': 'srv-wash-and-iron',
   'wash-iron': 'srv-wash-and-iron',
   'ro-soft-water-laundry': 'srv-wash-and-iron',
@@ -404,7 +408,12 @@ function applyPricingConfigToServices(serviceList) {
     if (cached) config = JSON.parse(cached);
   } catch (e) {}
 
-  if (!config) return serviceList;
+  if (!config) {
+    return serviceList.map(srv => ({
+      ...srv,
+      slug: srv.slug || (srv.id || '').replace(/^srv-/, '') || 'dry-cleaning',
+    }));
+  }
 
   const updatedList = serviceList.map(srv => {
     const cleanId = (srv.id || '').replace(/^srv-/, '');
@@ -485,6 +494,7 @@ function applyPricingConfigToServices(serviceList) {
 
     return {
       ...srv,
+      slug: srv.slug || cleanId || 'dry-cleaning',
       startingPrice,
       startingPriceDisplay: startingPriceDisplay || srv.startingPriceDisplay,
       subServices,
@@ -547,8 +557,15 @@ function applyPricingConfigToServices(serviceList) {
 
 export const serviceService = {
   /**
+   * Synchronous initial services list so pages render instantaneously without waiting for Firestore
+   */
+  getDefaultServices() {
+    return applyPricingConfigToServices([...DEFAULT_SERVICES]);
+  },
+
+  /**
    * Fetch all services from Firestore `services` collection
-   * Guarantees all 8 official services are present and merges any missing default services into Firestore.
+   * Guarantees all 9 official services are present and merges any missing default services into Firestore.
    * Strictly deduplicates so each service (e.g. Dry Cleaning) appears exactly once.
    */
   async getServices({ publishedOnly = false } = {}) {
@@ -558,8 +575,11 @@ export const serviceService = {
     if (isFirebaseConfigured && db) {
       try {
         const q = collection(db, 'services');
-        const snap = await getDocs(q);
-        if (!snap.empty) {
+        const snap = await Promise.race([
+          getDocs(q),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Firestore services timeout')), 3000))
+        ]);
+        if (snap && !snap.empty) {
           list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
           fetchedFromFirestore = true;
         }
@@ -568,7 +588,7 @@ export const serviceService = {
       }
     }
 
-    // Merge missing default services so all 8 official services ALWAYS exist
+    // Merge missing default services so all 9 official services ALWAYS exist
     const existingIdsAndSlugs = new Set([
       ...list.map(s => s.id),
       ...list.map(s => s.slug),

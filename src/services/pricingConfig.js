@@ -835,8 +835,25 @@ export const buildMasterCatalogFromPricing = (config = INITIAL_PRICING_CONFIG, e
  * Synchronizes and recalculates starting prices inside config.services
  */
 export const recalculateServicesInConfig = (config) => {
-  if (!config) return config;
-  const cfg = { ...config };
+  if (!config) return INITIAL_PRICING_CONFIG;
+  const cfg = {
+    ...INITIAL_PRICING_CONFIG,
+    ...config,
+    dryCleaning: {
+      men: Array.isArray(config?.dryCleaning?.men) && config.dryCleaning.men.length > 0 ? config.dryCleaning.men : INITIAL_PRICING_CONFIG.dryCleaning.men,
+      women: Array.isArray(config?.dryCleaning?.women) && config.dryCleaning.women.length > 0 ? config.dryCleaning.women : INITIAL_PRICING_CONFIG.dryCleaning.women,
+      common: Array.isArray(config?.dryCleaning?.common) && config.dryCleaning.common.length > 0 ? config.dryCleaning.common : INITIAL_PRICING_CONFIG.dryCleaning.common,
+    },
+    ironing: {
+      men: Array.isArray(config?.ironing?.men) && config.ironing.men.length > 0 ? config.ironing.men : INITIAL_PRICING_CONFIG.ironing.men,
+      women: Array.isArray(config?.ironing?.women) && config.ironing.women.length > 0 ? config.ironing.women : INITIAL_PRICING_CONFIG.ironing.women,
+    },
+    'starch-and-iron': {
+      men: Array.isArray(config?.['starch-and-iron']?.men) && config['starch-and-iron'].men.length > 0 ? config['starch-and-iron'].men : INITIAL_PRICING_CONFIG['starch-and-iron'].men,
+      women: Array.isArray(config?.['starch-and-iron']?.women) && config['starch-and-iron'].women.length > 0 ? config['starch-and-iron'].women : INITIAL_PRICING_CONFIG['starch-and-iron'].women,
+      common: Array.isArray(config?.['starch-and-iron']?.common) && config['starch-and-iron'].common.length > 0 ? config['starch-and-iron'].common : INITIAL_PRICING_CONFIG['starch-and-iron'].common,
+    },
+  };
 
   // Lowest dry cleaning
   const dcItems = [...(cfg.dryCleaning?.men || []), ...(cfg.dryCleaning?.women || []), ...(cfg.dryCleaning?.common || [])];
@@ -964,8 +981,11 @@ export const pricingService = {
   async getPricingConfig() {
     if (isFirebaseConfigured && db) {
       try {
-        const snap = await getDoc(doc(db, 'settings', 'pricing'));
-        if (snap.exists()) {
+        const snap = await Promise.race([
+          getDoc(doc(db, 'settings', 'pricing')),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Firestore pricing timeout')), 3000))
+        ]);
+        if (snap && snap.exists()) {
           const remoteData = snap.data();
           const merged = recalculateServicesInConfig({
             ...INITIAL_PRICING_CONFIG,
@@ -977,7 +997,7 @@ export const pricingService = {
           return merged;
         }
       } catch (e) {
-        console.warn("Firestore pricing config fetch failed:", e);
+        console.warn("Firestore pricing config fetch failed:", e?.message || e);
       }
     }
 

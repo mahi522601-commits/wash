@@ -18,19 +18,23 @@ import { SEOHead } from '../../components/seo/SEOHead';
 import { BASE_URL, BUSINESS_INFO, SEO_SERVICES } from '../../data/seoData';
 
 export const ServicesPage = () => {
-  const [services, setServices] = useState([]);
+  const [services, setServices] = useState(() => serviceService.getDefaultServices());
   const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     serviceService.getServices({ publishedOnly: true })
-      .then((data) => setServices(data))
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) setServices(data);
+      })
       .finally(() => setLoading(false));
 
     const handleServicesUpdate = () => {
       serviceService.getServices({ publishedOnly: true })
-        .then((data) => setServices(data));
+        .then((data) => {
+          if (Array.isArray(data) && data.length > 0) setServices(data);
+        });
     };
 
     window.addEventListener('techwash-services-updated', handleServicesUpdate);

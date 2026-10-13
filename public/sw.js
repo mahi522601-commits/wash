@@ -3,14 +3,13 @@
  * Provides offline caching, lightning-fast native app launching, and background sync.
  */
 
-const CACHE_NAME = 'techwash-pwa-v1';
+const CACHE_NAME = 'techwash-pwa-v3';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
   '/techwashlogo.webp',
-  '/techwash_hero_cutout.webp',
-  '/1.mp4'
+  '/techwash_hero_cutout.webp'
 ];
 
 // Install Event: Cache Core Static Shell
@@ -41,17 +40,18 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch Event: Network-First with Cache Fallback for dynamic pages
+// Fetch Event: Same-Origin Only Network-First with Cache Fallback
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   
   const url = new URL(event.request.url);
 
-  // Ignore chrome extensions and non-http(s) requests
-  if (!url.protocol.startsWith('http')) return;
+  // Ignore cross-origin requests (Firestore WebChannel streams, Google Maps, fonts, CDNs) and API endpoints
+  if (url.origin !== self.location.origin) return;
+  if (url.pathname.startsWith('/api/')) return;
 
-  // For sound and media files, cache first with network fallback
-  if (url.pathname.endsWith('.mp4') || url.pathname.endsWith('.webp') || url.pathname.endsWith('.png') || url.pathname.endsWith('.jpg')) {
+  // For local media files, cache first with network fallback
+  if (url.pathname.endsWith('.webp') || url.pathname.endsWith('.png') || url.pathname.endsWith('.jpg')) {
     event.respondWith(
       caches.match(event.request).then((cached) => {
         if (cached) return cached;
@@ -67,11 +67,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Network-first strategy for navigation and data
+  // Network-first strategy for same-origin navigation and assets
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        if (response && response.status === 200) {
+        if (response && response.status === 200 && response.type === 'basic') {
           const clone = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
         }
@@ -83,7 +83,7 @@ self.addEventListener('fetch', (event) => {
           if (event.request.mode === 'navigate') {
             return caches.match('/index.html');
           }
-          return null;
+          return new Response('Offline', { status: 503, statusText: 'Offline' });
         });
       })
   );
