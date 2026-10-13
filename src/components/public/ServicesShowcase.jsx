@@ -84,7 +84,7 @@ export const ServicesShowcase = ({ services = [] }) => {
                 <div>
                   {/* 1. PHOTOGRAPHY BANNER CONTAINER (Clickable) */}
                   <Link 
-                    to={`/services/${service.slug}`}
+                    to={`/book-pickup?service=${service.slug}`}
                     className="block relative w-full aspect-[16/10] overflow-hidden bg-slate-900 cursor-pointer"
                   >
                     <img
@@ -129,7 +129,7 @@ export const ServicesShowcase = ({ services = [] }) => {
                   {/* 2. CARD BODY & CONTENT */}
                   <div className="p-5 sm:p-6 space-y-3">
                     <Link 
-                      to={`/services/${service.slug}`}
+                      to={`/book-pickup?service=${service.slug}`}
                       className="flex items-center gap-2 group-hover:text-[#F97316] transition-colors"
                     >
                       {service.emoji && (
@@ -161,30 +161,17 @@ export const ServicesShowcase = ({ services = [] }) => {
                   </div>
                 </div>
 
-                {/* 3. CARD FOOTER: 2 ACTION BUTTONS */}
+                {/* 3. CARD FOOTER: DIRECT BOOK BUTTON */}
                 <div className="px-5 sm:px-6 pb-5 pt-0">
-                  <div className="pt-3 border-t border-slate-100 grid grid-cols-2 gap-2">
-                    
-                    {/* Button 1: What is the Process */}
-                    <Link
-                      to={`/services/${service.slug}`}
-                      className="py-2.5 px-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-[11px] sm:text-xs font-bold border border-slate-200/90 flex items-center justify-center gap-1.5 transition-all text-center active:scale-95"
-                      title={`Learn the ${service.title || service.name} process`}
-                    >
-                      <Layers className="w-3.5 h-3.5 text-slate-600 shrink-0" />
-                      <span className="truncate">What is Process</span>
-                    </Link>
-
-                    {/* Button 2: Book Button */}
+                  <div className="pt-3 border-t border-slate-100">
                     <Link
                       to={`/book-pickup?service=${service.slug}`}
-                      className="py-2.5 px-2.5 rounded-xl bg-gradient-to-r from-[#F97316] to-amber-500 hover:from-[#EA580C] hover:to-orange-500 text-white text-[11px] sm:text-xs font-black shadow-xs flex items-center justify-center gap-1.5 transition-all active:scale-95 text-center"
+                      className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-[#F97316] to-amber-500 hover:from-[#EA580C] hover:to-orange-500 text-white text-xs sm:text-sm font-black shadow-sm flex items-center justify-center gap-2 transition-all active:scale-95 text-center"
                       title={`Book ${service.title || service.name} pickup`}
                     >
-                      <Calendar className="w-3.5 h-3.5 shrink-0" />
+                      <Calendar className="w-4 h-4 shrink-0" />
                       <span>Book Now</span>
                     </Link>
-
                   </div>
                 </div>
 

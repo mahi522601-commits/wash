@@ -233,19 +233,13 @@ export const ServicesPage = () => {
                   </div>
 
                   {/* Actions Bar */}
-                  <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-3">
+                  <div className="pt-4 border-t border-slate-100">
                     <Link
-                      to={`/services/${service.slug}`}
-                      className="text-xs font-bold text-brand-700 hover:text-brand-900 inline-flex items-center gap-1 group/link"
+                      to={`/book-pickup?service=${service.slug}`}
+                      className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-[#F97316] to-amber-500 hover:from-[#EA580C] hover:to-orange-500 text-white text-xs sm:text-sm font-black shadow-sm flex items-center justify-center gap-2 transition-all active:scale-95 text-center"
                     >
-                      <span>Explore Process</span>
-                      <ArrowRight className="w-3.5 h-3.5 group-link-hover:translate-x-1 transition-transform" />
-                    </Link>
-
-                    <Link to={`/book-pickup?service=${service.slug}`}>
-                      <Button variant="primary" size="sm" icon={Calendar} className="text-xs rounded-full">
-                        Book Pickup
-                      </Button>
+                      <Calendar className="w-4 h-4 shrink-0" />
+                      <span>Book Now</span>
                     </Link>
                   </div>
                 </div>
