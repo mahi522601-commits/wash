@@ -24,10 +24,10 @@ export const HeroSection = ({ slides = [] }) => {
   // Fallback initial slide if CMS is fresh
   const activeSlides = slides.length > 0 ? slides.filter(s => s.active !== false) : [
     {
-      title: 'Laundry Care,',
-      highlightedWord: 'Reimagined.',
-      badge: '✦ PREMIUM LAUNDRY & DRY CLEANING',
-      subtitle: 'Advanced cleaning technology, premium detergents, and expert care for fabrics you love.',
+      title: 'Best Laundry Service in',
+      highlightedWord: 'Manikonda, Hyderabad',
+      badge: '✦ #1 RATED LAUNDRY SERVICE IN MANIKONDA',
+      subtitle: 'Rated #1 Best Laundry Service in Manikonda. 100% RO soft-water wash, eco-friendly dry cleaning & 3D steam ironing with Flat 20% Off & free doorstep pickup.',
       ctaPrimaryText: 'Book Pickup Now',
       ctaPrimaryUrl: '/book-pickup',
       ctaSecondaryText: 'Explore Services',
@@ -36,7 +36,7 @@ export const HeroSection = ({ slides = [] }) => {
     }
   ];
 
-  const currentSlide = activeSlides[0];
+  const currentSlide = activeSlides[0] || {};
 
   return (
     <div className="relative bg-gradient-to-b from-[#FFF7ED] via-[#FFF7ED]/80 to-white text-[#1F2937] pt-24 sm:pt-32 lg:pt-36 pb-12 sm:pb-16 lg:pb-24 border-b border-[#FED7AA]/60 overflow-hidden">
@@ -64,20 +64,22 @@ export const HeroSection = ({ slides = [] }) => {
             {/* Eyebrow Pill Badge */}
             <div className="inline-flex items-center gap-2 px-3.5 sm:px-4 py-1.5 rounded-full bg-white border border-[#FED7AA] text-[#F97316] text-[11px] sm:text-xs font-bold uppercase tracking-wider shadow-sm animate-fade-in">
               <Sparkles className="w-3.5 h-3.5 fill-current text-[#F97316]" />
-              <span>{currentSlide.badge || '✦ PREMIUM LAUNDRY & DRY CLEANING'}</span>
+              <span>{currentSlide.badge && currentSlide.badge !== '✦ PREMIUM LAUNDRY & DRY CLEANING' ? currentSlide.badge : '✦ #1 RATED LAUNDRY SERVICE IN MANIKONDA'}</span>
             </div>
 
             {/* Display Headline */}
-            <h1 className="text-3xl sm:text-5xl lg:text-6xl xl:text-[64px] font-black font-display tracking-tight text-[#1F2937] leading-[1.1]">
-              {currentSlide.title || 'Laundry Care,'} <br />
+            <h1 className="text-3xl sm:text-5xl lg:text-6xl xl:text-[62px] font-black font-display tracking-tight text-[#1F2937] leading-[1.1]">
+              {currentSlide.title && currentSlide.title !== 'Laundry Care,' ? currentSlide.title : 'Best Laundry Service in'} <br />
               <span className="text-[#F97316]">
-                {currentSlide.highlightedWord || 'Reimagined.'}
+                {currentSlide.highlightedWord && currentSlide.highlightedWord !== 'Reimagined.' ? currentSlide.highlightedWord : 'Manikonda, Hyderabad'}
               </span>
             </h1>
 
             {/* Supporting Subtitle */}
             <p className="text-sm sm:text-base lg:text-lg text-slate-600 max-w-lg leading-relaxed font-normal">
-              {currentSlide.subtitle || 'Advanced cleaning technology, premium detergents, and expert care for fabrics you love.'}
+              {currentSlide.subtitle && !currentSlide.subtitle.includes('Advanced cleaning technology')
+                ? currentSlide.subtitle
+                : 'Rated #1 Best Laundry Service in Manikonda. 100% RO soft-water wash, eco-friendly dry cleaning & 3D steam ironing with Flat 20% Off & free doorstep pickup.'}
             </p>
 
             {/* Dual Balanced CTAs + Connect With Us */}

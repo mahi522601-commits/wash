@@ -54,8 +54,8 @@ export const SEO_AREAS = [
     slug: 'manikonda',
     name: 'Manikonda',
     h1: 'Best Laundry Service in Manikonda, Hyderabad',
-    title: 'Best Laundry Service in Manikonda, Hyderabad | Techwash Laundry',
-    metaDescription: 'Rated #1 Best Laundry Service in Manikonda, Hyderabad. Techwash Laundry provides 100% RO soft-water washing, eco-friendly dry cleaning, 3D steam ironing, and fast doorstep pickup across Manikonda (Puppalaguda, OU Colony, Secretariat Colony, Lanco Hills). Call +91 63048 45567.',
+    title: 'Best Laundry Service in Manikonda, Hyderabad - Flat 20% Off | Techwash Laundry',
+    metaDescription: 'Rated #1 Best Laundry Service in Manikonda, Hyderabad. Flat 20% Off + Free Doorstep Pickup & Delivery in Manikonda across Puppalaguda, OU Colony, Secretariat Colony, Lanco Hills & Alkapoor. 100% RO soft-water wash, 3D steam ironing & eco dry cleaning.',
     keywords: 'best laundry service in Manikonda, laundry service in Manikonda, best laundry in Manikonda, laundry services in Manikonda, best dry cleaners in Manikonda, dry cleaning Manikonda, laundry near Manikonda, laundry shop near Manikonda, laundry pickup Manikonda, laundry delivery Manikonda, dry cleaners near me Manikonda',
     pincodes: ['500089'],
     landmarks: [
