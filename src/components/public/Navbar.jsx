@@ -44,6 +44,7 @@ export const Navbar = () => {
     { label: 'Services', path: '/services', hasDropdown: true },
     { label: 'Pricing', path: '/pricing' },
     { label: 'How It Works', path: '/how-it-works' },
+    { label: 'Manikonda Hub', path: '/areas/manikonda' },
     { label: 'Locations', path: '/locations' },
     { label: 'Track Order', path: '/track-order' },
   ];
