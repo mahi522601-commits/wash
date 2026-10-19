@@ -28,8 +28,9 @@ import {
 } from '../../utils/audioNotification';
 import { generateInvoicePDFBlob } from '../../services/pdfInvoiceGenerator';
 import { formatCurrency, formatDateTime } from '../../utils/formatters';
+import { getOrderBranchKey } from '../../services/orderService';
 
-const STORAGE_KEY = 'techwash_pos_notifications_v1';
+const getStorageKey = (termId) => `techwash_pos_notifications_${termId || 'counter-1'}`;
 
 export const PosNotificationCenter = ({
   terminal = null,
@@ -39,14 +40,26 @@ export const PosNotificationCenter = ({
   onOpenCollect = null
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const storageKey = getStorageKey(activeTerminalId);
+
   const [notifications, setNotifications] = useState(() => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
+      const stored = localStorage.getItem(storageKey);
       return stored ? JSON.parse(stored) : [];
     } catch {
       return [];
     }
   });
+
+  // Re-sync notifications when activeTerminalId switches
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(storageKey);
+      setNotifications(stored ? JSON.parse(stored) : []);
+    } catch {
+      setNotifications([]);
+    }
+  }, [storageKey]);
 
   const [filterTab, setFilterTab] = useState('ALL'); // 'ALL' | 'BILLS' | 'DUES' | 'READY'
   const [isAudioMuted, setIsAudioMuted] = useState(!isAudioNotificationEnabled());
@@ -57,14 +70,14 @@ export const PosNotificationCenter = ({
 
   const containerRef = useRef(null);
 
-  // Save to localStorage
+  // Save to localStorage under terminal-specific key
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(notifications.slice(0, 50)));
+      localStorage.setItem(storageKey, JSON.stringify(notifications.slice(0, 50)));
     } catch (e) {
       console.warn('Failed to cache notifications:', e);
     }
-  }, [notifications]);
+  }, [notifications, storageKey]);
 
   // Click outside listener
   useEffect(() => {
@@ -101,11 +114,17 @@ export const PosNotificationCenter = ({
     });
   }, [activeTerminalId]);
 
-  // Listen to Global POS Events
+  // Listen to Global POS Events with Strict Terminal Isolation
   useEffect(() => {
     const handleNewOrder = (e) => {
       const ord = e?.detail?.order || e?.detail;
       if (!ord) return;
+
+      // Strictly isolate: only notify if this order belongs to THIS terminal
+      const ordBranch = getOrderBranchKey(ord);
+      if (activeTerminalId && ordBranch !== activeTerminalId) {
+        return;
+      }
 
       const billNum = ord.orderNumber || ord.id || 'TW-New';
       const custName = ord.customerName || ord.customer?.name || 'Customer';
@@ -124,8 +143,16 @@ export const PosNotificationCenter = ({
 
     const handlePayment = (e) => {
       const detail = e?.detail || {};
-      const orderId = detail.orderId || 'Order';
-      const amt = detail.amount || 0;
+      const ord = detail.order || detail;
+      if (ord && (ord.terminalId || ord.counterNumber || ord.storeBranch || ord.localId)) {
+        const ordBranch = getOrderBranchKey(ord);
+        if (activeTerminalId && ordBranch !== activeTerminalId) {
+          return;
+        }
+      }
+
+      const orderId = detail.orderId || ord.orderNumber || ord.id || 'Order';
+      const amt = detail.amount || ord.receivedAmount || 0;
 
       addNotification({
         type: 'DUE',
@@ -138,13 +165,21 @@ export const PosNotificationCenter = ({
 
     const handleOrderUpdated = (e) => {
       const detail = e?.detail || {};
+      const ord = detail.order || detail;
+      if (ord && (ord.terminalId || ord.counterNumber || ord.storeBranch || ord.localId)) {
+        const ordBranch = getOrderBranchKey(ord);
+        if (activeTerminalId && ordBranch !== activeTerminalId) {
+          return;
+        }
+      }
+
       if (detail.status === 'READY_FOR_DELIVERY' || detail.customerStage === 'READY_FOR_DELIVERY') {
         addNotification({
           type: 'READY',
           icon: 'READY',
-          title: `✨ Garments Ready for Handover: #${detail.orderId || 'Bill'}`,
+          title: `✨ Garments Ready for Handover: #${detail.orderId || ord.orderNumber || 'Bill'}`,
           message: 'Quality check completed. Ready for customer pickup.',
-          orderId: detail.orderId,
+          orderId: detail.orderId || ord.id,
         });
       }
     };
@@ -158,7 +193,7 @@ export const PosNotificationCenter = ({
       window.removeEventListener('techwash-order-payment-updated', handlePayment);
       window.removeEventListener('techwash-order-updated', handleOrderUpdated);
     };
-  }, [addNotification]);
+  }, [activeTerminalId, addNotification]);
 
   const unreadCount = notifications.filter(n => n.unread).length;
 

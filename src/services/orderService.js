@@ -184,36 +184,68 @@ const ORDER_SEQ_KEY = 'techwash_order_sequence_counter';
 export const getOrderBranchKey = (order) => {
   if (!order) return 'counter-1';
 
+  // 1. Check if explicit Online Website order without terminal assignment
+  if (
+    order.isOnlineBooking === true || 
+    order.orderSource === 'ONLINE_WEBSITE' || 
+    order.channel === 'ONLINE_WEBSITE' || 
+    order.channel === 'ONLINE'
+  ) {
+    if (!order.terminalId && !order.counterNumber && !order.terminalCode && !order.localId?.startsWith('POS')) {
+      return 'ONLINE_WEBSITE';
+    }
+  }
+
+  // 2. Extract and normalize identifiers
   const tId = String(order.terminalId || '').toLowerCase().trim();
   const tCode = String(order.terminalCode || '').toLowerCase().trim();
-  const bName = String(order.storeBranch || order.branch || order.customer?.storeBranch || order.customer?.address || '').toLowerCase().trim();
+  const cNum = String(order.counterNumber || order.customer?.counterNumber || '').toLowerCase().trim();
+  const localId = String(order.localId || order.id || '').toUpperCase().trim();
+  const storeBranch = String(order.storeBranch || order.branch || order.customer?.storeBranch || order.storeAddress || '').toLowerCase().trim();
+  const adminNotes = String(order.adminNotes || '').toLowerCase().trim();
 
-  // Explicit Counter 2 checks (Branch 1 — Tolichowki / OU Colony / DreamScape / POS-02)
+  // 3. Counter 2 (Branch 1 — Tolichowki / OU Colony / DreamScape / POS-02)
   if (
-    tId === 'counter-2' || tId === '2' || tId.includes('counter-2') || tId.includes('pos-02') || 
-    tCode === 'tw-pos-02' || tCode.includes('pos-02') || tCode.includes('02') ||
-    bName.includes('branch 1') || bName.includes('tolichowki') || bName.includes('ou colony') ||
-    bName.includes('dreamscape')
+    tId === 'counter-2' || tId === '2' || tId.includes('counter-2') || tId.includes('pos-02') ||
+    tCode === 'tw-pos-02' || tCode.includes('pos-02') ||
+    cNum === '2' || cNum === 'counter-2' ||
+    localId.startsWith('POS02') || localId.startsWith('TW-POS-02') ||
+    storeBranch.includes('branch 1') || storeBranch.includes('tolichowki') || storeBranch.includes('ou colony') || storeBranch.includes('dreamscape') ||
+    adminNotes.includes('pos-02') || adminNotes.includes('counter 2')
   ) {
     return 'counter-2';
   }
 
-  // Explicit Counter 3 checks (Pick Up Point — Ambience Courtyard / POS-03)
+  // 4. Counter 3 (Pick Up Point — Ambience Courtyard / POS-03)
   if (
-    tId === 'counter-3' || tId === '3' || tId.includes('counter-3') || tId.includes('pos-03') || 
-    tCode === 'tw-pos-03' || tCode.includes('pos-03') || tCode.includes('03') ||
-    bName.includes('ambience') || bName.includes('courtyard') || bName.includes('pick up point') ||
-    bName.includes('pickup')
+    tId === 'counter-3' || tId === '3' || tId.includes('counter-3') || tId.includes('pos-03') ||
+    tCode === 'tw-pos-03' || tCode.includes('pos-03') ||
+    cNum === '3' || cNum === 'counter-3' ||
+    localId.startsWith('POS03') || localId.startsWith('TW-POS-03') ||
+    storeBranch.includes('ambience') || storeBranch.includes('courtyard') || storeBranch.includes('pick up point') || storeBranch.includes('pickup') ||
+    adminNotes.includes('pos-03') || adminNotes.includes('counter 3')
   ) {
     return 'counter-3';
   }
 
-  // Explicit Online Website check ONLY IF marked as online website booking
+  // 5. Counter 1 (Main Branch — Manikonda / Shaikpet / POS-01)
+  if (
+    tId === 'counter-1' || tId === '1' || tId.includes('counter-1') || tId.includes('pos-01') ||
+    tCode === 'tw-pos-01' || tCode.includes('pos-01') ||
+    cNum === '1' || cNum === 'counter-1' ||
+    localId.startsWith('POS01') || localId.startsWith('TW-POS-01') ||
+    storeBranch.includes('main branch') || storeBranch.includes('manikonda') || storeBranch.includes('shaikpet') ||
+    adminNotes.includes('pos-01') || adminNotes.includes('counter 1')
+  ) {
+    return 'counter-1';
+  }
+
+  // 6. Online Website fallback check
   if (order.isOnlineBooking === true || order.orderSource === 'ONLINE_WEBSITE' || order.channel === 'ONLINE_WEBSITE' || order.channel === 'ONLINE') {
     return 'ONLINE_WEBSITE';
   }
 
-  // Counter 1 or fallback POS (Main Branch — Manikonda / Shaikpet Main Rd / POS-01)
+  // 7. Fallback to Counter 1 for any legacy unassigned POS orders
   return 'counter-1';
 };
 
@@ -292,8 +324,19 @@ export const orderService = {
    * Create a new booking with immutable price snapshot & customer CRM sync
    */
   async createOrder(orderPayload) {
-    // 1. Generate Deterministic Local ID (POS01-YYYYMMDD-XXXXXX)
-    const activeTerminalId = orderPayload.terminalId || (typeof localStorage !== 'undefined' && localStorage.getItem('techwash_terminal_id')) || 'counter-1';
+    // 1. Generate Deterministic Local ID (POS01-YYYYMMDD-XXXXXX / POS02 / POS03)
+    let activeTerminalId = orderPayload.terminalId;
+    if (!activeTerminalId) {
+      const cNum = String(orderPayload.counterNumber || orderPayload.customer?.counterNumber || '').trim();
+      if (cNum === '2' || cNum === 'counter-2') activeTerminalId = 'counter-2';
+      else if (cNum === '3' || cNum === 'counter-3') activeTerminalId = 'counter-3';
+      else if (cNum === '1' || cNum === 'counter-1') activeTerminalId = 'counter-1';
+      else if (typeof localStorage !== 'undefined') {
+        activeTerminalId = localStorage.getItem('techwash_active_device_terminal') || localStorage.getItem('techwash_terminal_id');
+      }
+    }
+    if (!activeTerminalId) activeTerminalId = 'counter-1';
+
     const activeBranchCode = activeTerminalId === 'counter-2' ? 'POS02' : (activeTerminalId === 'counter-3' ? 'POS03' : 'POS01');
     const dateCompact = new Date().toISOString().slice(0, 10).replace(/-/g, '');
 
@@ -405,6 +448,7 @@ export const orderService = {
       orderSource,
       terminalId: activeTerminalId,
       terminalCode: activeTerminalId === 'counter-2' ? 'TW-POS-02' : (activeTerminalId === 'counter-3' ? 'TW-POS-03' : 'TW-POS-01'),
+      counterNumber: activeTerminalId === 'counter-2' ? '2' : (activeTerminalId === 'counter-3' ? '3' : '1'),
       storeBranch: orderPayload.storeBranch || (activeTerminalId === 'counter-2' ? 'Branch 1 — Tolichowki' : (activeTerminalId === 'counter-3' ? 'Pick Up Point — Ambience' : 'Main Branch — Manikonda')),
       cashierName: orderPayload.cashierName || 'Cashier #1',
       pickupDate,

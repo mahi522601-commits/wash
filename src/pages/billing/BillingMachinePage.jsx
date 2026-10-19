@@ -3,6 +3,7 @@ import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { terminalAuthService, DEFAULT_BILLING_TERMINALS } from '../../services/terminalAuthService';
 import { 
   orderService, 
+  getOrderBranchKey,
   TIME_PERIODS, 
   TIME_SLOTS, 
   calculateDefaultDelivery, 
@@ -248,6 +249,14 @@ export const BillingMachinePage = () => {
     ...INITIAL_BILL_STATE,
     counterNumber: defaultCounterNumber,
   }));
+
+  // Synchronize billForm counterNumber whenever defaultCounterNumber / active route terminal changes
+  useEffect(() => {
+    setBillForm(prev => ({
+      ...prev,
+      counterNumber: defaultCounterNumber,
+    }));
+  }, [defaultCounterNumber]);
   const [itemSearch, setItemSearch] = useState('');
   const [subCategoryFilter, setSubCategoryFilter] = useState('ALL');
   
@@ -443,7 +452,14 @@ export const BillingMachinePage = () => {
   useEffect(() => {
     loadRealtimeShiftStats();
 
-    const handleOrderChange = () => {
+    const handleOrderChange = (e) => {
+      const ord = e?.detail?.order || e?.detail;
+      if (ord) {
+        const ordBranch = getOrderBranchKey(ord);
+        if (ordBranch && activeTerminalId && ordBranch !== activeTerminalId) {
+          return; // Ignore order events from other counters
+        }
+      }
       loadRealtimeShiftStats();
     };
 
@@ -455,7 +471,14 @@ export const BillingMachinePage = () => {
     try {
       if ('BroadcastChannel' in window) {
         broadcastChannel = new BroadcastChannel('techwash_orders_channel');
-        broadcastChannel.onmessage = () => {
+        broadcastChannel.onmessage = (event) => {
+          const ord = event.data?.order;
+          if (ord) {
+            const ordBranch = getOrderBranchKey(ord);
+            if (ordBranch && activeTerminalId && ordBranch !== activeTerminalId) {
+              return; // Ignore broadcast order events from other counters
+            }
+          }
           loadRealtimeShiftStats();
         };
       }
@@ -474,7 +497,7 @@ export const BillingMachinePage = () => {
         try { broadcastChannel.close(); } catch (e) {}
       }
     };
-  }, [loadRealtimeShiftStats]);
+  }, [loadRealtimeShiftStats, activeTerminalId]);
 
   // Physical Device & Store Location Conflict State
   const [deviceConflict, setDeviceConflict] = useState(null);
@@ -1654,7 +1677,7 @@ export const BillingMachinePage = () => {
 
               <button
                 type="button"
-                onClick={() => setBillForm(INITIAL_BILL_STATE)}
+                onClick={() => setBillForm({ ...INITIAL_BILL_STATE, counterNumber: defaultCounterNumber })}
                 className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-xs font-semibold text-slate-300 transition flex items-center gap-1 cursor-pointer"
                 title="Clear inputs for next customer"
               >

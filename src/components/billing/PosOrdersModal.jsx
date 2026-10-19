@@ -54,12 +54,19 @@ export const PosOrdersModal = ({
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Filters (Defaults to ALL stores and ALL dates so every order is visible immediately)
-  const [branchFilter, setBranchFilter] = useState('ALL'); // 'ALL' | 'LOCAL'
+  // Filters (Defaults to LOCAL store counter for strict terminal data isolation)
+  const [branchFilter, setBranchFilter] = useState('LOCAL'); // 'LOCAL' | 'ALL'
   const [stageFilter, setStageFilter] = useState('ALL');
   const [paymentFilter, setPaymentFilter] = useState('ALL'); // 'ALL' | 'UNPAID' | 'PAID'
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState('list'); // 'list' | 'cards'
+
+  // Always reset to LOCAL when modal opens or activeTerminalId changes
+  useEffect(() => {
+    if (isOpen) {
+      setBranchFilter('LOCAL');
+    }
+  }, [isOpen, activeTerminalId]);
 
   // Calendar / Date Filter State (defaults to false so all orders load without single-day cutoff)
   const [selectedDate, setSelectedDate] = useState(() => normalizeDateString(new Date()));
@@ -95,11 +102,23 @@ export const PosOrdersModal = ({
     if (isOpen) {
       loadOrders();
 
-      const unsub = orderService.subscribeToNewOrders(() => {
+      const unsub = orderService.subscribeToNewOrders((newOrder) => {
+        if (newOrder && branchFilter === 'LOCAL' && activeTerminalId) {
+          const ordBranch = getOrderBranchKey(newOrder);
+          if (ordBranch !== activeTerminalId) return;
+        }
         loadOrders();
       });
 
-      const handleEvent = () => loadOrders();
+      const handleEvent = (e) => {
+        const ord = e?.detail?.order || e?.detail;
+        if (ord && branchFilter === 'LOCAL' && activeTerminalId) {
+          const ordBranch = getOrderBranchKey(ord);
+          if (ordBranch !== activeTerminalId) return;
+        }
+        loadOrders();
+      };
+
       window.addEventListener('techwash-new-order-placed', handleEvent);
       window.addEventListener('techwash-order-updated', handleEvent);
       window.addEventListener('techwash-orders-updated', handleEvent);
@@ -113,7 +132,7 @@ export const PosOrdersModal = ({
         window.removeEventListener('techwash-order-payment-updated', handleEvent);
       };
     }
-  }, [isOpen, loadOrders]);
+  }, [isOpen, loadOrders, branchFilter, activeTerminalId]);
 
   // Date step helper (navigates day by day without timezone offset distortion)
   const handleStepDate = (days) => {
