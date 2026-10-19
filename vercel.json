@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "vite",
-  "buildCommand": "vite build",
+  "buildCommand": "npm run build",
   "functions": {
     "api/daily-sales-report.js": {
       "memory": 1024,
