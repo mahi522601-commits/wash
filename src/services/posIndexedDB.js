@@ -5,7 +5,7 @@
  */
 
 const DB_NAME = 'TechWashPOS';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 class PosIndexedDB {
   constructor() {
@@ -13,7 +13,7 @@ class PosIndexedDB {
   }
 
   /**
-   * Opens / initializes the IndexedDB database and creates all 10 object stores
+   * Opens / initializes the IndexedDB database and creates all 11 object stores
    */
   openDB() {
     if (this.dbPromise) return this.dbPromise;
@@ -119,6 +119,15 @@ class PosIndexedDB {
         if (!db.objectStoreNames.contains('terminalSettings')) {
           const settingsStore = db.createObjectStore('terminalSettings', { keyPath: 'id' });
           settingsStore.createIndex('key', 'key', { unique: false });
+        }
+
+        // 11. Expenses & Compressed Bill Photos Store (Permanent local device storage)
+        if (!db.objectStoreNames.contains('expenses')) {
+          const expenseStore = db.createObjectStore('expenses', { keyPath: 'id' });
+          expenseStore.createIndex('branchId', 'branchId', { unique: false });
+          expenseStore.createIndex('date', 'date', { unique: false });
+          expenseStore.createIndex('createdAt', 'createdAt', { unique: false });
+          expenseStore.createIndex('source', 'source', { unique: false });
         }
       };
 
@@ -552,6 +561,47 @@ class PosIndexedDB {
       req.onsuccess = () => resolve(req.result ? req.result.value : null);
       req.onerror = (e) => reject(e.target.error);
     });
+  }
+
+  // --- EXPENSES STORE METHODS (Permanent Local Device Storage for POS 1 & POS 2) ---
+
+  async saveExpense(expense) {
+    if (!expense) return null;
+    try {
+      return await this.saveItem('expenses', expense, 'id');
+    } catch (e) {
+      console.warn('posIndexedDB saveExpense notice:', e);
+      return expense;
+    }
+  }
+
+  async getExpense(id) {
+    if (!id) return null;
+    try {
+      return await this.getItem('expenses', id);
+    } catch (e) {
+      console.warn('posIndexedDB getExpense notice:', e);
+      return null;
+    }
+  }
+
+  async getAllExpenses() {
+    try {
+      return await this.getAllItems('expenses');
+    } catch (e) {
+      console.warn('posIndexedDB getAllExpenses notice:', e);
+      return [];
+    }
+  }
+
+  async deleteExpense(id) {
+    if (!id) return false;
+    try {
+      return await this.deleteItem('expenses', id);
+    } catch (e) {
+      console.warn('posIndexedDB deleteExpense notice:', e);
+      return false;
+    }
   }
 }
 

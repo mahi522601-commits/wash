@@ -16,6 +16,7 @@ import { db, isFirebaseConfigured } from './firebase.js';
 import { collection, doc, getDocs, getDoc, setDoc, deleteDoc } from 'firebase/firestore';
 import { orderService } from './orderService.js';
 import { parseOrderDateSafe } from './reportService.js';
+import { posIndexedDB } from './posIndexedDB.js';
 
 const EXPENSE_CONFIG_STORAGE_KEY = 'techwash_expense_config_v1';
 const EXPENSES_STORAGE_KEY = 'techwash_expenses_ledger_v1';
@@ -1317,6 +1318,26 @@ export const expenseService = {
           }
         }
 
+        // Also merge permanent local storage from browser IndexedDB (TechWashPOS.expenses on machine)
+        try {
+          const localDbExpenses = await posIndexedDB.getAllExpenses();
+          if (localDbExpenses && localDbExpenses.length > 0) {
+            const mapById = new Map();
+            for (const item of rawList) {
+              if (item && item.id) mapById.set(item.id, item);
+            }
+            for (const item of localDbExpenses) {
+              if (item && item.id) {
+                const existing = mapById.get(item.id) || {};
+                mapById.set(item.id, { ...existing, ...item });
+              }
+            }
+            rawList = Array.from(mapById.values());
+          }
+        } catch (e) {
+          console.warn('Could not fetch expenses from posIndexedDB:', e);
+        }
+
         if (!rawList || rawList.length === 0) {
           try {
             const local = localStorage.getItem(EXPENSES_STORAGE_KEY);
@@ -1445,6 +1466,14 @@ export const expenseService = {
       updatedAt: new Date().toISOString(),
     };
 
+    // 1. Permanent local storage in browser IndexedDB (TechWashPOS.expenses on device hard disk)
+    try {
+      await posIndexedDB.saveExpense(payload);
+    } catch (e) {
+      console.warn('posIndexedDB saveExpense notice:', e);
+    }
+
+    // 2. Cloud synchronization to Firebase Firestore for Admin visibility
     if (isFirebaseConfigured && db) {
       try {
         await setDoc(doc(db, 'expenses', id), payload, { merge: true });
@@ -1453,12 +1482,20 @@ export const expenseService = {
       }
     }
 
-    // Save to localStorage cache
+    // 3. Save to localStorage cache (with quota protection for compressed bill photos)
     try {
       invalidateExpensesMemoryCache();
       const all = await this.getExpenses();
       const updated = [payload, ...all.filter(e => e.id !== id)];
-      localStorage.setItem(EXPENSES_STORAGE_KEY, JSON.stringify(updated));
+      try {
+        localStorage.setItem(EXPENSES_STORAGE_KEY, JSON.stringify(updated));
+      } catch (quotaErr) {
+        // Fallback for browser 5MB localStorage limit: full bill photo remains safely stored in IndexedDB
+        const safeForStorage = updated.map(e => (e.receiptAttachmentUrl && e.receiptAttachmentUrl.length > 1000) ? { ...e, receiptAttachmentUrl: '' } : e);
+        try {
+          localStorage.setItem(EXPENSES_STORAGE_KEY, JSON.stringify(safeForStorage));
+        } catch {}
+      }
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('techwash-expenses-updated', { detail: payload }));
       }
@@ -1488,6 +1525,14 @@ export const expenseService = {
       updatedAt: new Date().toISOString(),
     };
 
+    // Update permanent local storage in IndexedDB
+    try {
+      await posIndexedDB.saveExpense(payload);
+    } catch (e) {
+      console.warn('posIndexedDB updateExpense notice:', e);
+    }
+
+    // Update Firebase Firestore
     if (isFirebaseConfigured && db) {
       try {
         await setDoc(doc(db, 'expenses', id), payload, { merge: true });
@@ -1502,7 +1547,14 @@ export const expenseService = {
       const idx = all.findIndex(e => e.id === id);
       if (idx >= 0) {
         all[idx] = { ...all[idx], ...payload };
-        localStorage.setItem(EXPENSES_STORAGE_KEY, JSON.stringify(all));
+        try {
+          localStorage.setItem(EXPENSES_STORAGE_KEY, JSON.stringify(all));
+        } catch (quotaErr) {
+          const safeForStorage = all.map(e => (e.receiptAttachmentUrl && e.receiptAttachmentUrl.length > 1000) ? { ...e, receiptAttachmentUrl: '' } : e);
+          try {
+            localStorage.setItem(EXPENSES_STORAGE_KEY, JSON.stringify(safeForStorage));
+          } catch {}
+        }
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('techwash-expenses-updated', { detail: all[idx] }));
         }
@@ -1516,6 +1568,14 @@ export const expenseService = {
    * Delete an expense entry
    */
   async deleteExpense(id) {
+    // Delete from permanent local storage in IndexedDB
+    try {
+      await posIndexedDB.deleteExpense(id);
+    } catch (e) {
+      console.warn('posIndexedDB deleteExpense notice:', e);
+    }
+
+    // Delete from Firebase Firestore
     if (isFirebaseConfigured && db) {
       try {
         await deleteDoc(doc(db, 'expenses', id));
