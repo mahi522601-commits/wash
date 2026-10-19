@@ -368,6 +368,74 @@ export const chatbotService = {
     }
 
     // ─────────────────────────────────────────────────────────────
+    // INTENT 6.5: "NEAR ME" & LOCAL SERVICE HUBS
+    // ─────────────────────────────────────────────────────────────
+    if (
+      text.includes('near me') || 
+      text.includes('nearby') || 
+      text.includes('nearest') || 
+      text.includes('close to me') ||
+      text.includes('around me')
+    ) {
+      // Find matching service if specified
+      const matchedService = services.find(s => {
+        const title = (s.title || '').toLowerCase();
+        const slug = (s.slug || '').toLowerCase();
+        return text.includes(title) || 
+               text.includes(slug) || 
+               (slug.includes('dry') && text.includes('dry clean')) || 
+               (slug.includes('iron') && text.includes('iron')) || 
+               (slug.includes('shoe') && text.includes('shoe')) || 
+               (slug.includes('curtain') && text.includes('curtain')) || 
+               (slug.includes('carpet') && text.includes('carpet')) || 
+               (slug.includes('saree') && text.includes('saree')) || 
+               (slug.includes('fold') && text.includes('fold'));
+      });
+
+      if (matchedService) {
+        return {
+          type: 'SERVICE_DETAIL',
+          text: `📍 **${matchedService.title} Near You with Free Doorstep Pickup!**\n\n` +
+                `Good news! Techwash provides daily doorstep pickup & drop for **${matchedService.title}** across your neighborhood (Manikonda, Shaikpet, Tolichowki, Puppalaguda, Khajaguda, and Greater Hyderabad).\n\n` +
+                `🏬 **Or visit our 3 physical walk-in store counters:**\n` +
+                `1. **Manikonda/Shaikpet Main Branch**: Shaikpet Main Rd (📞 +91 63048 45567)\n` +
+                `2. **Tolichowki / OU Colony Branch**: Beside Dreamscape Hotel (📞 +91 90008 13444)\n` +
+                `3. **Ambience Courtyard Pickup Point**: Shaikpet (📞 +91 98667 40179)\n\n` +
+                `⏱️ **Hours**: 8:00 AM – 9:00 PM (All 7 Days)`,
+          payload: { service: matchedService },
+          actionLabel: `Book ${matchedService.title} Doorstep Pickup`,
+          actionUrl: `/book-pickup?service=${matchedService.slug}`,
+          contextPills: [
+            { label: `📦 Book ${matchedService.title}`, value: `Book ${matchedService.title}` },
+            { label: '💰 Check Price List', value: 'Calculate Garment Pricing' },
+            { label: '📍 View All Counter Hubs', value: 'Where are your store locations?' },
+          ],
+        };
+      }
+
+      // Generic "laundry near me" / "dry cleaners near me"
+      return {
+        type: 'SERVICES_CAROUSEL',
+        text: "📍 **Looking for Top-Rated Laundry & Dry Cleaning Near You?**\n\n" +
+              "Techwash brings hygienic, 0 PPM RO soft water laundry right to your doorstep with **100% free pickup and drop** across Manikonda, Tolichowki, Puppalaguda, Khajaguda, and Greater Hyderabad!\n\n" +
+              "🏬 **Our 3 Local Physical Counters (Open 8 AM – 9 PM daily):**\n" +
+              "• **Main Branch**: Shaikpet Main Rd, Manikonda (📞 +91 63048 45567)\n" +
+              "• **Branch 1**: Beside Dreamscape Hotel, Tolichowki / OU Colony (📞 +91 90008 13444)\n" +
+              "• **Pickup Point**: Beside Ambience Courtyard, Shaikpet (📞 +91 98667 40179)\n\n" +
+              "Swipe through our specialized care services below to book instantly:",
+        payload: { services },
+        actionLabel: 'Schedule Free Doorstep Pickup',
+        actionUrl: '/book-pickup',
+        contextPills: [
+          { label: '📦 Book Doorstep Pickup', value: 'Book a Doorstep Pickup' },
+          { label: '🧺 Dry Cleaning Near Me', value: 'dry cleaning near me' },
+          { label: '💰 Check Price List', value: 'Calculate Garment Pricing' },
+          { label: '📞 Call Store Support', value: 'Speak to Human Support' },
+        ],
+      };
+    }
+
+    // ─────────────────────────────────────────────────────────────
     // INTENT 7: SERVICE COVERAGE, CITIES & PINCODES
     // ─────────────────────────────────────────────────────────────
     if (

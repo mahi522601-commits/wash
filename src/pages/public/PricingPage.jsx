@@ -78,6 +78,58 @@ export const PricingPage = () => {
   const ironMenRate = pricingConfig.services?.find(s => s.id === 'wash-and-iron')?.baseRates?.men ?? 130;
   const ironWomenRate = pricingConfig.services?.find(s => s.id === 'wash-and-iron')?.baseRates?.women ?? 160;
 
+  const cleanSearchQuery = (query) => {
+    return (query || '')
+      .toLowerCase()
+      .replace(/\b(near\s+me|nearby|in\s+hyderabad|in\s+manikonda|near|service|services|best|price|prices|rate|rates|cost|charges)\b/gi, '')
+      .trim();
+  };
+
+  const matchesSearch = (item, extraFields = []) => {
+    if (!searchQuery.trim()) return true;
+    const raw = searchQuery.toLowerCase().trim();
+    const clean = cleanSearchQuery(searchQuery);
+    const target = clean || raw;
+
+    const fields = [
+      item?.name,
+      item?.category,
+      item?.gender,
+      item?.service,
+      item?.method,
+      item?.desc,
+      item?.startingNote,
+      item?.rangeNote,
+      item?.tag,
+      ...extraFields,
+    ].filter(Boolean).map(f => String(f).toLowerCase());
+
+    const directMatch = fields.some(f => 
+      f.includes(raw) || 
+      f.includes(target) || 
+      target.includes(f) ||
+      raw.includes(f)
+    );
+    if (directMatch) return true;
+
+    const words = target.split(/\s+/).filter(w => w.length > 1);
+    if (words.length > 1) {
+      return words.every(word => fields.some(f => f.includes(word)));
+    }
+
+    return false;
+  };
+
+  const QUICK_PRICING_PILLS = [
+    { label: '🧺 Dry Cleaning Rates', query: 'dry cleaning' },
+    { label: '🫧 Wash & Iron (per Kg)', query: 'wash and iron' },
+    { label: '👕 Wash & Fold', query: 'wash and fold' },
+    { label: '♨️ Steam Ironing', query: 'ironing' },
+    { label: '👟 Shoe Laundry', query: 'shoe' },
+    { label: '👗 Saree Rolling', query: 'saree' },
+    { label: '🛋️ Curtains & Carpets', query: 'curtain' },
+  ];
+
   const dryCleanMinPrice = useMemo(() => {
     const all = [
       ...(pricingConfig.dryCleaning?.men || []),
@@ -211,10 +263,10 @@ export const PricingPage = () => {
   return (
     <>
       <SEOHead
-        title="Laundry & Dry Cleaning Pricing in Hyderabad | Tech Wash Rate Card"
-        description="Transparent rates for dry cleaning (from ₹40), steam ironing (from ₹12), starch & iron (from ₹25), per-kg laundry (₹100/kg), and sneaker cleaning (₹350/pair) in Hyderabad."
+        title="Laundry & Dry Cleaning Pricing Near Me in Hyderabad | Techwash Rate Card"
+        description="Transparent rates for dry cleaning near you (from ₹40), steam ironing (from ₹12), starch & iron (from ₹25), per-kg laundry (₹100/kg), shoe cleaning (₹350), and curtains (₹30/sqft) in Manikonda & Hyderabad."
         canonicalUrl={`${BASE_URL}/pricing`}
-        keywords="laundry prices hyderabad, dry cleaning cost manikonda, steam iron rates hyderabad, laundry per kg price puppalaguda"
+        keywords="laundry price near me, dry cleaning cost near me, steam iron rates near me, laundry per kg price near me, dry cleaning rates hyderabad, laundry price list manikonda"
         structuredData={structuredData}
       />
       <div className="py-6 sm:py-14 bg-slate-50 min-h-screen">
@@ -319,24 +371,53 @@ export const PricingPage = () => {
           </div>
 
           {/* Search Input with Instant Clear */}
-          <div className="relative w-full">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="Search by garment (e.g. Saree, Shirt, Shoes, Blazer, Blanket, Jeans)..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-8 py-2.5 rounded-xl sm:rounded-full bg-slate-50 border border-slate-200 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#F97316] font-medium"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
+          <div className="space-y-2.5 w-full">
+            <div className="relative w-full">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder='Search by garment or intent (e.g. "dry cleaning near me", "saree", "shoes", "shirt", "curtain")...'
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-8 py-2.5 rounded-xl sm:rounded-full bg-slate-50 border border-slate-200 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#F97316] font-medium"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Quick Near-Me Pricing Chips */}
+            <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 scrollbar-none">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0 mr-1">
+                Popular:
+              </span>
+              {QUICK_PRICING_PILLS.map((pill) => {
+                const isActive = searchQuery.toLowerCase() === pill.query.toLowerCase();
+                return (
+                  <button
+                    key={pill.query}
+                    type="button"
+                    onClick={() => {
+                      setSelectedCategory('ALL');
+                      setSearchQuery(isActive ? '' : pill.query);
+                    }}
+                    className={`px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all ${
+                      isActive
+                        ? 'bg-[#F97316] text-white shadow-xs'
+                        : 'bg-slate-100 text-slate-600 hover:bg-orange-50 hover:text-orange-700'
+                    }`}
+                  >
+                    {pill.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 
@@ -388,7 +469,7 @@ export const PricingPage = () => {
                     ...(pricingConfig.dryCleaning?.women || []),
                     ...(pricingConfig.dryCleaning?.common || []),
                   ]
-                    .filter(item => !searchQuery || item.name.toLowerCase().includes(searchQuery.toLowerCase()) || (item.category && item.category.toLowerCase().includes(searchQuery.toLowerCase())))
+                    .filter(item => matchesSearch(item, ['Dry Cleaning', 'Eco-friendly Dry Cleaning']))
                     .map((item) => (
                       <div key={item.id} className="p-3.5 flex items-center justify-between gap-3 hover:bg-orange-50/20 transition-colors">
                         <div className="flex items-start gap-2.5 flex-1 min-w-0">
@@ -435,7 +516,7 @@ export const PricingPage = () => {
                         ...(pricingConfig.dryCleaning?.women || []),
                         ...(pricingConfig.dryCleaning?.common || []),
                       ]
-                        .filter(item => !searchQuery || item.name.toLowerCase().includes(searchQuery.toLowerCase()) || (item.category && item.category.toLowerCase().includes(searchQuery.toLowerCase())))
+                        .filter(item => matchesSearch(item, ['Dry Cleaning', 'Eco-friendly Dry Cleaning']))
                         .map((item) => (
                           <tr key={item.id} className="hover:bg-[#FFF7ED]/30 transition-colors">
                             <td className="py-3 px-4 font-bold text-slate-900 flex items-center gap-2">
@@ -504,7 +585,7 @@ export const PricingPage = () => {
                     ...(pricingConfig.ironing?.men || []),
                     ...(pricingConfig.ironing?.women || []),
                   ]
-                    .filter(item => !searchQuery || item.name.toLowerCase().includes(searchQuery.toLowerCase()) || (item.category && item.category.toLowerCase().includes(searchQuery.toLowerCase())))
+                    .filter(item => matchesSearch(item, ['Steam Ironing', 'Ironing', 'Steam Press']))
                     .map((item) => (
                       <div key={item.id} className="p-3.5 flex items-center justify-between gap-3 hover:bg-orange-50/20 transition-colors">
                         <div className="flex items-start gap-2.5 flex-1 min-w-0">
@@ -550,7 +631,7 @@ export const PricingPage = () => {
                         ...(pricingConfig.ironing?.men || []),
                         ...(pricingConfig.ironing?.women || []),
                       ]
-                        .filter(item => !searchQuery || item.name.toLowerCase().includes(searchQuery.toLowerCase()) || (item.category && item.category.toLowerCase().includes(searchQuery.toLowerCase())))
+                        .filter(item => matchesSearch(item, ['Steam Ironing', 'Ironing', 'Steam Press']))
                         .map((item) => (
                           <tr key={item.id} className="hover:bg-[#FFF7ED]/30 transition-colors">
                             <td className="py-3 px-4 font-bold text-slate-900 flex items-center gap-2">
@@ -616,7 +697,7 @@ export const PricingPage = () => {
                 {/* 1. MOBILE LIST CARDS (< md) */}
                 <div className="md:hidden divide-y divide-slate-100">
                   {starchItemsList
-                    .filter(item => !searchQuery || item.name.toLowerCase().includes(searchQuery.toLowerCase()) || (item.category && item.category.toLowerCase().includes(searchQuery.toLowerCase())))
+                    .filter(item => matchesSearch(item, ['Starch & Iron', 'Starch', 'Traditional Starching']))
                     .map((item, idx) => (
                       <div key={item.id || idx} className="p-3.5 flex items-center justify-between gap-3 hover:bg-orange-50/20 transition-colors">
                         <div className="flex items-start gap-2.5 flex-1 min-w-0">
@@ -659,7 +740,7 @@ export const PricingPage = () => {
                     </thead>
                     <tbody className="divide-y divide-slate-100 font-medium">
                       {starchItemsList
-                        .filter(item => !searchQuery || item.name.toLowerCase().includes(searchQuery.toLowerCase()) || (item.category && item.category.toLowerCase().includes(searchQuery.toLowerCase())))
+                        .filter(item => matchesSearch(item, ['Starch & Iron', 'Starch', 'Traditional Starching']))
                         .map((item, idx) => (
                           <tr key={item.id || idx} className="hover:bg-[#FFF7ED]/30 transition-colors">
                             <td className="py-3 px-4 font-bold text-slate-900 flex items-center gap-2">
@@ -743,7 +824,7 @@ export const PricingPage = () => {
                   <div className="space-y-2 pt-2 border-t border-slate-100">
                     <span className="text-[10px] font-bold uppercase text-slate-400 block tracking-wider">Configured Sub-Services & Tariffs:</span>
                     {(Array.isArray(pricingConfig.perKgSubServices) && pricingConfig.perKgSubServices.length > 0 ? pricingConfig.perKgSubServices : DEFAULT_PER_KG_SUB_SERVICES)
-                      .filter(s => s.serviceId === 'wash-and-fold')
+                      .filter(s => s.serviceId === 'wash-and-fold' && matchesSearch(s, ['Wash & Fold', 'Per-Kg Laundry', 'Fold Laundry']))
                       .map(sub => (
                         <div key={sub.id} className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between text-xs font-medium">
                           <div className="flex items-center gap-2">
@@ -779,7 +860,7 @@ export const PricingPage = () => {
                   <div className="space-y-2 pt-2 border-t border-orange-100">
                     <span className="text-[10px] font-bold uppercase text-slate-400 block tracking-wider">Configured Sub-Services & Tariffs:</span>
                     {(Array.isArray(pricingConfig.perKgSubServices) && pricingConfig.perKgSubServices.length > 0 ? pricingConfig.perKgSubServices : DEFAULT_PER_KG_SUB_SERVICES)
-                      .filter(s => s.serviceId === 'wash-and-iron')
+                      .filter(s => s.serviceId === 'wash-and-iron' && matchesSearch(s, ['Wash & Iron', 'Per-Kg Laundry', 'Steam Iron Laundry']))
                       .map(sub => (
                         <div key={sub.id} className="p-2.5 rounded-xl bg-orange-50/50 border border-orange-100 flex items-center justify-between text-xs font-medium">
                           <div className="flex items-center gap-2">
@@ -824,7 +905,9 @@ export const PricingPage = () => {
                         { name: 'Daily Saree', cat: "Women's", weight: '~400 g', wi: `₹${Math.round(0.4 * ironWomenRate)}`, wf: `₹${Math.round(0.4 * foldWomenRate)}`, emoji: '🥻' },
                         { name: 'Kurti / Top', cat: "Women's", weight: '~250 g', wi: `₹${Math.round(0.25 * ironWomenRate)}`, wf: `₹${Math.round(0.25 * foldWomenRate)}`, emoji: '👚' },
                         { name: 'Bedsheet (Single)', cat: "Household", weight: '~600 g', wi: `₹${Math.round(0.6 * ironMenRate)}`, wf: `₹${Math.round(0.6 * foldMenRate)}`, emoji: '🛏️' },
-                      ].map((row, idx) => (
+                      ]
+                        .filter(row => matchesSearch(row, ['Per-Kg Laundry', 'Wash & Fold', 'Wash & Iron', 'Garment Weight Guide']))
+                        .map((row, idx) => (
                         <tr key={idx} className="hover:bg-slate-50">
                           <td className="py-2.5 px-3 sm:px-4 font-bold text-slate-900 flex items-center gap-1.5">
                             <span>{row.emoji}</span>
@@ -882,7 +965,7 @@ export const PricingPage = () => {
                 {/* 1. MOBILE LIST CARDS */}
                 <div className="md:hidden divide-y divide-slate-100">
                   {ethnicItems
-                    .filter(item => !searchQuery || item.name.toLowerCase().includes(searchQuery.toLowerCase()) || item.service.toLowerCase().includes(searchQuery.toLowerCase()))
+                    .filter(item => matchesSearch(item, ['Saree Rolling', 'Saree Polishing', 'Traditional Wear', item.service, item.tag]))
                     .map((item, idx) => (
                       <div key={idx} className="p-3.5 flex items-center justify-between gap-3 hover:bg-orange-50/20 transition-colors">
                         <div className="flex items-start gap-2.5 flex-1 min-w-0">
@@ -923,7 +1006,7 @@ export const PricingPage = () => {
                     </thead>
                     <tbody className="divide-y divide-slate-100 font-medium">
                       {ethnicItems
-                        .filter(item => !searchQuery || item.name.toLowerCase().includes(searchQuery.toLowerCase()) || item.service.toLowerCase().includes(searchQuery.toLowerCase()))
+                        .filter(item => matchesSearch(item, ['Saree Rolling', 'Saree Polishing', 'Traditional Wear', item.service, item.tag]))
                         .map((item, idx) => (
                           <tr key={idx} className="hover:bg-[#FFF7ED]/30 transition-colors">
                             <td className="py-3 px-4 font-bold text-slate-900 flex items-center gap-2">
@@ -987,7 +1070,7 @@ export const PricingPage = () => {
                 {/* 1. MOBILE LIST CARDS */}
                 <div className="md:hidden divide-y divide-slate-100">
                   {footwearItems
-                    .filter(item => !searchQuery || item.name.toLowerCase().includes(searchQuery.toLowerCase()))
+                    .filter(item => matchesSearch(item, ['Shoe Cleaning', 'Sneaker Laundry', 'Footwear', item.tag]))
                     .map((row, idx) => (
                       <div key={idx} className="p-3.5 flex items-center justify-between gap-3 hover:bg-orange-50/20 transition-colors">
                         <div className="flex items-start gap-2.5 flex-1 min-w-0">
@@ -1023,7 +1106,7 @@ export const PricingPage = () => {
                     </thead>
                     <tbody className="divide-y divide-slate-100 font-medium">
                       {footwearItems
-                        .filter(item => !searchQuery || item.name.toLowerCase().includes(searchQuery.toLowerCase()))
+                        .filter(item => matchesSearch(item, ['Shoe Cleaning', 'Sneaker Laundry', 'Footwear', item.tag]))
                         .map((row, idx) => (
                           <tr key={idx} className="hover:bg-[#FFF7ED]/30 transition-colors">
                             <td className="py-3 px-4 font-bold text-slate-900 flex items-center gap-2">
@@ -1087,7 +1170,7 @@ export const PricingPage = () => {
                 {/* 1. MOBILE LIST CARDS */}
                 <div className="md:hidden divide-y divide-slate-100">
                   {householdItems
-                    .filter(item => !searchQuery || item.name.toLowerCase().includes(searchQuery.toLowerCase()) || item.method.toLowerCase().includes(searchQuery.toLowerCase()))
+                    .filter(item => matchesSearch(item, ['Curtain Cleaning', 'Carpet Cleaning', 'Home Furnishings', item.method, item.tag]))
                     .map((row, idx) => (
                       <div key={idx} className="p-3.5 flex items-center justify-between gap-3 hover:bg-orange-50/20 transition-colors">
                         <div className="flex items-start gap-2.5 flex-1 min-w-0">
@@ -1123,7 +1206,7 @@ export const PricingPage = () => {
                     </thead>
                     <tbody className="divide-y divide-slate-100 font-medium">
                       {householdItems
-                        .filter(item => !searchQuery || item.name.toLowerCase().includes(searchQuery.toLowerCase()) || item.method.toLowerCase().includes(searchQuery.toLowerCase()))
+                        .filter(item => matchesSearch(item, ['Curtain Cleaning', 'Carpet Cleaning', 'Home Furnishings', item.method, item.tag]))
                         .map((row, idx) => (
                           <tr key={idx} className="hover:bg-[#FFF7ED]/30 transition-colors">
                             <td className="py-3 px-4 font-bold text-slate-900 flex items-center gap-2">
@@ -1158,12 +1241,7 @@ export const PricingPage = () => {
                 ? cs.subServices
                 : [{ id: `${cs.id}-base`, name: cs.name || cs.title, price: cs.startingPrice || cs.defaultPrice || 99, emoji: cs.emoji || '✨', desc: cs.shortDescription || 'Bespoke Care' }];
 
-              const filteredSubs = subItems.filter(item => 
-                !searchQuery || 
-                (item.name && item.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
-                (item.desc && item.desc.toLowerCase().includes(searchQuery.toLowerCase())) ||
-                ((cs.name || cs.title) && (cs.name || cs.title).toLowerCase().includes(searchQuery.toLowerCase()))
-              );
+              const filteredSubs = subItems.filter(item => matchesSearch(item, [cs.name, cs.title, cs.category]));
 
               if (filteredSubs.length === 0) return null;
 

@@ -36,10 +36,13 @@ import {
   Shield,
   ThumbsUp,
   RotateCcw,
-  Sparkle
+  Sparkle,
+  MapPin,
+  Phone,
+  Navigation
 } from 'lucide-react';
 import { SEOHead } from '../../components/seo/SEOHead';
-import { BASE_URL, BUSINESS_INFO, SEO_AREAS } from '../../data/seoData';
+import { BASE_URL, BUSINESS_INFO, SEO_AREAS, SEO_SERVICES, BUSINESS_BRANCHES } from '../../data/seoData';
 
 const DEFAULT_PROCESS_STEPS = [
   {
@@ -238,8 +241,26 @@ export const ServiceDetailPage = () => {
   });
 
   const serviceTitle = service.title || service.name || 'Service';
-  const pageMetaTitle = `${serviceTitle} Services in Hyderabad | Tech Wash`;
-  const pageMetaDesc = service.shortDescription || `${serviceTitle} in Hyderabad with 100% demineralized RO soft water and eco-friendly solvents. Doorstep pickup across Manikonda, Puppalaguda, Khajaguda & Hyderabad.`;
+  const targetSlug = String(service.slug || slug || '').toLowerCase().trim().replace(/^srv-/, '');
+  const seoServiceMatch = SEO_SERVICES.find(
+    s => s.slug === targetSlug || 
+         targetSlug.includes(s.slug) || 
+         s.slug.includes(targetSlug) ||
+         s.name.toLowerCase() === serviceTitle.toLowerCase()
+  );
+
+  const pageMetaTitle = seoServiceMatch?.title || `${serviceTitle} Near Me - Best in Manikonda & Hyderabad | Techwash`;
+  const pageMetaDesc = seoServiceMatch?.metaDescription || service.shortDescription || `Looking for top-rated ${serviceTitle.toLowerCase()} near you? Techwash provides 100% RO soft water care, isolated drum hygiene, and free doorstep pickup across Manikonda, Tolichowki & Hyderabad.`;
+  const pageKeywords = [
+    seoServiceMatch?.primaryKeyword,
+    seoServiceMatch?.secondaryKeywords,
+    ...(seoServiceMatch?.nearMeKeywords || []),
+    `${serviceTitle.toLowerCase()} near me`,
+    `${serviceTitle.toLowerCase()} Manikonda`,
+    `${serviceTitle.toLowerCase()} Hyderabad`,
+    'laundry near me',
+    'dry cleaning near me'
+  ].filter(Boolean).join(', ');
 
   const structuredData = {
     '@context': 'https://schema.org',
@@ -262,7 +283,7 @@ export const ServiceDetailPage = () => {
           {
             '@type': 'ListItem',
             position: 3,
-            name: serviceTitle,
+            name: `${serviceTitle} Near Me`,
             item: `${BASE_URL}/services/${service.slug}`,
           },
         ],
@@ -270,20 +291,67 @@ export const ServiceDetailPage = () => {
       {
         '@type': 'Service',
         '@id': `${BASE_URL}/services/${service.slug}#service`,
-        name: serviceTitle,
-        serviceType: service.category || 'Garment Care',
+        name: `${serviceTitle} Near Me`,
+        alternateName: [
+          serviceTitle,
+          `Best ${serviceTitle} Near Me`,
+          `${serviceTitle} in Manikonda`,
+          `${serviceTitle} in Hyderabad`,
+          ...(seoServiceMatch?.nearMeKeywords?.slice(0, 5) || [])
+        ],
+        serviceType: `${serviceTitle} - Local Doorstep Garment Care`,
+        category: service.category || 'Garment Care',
         description: pageMetaDesc,
         provider: {
           '@type': 'DryCleaningOrLaundry',
           name: BUSINESS_INFO.name,
           telephone: BUSINESS_INFO.telephone,
           url: BASE_URL,
+          logo: BUSINESS_INFO.logo,
+          image: BUSINESS_INFO.image,
+          priceRange: BUSINESS_INFO.priceRange,
           address: BUSINESS_INFO.address,
+          geo: BUSINESS_INFO.geo,
+          openingHoursSpecification: BUSINESS_INFO.openingHoursSpecification,
+          department: BUSINESS_BRANCHES.map(branch => ({
+            '@type': 'DryCleaningOrLaundry',
+            name: branch.name,
+            telephone: branch.telephone,
+            address: {
+              '@type': 'PostalAddress',
+              streetAddress: branch.address,
+              addressLocality: branch.locality,
+              addressRegion: 'Telangana',
+              postalCode: branch.postalCode,
+              addressCountry: 'IN',
+            },
+            geo: {
+              '@type': 'GeoCoordinates',
+              latitude: branch.geo.latitude,
+              longitude: branch.geo.longitude,
+            },
+            openingHoursSpecification: [
+              {
+                '@type': 'OpeningHoursSpecification',
+                dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+                opens: '08:00',
+                closes: '21:00',
+              },
+            ],
+          })),
         },
-        areaServed: SEO_AREAS.map((a) => ({
-          '@type': 'AdministrativeArea',
-          name: `${a.name}, Hyderabad`,
-        })),
+        areaServed: [
+          ...SEO_AREAS.map((a) => ({
+            '@type': 'AdministrativeArea',
+            name: `${a.name}, Hyderabad`,
+          })),
+          { '@type': 'AdministrativeArea', name: 'Tolichowki, Hyderabad' },
+          { '@type': 'AdministrativeArea', name: 'Shaikpet, Hyderabad' },
+          { '@type': 'AdministrativeArea', name: 'Puppalaguda, Hyderabad' },
+          { '@type': 'AdministrativeArea', name: 'Khajaguda, Hyderabad' },
+          { '@type': 'AdministrativeArea', name: 'Gachibowli, Hyderabad' },
+          { '@type': 'AdministrativeArea', name: 'Hitec City, Hyderabad' },
+        ],
         offers: {
           '@type': 'Offer',
           priceCurrency: 'INR',
@@ -295,7 +363,41 @@ export const ServiceDetailPage = () => {
             unitText: pricingUnit,
           },
           availability: 'https://schema.org/InStock',
+          seller: {
+            '@type': 'DryCleaningOrLaundry',
+            name: BUSINESS_INFO.name,
+          },
         },
+      },
+      {
+        '@type': 'FAQPage',
+        '@id': `${BASE_URL}/services/${service.slug}#faq`,
+        mainEntity: [
+          {
+            '@type': 'Question',
+            name: `Is there a reliable ${serviceTitle} service near me in Manikonda & Hyderabad?`,
+            acceptedAnswer: {
+              '@type': 'Answer',
+              text: `Yes! Techwash Laundry provides 100% free doorstep pickup and delivery for ${serviceTitle} across Manikonda, Shaikpet, Tolichowki, Puppalaguda, Khajaguda, and surrounding Hyderabad neighborhoods. You can also visit our physical store counters in Manikonda, Tolichowki, and Ambience Courtyard.`,
+            },
+          },
+          {
+            '@type': 'Question',
+            name: `How quickly can I get ${serviceTitle} pickup and delivery near me?`,
+            acceptedAnswer: {
+              '@type': 'Answer',
+              text: `We offer daily pickup slots between 8:00 AM and 9:00 PM (all 7 days). Standard delivery turnaround is 48 hours, and 24-hour express turnaround is available for urgent garment care.`,
+            },
+          },
+          {
+            '@type': 'Question',
+            name: `Where is the nearest Techwash Laundry counter located?`,
+            acceptedAnswer: {
+              '@type': 'Answer',
+              text: `Techwash operates 3 physical counters in Hyderabad: (1) Main Branch on Shaikpet Main Rd, Manikonda (500089); (2) Branch 1 beside Dreamscape Hotel, Tolichowki / OU Colony (500008); and (3) Pickup Point beside Ambience Courtyard, Shaikpet (500089). All branches are open daily from 8:00 AM to 9:00 PM.`,
+            },
+          },
+        ],
       },
     ],
   };
@@ -306,7 +408,7 @@ export const ServiceDetailPage = () => {
         title={pageMetaTitle}
         description={pageMetaDesc}
         canonicalUrl={`${BASE_URL}/services/${service.slug}`}
-        keywords={`${serviceTitle.toLowerCase()} hyderabad, dry cleaning hyderabad, steam ironing manikonda, laundry pickup hyderabad`}
+        keywords={pageKeywords}
         structuredData={structuredData}
       />
       <div className="bg-slate-50 min-h-screen pb-24">
@@ -816,6 +918,83 @@ export const ServiceDetailPage = () => {
                 </div>
               </div>
             )}
+
+            {/* ─────────────────────────────────────────────────────────
+                NEAR YOU: LOCAL HUBS & DOORSTEP PICKUP BANNER
+            ───────────────────────────────────────────────────────── */}
+            <div className="rounded-[32px] bg-gradient-to-br from-slate-900 via-navy-900 to-slate-800 text-white p-6 sm:p-8 space-y-6 shadow-luxury border border-slate-700/60 relative overflow-hidden mt-8">
+              <div className="absolute top-0 right-0 w-80 h-80 bg-orange-500/10 rounded-full blur-3xl pointer-events-none" />
+              
+              <div className="relative z-10 space-y-3">
+                <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-orange-500/20 border border-orange-500/40 text-orange-300 text-xs font-bold uppercase tracking-wider">
+                  <MapPin className="w-3.5 h-3.5 text-orange-400" />
+                  <span>Doorstep Pickup & Local Counters Near You</span>
+                </div>
+                <h3 className="text-2xl sm:text-3xl font-black font-display text-white">
+                  Looking for {serviceTitle} Near You?
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-2xl">
+                  Techwash provides <strong>complimentary doorstep pickup & delivery</strong> across Manikonda, Tolichowki, Puppalaguda, Khajaguda, and Greater Hyderabad. You can also walk into any of our 3 physical service counter hubs:
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 relative z-10">
+                {BUSINESS_BRANCHES.map((branch) => (
+                  <div 
+                    key={branch.id} 
+                    className="p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-orange-400/50 transition-all flex flex-col justify-between space-y-3"
+                  >
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-mono font-bold text-orange-400 px-2 py-0.5 rounded bg-orange-400/10">
+                          {branch.code}
+                        </span>
+                        <span className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                          Open 8 AM - 9 PM
+                        </span>
+                      </div>
+                      <h4 className="text-xs font-bold text-white line-clamp-1">
+                        {branch.locality} Hub
+                      </h4>
+                      <p className="text-[11px] text-slate-300 line-clamp-2 leading-tight">
+                        {branch.address}
+                      </p>
+                    </div>
+                    <div className="pt-2 border-t border-white/10 flex items-center justify-between text-xs">
+                      <a 
+                        href={`tel:${branch.telephone.replace(/\s+/g, '')}`} 
+                        className="text-orange-300 hover:text-white font-bold flex items-center gap-1 transition-colors"
+                      >
+                        <Phone className="w-3 h-3" />
+                        <span>Call Store</span>
+                      </a>
+                      <a
+                        href={`https://maps.google.com/?q=${branch.geo.latitude},${branch.geo.longitude}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-slate-300 hover:text-orange-300 font-medium flex items-center gap-1 transition-colors"
+                      >
+                        <Navigation className="w-3 h-3" />
+                        <span>Map</span>
+                      </a>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-white/10 relative z-10">
+                <div className="flex items-center gap-2 text-xs text-slate-300">
+                  <Truck className="w-4 h-4 text-emerald-400" />
+                  <span>Don't want to step out? Free doorstep pickup in under 60 seconds.</span>
+                </div>
+                <Link to={`/book-pickup?service=${service.slug}`}>
+                  <Button variant="primary" size="sm" className="whitespace-nowrap shadow-md">
+                    Schedule Free Pickup
+                  </Button>
+                </Link>
+              </div>
+            </div>
 
           </div>
 

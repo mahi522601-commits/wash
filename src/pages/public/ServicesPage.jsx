@@ -43,13 +43,38 @@ export const ServicesPage = () => {
 
   const categories = ['ALL', ...Array.from(new Set(services.map(s => s.category || 'General Care')))];
 
+  const cleanSearchQuery = (query) => {
+    return (query || '')
+      .toLowerCase()
+      .replace(/\b(near\s+me|nearby|in\s+hyderabad|in\s+manikonda|near|service|services|best)\b/gi, '')
+      .trim();
+  };
+
   const filtered = services.filter((s) => {
     const matchesCategory = selectedCategory === 'ALL' || (s.category || 'General Care') === selectedCategory;
-    const matchesSearch = !searchQuery || 
-      s.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      (s.shortDescription && s.shortDescription.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (s.category && s.category.toLowerCase().includes(searchQuery.toLowerCase()));
-    return matchesCategory && matchesSearch;
+    if (!matchesCategory) return false;
+    if (!searchQuery.trim()) return true;
+
+    const raw = searchQuery.toLowerCase().trim();
+    const clean = cleanSearchQuery(searchQuery);
+    const searchTarget = clean || raw;
+
+    const searchableFields = [
+      s.title,
+      s.name,
+      s.category,
+      s.slug,
+      s.shortDescription,
+      s.detailedDescription,
+      ...(s.features || []),
+    ].filter(Boolean).map(f => String(f).toLowerCase());
+
+    return searchableFields.some(field => 
+      field.includes(raw) || 
+      field.includes(searchTarget) || 
+      searchTarget.includes(field) ||
+      raw.includes(field)
+    );
   });
 
   const structuredData = {
@@ -67,7 +92,7 @@ export const ServicesPage = () => {
           {
             '@type': 'ListItem',
             position: 2,
-            name: 'Services',
+            name: 'Services Near Me',
             item: `${BASE_URL}/services`,
           },
         ],
@@ -77,7 +102,7 @@ export const ServicesPage = () => {
         itemListElement: SEO_SERVICES.map((s, idx) => ({
           '@type': 'ListItem',
           position: idx + 1,
-          name: s.name,
+          name: `${s.name} Near Me`,
           url: `${BASE_URL}/services/${s.slug}`,
           description: s.metaDescription,
         })),
@@ -85,13 +110,24 @@ export const ServicesPage = () => {
     ],
   };
 
+  const QUICK_SEARCH_PILLS = [
+    { label: '🧺 Dry Cleaning Near Me', query: 'dry cleaning near me' },
+    { label: '🫧 Wash & Iron Near Me', query: 'wash and iron near me' },
+    { label: '👕 Wash & Fold Near Me', query: 'wash and fold near me' },
+    { label: '♨️ Steam Iron Near Me', query: 'ironing near me' },
+    { label: '👟 Shoe Cleaning Near Me', query: 'shoe cleaning near me' },
+    { label: '👗 Saree Rolling Near Me', query: 'saree rolling near me' },
+    { label: '🛋️ Curtain Cleaning Near Me', query: 'curtain cleaning near me' },
+    { label: '🧶 Carpet Cleaning Near Me', query: 'carpet cleaning near me' },
+  ];
+
   return (
     <>
       <SEOHead
-        title="Dry Cleaning, Laundry & Steam Pressing Services in Hyderabad | Tech Wash"
-        description="Comprehensive garment care services in Hyderabad: Non-toxic hydrocarbon dry cleaning, 3D steam ironing, starch & iron, per-kg wash & fold, saree rolling, and shoe laundry."
+        title="Dry Cleaning, Laundry & Steam Pressing Near Me in Hyderabad | Techwash"
+        description="Looking for the best dry cleaning, laundry or steam ironing service near you? Techwash provides 0 PPM RO soft water wash, certified eco-friendly dry cleaning, and free doorstep pickup across Manikonda, Tolichowki & Hyderabad."
         canonicalUrl={`${BASE_URL}/services`}
-        keywords="dry cleaning services hyderabad, steam ironing manikonda, saree rolling puppalaguda, shoe care hyderabad, laundry per kg"
+        keywords="dry cleaning near me, laundry near me, laundry service near me, steam iron near me, shoe cleaning near me, clothes washing near me, best dry cleaners near me, dry cleaning services hyderabad, steam ironing manikonda"
         structuredData={structuredData}
       />
       <div className="py-16 sm:py-24 bg-brand-50 min-h-screen relative overflow-hidden">
@@ -100,53 +136,89 @@ export const ServicesPage = () => {
       <div className="absolute top-10 right-0 w-[500px] h-[500px] bg-[#F97316]/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-10 left-0 w-[500px] h-[500px] bg-[#F97316]/5 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 space-y-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 space-y-10">
         
         {/* Page Header */}
         <div className="text-center max-w-3xl mx-auto space-y-4">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#FFF7ED] border border-[#F97316]/30 text-[#F97316] text-xs font-bold uppercase tracking-wider">
             <Sparkles className="w-3.5 h-3.5 text-[#F97316]" />
-            <span>Complete Garment Care Menu</span>
+            <span>Complete Garment Care Menu Near You</span>
           </div>
           <h1 className="text-4xl sm:text-6xl font-black text-slate-900 font-display tracking-tight leading-tight">
             Specialized Care <br />
-            <span className="text-[#F97316]">Services Catalog</span>
+            <span className="text-[#F97316]">Services Near Me</span>
           </h1>
           <p className="text-sm sm:text-base text-slate-600 font-normal leading-relaxed">
-            Every garment is unique. Our certified fabric technicians provide customized treatment using RO soft water, bio-enzymes, ultrasonic stain removal, and eco-safe hydrocarbon dry cleaning.
+            Every garment is unique. Our certified fabric technicians provide customized treatment using RO soft water, bio-enzymes, ultrasonic stain removal, and eco-safe hydrocarbon dry cleaning. Free doorstep pickup & drop in Hyderabad.
           </p>
         </div>
 
         {/* Search & Category Filter Bar */}
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-4 rounded-3xl bg-white border border-brand-200 shadow-sm">
-          
-          {/* Category Filter Pills */}
-          <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 scrollbar-none">
-            {categories.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
-                className={`px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap ${
-                  selectedCategory === cat
-                    ? 'bg-navy-800 text-white shadow-md'
-                    : 'bg-brand-50 text-slate-600 hover:text-brand-700 border border-brand-200'
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
+        <div className="space-y-3">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-4 rounded-3xl bg-white border border-brand-200 shadow-sm">
+            
+            {/* Category Filter Pills */}
+            <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 scrollbar-none">
+              {categories.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat)}
+                  className={`px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap ${
+                    selectedCategory === cat
+                      ? 'bg-navy-800 text-white shadow-md'
+                      : 'bg-brand-50 text-slate-600 hover:text-brand-700 border border-brand-200'
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+
+            {/* Search Input */}
+            <div className="relative w-full md:w-80 shrink-0">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder='Search "dry cleaning near me", fabrics...'
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 rounded-full bg-brand-50 border border-brand-200 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500 font-medium"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
           </div>
 
-          {/* Search Input */}
-          <div className="relative w-full md:w-72 shrink-0">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="Search services, fabrics..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 rounded-full bg-brand-50 border border-brand-200 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500 font-medium"
-            />
+          {/* Near Me Quick Filter Pills */}
+          <div className="flex items-center gap-2 overflow-x-auto py-1 px-1 scrollbar-none">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider shrink-0 mr-1">
+              Popular:
+            </span>
+            {QUICK_SEARCH_PILLS.map((pill) => {
+              const isActive = searchQuery.toLowerCase() === pill.query.toLowerCase();
+              return (
+                <button
+                  key={pill.query}
+                  onClick={() => {
+                    setSelectedCategory('ALL');
+                    setSearchQuery(isActive ? '' : pill.query);
+                  }}
+                  className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                    isActive
+                      ? 'bg-[#F97316] text-white shadow-sm ring-2 ring-orange-300'
+                      : 'bg-white text-slate-700 hover:bg-orange-50 border border-slate-200 hover:border-orange-200'
+                  }`}
+                >
+                  <span>{pill.label}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
