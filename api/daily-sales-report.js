@@ -341,6 +341,81 @@ export default async function handler(req, res) {
       console.warn('Attendance fetch notice for daily report:', attErr.message);
     }
 
+    // 5b. FETCH & AGGREGATE POS 1 & POS 2 COUNTER EXPENSES WITHIN REPORTING WINDOW
+    let pos1Expenses = { count: 0, totalAmount: 0, cashAmount: 0, items: [] };
+    let pos2Expenses = { count: 0, totalAmount: 0, cashAmount: 0, items: [] };
+    let allPosExpenseItems = [];
+
+    try {
+      const expSnap = await db.collection('expenses').get();
+      if (!expSnap.empty) {
+        const rawExpenses = expSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        rawExpenses.forEach(exp => {
+          const createdAtRaw = exp.createdAt || exp.date;
+          let expDate = null;
+          if (createdAtRaw) {
+            if (typeof createdAtRaw.toDate === 'function') expDate = createdAtRaw.toDate();
+            else if (createdAtRaw._seconds) expDate = new Date(createdAtRaw._seconds * 1000);
+            else expDate = new Date(createdAtRaw);
+          }
+
+          const expDateStr = exp.date || (createdAtRaw ? String(createdAtRaw).slice(0, 10) : '');
+          const isDateMatch = expDateStr === reportDateStr;
+          const isWithinWindow = expDate && expDate >= windowStartUtc && expDate <= windowEndUtc;
+
+          if (isDateMatch || isWithinWindow) {
+            const amt = Number(exp.amount) || 0;
+            const isCash = String(exp.paymentMode || 'CASH').toUpperCase() === 'CASH';
+
+            const bId = String(exp.branchId || '').toLowerCase();
+            const src = String(exp.source || '').toLowerCase();
+            const bName = String(exp.branchName || '').toLowerCase();
+            const tId = String(exp.terminalId || '').toLowerCase();
+
+            const isPos2 = bId.includes('counter-2') || bId.includes('pos-02') || bId.includes('pos2') ||
+                          src.includes('pos-02') || src.includes('pos2') ||
+                          tId.includes('pos-02') || tId.includes('pos2') ||
+                          bName.includes('tolichowki') || bName.includes('branch 1');
+
+            if (isPos2) {
+              pos2Expenses.count += 1;
+              pos2Expenses.totalAmount += amt;
+              if (isCash) pos2Expenses.cashAmount += amt;
+              pos2Expenses.items.push(exp);
+              allPosExpenseItems.push({ ...exp, posLabel: 'POS-02 (Tolichowki)' });
+            } else {
+              pos1Expenses.count += 1;
+              pos1Expenses.totalAmount += amt;
+              if (isCash) pos1Expenses.cashAmount += amt;
+              pos1Expenses.items.push(exp);
+              allPosExpenseItems.push({ ...exp, posLabel: 'POS-01 (Manikonda)' });
+            }
+          }
+        });
+      }
+    } catch (expErr) {
+      console.warn('Expenses aggregation notice for daily report:', expErr.message);
+    }
+
+    const totalCounterExpenses = pos1Expenses.totalAmount + pos2Expenses.totalAmount;
+    const totalCounterCashExpenses = pos1Expenses.cashAmount + pos2Expenses.cashAmount;
+    const netPhysicalDrawerCash = Math.max(0, cashReceived - totalCounterCashExpenses);
+
+    const expensesSummary = {
+      pos1: pos1Expenses,
+      pos2: pos2Expenses,
+      totalCount: pos1Expenses.count + pos2Expenses.count,
+      totalAmount: totalCounterExpenses,
+      totalCashAmount: totalCounterCashExpenses,
+      items: allPosExpenseItems,
+      netCashDrawer: {
+        grossCashInflow: cashReceived,
+        totalCashExpenses: totalCounterCashExpenses,
+        netCashRemaining: netPhysicalDrawerCash,
+      }
+    };
+
     const reportData = {
       dateStr: reportDateStr,
       dateFormatted,
@@ -364,6 +439,7 @@ export default async function handler(req, res) {
       ],
       cancellations: { count: cancelledCount, totalAmount: cancelledAmount },
       attendance: attendanceSummary,
+      expenses: expensesSummary,
     };
 
     // 6. GENERATE COMPLETE A4 PDF ATTACHMENT
@@ -448,19 +524,28 @@ Date: ${dateFormatted} (${cutoffFormatted} IST Settlement Window)
 • Website Online: ${branchStatsMap.online.count} Orders | Billed: ₹${branchStatsMap.online.billed.toLocaleString('en-IN')}
 
 ==================================================
-4. SERVICE CATEGORY BREAKDOWN
+4. POS 1 & POS 2 COUNTER EXPENSES & DRAWER CASH
+==================================================
+• POS-01 (Manikonda Main): ${expensesSummary.pos1.count} Bills Logged | Spent: ₹${expensesSummary.pos1.totalAmount.toLocaleString('en-IN')} (Cash: ₹${expensesSummary.pos1.cashAmount.toLocaleString('en-IN')})
+• POS-02 (Tolichowki Branch 1): ${expensesSummary.pos2.count} Bills Logged | Spent: ₹${expensesSummary.pos2.totalAmount.toLocaleString('en-IN')} (Cash: ₹${expensesSummary.pos2.cashAmount.toLocaleString('en-IN')})
+• Total Counter Expenses: ₹${expensesSummary.totalAmount.toLocaleString('en-IN')}
+• Net Cash in Physical Drawer: ₹${expensesSummary.netCashDrawer.netCashRemaining.toLocaleString('en-IN')} (Gross Cash ₹${cashReceived.toLocaleString('en-IN')} - Cash Expenses ₹${expensesSummary.totalCashAmount.toLocaleString('en-IN')})
+• Attached Receipts: ${expensesSummary.items.filter(i => i.receiptAttachmentUrl).length} Bill Photos Verified & Attached in PDF!
+
+==================================================
+5. SERVICE CATEGORY BREAKDOWN
 ==================================================
 ${serviceCatText}
 
 ==================================================
-5. VOLUME & CANCELLATION METRICS
+6. VOLUME & CANCELLATION METRICS
 ==================================================
 • Total Billed Orders: ${filteredOrders.length} (${fullyPaidOrdersCount} Paid, ${partialOrdersCount + unpaidOrdersCount} Unpaid/Partial)
 • Volume Cleaned: ${totalPiecesCount} Pcs / ${reportData.metrics.totalWeightKg} Kg
 • Cancelled Orders: ${cancelledCount} Orders (₹${cancelledAmount.toLocaleString('en-IN')})
 
 ==================================================
-6. STAFF ATTENDANCE & ON-DUTY ROSTER
+7. STAFF ATTENDANCE & ON-DUTY ROSTER
 ==================================================
 • Staff on Duty Today: ${attendanceSummary.presentCount} / ${attendanceSummary.totalStaff || 'N/A'}
 ${attendanceSummary.onDutyList.length > 0 ? `• On-Duty Staff:\n  ${attendanceSummary.onDutyList.map(n => `• ${n}`).join('\n  ')}` : '• No attendance marked yet today.'}

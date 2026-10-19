@@ -243,6 +243,68 @@ class DailyReportSchedulerService {
 
     return data;
   }
+
+  /**
+   * Builds an official WhatsApp financial document summary string
+   * formatted for store managers and owners with POS 1 & POS 2 expenses.
+   */
+  buildDailyReportWhatsAppDocument(reportData, recipient = 'Management') {
+    if (!reportData) return 'No report data available.';
+
+    const metrics = reportData.metrics || {};
+    const c1 = metrics.category1 || {};
+    const c2 = metrics.category2 || {};
+    const expenses = reportData.expenses || {};
+    const dateLabel = reportData.dateRangeLabel || reportData.dateFormatted || 'Today';
+
+    const grossBilled = Number(metrics.totalGrossBilled || 0);
+    const collections = Number(c1.totalInflowCollections || 0);
+    const netDues = Number(c2.totalNetPendingDues || 0);
+    const recoveredDues = Number(c2.totalRecoveredDues || 0);
+
+    const pos1Exp = expenses.pos1 || { count: 0, totalAmount: 0, cashAmount: 0 };
+    const pos2Exp = expenses.pos2 || { count: 0, totalAmount: 0, cashAmount: 0 };
+    const totalExp = Number(expenses.totalAmount || (pos1Exp.totalAmount + pos2Exp.totalAmount) || 0);
+    const totalCashExp = Number(expenses.totalCashAmount || (pos1Exp.cashAmount + pos2Exp.cashAmount) || 0);
+    const grossCash = Number(c1.cashReceived || 0);
+    const netDrawer = Math.max(0, grossCash - totalCashExp);
+
+    return `*TECH WASH LAUNDRY SERVICES*
+*DAILY EXECUTIVE AUDIT & SETTLEMENT REPORT*
+📅 *Period:* ${dateLabel}
+👤 *Audited For:* ${recipient}
+─────────────────────────────
+*1. OVERALL REVENUE SUMMARY*
+• Gross Billed Sales: ₹${grossBilled.toLocaleString('en-IN')}
+• Direct Collections Inflow: ₹${collections.toLocaleString('en-IN')}
+• Net Pending Dues: ₹${netDues.toLocaleString('en-IN')}
+• Dues Recovered Today: ₹${recoveredDues.toLocaleString('en-IN')}
+
+*2. COLLECTIONS BY PAYMENT MODE*
+• 💵 Cash at Register: ₹${(c1.cashReceived || 0).toLocaleString('en-IN')}
+• 📱 UPI / Dynamic QR: ₹${(c1.upiReceived || 0).toLocaleString('en-IN')}
+• 💳 Card / POS Swipe: ₹${(c1.cardReceived || 0).toLocaleString('en-IN')}
+• 🌐 Online Website: ₹${(c1.onlineReceived || 0).toLocaleString('en-IN')}
+
+*3. 🏪 POS 1 & POS 2 COUNTER EXPENSES*
+• *POS-01 (Manikonda Main):* ${pos1Exp.count || 0} Bills • ₹${(pos1Exp.totalAmount || 0).toLocaleString('en-IN')} (Cash: ₹${(pos1Exp.cashAmount || 0).toLocaleString('en-IN')})
+• *POS-02 (Tolichowki Branch 1):* ${pos2Exp.count || 0} Bills • ₹${(pos2Exp.totalAmount || 0).toLocaleString('en-IN')} (Cash: ₹${(pos2Exp.cashAmount || 0).toLocaleString('en-IN')})
+• *Total Counter Expenses:* ₹${totalExp.toLocaleString('en-IN')}
+• *💵 Physical Drawer Cash Remaining:* ₹${netDrawer.toLocaleString('en-IN')}
+  _(Gross Cash ₹${grossCash.toLocaleString('en-IN')} - Cash Expenses ₹${totalCashExp.toLocaleString('en-IN')})_
+📎 *Attached Receipts:* ${expenses.items ? expenses.items.filter(i => i.receiptAttachmentUrl).length : 0} Bills Verified (Compressed ≤ 50 KB) in PDF
+
+*4. ORDERS & VOLUME AUDIT*
+• Total Orders: ${metrics.totalOrdersCount || reportData.orders?.length || 0} Bills
+• Garments Cleaned: ${metrics.totalPiecesCount || 0} Pcs | ${metrics.totalWeightKg || 0} Kg
+• Fully Settled Orders: ${c2.fullyPaidOrdersCount || 0} Bills
+• Unpaid / Partial: ${(c2.partialOrdersCount || 0) + (c2.unpaidOrdersCount || 0)} Bills
+
+📄 *Certified A4 Shift PDF with Attached Bill Receipts available on Admin Portal:*
+https://techwashlaundry.com/admin/reports
+─────────────────────────────
+_Tech Wash Operations & Accounts Engine_`;
+  }
 }
 
 export const dailyReportScheduler = new DailyReportSchedulerService();

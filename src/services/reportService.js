@@ -491,6 +491,69 @@ export const reportService = {
       }
     }
 
+    // Fetch and aggregate POS 1 & POS 2 counter expenses for this report period
+    let pos1Expenses = { terminalId: 'TW-POS-01', name: 'Main Branch — Manikonda (POS-01)', count: 0, totalAmount: 0, cashAmount: 0, items: [] };
+    let pos2Expenses = { terminalId: 'TW-POS-02', name: 'Branch 1 — Tolichowki (POS-02)', count: 0, totalAmount: 0, cashAmount: 0, items: [] };
+    let allFilteredExpenses = [];
+
+    try {
+      const { expenseService } = await import('./expenseService.js');
+      const allExpenses = await expenseService.getExpenses({ forceRefresh: false });
+
+      (allExpenses || []).forEach(exp => {
+        const expDate = parseOrderDateSafe(exp.date || exp.createdAt);
+        if (!expDate) return;
+        if (start && expDate < start) return;
+        if (end && expDate > end) return;
+
+        allFilteredExpenses.push(exp);
+        const amt = Number(exp.amount) || 0;
+        const isCash = String(exp.paymentMode || 'CASH').toUpperCase() === 'CASH';
+
+        const bId = String(exp.branchId || '').toLowerCase();
+        const src = String(exp.source || '').toLowerCase();
+        const bName = String(exp.branchName || '').toLowerCase();
+        const tId = String(exp.terminalId || '').toLowerCase();
+
+        const isPos2 = bId.includes('counter-2') || bId.includes('pos-02') || bId.includes('pos2') ||
+                      src.includes('pos-02') || src.includes('pos2') ||
+                      tId.includes('pos-02') || tId.includes('pos2') ||
+                      bName.includes('tolichowki') || bName.includes('branch 1');
+
+        if (isPos2) {
+          pos2Expenses.count += 1;
+          pos2Expenses.totalAmount += amt;
+          if (isCash) pos2Expenses.cashAmount += amt;
+          pos2Expenses.items.push(exp);
+        } else {
+          pos1Expenses.count += 1;
+          pos1Expenses.totalAmount += amt;
+          if (isCash) pos1Expenses.cashAmount += amt;
+          pos1Expenses.items.push(exp);
+        }
+      });
+    } catch (expErr) {
+      console.warn('[reportService] Expenses fetch notice for financial report:', expErr);
+    }
+
+    const totalCounterExpenses = pos1Expenses.totalAmount + pos2Expenses.totalAmount;
+    const totalCounterCashExpenses = pos1Expenses.cashAmount + pos2Expenses.cashAmount;
+    const netPhysicalDrawerCash = Math.max(0, cashReceived - totalCounterCashExpenses);
+
+    const expensesSummary = {
+      pos1: pos1Expenses,
+      pos2: pos2Expenses,
+      totalCount: pos1Expenses.count + pos2Expenses.count,
+      totalAmount: totalCounterExpenses,
+      totalCashAmount: totalCounterCashExpenses,
+      items: allFilteredExpenses,
+      netCashDrawer: {
+        grossCashInflow: cashReceived,
+        totalCashExpenses: totalCounterCashExpenses,
+        netCashRemaining: netPhysicalDrawerCash,
+      }
+    };
+
     const reportResult = {
       dateKey: reportDateKey,
       reportDateKey,
@@ -533,6 +596,7 @@ export const reportService = {
         serviceBreakdown,
       },
       attendance: attendanceSummary,
+      expenses: expensesSummary,
     };
 
     // Auto-store Shift Report Snapshot into IndexedDB reportSnapshots & localStorage & Firestore
@@ -584,6 +648,7 @@ export const reportService = {
       savedAt: new Date().toISOString(),
       metrics: reportData.metrics || {},
       attendance: reportData.attendance || null,
+      expenses: reportData.expenses || null,
       ordersCount: ordersCount,
       totalBills: ordersCount,
       totalGrossBilled: totalGrossBilled,
@@ -1249,6 +1314,40 @@ export const reportService = {
       const JSZip = JSZipModule.default || JSZipModule;
       const zip = new JSZip();
 
+      // Load expenses for this date
+      let dayExpenses = [];
+      try {
+        const { expenseService } = await import('./expenseService.js');
+        const allExp = await expenseService.getExpenses({ forceRefresh: false });
+        dayExpenses = (allExp || []).filter(e => {
+          const dStr = e.date || (e.createdAt ? e.createdAt.slice(0, 10) : '');
+          return dStr === dateKey;
+        });
+      } catch (e) {}
+
+      let pos1ExpAmt = 0;
+      let pos1ExpCount = 0;
+      let pos2ExpAmt = 0;
+      let pos2ExpCount = 0;
+      let totalExpCash = 0;
+
+      dayExpenses.forEach(exp => {
+        const amt = Number(exp.amount) || 0;
+        const isCash = String(exp.paymentMode || 'CASH').toUpperCase() === 'CASH';
+        if (isCash) totalExpCash += amt;
+        const bId = String(exp.branchId || '').toLowerCase();
+        const src = String(exp.source || '').toLowerCase();
+        if (bId.includes('counter-2') || bId.includes('pos-02') || src.includes('pos-02')) {
+          pos2ExpCount += 1;
+          pos2ExpAmt += amt;
+        } else {
+          pos1ExpCount += 1;
+          pos1ExpAmt += amt;
+        }
+      });
+
+      const netCashRemaining = Math.max(0, (dayGroup.cash || 0) - totalExpCash);
+
       // 1. Shift Statement HTML (Printable & High Definition)
       const shiftHtml = `<!DOCTYPE html>
 <html>
@@ -1302,6 +1401,50 @@ export const reportService = {
     </div>
   </div>
 
+  <!-- POS 1 & POS 2 COUNTER EXPENSES SUMMARY -->
+  <div style="margin-bottom: 24px;">
+    <h3 style="font-size: 13px; font-weight: 800; color: #0f172a; text-transform: uppercase; margin-bottom: 8px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px;">
+      🏪 POS 1 & POS 2 Counter Expenses & Cash Drawer
+    </h3>
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+      <div style="padding: 10px; border: 1px solid #bfdbfe; border-radius: 8px; background: #eff6ff;">
+        <div style="font-size: 10px; font-weight: bold; color: #1e40af; text-transform: uppercase;">POS-01 (Manikonda Main)</div>
+        <div style="font-size: 16px; font-weight: 800; color: #1e3a8a; margin-top: 2px;">₹${pos1ExpAmt.toFixed(2)}</div>
+        <div style="font-size: 10px; color: #64748b;">${pos1ExpCount} Bills Logged</div>
+      </div>
+      <div style="padding: 10px; border: 1px solid #c7d2fe; border-radius: 8px; background: #eef2ff;">
+        <div style="font-size: 10px; font-weight: bold; color: #3730a3; text-transform: uppercase;">POS-02 (Tolichowki Branch 1)</div>
+        <div style="font-size: 16px; font-weight: 800; color: #312e81; margin-top: 2px;">₹${pos2ExpAmt.toFixed(2)}</div>
+        <div style="font-size: 10px; color: #64748b;">${pos2ExpCount} Bills Logged</div>
+      </div>
+      <div style="padding: 10px; border: 1px solid #bbf7d0; border-radius: 8px; background: #f0fdf4;">
+        <div style="font-size: 10px; font-weight: bold; color: #166534; text-transform: uppercase;">💵 Net Physical Drawer Cash</div>
+        <div style="font-size: 16px; font-weight: 800; color: #14532d; margin-top: 2px;">₹${netCashRemaining.toFixed(2)}</div>
+        <div style="font-size: 10px; color: #16a34a;">Gross Cash ₹${(dayGroup.cash || 0).toFixed(2)} - Counter Cash ₹${totalExpCash.toFixed(2)}</div>
+      </div>
+    </div>
+
+    ${dayExpenses.length > 0 ? `
+    <table style="margin-top: 10px; font-size: 11px;">
+      <thead>
+        <tr><th>#</th><th>Counter</th><th>Time</th><th>Category / Description</th><th>Mode</th><th class="text-right">Amount</th></tr>
+      </thead>
+      <tbody>
+        ${dayExpenses.map((e, idx) => `
+        <tr>
+          <td>${idx + 1}</td>
+          <td><strong>${e.source || e.branchName || 'POS'}</strong></td>
+          <td>${e.time || (e.createdAt ? new Date(e.createdAt).toLocaleTimeString('en-IN') : '-')}</td>
+          <td>${e.title || e.categoryName}${e.notes ? ` (${e.notes})` : ''}</td>
+          <td>${e.paymentMode || 'CASH'}</td>
+          <td class="text-right font-bold">₹${(Number(e.amount) || 0).toFixed(2)}</td>
+        </tr>
+        `).join('')}
+      </tbody>
+    </table>
+    ` : ''}
+  </div>
+
   <table>
     <thead>
       <tr>
@@ -1339,7 +1482,7 @@ export const reportService = {
   <div class="footer">
     <strong>SHIFT RECONCILIATION & CASH DRAWER SIGN-OFF</strong><br>
     <span style="font-size: 12px; color: #475569;">
-      Cash Inflow: ₹${(dayGroup.cash || 0).toFixed(2)} | UPI / Digital: ₹${(dayGroup.upi || 0).toFixed(2)} | Card: ₹${(dayGroup.card || 0).toFixed(2)}
+      Gross Cash Inflow: ₹${(dayGroup.cash || 0).toFixed(2)} | Less Counter Expenses: ₹${totalExpCash.toFixed(2)} | Net Drawer Cash: ₹${netCashRemaining.toFixed(2)}
     </span><br><br>
     <div style="display: flex; justify-content: space-between; font-size: 12px; color: #64748b; margin-top: 12px;">
       <span>Staff Signature: _______________________</span>
@@ -1355,7 +1498,19 @@ export const reportService = {
       const csv = this.convertOrdersToCSV(orders);
       zip.file(`Daily-Sales-Ledger-${dateKey}.csv`, csv);
 
-      // 3. Subfolders "PDFs/" and "Invoices/" containing all individual bills of that day
+      // 3. Subfolder "Expenses/" containing all bill photos of that day
+      const expensesFolder = zip.folder('Expenses');
+      dayExpenses.forEach((exp, eIdx) => {
+        if (exp.receiptAttachmentUrl && typeof exp.receiptAttachmentUrl === 'string' && exp.receiptAttachmentUrl.startsWith('data:image')) {
+          const parts = exp.receiptAttachmentUrl.split(',');
+          if (parts.length > 1) {
+            const expName = `Expense_${exp.source || 'POS'}_${exp.id || eIdx + 1}.jpg`;
+            expensesFolder.file(expName, parts[1], { base64: true });
+          }
+        }
+      });
+
+      // 4. Subfolders "PDFs/" and "Invoices/" containing all individual bills of that day
       const pdfsFolder = zip.folder('PDFs');
       const invoicesFolder = zip.folder('Invoices');
       orders.forEach((o, idx) => {

@@ -369,7 +369,264 @@ export function generateDailyReportPDF(reportData) {
           .text(`${att.absentCount} Staff`, 430, y + 8);
       }
 
-      // --- FOOTER ---
+      // --- PAGE 1 FOOTER ---
+      doc
+        .fontSize(8)
+        .fillColor(subTextColor)
+        .text('Tech Wash Laundry Services • Certified Operations Audit • Page 1', 40, 785, { align: 'center' });
+
+      // ─────────────────────────────────────────────────────────────
+      // PAGE 2: SECTION 8 — POS 1 & POS 2 COUNTER EXPENSES & ATTACHED BILLS
+      // ─────────────────────────────────────────────────────────────
+      const expData = reportData.expenses || {
+        pos1: { count: 0, totalAmount: 0, cashAmount: 0, items: [] },
+        pos2: { count: 0, totalAmount: 0, cashAmount: 0, items: [] },
+        totalCount: 0,
+        totalAmount: 0,
+        totalCashAmount: 0,
+        items: [],
+        netCashDrawer: {
+          grossCashInflow: c1.cashReceived || 0,
+          totalCashExpenses: 0,
+          netCashRemaining: c1.cashReceived || 0,
+        }
+      };
+
+      doc.addPage({ size: 'A4', margin: 40 });
+      let p2Y = 40;
+
+      // Header Banner
+      doc.rect(40, p2Y, 515, 42).fill(primaryColor);
+      doc
+        .fillColor('#ffffff')
+        .fontSize(12)
+        .font('Helvetica-Bold')
+        .text('8. POS 1 & POS 2 COUNTER EXPENSES AUDIT & ATTACHED BILLS', 55, p2Y + 8);
+      doc
+        .fontSize(8)
+        .font('Helvetica')
+        .text(`Date: ${reportData.dateFormatted} | Certified Counter Operating Outflows, Cash Drawer Reconciliation & Attached Receipts`, 55, p2Y + 24);
+
+      p2Y += 52;
+
+      // Summary KPI Cards (3 Cards Across)
+      // Card 1: POS-01
+      doc.rect(40, p2Y, 165, 54).fillAndStroke('#eff6ff', '#93c5fd');
+      doc
+        .fillColor(primaryColor)
+        .fontSize(8.5)
+        .font('Helvetica-Bold')
+        .text('POS-01 (Manikonda Main)', 48, p2Y + 8)
+        .fillColor(textColor)
+        .fontSize(8)
+        .font('Helvetica')
+        .text(`Bills Logged: ${expData.pos1?.count || 0}`, 48, p2Y + 22)
+        .text(`Total Spent: Rs. ${(expData.pos1?.totalAmount || 0).toLocaleString('en-IN')}`, 48, p2Y + 32)
+        .font('Helvetica-Bold')
+        .text(`Cash Out: Rs. ${(expData.pos1?.cashAmount || 0).toLocaleString('en-IN')}`, 48, p2Y + 42);
+
+      // Card 2: POS-02
+      doc.rect(215, p2Y, 165, 54).fillAndStroke('#eff6ff', '#93c5fd');
+      doc
+        .fillColor(primaryColor)
+        .fontSize(8.5)
+        .font('Helvetica-Bold')
+        .text('POS-02 (Tolichowki Br-1)', 223, p2Y + 8)
+        .fillColor(textColor)
+        .fontSize(8)
+        .font('Helvetica')
+        .text(`Bills Logged: ${expData.pos2?.count || 0}`, 223, p2Y + 22)
+        .text(`Total Spent: Rs. ${(expData.pos2?.totalAmount || 0).toLocaleString('en-IN')}`, 223, p2Y + 32)
+        .font('Helvetica-Bold')
+        .text(`Cash Out: Rs. ${(expData.pos2?.cashAmount || 0).toLocaleString('en-IN')}`, 223, p2Y + 42);
+
+      // Card 3: Net Cash Drawer Reconciliation
+      const drawerCashRemaining = expData.netCashDrawer?.netCashRemaining !== undefined
+        ? expData.netCashDrawer.netCashRemaining
+        : Math.max(0, (c1.cashReceived || 0) - (expData.totalCashAmount || 0));
+
+      doc.rect(390, p2Y, 165, 54).fillAndStroke('#f0fdf4', '#86efac');
+      doc
+        .fillColor('#15803d')
+        .fontSize(8.5)
+        .font('Helvetica-Bold')
+        .text('Net Physical Cash Drawer', 398, p2Y + 8)
+        .fillColor(textColor)
+        .fontSize(8)
+        .font('Helvetica')
+        .text(`Gross Cash In: Rs. ${(c1.cashReceived || 0).toLocaleString('en-IN')}`, 398, p2Y + 22)
+        .text(`Less Counter Cash: -Rs. ${(expData.totalCashAmount || 0).toLocaleString('en-IN')}`, 398, p2Y + 32)
+        .fillColor('#15803d')
+        .font('Helvetica-Bold')
+        .text(`Net Drawer Cash: Rs. ${drawerCashRemaining.toLocaleString('en-IN')}`, 398, p2Y + 42);
+
+      p2Y += 64;
+
+      // Itemized Table
+      doc.rect(40, p2Y, 515, 16).fill(secondaryColor);
+      doc
+        .fillColor('#ffffff')
+        .fontSize(8)
+        .font('Helvetica-Bold')
+        .text('#', 46, p2Y + 4)
+        .text('Counter / POS', 60, p2Y + 4)
+        .text('Time', 145, p2Y + 4)
+        .text('Expense Description / Category', 190, p2Y + 4)
+        .text('Mode', 380, p2Y + 4)
+        .text('Bill Photo', 430, p2Y + 4)
+        .text('Amount', 490, p2Y + 4, { align: 'right' });
+
+      p2Y += 16;
+
+      const expenseItems = expData.items || [];
+      if (expenseItems.length === 0) {
+        doc.rect(40, p2Y, 515, 20).fillAndStroke('#ffffff', tableBorder);
+        doc
+          .fillColor(subTextColor)
+          .fontSize(8)
+          .font('Helvetica')
+          .text('No counter expenses logged for POS 1 or POS 2 on this date.', 55, p2Y + 6);
+        p2Y += 28;
+      } else {
+        expenseItems.forEach((exp, idx) => {
+          if (p2Y > 730) {
+            doc
+              .fontSize(8)
+              .fillColor(subTextColor)
+              .text('Tech Wash Laundry Services • Certified Operations Audit • Page 2', 40, 785, { align: 'center' });
+            doc.addPage({ size: 'A4', margin: 40 });
+            p2Y = 40;
+          }
+          const bg = idx % 2 === 0 ? '#f9fafb' : '#ffffff';
+          doc.rect(40, p2Y, 515, 18).fillAndStroke(bg, tableBorder);
+          const hasPhoto = Boolean(exp.receiptAttachmentUrl);
+          const time = exp.time || (exp.createdAt ? new Date(exp.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '-');
+          const desc = `${exp.title || exp.categoryName || 'Expense'}${exp.notes ? ` (${exp.notes})` : ''}`.slice(0, 40);
+
+          doc
+            .fillColor(textColor)
+            .fontSize(8)
+            .font('Helvetica')
+            .text(String(idx + 1), 46, p2Y + 4)
+            .text(exp.posLabel || exp.source || 'POS', 60, p2Y + 4)
+            .text(time, 145, p2Y + 4)
+            .text(desc, 190, p2Y + 4)
+            .text(String(exp.paymentMode || 'CASH').toUpperCase(), 380, p2Y + 4)
+            .text(hasPhoto ? '✓ ATTACHED' : 'No Bill', 430, p2Y + 4)
+            .font('Helvetica-Bold')
+            .text(`Rs. ${(Number(exp.amount) || 0).toLocaleString('en-IN')}`, 490, p2Y + 4, { align: 'right' });
+
+          p2Y += 18;
+        });
+
+        // Total Row
+        doc.rect(40, p2Y, 515, 18).fillAndStroke('#f0f9ff', secondaryColor);
+        doc
+          .fillColor(primaryColor)
+          .fontSize(8.5)
+          .font('Helvetica-Bold')
+          .text('TOTAL COUNTER EXPENSES (POS 1 + POS 2)', 55, p2Y + 4)
+          .text(`Rs. ${(expData.totalAmount || 0).toLocaleString('en-IN')}`, 490, p2Y + 4, { align: 'right' });
+
+        p2Y += 28;
+      }
+
+      // ─────────────────────────────────────────────────────────────
+      // ATTACHED BILL RECEIPTS (VISUAL PHOTO GALLERY AUDIT)
+      // ─────────────────────────────────────────────────────────────
+      const itemsWithBills = expenseItems.filter(e => e.receiptAttachmentUrl && typeof e.receiptAttachmentUrl === 'string');
+
+      if (itemsWithBills.length > 0) {
+        if (p2Y > 560) {
+          doc
+            .fontSize(8)
+            .fillColor(subTextColor)
+            .text('Tech Wash Laundry Services • Certified Operations Audit • Page 2', 40, 785, { align: 'center' });
+          doc.addPage({ size: 'A4', margin: 40 });
+          p2Y = 40;
+        }
+
+        doc
+          .fillColor(primaryColor)
+          .fontSize(11)
+          .font('Helvetica-Bold')
+          .text(`ATTACHED BILL RECEIPTS (${itemsWithBills.length} BILLS VERIFIED <= 50 KB)`, 40, p2Y);
+
+        p2Y += 16;
+
+        let imgCol = 0;
+        const colWidth = 248;
+        const colHeight = 165;
+
+        for (let i = 0; i < itemsWithBills.length; i++) {
+          const item = itemsWithBills[i];
+
+          // Check page break
+          if (p2Y + colHeight + 25 > 770 && imgCol === 0) {
+            doc
+              .fontSize(8)
+              .fillColor(subTextColor)
+              .text('Tech Wash Laundry Services • Certified Operations Audit • Attached Receipts', 40, 785, { align: 'center' });
+            doc.addPage({ size: 'A4', margin: 40 });
+            p2Y = 40;
+          }
+
+          const cardX = 40 + (imgCol * (colWidth + 19));
+          const cardY = p2Y;
+
+          // Box container
+          doc.rect(cardX, cardY, colWidth, colHeight).fillAndStroke('#ffffff', '#cbd5e1');
+
+          // Header strip for this bill
+          doc.rect(cardX, cardY, colWidth, 18).fill(primaryColor);
+          const billTitle = `${item.posLabel || item.source || 'POS'} — Rs. ${Number(item.amount || 0).toLocaleString('en-IN')} (${(item.title || item.categoryName || 'Bill').slice(0, 20)})`;
+          doc
+            .fillColor('#ffffff')
+            .fontSize(7.5)
+            .font('Helvetica-Bold')
+            .text(billTitle, cardX + 6, cardY + 5);
+
+          // Embed Compressed Bill Image
+          try {
+            const rawDataUrl = item.receiptAttachmentUrl;
+            let imgBuffer = null;
+            if (rawDataUrl.startsWith('data:image')) {
+              const parts = rawDataUrl.split(',');
+              if (parts.length > 1) {
+                imgBuffer = Buffer.from(parts[1], 'base64');
+              }
+            }
+            if (imgBuffer) {
+              doc.image(imgBuffer, cardX + 8, cardY + 22, {
+                fit: [colWidth - 16, colHeight - 40],
+                align: 'center',
+                valign: 'center',
+              });
+            } else {
+              doc.fillColor(subTextColor).fontSize(7.5).text('Bill photo attached on local storage', cardX + 20, cardY + 70);
+            }
+          } catch (imgRenderErr) {
+            console.warn('PDFKit bill image embed warning:', imgRenderErr.message);
+            doc.fillColor(subTextColor).fontSize(7.5).text('Bill photo attached on local storage', cardX + 20, cardY + 70);
+          }
+
+          // Verified Stamp at bottom of card
+          doc
+            .fillColor('#15803d')
+            .fontSize(6.5)
+            .font('Helvetica-Bold')
+            .text(`✓ CERTIFIED EXPENSE BILL (${item.receiptSizeKb ? `${item.receiptSizeKb} KB` : '<= 50 KB'})`, cardX + 6, cardY + colHeight - 12);
+
+          if (imgCol === 1 || i === itemsWithBills.length - 1) {
+            imgCol = 0;
+            p2Y += colHeight + 14;
+          } else {
+            imgCol = 1;
+          }
+        }
+      }
+
+      // --- FINAL FOOTER ---
       doc
         .fontSize(8)
         .fillColor(subTextColor)
