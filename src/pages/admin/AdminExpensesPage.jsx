@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useSearchParams, Link } from 'react-router-dom';
 import { 
   expenseService, 
   DEFAULT_EXPENSE_CONFIG,
@@ -58,7 +59,13 @@ import {
   Receipt,
   AlertTriangle,
   Lightbulb,
-  CheckCircle
+  CheckCircle,
+  Store,
+  Camera,
+  Mic,
+  ZoomIn,
+  Eye,
+  X
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -97,9 +104,9 @@ const YEARS = [2025, 2026, 2027, 2028];
 
 const BRANCH_OPTIONS = [
   { value: 'ALL', label: 'All 3 Branches & Counters (Consolidated)' },
-  { value: 'counter-1', label: 'Counter 1 — Main Branch (Shaikpet / Manikonda)' },
-  { value: 'counter-2', label: 'Counter 2 — Branch 1 (Tolichowki / OU Colony)' },
-  { value: 'counter-3', label: 'Counter 3 — Pick Up Point (Ambience Courtyard)' },
+  { value: 'counter-1', label: 'Counter 1 (POS 1) — Main Branch (Shaikpet / Manikonda)' },
+  { value: 'counter-2', label: 'Counter 2 (POS 2) — Branch 1 (Tolichowki / OU Colony)' },
+  { value: 'counter-3', label: 'Counter 3 (POS 3) — Pick Up Point (Ambience Courtyard)' },
 ];
 
 const PAYMENT_MODES = [
@@ -131,7 +138,18 @@ export const AdminExpensesPage = () => {
   const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth());
   const [selectedBranch, setSelectedBranch] = useState('ALL');
-  const [activeTab, setActiveTab] = useState('pnl'); // 'pnl' | 'analytics' | 'budgets' | 'recurring' | 'ledger' | 'categories'
+  const [activeTab, setActiveTab] = useState('pnl'); // 'pnl' | 'pos_counters' | 'ledger' | 'analytics' | 'budgets' | 'recurring' | 'categories'
+
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // All Raw System Expenses (for POS metrics & lifetime counters)
+  const [allRawExpenses, setAllRawExpenses] = useState([]);
+
+  // POS Counters Tab Filters & Viewing State
+  const [posFilter, setPosFilter] = useState('ALL'); // 'ALL' | 'counter-1' | 'counter-2'
+  const [posSearch, setPosSearch] = useState('');
+  const [posTimeFilter, setPosTimeFilter] = useState('ALL'); // 'ALL' | 'TODAY' | 'THIS_MONTH'
+  const [viewingBillModalData, setViewingBillModalData] = useState(null);
 
   // Financial Datasets
   const [pnlData, setPnlData] = useState(null);
@@ -293,6 +311,7 @@ export const AdminExpensesPage = () => {
       setPnlData(pnl);
       setYearlyTrends(yearly);
       setExpenses(allExp);
+      setAllRawExpenses(rawExpenses || []);
       setComparativePnL(compPnL);
       setBudgetVsActual(bVsA);
       setBudgetConfig(bCfg);
@@ -308,6 +327,16 @@ export const AdminExpensesPage = () => {
       setLoading(false);
     }
   }, [selectedYear, selectedMonth, selectedBranch]);
+
+  // Deep-link query parameter tab selector
+  useEffect(() => {
+    const tab = searchParams.get('tab') || searchParams.get('view');
+    if (tab === 'pos' || tab === 'pos_counters' || tab === 'pos-expenses' || tab === 'pos1' || tab === 'pos2') {
+      setActiveTab('pos_counters');
+      if (tab === 'pos1') setPosFilter('counter-1');
+      if (tab === 'pos2') setPosFilter('counter-2');
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     loadAllData();
@@ -330,6 +359,112 @@ export const AdminExpensesPage = () => {
       window.removeEventListener('techwash-new-order-placed', handleUpdate);
     };
   }, [loadAllData]);
+
+  // ─────────────────────────────────────────────────────────────
+  // POS 1 & POS 2 SPECIALIZED METRICS & ANALYTICS
+  // ─────────────────────────────────────────────────────────────
+  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const currentYear = useMemo(() => new Date().getFullYear(), []);
+  const currentMonth = useMemo(() => new Date().getMonth(), []);
+
+  const pos1Expenses = useMemo(() => {
+    return allRawExpenses.filter(e => 
+      e.branchId === 'counter-1' || 
+      e.source === 'TW-POS-01' || 
+      e.source === 'POS-1' || 
+      (e.isPosExpense && e.branchId === 'counter-1')
+    );
+  }, [allRawExpenses]);
+
+  const pos2Expenses = useMemo(() => {
+    return allRawExpenses.filter(e => 
+      e.branchId === 'counter-2' || 
+      e.source === 'TW-POS-02' || 
+      e.source === 'POS-2' || 
+      (e.isPosExpense && e.branchId === 'counter-2')
+    );
+  }, [allRawExpenses]);
+
+  const pos1TotalAmount = useMemo(() => {
+    return pos1Expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+  }, [pos1Expenses]);
+
+  const pos2TotalAmount = useMemo(() => {
+    return pos2Expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+  }, [pos2Expenses]);
+
+  const pos1TodayExpenses = useMemo(() => {
+    return pos1Expenses.filter(e => (e.date || (e.createdAt ? e.createdAt.split('T')[0] : '')) === todayStr);
+  }, [pos1Expenses, todayStr]);
+
+  const pos1TodayAmount = useMemo(() => {
+    return pos1TodayExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+  }, [pos1TodayExpenses]);
+
+  const pos2TodayExpenses = useMemo(() => {
+    return pos2Expenses.filter(e => (e.date || (e.createdAt ? e.createdAt.split('T')[0] : '')) === todayStr);
+  }, [pos2Expenses, todayStr]);
+
+  const pos2TodayAmount = useMemo(() => {
+    return pos2TodayExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+  }, [pos2TodayExpenses]);
+
+  const allPosExpenses = useMemo(() => {
+    return allRawExpenses.filter(e => 
+      e.isPosExpense || 
+      e.branchId === 'counter-1' || 
+      e.branchId === 'counter-2' || 
+      e.source === 'TW-POS-01' || 
+      e.source === 'TW-POS-02' ||
+      e.source === 'POS-1' ||
+      e.source === 'POS-2'
+    );
+  }, [allRawExpenses]);
+
+  const filteredPosList = useMemo(() => {
+    return allPosExpenses.filter(e => {
+      // 1. Branch/POS Filter
+      if (posFilter === 'counter-1') {
+        const isCounter1 = e.branchId === 'counter-1' || e.source === 'TW-POS-01' || e.source === 'POS-1';
+        if (!isCounter1) return false;
+      } else if (posFilter === 'counter-2') {
+        const isCounter2 = e.branchId === 'counter-2' || e.source === 'TW-POS-02' || e.source === 'POS-2';
+        if (!isCounter2) return false;
+      }
+
+      // 2. Time Filter
+      const expDate = e.date || (e.createdAt ? e.createdAt.split('T')[0] : '');
+      if (posTimeFilter === 'TODAY') {
+        if (expDate !== todayStr) return false;
+      } else if (posTimeFilter === 'THIS_MONTH') {
+        if (expDate) {
+          const [y, m] = expDate.split('-').map(Number);
+          if (y !== currentYear || (m - 1) !== currentMonth) return false;
+        }
+      }
+
+      // 3. Search Filter
+      if (posSearch.trim()) {
+        const q = posSearch.toLowerCase();
+        const matchTitle = (e.title || '').toLowerCase().includes(q);
+        const matchVendor = (e.vendorName || '').toLowerCase().includes(q);
+        const matchCat = (e.categoryName || '').toLowerCase().includes(q);
+        const matchNotes = (e.notes || '').toLowerCase().includes(q);
+        const matchAmt = String(e.amount || '').includes(q);
+        if (!matchTitle && !matchVendor && !matchCat && !matchNotes && !matchAmt) return false;
+      }
+
+      return true;
+    }).sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date));
+  }, [allPosExpenses, posFilter, posTimeFilter, posSearch, todayStr, currentYear, currentMonth]);
+
+  const filteredPosTotalAmount = useMemo(() => {
+    return filteredPosList.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+  }, [filteredPosList]);
+
+  const posBillsCount = useMemo(() => {
+    return filteredPosList.filter(e => Boolean(e.receiptAttachmentUrl)).length;
+  }, [filteredPosList]);
 
   // Combined all categories (Built-in + Custom, strictly deduplicated by ID)
   const allCategories = useMemo(() => {
@@ -828,14 +963,15 @@ export const AdminExpensesPage = () => {
         </div>
       )}
 
-      {/* ── 6 SPECIALIZED TABS ── */}
+      {/* ── 7 SPECIALIZED TABS ── */}
       <Tabs
         tabs={[
           { id: 'pnl', label: '📊 Executive P&L Matrix', icon: BarChart3 },
+          { id: 'pos_counters', label: `🏪 POS 1 & POS 2 (${pos1Expenses.length + pos2Expenses.length})`, icon: Store },
+          { id: 'ledger', label: `📝 Expense & GST Vault (${expenses.length})`, icon: Wallet },
           { id: 'analytics', label: '📈 Analytics & Charts', icon: TrendingUp },
           { id: 'budgets', label: `🎯 Budget Radar (${budgetVsActual?.overrunCount || 0} Overruns)`, icon: ShieldCheck },
           { id: 'recurring', label: `🔁 Recurring Overheads (${recurringRules.length})`, icon: RotateCcw },
-          { id: 'ledger', label: `📝 Expense & GST Vault (${expenses.length})`, icon: Wallet },
           { id: 'categories', label: `⚙️ 11 Cost Drivers CMS (${allCategories.length})`, icon: Sliders },
         ]}
         activeTab={activeTab}
@@ -1326,7 +1462,435 @@ export const AdminExpensesPage = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 2: INTERACTIVE ANALYTICS & CHARTS                                     */}
+      {/* TAB 2: IN-STORE POS 1 & POS 2 EXPENSES & PETTY CASH                       */}
+      {/* ========================================================================= */}
+      {activeTab === 'pos_counters' && (
+        <div className="space-y-6">
+
+          {/* Header Banner & Quick Machine Links */}
+          <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border border-slate-700/60 shadow-xl text-white flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500/20 border border-orange-500/40 text-orange-400 text-xs font-bold uppercase tracking-wider">
+                  <Store className="w-3.5 h-3.5" />
+                  <span>Physical Store Counter Expenses</span>
+                </span>
+                <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-xs font-mono font-bold">
+                  ✓ Mandatory Bills ≤ 50 KB
+                </span>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-black font-display tracking-tight text-white">
+                POS 1 &amp; POS 2 Counter Petty Cash Ledger
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
+                Live stream of staff tea, delivery bike fuel, emergency detergents, and store consumables recorded at physical counter billing machines with voice speech-to-text and mandatory compressed bill photos.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              <Link
+                to="/billing/counter-1?view=expenses"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3.5 py-2 rounded-xl bg-orange-500 hover:bg-orange-400 text-slate-950 text-xs font-bold transition flex items-center gap-2 shadow-lg shadow-orange-500/20"
+              >
+                <span>POS 1 Machine</span>
+                <span className="px-1.5 py-0.2 rounded bg-black/20 text-[10px] font-mono">TW-POS-01</span>
+              </Link>
+              <Link
+                to="/billing/counter-2?view=expenses"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition flex items-center gap-2 shadow-lg shadow-blue-600/20"
+              >
+                <span>POS 2 Machine</span>
+                <span className="px-1.5 py-0.2 rounded bg-black/20 text-[10px] font-mono">TW-POS-02</span>
+              </Link>
+            </div>
+          </div>
+
+          {/* 3 Executive KPI Counter Cards (POS 1, POS 2 & Consolidated) */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            
+            {/* Card 1: POS 1 (Counter 1 - Manikonda / Shaikpet) */}
+            <div 
+              onClick={() => setPosFilter(posFilter === 'counter-1' ? 'ALL' : 'counter-1')}
+              className={`p-5 sm:p-6 rounded-3xl bg-white border transition-all cursor-pointer shadow-sm hover:shadow-md relative overflow-hidden group ${
+                posFilter === 'counter-1' 
+                  ? 'border-orange-500 ring-2 ring-orange-500/20 bg-orange-50/10' 
+                  : 'border-slate-200 hover:border-orange-300'
+              }`}
+            >
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-1 rounded-lg bg-orange-100 text-orange-800 border border-orange-200 font-mono text-xs font-black">
+                    TW-POS-01
+                  </span>
+                  <span className="text-xs font-bold text-slate-800">POS 1 Counter</span>
+                </div>
+                <span className="text-[11px] font-bold text-orange-600 group-hover:underline">
+                  {posFilter === 'counter-1' ? '✓ Showing Only' : 'Filter POS 1'}
+                </span>
+              </div>
+
+              <div className="pt-4 space-y-3">
+                <div>
+                  <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    Main Branch (Shaikpet / Manikonda)
+                  </h3>
+                  <div className="text-2xl sm:text-3xl font-black font-display text-slate-900 mt-1">
+                    {formatCurrency(pos1TotalAmount)}
+                  </div>
+                  <div className="text-xs text-slate-500 mt-0.5">
+                    <strong>{pos1Expenses.length}</strong> total expense entries recorded
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-orange-50 border border-orange-100 flex items-center justify-between text-xs">
+                  <div>
+                    <span className="text-orange-900 font-bold block">Today's Shift Spend</span>
+                    <span className="text-[11px] text-orange-700">{pos1TodayExpenses.length} expenses today</span>
+                  </div>
+                  <span className="font-mono font-black text-rose-600 text-sm">
+                    {formatCurrency(pos1TodayAmount)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Card 2: POS 2 (Counter 2 - Tolichowki / OU Colony) */}
+            <div 
+              onClick={() => setPosFilter(posFilter === 'counter-2' ? 'ALL' : 'counter-2')}
+              className={`p-5 sm:p-6 rounded-3xl bg-white border transition-all cursor-pointer shadow-sm hover:shadow-md relative overflow-hidden group ${
+                posFilter === 'counter-2' 
+                  ? 'border-blue-500 ring-2 ring-blue-500/20 bg-blue-50/10' 
+                  : 'border-slate-200 hover:border-blue-300'
+              }`}
+            >
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-1 rounded-lg bg-blue-100 text-blue-800 border border-blue-200 font-mono text-xs font-black">
+                    TW-POS-02
+                  </span>
+                  <span className="text-xs font-bold text-slate-800">POS 2 Counter</span>
+                </div>
+                <span className="text-[11px] font-bold text-blue-600 group-hover:underline">
+                  {posFilter === 'counter-2' ? '✓ Showing Only' : 'Filter POS 2'}
+                </span>
+              </div>
+
+              <div className="pt-4 space-y-3">
+                <div>
+                  <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    Branch 1 (Tolichowki / OU Colony)
+                  </h3>
+                  <div className="text-2xl sm:text-3xl font-black font-display text-slate-900 mt-1">
+                    {formatCurrency(pos2TotalAmount)}
+                  </div>
+                  <div className="text-xs text-slate-500 mt-0.5">
+                    <strong>{pos2Expenses.length}</strong> total expense entries recorded
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-between text-xs">
+                  <div>
+                    <span className="text-blue-900 font-bold block">Today's Shift Spend</span>
+                    <span className="text-[11px] text-blue-700">{pos2TodayExpenses.length} expenses today</span>
+                  </div>
+                  <span className="font-mono font-black text-rose-600 text-sm">
+                    {formatCurrency(pos2TodayAmount)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Card 3: Combined In-Store Total */}
+            <div className="p-5 sm:p-6 rounded-3xl bg-slate-900 text-white border border-slate-800 shadow-sm space-y-3">
+              <div className="flex items-center justify-between pb-3 border-b border-white/10">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                  Total POS Counter Outflow
+                </span>
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-bold font-mono">
+                  {posBillsCount} Bills Attached
+                </span>
+              </div>
+
+              <div>
+                <div className="text-2xl sm:text-3xl font-black font-display text-white mt-1">
+                  {formatCurrency(pos1TotalAmount + pos2TotalAmount)}
+                </div>
+                <div className="text-xs text-slate-400 mt-0.5">
+                  <strong>{pos1Expenses.length + pos2Expenses.length}</strong> combined expenses across all physical counters
+                </div>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between text-xs">
+                <div>
+                  <span className="text-slate-300 font-bold block">Combined Today</span>
+                  <span className="text-[11px] text-slate-400">
+                    {pos1TodayExpenses.length + pos2TodayExpenses.length} entries today
+                  </span>
+                </div>
+                <span className="font-mono font-black text-rose-400 text-sm">
+                  {formatCurrency(pos1TodayAmount + pos2TodayAmount)}
+                </span>
+              </div>
+            </div>
+
+          </div>
+
+          {/* Filter Bar & Search */}
+          <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm flex flex-col md:flex-row items-center justify-between gap-3">
+            
+            {/* Terminal Filter Segmented Buttons */}
+            <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-100 border border-slate-200 text-xs font-bold w-full md:w-auto">
+              <button
+                type="button"
+                onClick={() => setPosFilter('ALL')}
+                className={`flex-1 md:flex-none px-3.5 py-1.5 rounded-lg transition ${
+                  posFilter === 'ALL'
+                    ? 'bg-white text-slate-900 shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                All POS ({allPosExpenses.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setPosFilter('counter-1')}
+                className={`flex-1 md:flex-none px-3.5 py-1.5 rounded-lg transition flex items-center justify-center gap-1.5 ${
+                  posFilter === 'counter-1'
+                    ? 'bg-orange-500 text-white shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <span>POS 1 (Manikonda)</span>
+                <span className="px-1.5 py-0.2 rounded-full bg-black/20 text-[10px] font-mono">
+                  {pos1Expenses.length}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPosFilter('counter-2')}
+                className={`flex-1 md:flex-none px-3.5 py-1.5 rounded-lg transition flex items-center justify-center gap-1.5 ${
+                  posFilter === 'counter-2'
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <span>POS 2 (Tolichowki)</span>
+                <span className="px-1.5 py-0.2 rounded-full bg-black/20 text-[10px] font-mono">
+                  {pos2Expenses.length}
+                </span>
+              </button>
+            </div>
+
+            {/* Time Filter & Search Input */}
+            <div className="flex items-center gap-2 w-full md:w-auto">
+              <select
+                value={posTimeFilter}
+                onChange={(e) => setPosTimeFilter(e.target.value)}
+                className="px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 outline-none cursor-pointer"
+              >
+                <option value="ALL">All Time</option>
+                <option value="TODAY">Today's Shift Only</option>
+                <option value="THIS_MONTH">This Month</option>
+              </select>
+
+              <div className="relative flex-1 md:w-64">
+                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search reason, vendor, amount..."
+                  value={posSearch}
+                  onChange={(e) => setPosSearch(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium outline-none focus:border-orange-500"
+                />
+              </div>
+            </div>
+
+          </div>
+
+          {/* POS Expenses Table */}
+          <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-3">
+            <div className="flex items-center justify-between text-xs text-slate-500 border-b border-slate-100 pb-2">
+              <span>
+                Showing <strong>{filteredPosList.length}</strong> POS expenses
+                {posFilter !== 'ALL' && ` for ${posFilter === 'counter-1' ? 'POS 1 (Manikonda)' : 'POS 2 (Tolichowki)'}`}
+              </span>
+              <span>
+                Total: <strong className="text-rose-600 font-mono text-sm">{formatCurrency(filteredPosTotalAmount)}</strong>
+              </span>
+            </div>
+
+            {filteredPosList.length === 0 ? (
+              <div className="p-12 text-center text-slate-400 text-xs space-y-2">
+                <Store className="w-10 h-10 mx-auto text-slate-300" />
+                <p className="font-bold text-slate-700">No POS expenses match your filter.</p>
+                <p className="text-[11px] text-slate-400">
+                  Open the POS billing terminal at <strong>/billing/counter-1</strong> or <strong>/billing/counter-2</strong> to log counter expenses.
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-600 uppercase">
+                      <th className="p-3">Date &amp; Time</th>
+                      <th className="p-3">Counter Machine</th>
+                      <th className="p-3">Reason / Description</th>
+                      <th className="p-3">Category</th>
+                      <th className="p-3">Payment</th>
+                      <th className="p-3 text-right">Amount (₹)</th>
+                      <th className="p-3 text-center">Mandatory Bill Photo (≤50KB)</th>
+                      <th className="p-3 text-center">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-medium">
+                    {filteredPosList.map((exp) => {
+                      const isCounter1 = exp.branchId === 'counter-1' || exp.source === 'TW-POS-01' || exp.source === 'POS-1';
+                      return (
+                        <tr key={exp.id} className="hover:bg-slate-50/70 transition-colors">
+                          
+                          {/* Date & Time */}
+                          <td className="p-3 font-mono text-slate-600 whitespace-nowrap">
+                            <div className="font-bold text-slate-900">{exp.date}</div>
+                            <div className="text-[10px] text-slate-400">{exp.time || (exp.createdAt ? new Date(exp.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '')}</div>
+                          </td>
+
+                          {/* Machine Badge */}
+                          <td className="p-3 whitespace-nowrap">
+                            {isCounter1 ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-orange-100 text-orange-800 border border-orange-200 font-mono text-xs font-bold">
+                                <span>TW-POS-01</span>
+                                <span className="text-[10px] text-orange-700">(POS 1)</span>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-100 text-blue-800 border border-blue-200 font-mono text-xs font-bold">
+                                <span>TW-POS-02</span>
+                                <span className="text-[10px] text-blue-700">(POS 2)</span>
+                              </span>
+                            )}
+                          </td>
+
+                          {/* Reason & Vendor */}
+                          <td className="p-3">
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-slate-900">{exp.title}</span>
+                              {exp.voiceRecorded && (
+                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold" title="Spoken via voice microphone">
+                                  🎙️ Voice
+                                </span>
+                              )}
+                            </div>
+                            {exp.vendorName && exp.vendorName !== 'Counter Expense' && (
+                              <div className="text-[10px] text-slate-500 font-medium mt-0.5">
+                                Paid to: <strong className="text-slate-700">{exp.vendorName}</strong>
+                              </div>
+                            )}
+                          </td>
+
+                          {/* Category */}
+                          <td className="p-3 whitespace-nowrap">
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 font-bold text-slate-800 text-[11px]">
+                              <span>{exp.icon || '💸'}</span>
+                              <span>{exp.categoryName || 'General'}</span>
+                            </span>
+                          </td>
+
+                          {/* Payment */}
+                          <td className="p-3 whitespace-nowrap">
+                            <span className="text-[11px] font-medium text-slate-600">
+                              {exp.paymentMode === 'CASH' ? '💵 Cash Drawer' : '📱 UPI / QR'}
+                            </span>
+                          </td>
+
+                          {/* Amount */}
+                          <td className="p-3 text-right font-mono font-black text-rose-600 text-sm whitespace-nowrap">
+                            {formatCurrency(exp.amount)}
+                          </td>
+
+                          {/* Mandatory Bill Photo */}
+                          <td className="p-3 text-center whitespace-nowrap">
+                            {exp.receiptAttachmentUrl ? (
+                              <button
+                                type="button"
+                                onClick={() => setViewingBillModalData({
+                                  url: exp.receiptAttachmentUrl,
+                                  title: exp.title,
+                                  amount: exp.amount,
+                                  branch: isCounter1 ? 'POS 1 (Shaikpet / Manikonda)' : 'POS 2 (Tolichowki)',
+                                  date: exp.date,
+                                  time: exp.time,
+                                  size: exp.receiptSizeKb
+                                })}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-bold transition shadow-xs cursor-pointer group"
+                                title="Click to view full receipt photo"
+                              >
+                                <Camera className="w-3.5 h-3.5 text-emerald-600 group-hover:scale-110 transition-transform" />
+                                <span>View Bill</span>
+                                {exp.receiptSizeKb && (
+                                  <span className="font-mono text-[10px] text-emerald-600">
+                                    ({exp.receiptSizeKb} KB)
+                                  </span>
+                                )}
+                              </button>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 text-[10px] font-bold">
+                                ⚠️ No Photo
+                              </span>
+                            )}
+                          </td>
+
+                          {/* Actions */}
+                          <td className="p-3 text-center whitespace-nowrap">
+                            <div className="flex items-center justify-center gap-1">
+                              {exp.receiptAttachmentUrl && (
+                                <button
+                                  type="button"
+                                  onClick={() => setViewingBillModalData({
+                                    url: exp.receiptAttachmentUrl,
+                                    title: exp.title,
+                                    amount: exp.amount,
+                                    branch: isCounter1 ? 'POS 1 (Shaikpet / Manikonda)' : 'POS 2 (Tolichowki)',
+                                    date: exp.date,
+                                    time: exp.time,
+                                    size: exp.receiptSizeKb
+                                  })}
+                                  className="p-1.5 text-slate-400 hover:text-orange-600 rounded-lg hover:bg-orange-50 transition"
+                                  title="View Full Bill Image"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setDeleteTarget(exp);
+                                  setDeleteTargetType('expense');
+                                }}
+                                className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition"
+                                title="Delete Expense"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 3: INTERACTIVE ANALYTICS & CHARTS                                     */}
       {/* ========================================================================= */}
       {activeTab === 'analytics' && (
         <div className="space-y-6">
@@ -1946,6 +2510,7 @@ export const AdminExpensesPage = () => {
                       <th className="p-3">GST & ITC</th>
                       <th className="p-3">Payment</th>
                       <th className="p-3 text-right">Amount (₹)</th>
+                      <th className="p-3 text-center">Receipt Bill (≤50KB)</th>
                       <th className="p-3 text-center">Actions</th>
                     </tr>
                   </thead>
@@ -1999,6 +2564,30 @@ export const AdminExpensesPage = () => {
                         </td>
                         <td className="p-3 text-right font-mono font-black text-rose-600 text-sm whitespace-nowrap">
                           {formatCurrency(exp.amount)}
+                        </td>
+                        <td className="p-3 text-center whitespace-nowrap">
+                          {exp.receiptAttachmentUrl ? (
+                            <button
+                              type="button"
+                              onClick={() => setViewingBillModalData({
+                                url: exp.receiptAttachmentUrl,
+                                title: exp.title,
+                                amount: exp.amount,
+                                branch: BRANCH_OPTIONS.find(b => b.value === exp.branchId)?.label || exp.branchName || exp.branchId,
+                                date: exp.date,
+                                time: exp.time,
+                                size: exp.receiptSizeKb
+                              })}
+                              className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-[10px] font-bold transition shadow-xs cursor-pointer"
+                              title="View bill receipt photo (<= 50 KB)"
+                            >
+                              <Receipt className="w-3 h-3 text-emerald-600" />
+                              <span>View Bill</span>
+                              {exp.receiptSizeKb && <span className="font-mono text-[9px] text-emerald-600">({exp.receiptSizeKb}KB)</span>}
+                            </button>
+                          ) : (
+                            <span className="text-slate-300 text-[10px]">—</span>
+                          )}
                         </td>
                         <td className="p-3 text-center whitespace-nowrap">
                           <div className="flex items-center justify-center gap-1">
@@ -2750,6 +3339,88 @@ export const AdminExpensesPage = () => {
           selectedBranch={selectedBranch}
           onBranchChange={(bId) => setSelectedBranch(bId)}
         />
+      )}
+
+      {/* ========================================================================= */}
+      {/* FULLSCREEN EXPENSE BILL / RECEIPT PHOTO VIEWER MODAL                      */}
+      {/* ========================================================================= */}
+      {viewingBillModalData && (
+        <div 
+          onClick={() => setViewingBillModalData(null)}
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 animate-fade-in"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="relative max-w-2xl w-full max-h-[92vh] bg-slate-900 border border-white/20 rounded-3xl overflow-hidden shadow-2xl flex flex-col"
+          >
+            {/* Header */}
+            <div className="p-4 border-b border-white/10 flex items-center justify-between bg-slate-950">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-orange-500/20 text-orange-400">
+                  <Receipt className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white leading-tight">
+                    {viewingBillModalData.title || 'Expense Bill Receipt'}
+                  </h3>
+                  <div className="flex items-center gap-2 text-[11px] text-slate-400 font-mono mt-0.5">
+                    <span>{viewingBillModalData.branch}</span>
+                    <span>•</span>
+                    <span className="text-rose-400 font-bold">{formatCurrency(viewingBillModalData.amount)}</span>
+                    {viewingBillModalData.size && (
+                      <>
+                        <span>•</span>
+                        <span className="text-emerald-400 font-bold">{viewingBillModalData.size} KB (≤ 50 KB)</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setViewingBillModalData(null)}
+                className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-white/10 transition"
+                title="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Photo Container */}
+            <div className="p-4 overflow-auto flex items-center justify-center bg-black/40 min-h-[300px] max-h-[65vh]">
+              <img
+                src={viewingBillModalData.url}
+                alt="Expense Bill Receipt"
+                className="max-h-[60vh] w-auto object-contain rounded-2xl shadow-xl border border-white/10"
+              />
+            </div>
+
+            {/* Footer */}
+            <div className="p-3.5 border-t border-white/10 bg-slate-950 flex items-center justify-between">
+              <span className="text-[11px] text-slate-400">
+                Verified compressed bill photo
+              </span>
+              <div className="flex items-center gap-2">
+                <a
+                  href={viewingBillModalData.url}
+                  download={`expense-bill-${viewingBillModalData.amount || 'doc'}.jpg`}
+                  className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-bold transition flex items-center gap-1.5"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Download</span>
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setViewingBillModalData(null)}
+                  className="px-4 py-1.5 rounded-xl bg-orange-500 hover:bg-orange-400 text-slate-950 text-xs font-bold transition"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
     </div>

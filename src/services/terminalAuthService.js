@@ -75,9 +75,9 @@ export const terminalAuthService = {
   normalizeTerminalId(input) {
     if (!input) return 'counter-1';
     const clean = String(input).trim().toLowerCase();
-    if (clean === '1' || clean === 'counter-1' || clean === 'counter1' || clean === 'machine-1' || clean === 'terminal-1') return 'counter-1';
-    if (clean === '2' || clean === 'counter-2' || clean === 'counter2' || clean === 'machine-2' || clean === 'terminal-2') return 'counter-2';
-    if (clean === '3' || clean === 'counter-3' || clean === 'counter3' || clean === 'machine-3' || clean === 'terminal-3') return 'counter-3';
+    if (clean === '1' || clean === 'counter-1' || clean === 'counter1' || clean === 'machine-1' || clean === 'terminal-1' || clean === 'pos1' || clean === 'pos-1' || clean === 'pos_1' || clean === 'tw-pos-01' || clean === 'tw-pos-1') return 'counter-1';
+    if (clean === '2' || clean === 'counter-2' || clean === 'counter2' || clean === 'machine-2' || clean === 'terminal-2' || clean === 'pos2' || clean === 'pos-2' || clean === 'pos_2' || clean === 'tw-pos-02' || clean === 'tw-pos-2') return 'counter-2';
+    if (clean === '3' || clean === 'counter-3' || clean === 'counter3' || clean === 'machine-3' || clean === 'terminal-3' || clean === 'pos3' || clean === 'pos-3' || clean === 'pos_3' || clean === 'tw-pos-03' || clean === 'tw-pos-3') return 'counter-3';
     return clean;
   },
 

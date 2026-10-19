@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { orderService, getOrderBranchKey } from '../../services/orderService';
+import { expenseService } from '../../services/expenseService';
 import { formatCurrency } from '../../utils/formatters';
 import { 
   ShoppingBag,
   Truck, 
   Wallet, 
+  Receipt,
   ExternalLink 
 } from 'lucide-react';
 
@@ -15,8 +17,9 @@ import {
  * 1. Orders: In-POS Order Management Hub (live active orders count & direct URL)
  * 2. Tasks: In-POS Task & Delivery Dispatcher (live task count & direct URL)
  * 3. Balances: In-POS Balance Due Collection & Tracker (live due count & direct URL)
+ * 4. Expenses: In-POS Counter Expense & Petty Cash Tracker (live count & direct URL)
  * 
- * Supports full browser URL deep-linking (?view=orders, ?view=tasks, ?view=balances),
+ * Supports full browser URL deep-linking (?view=orders, ?view=tasks, ?view=balances, ?view=expenses),
  * bookmarking, middle-click / new tab support, and native in-POS modal opening
  * without redirecting to the admin panel or losing active cart state.
  */
@@ -27,7 +30,8 @@ export const PosQuickNavButtons = ({
   branchId = null,
   onOpenOrders = null,
   onOpenTasks = null,
-  onOpenBalances = null
+  onOpenBalances = null,
+  onOpenExpenses = null
 }) => {
   const [stats, setStats] = useState({
     totalOrders: 0,
@@ -40,6 +44,8 @@ export const PosQuickNavButtons = ({
     overdue: 0,
     totalBalances: 0,
     totalDueAmount: 0,
+    todayExpensesCount: 0,
+    todayExpensesAmount: 0,
     loading: true,
   });
 
@@ -105,6 +111,23 @@ export const PosQuickNavButtons = ({
         return sum + balance;
       }, 0);
 
+      // 4. Counter Expenses Metrics
+      let todayExpensesCount = 0;
+      let todayExpensesAmount = 0;
+      try {
+        const todayStr = new Date().toISOString().split('T')[0];
+        const allExpenses = await expenseService.getExpenses({ branchFilter: branchId || 'ALL' });
+        const todayBranchExpenses = (allExpenses || []).filter(e => {
+          const d = e.date || (e.createdAt ? e.createdAt.split('T')[0] : '');
+          const matchesBranch = !branchId || branchId === 'ALL' || e.branchId === branchId;
+          return d === todayStr && matchesBranch;
+        });
+        todayExpensesCount = todayBranchExpenses.length;
+        todayExpensesAmount = todayBranchExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+      } catch (expErr) {
+        console.warn('Could not load branch expenses for POS:', expErr);
+      }
+
       setStats({
         totalOrders,
         activeOrders,
@@ -116,6 +139,8 @@ export const PosQuickNavButtons = ({
         overdue,
         totalBalances,
         totalDueAmount,
+        todayExpensesCount,
+        todayExpensesAmount,
         loading: false,
       });
     } catch (err) {
@@ -129,14 +154,15 @@ export const PosQuickNavButtons = ({
     // 1. Subscribe to new orders via orderService real-time engine
     const unsubOrders = orderService.subscribeToNewOrders(loadStats);
 
-    // 2. Listen to custom window events triggered when orders or payments are modified
+    // 2. Listen to custom window events triggered when orders or payments or expenses are modified
     const eventNames = [
       'techwash-order-updated',
       'techwash-order-payment-updated',
       'techwash-orders-updated',
       'techwash-new-order-placed',
       'techwash-worker-refresh-tasks',
-      'techwash-order-deleted'
+      'techwash-order-deleted',
+      'techwash-expenses-updated'
     ];
 
     const handleEvent = () => loadStats();
@@ -163,6 +189,12 @@ export const PosQuickNavButtons = ({
   const balancesButtonClasses = `group relative px-2.5 sm:px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer border select-none ${
     stats.totalBalances > 0
       ? 'bg-rose-500/15 hover:bg-rose-500/25 border-rose-500/40 text-rose-300 shadow-sm shadow-rose-500/10'
+      : 'bg-slate-800/80 hover:bg-slate-700/80 border-slate-700 text-slate-300'
+  }`;
+
+  const expensesButtonClasses = `group relative px-2.5 sm:px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer border select-none ${
+    stats.todayExpensesCount > 0
+      ? 'bg-purple-500/15 hover:bg-purple-500/25 border-purple-500/40 text-purple-200 shadow-sm shadow-purple-500/10'
       : 'bg-slate-800/80 hover:bg-slate-700/80 border-slate-700 text-slate-300'
   }`;
 
@@ -365,6 +397,71 @@ export const PosQuickNavButtons = ({
             }`}
           >
             {stats.loading ? '…' : stats.totalBalances}
+          </span>
+          <ExternalLink className="w-2.5 h-2.5 opacity-40 group-hover:opacity-100 transition-opacity hidden md:inline" />
+        </Link>
+      )}
+
+      {/* ───────────────────────────────────────────────────────────── */}
+      {/* 4. EXPENSES BUTTON (WITH LIVE TODAY'S COUNT & DIRECT MODAL)  */}
+      {/* ───────────────────────────────────────────────────────────── */}
+      {onOpenExpenses ? (
+        <a
+          href={getButtonUrl('expenses')}
+          onClick={(e) => handleLinkClick(e, onOpenExpenses)}
+          className={expensesButtonClasses}
+          title={`In-POS Expenses: ${stats.todayExpensesCount} expenses recorded today (Total: ${formatCurrency(stats.todayExpensesAmount)})`}
+        >
+          <div className="relative">
+            <Receipt className={`w-3.5 h-3.5 transition-transform group-hover:scale-110 ${
+              stats.todayExpensesCount > 0 ? 'text-purple-400' : 'text-slate-400'
+            }`} />
+            {stats.todayExpensesCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-purple-400 ring-2 ring-slate-900 animate-pulse" />
+            )}
+          </div>
+
+          <span className={`text-xs font-bold ${showLabelOnMobile ? 'inline' : 'hidden sm:inline'}`}>
+            Expenses
+          </span>
+
+          {/* Live Notification Badge Counter */}
+          <span
+            className={`px-1.5 py-0.2 min-w-[20px] rounded-full text-[10px] font-mono font-black text-center shadow-xs transition-all ${
+              stats.todayExpensesCount > 0
+                ? 'bg-purple-500 text-white ring-1 ring-purple-400/50'
+                : 'bg-slate-700/60 text-slate-300'
+            }`}
+          >
+            {stats.loading ? '…' : stats.todayExpensesCount}
+          </span>
+        </a>
+      ) : (
+        <Link
+          to="/admin/expenses"
+          target="_blank"
+          rel="noopener noreferrer"
+          className={expensesButtonClasses}
+          title={`Expenses Tracker: ${stats.todayExpensesCount} recorded today (${formatCurrency(stats.todayExpensesAmount)})`}
+        >
+          <div className="relative">
+            <Receipt className={`w-3.5 h-3.5 transition-transform group-hover:scale-110 ${
+              stats.todayExpensesCount > 0 ? 'text-purple-400' : 'text-slate-400'
+            }`} />
+          </div>
+
+          <span className={`text-xs font-bold ${showLabelOnMobile ? 'inline' : 'hidden sm:inline'}`}>
+            Expenses
+          </span>
+
+          <span
+            className={`px-1.5 py-0.2 min-w-[20px] rounded-full text-[10px] font-mono font-black text-center shadow-xs transition-all ${
+              stats.todayExpensesCount > 0
+                ? 'bg-purple-500 text-white ring-1 ring-purple-400/50'
+                : 'bg-slate-700/60 text-slate-300'
+            }`}
+          >
+            {stats.loading ? '…' : stats.todayExpensesCount}
           </span>
           <ExternalLink className="w-2.5 h-2.5 opacity-40 group-hover:opacity-100 transition-opacity hidden md:inline" />
         </Link>

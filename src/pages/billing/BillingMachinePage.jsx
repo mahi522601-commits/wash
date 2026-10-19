@@ -27,6 +27,7 @@ import { PosQuickNavButtons } from '../../components/billing/PosQuickNavButtons'
 import { PosOrdersModal } from '../../components/billing/PosOrdersModal';
 import { PosTasksModal } from '../../components/billing/PosTasksModal';
 import { PosBalanceDueModal } from '../../components/billing/PosBalanceDueModal';
+import { PosExpensesModal } from '../../components/billing/PosExpensesModal';
 import { PosNotificationCenter } from '../../components/billing/PosNotificationCenter';
 import { 
   pricingService, 
@@ -284,10 +285,11 @@ export const BillingMachinePage = () => {
   const [shiftReportData, setShiftReportData] = useState(null);
   const [isLoadingReport, setIsLoadingReport] = useState(false);
 
-  // In-POS Orders, Tasks & Balance Due Modals (Deep-Linked via URL query parameters)
+  // In-POS Orders, Tasks, Balance Due & Expenses Modals (Deep-Linked via URL query parameters)
   const [isOrdersModalOpen, setIsOrdersModalOpen] = useState(false);
   const [isTasksModalOpen, setIsTasksModalOpen] = useState(false);
   const [isBalancesModalOpen, setIsBalancesModalOpen] = useState(false);
+  const [isExpensesModalOpen, setIsExpensesModalOpen] = useState(false);
 
   useEffect(() => {
     const view = searchParams.get('view') || searchParams.get('tab') || searchParams.get('modal');
@@ -295,14 +297,22 @@ export const BillingMachinePage = () => {
       setIsOrdersModalOpen(true);
       setIsTasksModalOpen(false);
       setIsBalancesModalOpen(false);
+      setIsExpensesModalOpen(false);
     } else if (view === 'tasks' || view === 'task') {
       setIsTasksModalOpen(true);
       setIsOrdersModalOpen(false);
       setIsBalancesModalOpen(false);
+      setIsExpensesModalOpen(false);
     } else if (view === 'balances' || view === 'balance' || view === 'due') {
       setIsBalancesModalOpen(true);
       setIsOrdersModalOpen(false);
       setIsTasksModalOpen(false);
+      setIsExpensesModalOpen(false);
+    } else if (view === 'expenses' || view === 'expense') {
+      setIsExpensesModalOpen(true);
+      setIsOrdersModalOpen(false);
+      setIsTasksModalOpen(false);
+      setIsBalancesModalOpen(false);
     }
   }, [searchParams]);
 
@@ -311,14 +321,22 @@ export const BillingMachinePage = () => {
       setIsOrdersModalOpen(true);
       setIsTasksModalOpen(false);
       setIsBalancesModalOpen(false);
+      setIsExpensesModalOpen(false);
     } else if (viewName === 'tasks') {
       setIsTasksModalOpen(true);
       setIsOrdersModalOpen(false);
       setIsBalancesModalOpen(false);
+      setIsExpensesModalOpen(false);
     } else if (viewName === 'balances') {
       setIsBalancesModalOpen(true);
       setIsOrdersModalOpen(false);
       setIsTasksModalOpen(false);
+      setIsExpensesModalOpen(false);
+    } else if (viewName === 'expenses') {
+      setIsExpensesModalOpen(true);
+      setIsOrdersModalOpen(false);
+      setIsTasksModalOpen(false);
+      setIsBalancesModalOpen(false);
     }
     const newParams = new URLSearchParams(searchParams);
     newParams.set('view', viewName);
@@ -329,6 +347,7 @@ export const BillingMachinePage = () => {
     if (viewName === 'orders') setIsOrdersModalOpen(false);
     if (viewName === 'tasks') setIsTasksModalOpen(false);
     if (viewName === 'balances') setIsBalancesModalOpen(false);
+    if (viewName === 'expenses') setIsExpensesModalOpen(false);
     const newParams = new URLSearchParams(searchParams);
     if (
       newParams.get('view') === viewName || 
@@ -1327,6 +1346,7 @@ export const BillingMachinePage = () => {
                   onOpenOrders={() => openModalWithUrl('orders')}
                   onOpenTasks={() => openModalWithUrl('tasks')}
                   onOpenBalances={() => openModalWithUrl('balances')}
+                  onOpenExpenses={() => openModalWithUrl('expenses')}
                 />
               </div>
 
@@ -1506,13 +1526,14 @@ export const BillingMachinePage = () => {
                 onOpenCollect={() => openModalWithUrl('balances')}
               />
 
-              {/* Direct Quick-Access to Orders, Tasks & Balances with Live Notification Numbering */}
+              {/* Direct Quick-Access to Orders, Tasks, Balances & Expenses with Live Notification Numbering */}
               <PosQuickNavButtons 
                 branchId={activeTerminalId}
                 showLabelOnMobile={true} 
                 onOpenOrders={() => openModalWithUrl('orders')}
                 onOpenTasks={() => openModalWithUrl('tasks')}
                 onOpenBalances={() => openModalWithUrl('balances')}
+                onOpenExpenses={() => openModalWithUrl('expenses')}
               />
 
               <div className="hidden md:flex items-center gap-3 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-xs">
@@ -3092,6 +3113,14 @@ export const BillingMachinePage = () => {
       <PosBalanceDueModal
         isOpen={isBalancesModalOpen}
         onClose={() => closeModalWithUrl('balances')}
+        terminal={terminal}
+        activeTerminalId={activeTerminalId}
+      />
+
+      {/* ── POS COUNTER DAILY EXPENSES & PETTY CASH MODAL (IN-POS) ── */}
+      <PosExpensesModal
+        isOpen={isExpensesModalOpen}
+        onClose={() => closeModalWithUrl('expenses')}
         terminal={terminal}
         activeTerminalId={activeTerminalId}
       />
