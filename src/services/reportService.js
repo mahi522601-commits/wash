@@ -258,7 +258,7 @@ export const reportService = {
 
       // 2. Channel & Source Filter (Strict POS Offline vs Online)
       const isPos = isPosOrder(order);
-      const isExplicitPosOnly = onlyOfflinePos || channelFilter === 'POS_ONLY' || branchFilter === 'POS_ONLY';
+      const isExplicitPosOnly = onlyOfflinePos || channelFilter === 'POS_ONLY' || branchFilter === 'POS_ONLY' || branchFilter === 'ALL_POS';
       const isExplicitOnlineOnly = channelFilter === 'ONLINE_ONLY' || branchFilter === 'ONLINE_WEBSITE';
 
       if (isExplicitPosOnly && !isPos) return false;
@@ -482,6 +482,7 @@ export const reportService = {
               orders: snap.ordersSummary || [],
               metrics: snap.metrics,
               attendance: snap.attendance || null,
+              expenses: snap.expenses || null,
               isFromStoredSnapshot: true,
             };
           }
@@ -491,61 +492,122 @@ export const reportService = {
       }
     }
 
-    // Fetch and aggregate POS 1 & POS 2 counter expenses for this report period
-    let pos1Expenses = { terminalId: 'TW-POS-01', name: 'Main Branch — Manikonda (POS-01)', count: 0, totalAmount: 0, cashAmount: 0, items: [] };
-    let pos2Expenses = { terminalId: 'TW-POS-02', name: 'Branch 1 — Tolichowki (POS-02)', count: 0, totalAmount: 0, cashAmount: 0, items: [] };
+    // Fetch and aggregate POS counter expenses for this report period
+    let pos1Expenses = { terminalId: 'TW-POS-01', name: 'Main Branch — Manikonda (POS-01)', count: 0, totalAmount: 0, cashAmount: 0, upiAmount: 0, items: [] };
+    let pos2Expenses = { terminalId: 'TW-POS-02', name: 'Branch 1 — Tolichowki (POS-02)', count: 0, totalAmount: 0, cashAmount: 0, upiAmount: 0, items: [] };
+    let pos3Expenses = { terminalId: 'TW-POS-03', name: 'Pick Up — Ambience Courtyard (POS-03)', count: 0, totalAmount: 0, cashAmount: 0, upiAmount: 0, items: [] };
+    let generalExpenses = { terminalId: 'GENERAL', name: 'Store & Company Operating Overheads', count: 0, totalAmount: 0, cashAmount: 0, upiAmount: 0, items: [] };
     let allFilteredExpenses = [];
 
     try {
       const { expenseService } = await import('./expenseService.js');
-      const allExpenses = await expenseService.getExpenses({ forceRefresh: false });
+      const allExpenses = await expenseService.getExpenses({ forceRefresh: true });
 
       (allExpenses || []).forEach(exp => {
         const expDate = parseOrderDateSafe(exp.date || exp.createdAt);
-        if (!expDate) return;
-        if (start && expDate < start) return;
-        if (end && expDate > end) return;
+        const expDateStr = String(exp.date || (exp.createdAt ? exp.createdAt.slice(0, 10) : '')).slice(0, 10);
 
-        allFilteredExpenses.push(exp);
+        // Date range matching with defensive local date check
+        let dateMatches = false;
+        if (!start && !end) {
+          dateMatches = true;
+        } else if (reportDateKey && reportDateKey !== 'ALL' && !reportDateKey.startsWith('MONTH_') && expDateStr === reportDateKey) {
+          dateMatches = true;
+        } else if (expDate) {
+          if ((!start || expDate >= start) && (!end || expDate <= end)) {
+            dateMatches = true;
+          }
+        }
+        if (!dateMatches) return;
+
         const amt = Number(exp.amount) || 0;
-        const isCash = String(exp.paymentMode || 'CASH').toUpperCase() === 'CASH';
+        const mode = String(exp.paymentMode || 'CASH').toUpperCase();
+        const isCash = mode === 'CASH';
+        const isUpi = mode.includes('UPI') || mode.includes('QR') || mode.includes('PHONE') || mode.includes('PAY') || mode.includes('GPAY');
 
-        const bId = String(exp.branchId || '').toLowerCase();
-        const src = String(exp.source || '').toLowerCase();
-        const bName = String(exp.branchName || '').toLowerCase();
-        const tId = String(exp.terminalId || '').toLowerCase();
+        const bId = String(exp.branchId || '').toLowerCase().trim();
+        const src = String(exp.source || '').toLowerCase().trim();
+        const bName = String(exp.branchName || '').toLowerCase().trim();
+        const tId = String(exp.terminalId || '').toLowerCase().trim();
 
         const isPos2 = bId.includes('counter-2') || bId.includes('pos-02') || bId.includes('pos2') ||
                       src.includes('pos-02') || src.includes('pos2') ||
                       tId.includes('pos-02') || tId.includes('pos2') ||
                       bName.includes('tolichowki') || bName.includes('branch 1');
 
+        const isPos3 = bId.includes('counter-3') || bId.includes('pos-03') || bId.includes('pos3') ||
+                      src.includes('pos-03') || src.includes('pos3') ||
+                      tId.includes('pos-03') || tId.includes('pos3') ||
+                      bName.includes('ambience') || bName.includes('pick up');
+
+        const isPos1 = !isPos2 && !isPos3 && (
+                      bId.includes('counter-1') || bId.includes('pos-01') || bId.includes('pos1') ||
+                      src.includes('pos-01') || src.includes('pos1') ||
+                      tId.includes('pos-01') || tId.includes('pos1') ||
+                      bName.includes('manikonda') || bName.includes('main') ||
+                      bId === 'counter-1' || (!isPos2 && !isPos3 && bId !== 'all')
+        );
+
+        const isGeneral = !isPos1 && !isPos2 && !isPos3;
+
+        // Terminal scope check
+        const isAllPosScope = branchFilter === 'ALL_POS' || branchFilter === 'POS_ONLY' || branchFilter === 'ALL' || !branchFilter;
+        const matchesBranch = isAllPosScope ||
+          (branchFilter === 'counter-1' && isPos1) ||
+          (branchFilter === 'counter-2' && isPos2) ||
+          (branchFilter === 'counter-3' && isPos3);
+
+        if (!matchesBranch) return;
+
+        allFilteredExpenses.push(exp);
+
         if (isPos2) {
           pos2Expenses.count += 1;
           pos2Expenses.totalAmount += amt;
           if (isCash) pos2Expenses.cashAmount += amt;
+          if (isUpi) pos2Expenses.upiAmount += amt;
           pos2Expenses.items.push(exp);
-        } else {
+        } else if (isPos3) {
+          pos3Expenses.count += 1;
+          pos3Expenses.totalAmount += amt;
+          if (isCash) pos3Expenses.cashAmount += amt;
+          if (isUpi) pos3Expenses.upiAmount += amt;
+          pos3Expenses.items.push(exp);
+        } else if (isPos1) {
           pos1Expenses.count += 1;
           pos1Expenses.totalAmount += amt;
           if (isCash) pos1Expenses.cashAmount += amt;
+          if (isUpi) pos1Expenses.upiAmount += amt;
           pos1Expenses.items.push(exp);
+        } else {
+          generalExpenses.count += 1;
+          generalExpenses.totalAmount += amt;
+          if (isCash) generalExpenses.cashAmount += amt;
+          if (isUpi) generalExpenses.upiAmount += amt;
+          generalExpenses.items.push(exp);
         }
       });
     } catch (expErr) {
       console.warn('[reportService] Expenses fetch notice for financial report:', expErr);
     }
 
-    const totalCounterExpenses = pos1Expenses.totalAmount + pos2Expenses.totalAmount;
-    const totalCounterCashExpenses = pos1Expenses.cashAmount + pos2Expenses.cashAmount;
+    const totalCounterExpenses = allFilteredExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+    const totalCounterCashExpenses = allFilteredExpenses.filter(e => String(e.paymentMode || 'CASH').toUpperCase() === 'CASH').reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+    const totalCounterUpiExpenses = allFilteredExpenses.filter(e => {
+      const m = String(e.paymentMode || '').toUpperCase();
+      return m.includes('UPI') || m.includes('QR') || m.includes('PHONE') || m.includes('GPAY');
+    }).reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
     const netPhysicalDrawerCash = Math.max(0, cashReceived - totalCounterCashExpenses);
 
     const expensesSummary = {
       pos1: pos1Expenses,
       pos2: pos2Expenses,
-      totalCount: pos1Expenses.count + pos2Expenses.count,
+      pos3: pos3Expenses,
+      general: generalExpenses,
+      totalCount: allFilteredExpenses.length,
       totalAmount: totalCounterExpenses,
       totalCashAmount: totalCounterCashExpenses,
+      totalUpiAmount: totalCounterUpiExpenses,
       items: allFilteredExpenses,
       netCashDrawer: {
         grossCashInflow: cashReceived,

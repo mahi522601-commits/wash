@@ -416,6 +416,7 @@ export const BillingMachinePage = () => {
             serviceBreakdown: {},
           },
           attendance: null,
+          expenses: null,
         };
       }
 
@@ -443,6 +444,7 @@ export const BillingMachinePage = () => {
           serviceBreakdown: {},
         },
         attendance: null,
+        expenses: null,
       };
       setShiftReportData(fallback);
       setShowShiftReportModal(true);
@@ -3089,6 +3091,7 @@ export const BillingMachinePage = () => {
               serviceBreakdown: {},
             },
             attendance: null,
+            expenses: null,
           }}
           onClose={() => setShowShiftReportModal(false)}
         />

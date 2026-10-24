@@ -264,10 +264,24 @@ class DailyReportSchedulerService {
 
     const pos1Exp = expenses.pos1 || { count: 0, totalAmount: 0, cashAmount: 0 };
     const pos2Exp = expenses.pos2 || { count: 0, totalAmount: 0, cashAmount: 0 };
-    const totalExp = Number(expenses.totalAmount || (pos1Exp.totalAmount + pos2Exp.totalAmount) || 0);
-    const totalCashExp = Number(expenses.totalCashAmount || (pos1Exp.cashAmount + pos2Exp.cashAmount) || 0);
+    const pos3Exp = expenses.pos3 || { count: 0, totalAmount: 0, cashAmount: 0 };
+    const totalExp = Number(expenses.totalAmount || (pos1Exp.totalAmount + pos2Exp.totalAmount + pos3Exp.totalAmount) || 0);
+    const totalCashExp = Number(expenses.totalCashAmount || (pos1Exp.cashAmount + pos2Exp.cashAmount + pos3Exp.cashAmount) || 0);
     const grossCash = Number(c1.cashReceived || 0);
     const netDrawer = Math.max(0, grossCash - totalCashExp);
+
+    let posExpensesBlock = `*3. 🏪 POS COUNTER EXPENSES & CASH OUTFLOWS*
+• *POS-01 (Manikonda Main):* ${pos1Exp.count || 0} Bills • ₹${(pos1Exp.totalAmount || 0).toLocaleString('en-IN')} (Cash: ₹${(pos1Exp.cashAmount || 0).toLocaleString('en-IN')})
+• *POS-02 (Tolichowki Branch 1):* ${pos2Exp.count || 0} Bills • ₹${(pos2Exp.totalAmount || 0).toLocaleString('en-IN')} (Cash: ₹${(pos2Exp.cashAmount || 0).toLocaleString('en-IN')})`;
+
+    if (pos3Exp.count > 0 || pos3Exp.totalAmount > 0) {
+      posExpensesBlock += `\n• *POS-03 (Ambience Courtyard):* ${pos3Exp.count || 0} Bills • ₹${(pos3Exp.totalAmount || 0).toLocaleString('en-IN')} (Cash: ₹${(pos3Exp.cashAmount || 0).toLocaleString('en-IN')})`;
+    }
+
+    posExpensesBlock += `\n• *Total Counter Expenses:* ₹${totalExp.toLocaleString('en-IN')}
+• *💵 Physical Drawer Cash Remaining:* ₹${netDrawer.toLocaleString('en-IN')}
+  _(Gross Cash ₹${grossCash.toLocaleString('en-IN')} - Cash Expenses ₹${totalCashExp.toLocaleString('en-IN')})_
+📎 *Attached Receipts:* ${expenses.items ? expenses.items.filter(i => i.receiptAttachmentUrl).length : 0} Bills Verified in PDF`;
 
     return `*TECH WASH LAUNDRY SERVICES*
 *DAILY EXECUTIVE AUDIT & SETTLEMENT REPORT*
@@ -286,13 +300,7 @@ class DailyReportSchedulerService {
 • 💳 Card / POS Swipe: ₹${(c1.cardReceived || 0).toLocaleString('en-IN')}
 • 🌐 Online Website: ₹${(c1.onlineReceived || 0).toLocaleString('en-IN')}
 
-*3. 🏪 POS 1 & POS 2 COUNTER EXPENSES*
-• *POS-01 (Manikonda Main):* ${pos1Exp.count || 0} Bills • ₹${(pos1Exp.totalAmount || 0).toLocaleString('en-IN')} (Cash: ₹${(pos1Exp.cashAmount || 0).toLocaleString('en-IN')})
-• *POS-02 (Tolichowki Branch 1):* ${pos2Exp.count || 0} Bills • ₹${(pos2Exp.totalAmount || 0).toLocaleString('en-IN')} (Cash: ₹${(pos2Exp.cashAmount || 0).toLocaleString('en-IN')})
-• *Total Counter Expenses:* ₹${totalExp.toLocaleString('en-IN')}
-• *💵 Physical Drawer Cash Remaining:* ₹${netDrawer.toLocaleString('en-IN')}
-  _(Gross Cash ₹${grossCash.toLocaleString('en-IN')} - Cash Expenses ₹${totalCashExp.toLocaleString('en-IN')})_
-📎 *Attached Receipts:* ${expenses.items ? expenses.items.filter(i => i.receiptAttachmentUrl).length : 0} Bills Verified (Compressed ≤ 50 KB) in PDF
+${posExpensesBlock}
 
 *4. ORDERS & VOLUME AUDIT*
 • Total Orders: ${metrics.totalOrdersCount || reportData.orders?.length || 0} Bills

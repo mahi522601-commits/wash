@@ -53,54 +53,109 @@ export const PrintFinancialReport = ({
   const [expenses, setExpenses] = React.useState(initialExpenses);
 
   React.useEffect(() => {
-    if (initialExpenses) {
+    if (initialExpenses && Array.isArray(initialExpenses.items)) {
       setExpenses(initialExpenses);
     } else {
       let isMounted = true;
       (async () => {
         try {
           const { expenseService } = await import('../../services/expenseService');
-          const allExpenses = await expenseService.getExpenses({ forceRefresh: false });
+          const allExpenses = await expenseService.getExpenses({ forceRefresh: true });
           const targetDateStr = reportData.dateKey || (reportData.startDate ? reportData.startDate.slice(0, 10) : new Date().toISOString().slice(0, 10));
 
-          let pos1 = { terminalId: 'TW-POS-01', name: 'Main Branch — Manikonda (POS-01)', count: 0, totalAmount: 0, cashAmount: 0, items: [] };
-          let pos2 = { terminalId: 'TW-POS-02', name: 'Branch 1 — Tolichowki (POS-02)', count: 0, totalAmount: 0, cashAmount: 0, items: [] };
+          let pos1 = { terminalId: 'TW-POS-01', name: 'Main Branch — Manikonda (POS-01)', count: 0, totalAmount: 0, cashAmount: 0, upiAmount: 0, items: [] };
+          let pos2 = { terminalId: 'TW-POS-02', name: 'Branch 1 — Tolichowki (POS-02)', count: 0, totalAmount: 0, cashAmount: 0, upiAmount: 0, items: [] };
+          let pos3 = { terminalId: 'TW-POS-03', name: 'Pick Up — Ambience Courtyard (POS-03)', count: 0, totalAmount: 0, cashAmount: 0, upiAmount: 0, items: [] };
+          let general = { terminalId: 'GENERAL', name: 'Store Operating Overheads', count: 0, totalAmount: 0, cashAmount: 0, upiAmount: 0, items: [] };
           let items = [];
 
           (allExpenses || []).forEach(exp => {
             const expDate = exp.date || (exp.createdAt ? exp.createdAt.slice(0, 10) : '');
-            if (expDate !== targetDateStr) return;
+            if (reportData.datePreset === 'today' || reportData.datePreset === 'single' || reportData.datePreset === 'yesterday') {
+              if (expDate !== targetDateStr) return;
+            }
 
             const amt = Number(exp.amount) || 0;
-            const isCash = String(exp.paymentMode || 'CASH').toUpperCase() === 'CASH';
-            const bId = String(exp.branchId || '').toLowerCase();
-            const src = String(exp.source || '').toLowerCase();
-            const bName = String(exp.branchName || '').toLowerCase();
-            const isPos2 = bId.includes('counter-2') || bId.includes('pos-02') || bId.includes('pos2') || src.includes('pos-02') || bName.includes('tolichowki');
+            const mode = String(exp.paymentMode || 'CASH').toUpperCase();
+            const isCash = mode === 'CASH';
+            const isUpi = mode.includes('UPI') || mode.includes('QR') || mode.includes('PHONE') || mode.includes('PAY') || mode.includes('GPAY');
+
+            const bId = String(exp.branchId || '').toLowerCase().trim();
+            const src = String(exp.source || '').toLowerCase().trim();
+            const bName = String(exp.branchName || '').toLowerCase().trim();
+            const tId = String(exp.terminalId || '').toLowerCase().trim();
+
+            const isPos2 = bId.includes('counter-2') || bId.includes('pos-02') || bId.includes('pos2') ||
+                          src.includes('pos-02') || src.includes('pos2') ||
+                          tId.includes('pos-02') || tId.includes('pos2') ||
+                          bName.includes('tolichowki') || bName.includes('branch 1');
+
+            const isPos3 = bId.includes('counter-3') || bId.includes('pos-03') || bId.includes('pos3') ||
+                          src.includes('pos-03') || src.includes('pos3') ||
+                          tId.includes('pos-03') || tId.includes('pos3') ||
+                          bName.includes('ambience') || bName.includes('pick up');
+
+            const isPos1 = !isPos2 && !isPos3 && (
+                          bId.includes('counter-1') || bId.includes('pos-01') || bId.includes('pos1') ||
+                          src.includes('pos-01') || src.includes('pos1') ||
+                          tId.includes('pos-01') || tId.includes('pos1') ||
+                          bName.includes('manikonda') || bName.includes('main') ||
+                          bId === 'counter-1' || (!isPos2 && !isPos3 && bId !== 'all')
+            );
+
+            const isAllPos = branchFilter === 'ALL_POS' || branchFilter === 'POS_ONLY' || branchFilter === 'ALL' || !branchFilter;
+            const matchesBranch = isAllPos ||
+              (branchFilter === 'counter-1' && isPos1) ||
+              (branchFilter === 'counter-2' && isPos2) ||
+              (branchFilter === 'counter-3' && isPos3);
+
+            if (!matchesBranch) return;
 
             items.push(exp);
             if (isPos2) {
               pos2.count += 1;
               pos2.totalAmount += amt;
               if (isCash) pos2.cashAmount += amt;
+              if (isUpi) pos2.upiAmount += amt;
               pos2.items.push(exp);
-            } else {
+            } else if (isPos3) {
+              pos3.count += 1;
+              pos3.totalAmount += amt;
+              if (isCash) pos3.cashAmount += amt;
+              if (isUpi) pos3.upiAmount += amt;
+              pos3.items.push(exp);
+            } else if (isPos1) {
               pos1.count += 1;
               pos1.totalAmount += amt;
               if (isCash) pos1.cashAmount += amt;
+              if (isUpi) pos1.upiAmount += amt;
               pos1.items.push(exp);
+            } else {
+              general.count += 1;
+              general.totalAmount += amt;
+              if (isCash) general.cashAmount += amt;
+              if (isUpi) general.upiAmount += amt;
+              general.items.push(exp);
             }
           });
 
           if (isMounted) {
-            const totCash = pos1.cashAmount + pos2.cashAmount;
+            const totAmount = items.reduce((s, e) => s + (Number(e.amount) || 0), 0);
+            const totCash = items.filter(e => String(e.paymentMode || 'CASH').toUpperCase() === 'CASH').reduce((s, e) => s + (Number(e.amount) || 0), 0);
+            const totUpi = items.filter(e => {
+              const m = String(e.paymentMode || '').toUpperCase();
+              return m.includes('UPI') || m.includes('QR') || m.includes('PHONE') || m.includes('PAY') || m.includes('GPAY');
+            }).reduce((s, e) => s + (Number(e.amount) || 0), 0);
             const cashCollected = category1?.cashReceived || 0;
             setExpenses({
               pos1,
               pos2,
-              totalCount: pos1.count + pos2.count,
-              totalAmount: pos1.totalAmount + pos2.totalAmount,
+              pos3,
+              general,
+              totalCount: items.length,
+              totalAmount: totAmount,
               totalCashAmount: totCash,
+              totalUpiAmount: totUpi,
               items,
               netCashDrawer: {
                 grossCashInflow: cashCollected,
@@ -113,7 +168,7 @@ export const PrintFinancialReport = ({
       })();
       return () => { isMounted = false; };
     }
-  }, [initialExpenses, reportData.dateKey, reportData.startDate]);
+  }, [initialExpenses, reportData.dateKey, reportData.startDate, reportData.branchFilter]);
 
   const orders = (rawOrders || []).filter(Boolean);
 
@@ -422,175 +477,254 @@ export const PrintFinancialReport = ({
       )}
 
       {/* ─────────────────────────────────────────────────────────
-          2B. POS 1 & POS 2 COUNTER EXPENSES & ATTACHED BILLS AUDIT
+          2B. TODAY'S POS COUNTER EXPENSES & OPERATING OUTFLOWS AUDIT
       ───────────────────────────────────────────────────────── */}
-      {expenses && (
-        <div className="mb-3.5 border border-slate-200 rounded-xl overflow-hidden print:border-black bg-white shadow-xs">
-          <div className="bg-slate-900 text-white px-3 py-1.5 flex flex-wrap justify-between items-center text-[10px] font-bold uppercase tracking-wider print:bg-slate-100 print:text-black print:border-b print:border-black">
-            <span className="flex items-center gap-1.5">
-              <span>🏪 POS 1 & POS 2 Counter Expenses & Attached Bills</span>
-              <span className="text-slate-400 font-normal">|</span>
-              <span className="text-amber-400 print:text-black font-mono font-bold">
-                {expenses.totalCount || 0} Bills ({formatCurrency(expenses.totalAmount || 0)})
+      {(() => {
+        const expData = expenses || {
+          totalCount: 0,
+          totalAmount: 0,
+          totalCashAmount: 0,
+          totalUpiAmount: 0,
+          items: [],
+          netCashDrawer: {
+            grossCashInflow: category1.cashReceived || 0,
+            totalCashExpenses: 0,
+            netCashRemaining: category1.cashReceived || 0,
+          }
+        };
+
+        const hasExpenses = expData.items && expData.items.length > 0;
+        const isAllPosScope = branchFilter === 'ALL_POS' || branchFilter === 'POS_ONLY' || branchFilter === 'ALL' || !branchFilter;
+        const grossCashCollected = Number(category1?.cashReceived || 0);
+        const cashSpent = Number(expData.totalCashAmount || 0);
+        const upiSpent = Number(expData.totalUpiAmount || 0);
+        const netDrawerCash = Math.max(0, grossCashCollected - cashSpent);
+
+        const scopeLabel = isAllPosScope 
+          ? 'All POS Counters (Consolidated)' 
+          : branchFilter === 'counter-1'
+          ? 'Counter 1 — Manikonda Main'
+          : branchFilter === 'counter-2'
+          ? 'Counter 2 — Tolichowki Branch 1'
+          : branchFilter === 'counter-3'
+          ? 'Counter 3 — Ambience Courtyard'
+          : branchFilter;
+
+        return (
+          <div className="mb-3.5 border border-slate-200 rounded-xl overflow-hidden print:border-black bg-white shadow-xs print:break-inside-avoid">
+            {/* Header Strip */}
+            <div className="bg-slate-900 text-white px-3 py-1.5 flex flex-wrap justify-between items-center text-[10px] font-bold uppercase tracking-wider print:bg-slate-100 print:text-black print:border-b print:border-black">
+              <span className="flex items-center gap-1.5">
+                <span>🏪 Today's Counter Expenses & Operating Cash Outflows</span>
+                <span className="text-slate-400 font-normal">|</span>
+                <span className="text-slate-300 font-semibold lowercase">scope: {scopeLabel}</span>
+                <span className="text-slate-400 font-normal">|</span>
+                <span className="text-amber-400 print:text-black font-mono font-bold">
+                  {expData.totalCount || 0} Bills ({formatCurrency(expData.totalAmount || 0)})
+                </span>
               </span>
-            </span>
-            <span className="text-emerald-400 print:text-black font-mono">
-              Net Physical Drawer Cash: {formatCurrency(expenses.netCashDrawer?.netCashRemaining || 0)}
-            </span>
-          </div>
+              <span className="text-emerald-400 print:text-black font-mono">
+                Physical Cash in Drawer: {formatCurrency(netDrawerCash)}
+              </span>
+            </div>
 
-          {/* 3 Summary Cards */}
-          <div className="p-2.5 bg-slate-50 border-b border-slate-200 print:bg-white print:border-black grid grid-cols-1 sm:grid-cols-3 gap-2">
-            {/* POS 1 */}
-            <div className="p-2 rounded-lg bg-blue-50/80 border border-blue-200 print:border-black print:bg-white">
-              <div className="flex items-center justify-between text-[9px] font-bold text-blue-950 uppercase tracking-wider">
-                <span>POS-01 (Manikonda Main)</span>
-                <span className="px-1.5 py-0.2 rounded bg-blue-200 text-blue-900 text-[8px] font-bold">{expenses.pos1?.count || 0} Bills</span>
+            {/* Counter-Wise & Cash Drawer KPI Summary Cards */}
+            <div className="p-2.5 bg-slate-50 border-b border-slate-200 print:bg-white print:border-black grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
+              {/* POS 1 (Manikonda) */}
+              <div className="p-2 rounded-lg bg-blue-50/80 border border-blue-200 print:border-black print:bg-white">
+                <div className="flex items-center justify-between text-[9px] font-bold text-blue-950 uppercase tracking-wider">
+                  <span>POS-01 (Manikonda)</span>
+                  <span className="px-1.5 py-0.2 rounded bg-blue-200 text-blue-900 text-[8px] font-bold">{expData.pos1?.count || 0} Bills</span>
+                </div>
+                <div className="mt-1 flex items-baseline justify-between">
+                  <span className="text-slate-500 text-[9px]">Total Expenses:</span>
+                  <span className="font-mono font-black text-xs text-blue-900">{formatCurrency(expData.pos1?.totalAmount || 0)}</span>
+                </div>
+                <div className="flex items-baseline justify-between text-[8px] text-slate-500">
+                  <span>Cash Out:</span>
+                  <span className="font-mono font-bold text-slate-700">{formatCurrency(expData.pos1?.cashAmount || 0)}</span>
+                </div>
               </div>
-              <div className="mt-1 flex items-baseline justify-between">
-                <span className="text-slate-500 text-[9px]">Total Expenses:</span>
-                <span className="font-mono font-black text-xs text-blue-900">{formatCurrency(expenses.pos1?.totalAmount || 0)}</span>
+
+              {/* POS 2 (Tolichowki) */}
+              <div className="p-2 rounded-lg bg-indigo-50/80 border border-indigo-200 print:border-black print:bg-white">
+                <div className="flex items-center justify-between text-[9px] font-bold text-indigo-950 uppercase tracking-wider">
+                  <span>POS-02 (Tolichowki)</span>
+                  <span className="px-1.5 py-0.2 rounded bg-indigo-200 text-indigo-900 text-[8px] font-bold">{expData.pos2?.count || 0} Bills</span>
+                </div>
+                <div className="mt-1 flex items-baseline justify-between">
+                  <span className="text-slate-500 text-[9px]">Total Expenses:</span>
+                  <span className="font-mono font-black text-xs text-indigo-900">{formatCurrency(expData.pos2?.totalAmount || 0)}</span>
+                </div>
+                <div className="flex items-baseline justify-between text-[8px] text-slate-500">
+                  <span>Cash Out:</span>
+                  <span className="font-mono font-bold text-slate-700">{formatCurrency(expData.pos2?.cashAmount || 0)}</span>
+                </div>
               </div>
-              <div className="flex items-baseline justify-between text-[8px] text-slate-500">
-                <span>Cash Paid Out:</span>
-                <span className="font-mono font-bold text-slate-700">{formatCurrency(expenses.pos1?.cashAmount || 0)}</span>
+
+              {/* POS 3 / General Store Overheads */}
+              <div className="p-2 rounded-lg bg-purple-50/80 border border-purple-200 print:border-black print:bg-white">
+                <div className="flex items-center justify-between text-[9px] font-bold text-purple-950 uppercase tracking-wider">
+                  <span>POS-03 & Overheads</span>
+                  <span className="px-1.5 py-0.2 rounded bg-purple-200 text-purple-900 text-[8px] font-bold">
+                    {(expData.pos3?.count || 0) + (expData.general?.count || 0)} Bills
+                  </span>
+                </div>
+                <div className="mt-1 flex items-baseline justify-between">
+                  <span className="text-slate-500 text-[9px]">Total Expenses:</span>
+                  <span className="font-mono font-black text-xs text-purple-900">
+                    {formatCurrency((expData.pos3?.totalAmount || 0) + (expData.general?.totalAmount || 0))}
+                  </span>
+                </div>
+                <div className="flex items-baseline justify-between text-[8px] text-slate-500">
+                  <span>Digital / UPI Out:</span>
+                  <span className="font-mono font-bold text-slate-700">{formatCurrency(upiSpent)}</span>
+                </div>
+              </div>
+
+              {/* Net Drawer Cash Reconciliation */}
+              <div className="p-2 rounded-lg bg-emerald-50/80 border border-emerald-300 print:border-black print:bg-white">
+                <div className="flex items-center justify-between text-[9px] font-bold text-emerald-950 uppercase tracking-wider">
+                  <span>💵 Physical Drawer Cash</span>
+                  <span className="text-emerald-700 font-bold text-[8px]">Reconciled</span>
+                </div>
+                <div className="mt-1 flex items-baseline justify-between">
+                  <span className="text-slate-600 text-[8.5px]">Gross Cash Collected:</span>
+                  <span className="font-mono font-bold text-xs text-slate-800">{formatCurrency(grossCashCollected)}</span>
+                </div>
+                <div className="flex items-baseline justify-between text-[8px]">
+                  <span className="text-slate-600">Less Cash Spent:</span>
+                  <span className="font-mono font-bold text-rose-700">-{formatCurrency(cashSpent)}</span>
+                </div>
+                <div className="mt-0.5 pt-0.5 border-t border-emerald-200 flex items-baseline justify-between font-black text-xs text-emerald-800">
+                  <span>Drawer Balance:</span>
+                  <span className="font-mono text-xs">{formatCurrency(netDrawerCash)}</span>
+                </div>
               </div>
             </div>
 
-            {/* POS 2 */}
-            <div className="p-2 rounded-lg bg-indigo-50/80 border border-indigo-200 print:border-black print:bg-white">
-              <div className="flex items-center justify-between text-[9px] font-bold text-indigo-950 uppercase tracking-wider">
-                <span>POS-02 (Tolichowki Branch 1)</span>
-                <span className="px-1.5 py-0.2 rounded bg-indigo-200 text-indigo-900 text-[8px] font-bold">{expenses.pos2?.count || 0} Bills</span>
-              </div>
-              <div className="mt-1 flex items-baseline justify-between">
-                <span className="text-slate-500 text-[9px]">Total Expenses:</span>
-                <span className="font-mono font-black text-xs text-indigo-900">{formatCurrency(expenses.pos2?.totalAmount || 0)}</span>
-              </div>
-              <div className="flex items-baseline justify-between text-[8px] text-slate-500">
-                <span>Cash Paid Out:</span>
-                <span className="font-mono font-bold text-slate-700">{formatCurrency(expenses.pos2?.cashAmount || 0)}</span>
-              </div>
-            </div>
+            {/* Itemized Expenses Table */}
+            {hasExpenses ? (
+              <div className="overflow-x-auto w-full">
+                <table className="w-full text-left border-collapse text-[9px]">
+                  <thead>
+                    <tr className="bg-slate-100 text-slate-700 text-[8px] font-black uppercase tracking-wider border-b border-slate-200 print:border-black">
+                      <th className="py-1 px-2 text-center w-6">#</th>
+                      <th className="py-1 px-2 w-28">Counter / Terminal</th>
+                      <th className="py-1 px-2 w-16">Time</th>
+                      <th className="py-1 px-2">Expense Category & Purpose / Notes</th>
+                      <th className="py-1 px-2 w-16">Payment Mode</th>
+                      <th className="py-1 px-2 w-24 text-center">Receipt Photo</th>
+                      <th className="py-1 px-2 text-right w-24">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {expData.items.map((exp, idx) => {
+                      const hasBill = Boolean(exp.receiptAttachmentUrl);
+                      const terminalLabel = exp.posLabel || exp.source || (
+                        exp.branchId === 'counter-2' ? 'POS-02 (Tolichowki)' :
+                        exp.branchId === 'counter-3' ? 'POS-03 (Ambience)' :
+                        'POS-01 (Manikonda)'
+                      );
 
-            {/* Net Drawer Cash Reconciliation */}
-            <div className="p-2 rounded-lg bg-emerald-50/80 border border-emerald-300 print:border-black print:bg-white">
-              <div className="flex items-center justify-between text-[9px] font-bold text-emerald-950 uppercase tracking-wider">
-                <span>💵 Physical Cash In Drawer</span>
-                <span className="text-emerald-700 font-bold text-[8px]">Reconciled</span>
-              </div>
-              <div className="mt-1 flex items-baseline justify-between">
-                <span className="text-slate-600 text-[9px]">Gross Cash Collected:</span>
-                <span className="font-mono font-bold text-xs text-slate-800">{formatCurrency(effectiveInflows)}</span>
-              </div>
-              <div className="flex items-baseline justify-between text-[8.5px]">
-                <span className="text-slate-600">Less Counter Cash Spent:</span>
-                <span className="font-mono font-bold text-rose-700">-{formatCurrency(expenses.totalCashAmount || 0)}</span>
-              </div>
-              <div className="mt-0.5 pt-0.5 border-t border-emerald-200 flex items-baseline justify-between font-black text-xs text-emerald-800">
-                <span>Physical Cash Remaining:</span>
-                <span className="font-mono text-xs">{formatCurrency(expenses.netCashDrawer?.netCashRemaining || 0)}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Itemized Table */}
-          {expenses.items && expenses.items.length > 0 ? (
-            <div className="overflow-x-auto w-full">
-              <table className="w-full text-left border-collapse text-[9px]">
-                <thead>
-                  <tr className="bg-slate-100 text-slate-700 text-[8px] font-black uppercase tracking-wider border-b border-slate-200 print:border-black">
-                    <th className="py-1 px-2 text-center w-6">#</th>
-                    <th className="py-1 px-2 w-24">Counter</th>
-                    <th className="py-1 px-2 w-16">Time</th>
-                    <th className="py-1 px-2">Expense Category & Purpose / Notes</th>
-                    <th className="py-1 px-2 w-16">Mode</th>
-                    <th className="py-1 px-2 w-24 text-center">Bill Photo</th>
-                    <th className="py-1 px-2 text-right w-20">Amount</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {expenses.items.map((exp, idx) => {
-                    const hasBill = Boolean(exp.receiptAttachmentUrl);
-                    return (
-                      <tr key={exp.id || idx} className="hover:bg-slate-50/70">
-                        <td className="py-1 px-2 text-center text-slate-400 font-mono text-[8px]">{idx + 1}</td>
-                        <td className="py-1 px-2 font-bold text-slate-900 whitespace-nowrap text-[8.5px]">
-                          {exp.posLabel || exp.source || (exp.branchId === 'counter-2' ? 'POS-02 (Tolichowki)' : 'POS-01 (Manikonda)')}
-                        </td>
-                        <td className="py-1 px-2 text-slate-500 font-mono text-[8px] whitespace-nowrap">
-                          {exp.time || (exp.createdAt ? new Date(exp.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }) : '-')}
-                        </td>
-                        <td className="py-1 px-2">
-                          <div className="font-semibold text-slate-800 flex items-center gap-1">
-                            <span>{exp.icon || '💸'}</span>
-                            <span>{exp.title || exp.categoryName || 'Counter Expense'}</span>
-                            {exp.voiceRecorded && (
-                              <span className="px-1 py-0.2 rounded bg-purple-100 text-purple-800 text-[7px] font-bold">🎙️ Voice</span>
+                      return (
+                        <tr key={exp.id || idx} className="hover:bg-slate-50/70 print:break-inside-avoid">
+                          <td className="py-1 px-2 text-center text-slate-400 font-mono text-[8px]">{idx + 1}</td>
+                          <td className="py-1 px-2 font-bold text-slate-900 whitespace-nowrap text-[8.5px]">
+                            {terminalLabel}
+                          </td>
+                          <td className="py-1 px-2 text-slate-500 font-mono text-[8px] whitespace-nowrap">
+                            {exp.time || (exp.createdAt ? new Date(exp.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }) : '-')}
+                          </td>
+                          <td className="py-1 px-2">
+                            <div className="font-semibold text-slate-800 flex items-center gap-1">
+                              <span>{exp.icon || '💸'}</span>
+                              <span>{exp.title || exp.categoryName || 'Counter Expense'}</span>
+                              {exp.voiceRecorded && (
+                                <span className="px-1 py-0.2 rounded bg-purple-100 text-purple-800 text-[7px] font-bold">🎙️ Voice</span>
+                              )}
+                            </div>
+                            {exp.notes && (
+                              <div className="text-[7.5px] text-slate-500 italic mt-0.5">{exp.notes}</div>
                             )}
-                          </div>
-                          {exp.notes && (
-                            <div className="text-[7.5px] text-slate-500 italic mt-0.5">{exp.notes}</div>
-                          )}
-                        </td>
-                        <td className="py-1 px-2 font-mono font-bold text-[8px] text-slate-700 uppercase">
-                          {exp.paymentMode || 'CASH'}
-                        </td>
-                        <td className="py-1 px-2 text-center whitespace-nowrap">
-                          {hasBill ? (
-                            <span className="inline-flex items-center gap-0.5 px-1 py-0.2 rounded bg-emerald-100 text-emerald-800 font-bold text-[7px] border border-emerald-200">
-                              ✓ Attached ({exp.receiptSizeKb ? `${exp.receiptSizeKb} KB` : '<= 50 KB'})
-                            </span>
-                          ) : (
-                            <span className="text-slate-400 text-[7px]">No Photo</span>
-                          )}
-                        </td>
-                        <td className="py-1 px-2 text-right font-mono font-black text-slate-900 text-[9px]">
-                          {formatCurrency(exp.amount || 0)}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="p-2 text-center text-[9px] text-slate-400 italic">
-              No counter expenses logged for POS 1 or POS 2 on this date.
-            </div>
-          )}
+                          </td>
+                          <td className="py-1 px-2 font-mono font-bold text-[8px] text-slate-700 uppercase">
+                            {exp.paymentMode || 'CASH'}
+                          </td>
+                          <td className="py-1 px-2 text-center whitespace-nowrap">
+                            {hasBill ? (
+                              <span className="inline-flex items-center gap-0.5 px-1 py-0.2 rounded bg-emerald-100 text-emerald-800 font-bold text-[7px] border border-emerald-200">
+                                ✓ Attached ({exp.receiptSizeKb ? `${exp.receiptSizeKb} KB` : '<= 50 KB'})
+                              </span>
+                            ) : (
+                              <span className="text-slate-400 text-[7px]">No Photo</span>
+                            )}
+                          </td>
+                          <td className="py-1 px-2 text-right font-mono font-black text-slate-900 text-[9px]">
+                            {formatCurrency(exp.amount || 0)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  {/* Table Footer with Summary */}
+                  <tfoot>
+                    <tr className="bg-slate-100 font-bold text-[8.5px] text-slate-900 border-t border-slate-300 print:border-black print:bg-slate-100">
+                      <td colSpan={4} className="py-1.5 px-2">
+                        Total Counter Expenses: {expData.items.length} Recorded Bills (Cash: {formatCurrency(cashSpent)} • UPI/Digital: {formatCurrency(upiSpent)})
+                      </td>
+                      <td colSpan={2} className="py-1.5 px-2 text-right text-slate-600">
+                        Grand Total:
+                      </td>
+                      <td className="py-1.5 px-2 text-right font-mono font-black text-slate-900 text-[10px]">
+                        {formatCurrency(expData.totalAmount || 0)}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            ) : (
+              <div className="p-3 text-center text-xs text-slate-600 bg-emerald-50/40 border-b border-emerald-100 flex items-center justify-center gap-2">
+                <span className="text-emerald-700 font-bold text-[11px]">✓ Zero Counter Operating Expenses Recorded for this Shift Date</span>
+                <span className="text-slate-400">•</span>
+                <span className="text-slate-700 text-[10px]">
+                  Physical Cash Drawer retains 100% of received cash collections (<strong>{formatCurrency(grossCashCollected)}</strong>).
+                </span>
+              </div>
+            )}
 
-          {/* Attached Bill Photos Grid Gallery */}
-          {expenses.items && expenses.items.filter(i => i.receiptAttachmentUrl).length > 0 && (
-            <div className="p-2.5 border-t border-slate-200 bg-slate-50/60 print:bg-white print:border-black">
-              <div className="text-[8.5px] font-bold uppercase tracking-wider text-slate-700 mb-2 flex items-center gap-1.5">
-                <span>📎 Attached Counter Bill Receipts ({expenses.items.filter(i => i.receiptAttachmentUrl).length} Verified Photos &lt;= 50 KB)</span>
+            {/* Attached Bill Photos Grid Gallery */}
+            {hasExpenses && expData.items.filter(i => i.receiptAttachmentUrl).length > 0 && (
+              <div className="p-2.5 border-t border-slate-200 bg-slate-50/60 print:bg-white print:border-black print:break-inside-avoid">
+                <div className="text-[8.5px] font-bold uppercase tracking-wider text-slate-700 mb-2 flex items-center gap-1.5">
+                  <span>📎 Attached Counter Bill Receipts ({expData.items.filter(i => i.receiptAttachmentUrl).length} Verified Photos &lt;= 50 KB)</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {expData.items.filter(i => i.receiptAttachmentUrl).map((exp, bIdx) => (
+                    <div key={exp.id || bIdx} className="bg-white border border-slate-200 rounded-lg p-1.5 shadow-xs flex flex-col print:border-black print:break-inside-avoid">
+                      <div className="text-[7.5px] font-bold text-slate-800 truncate mb-1 flex items-center justify-between">
+                        <span>{exp.posLabel || exp.source || (exp.branchId === 'counter-2' ? 'POS-02' : 'POS-01')}</span>
+                        <span className="font-mono text-emerald-700 font-black">{formatCurrency(exp.amount || 0)}</span>
+                      </div>
+                      <div className="w-full h-24 bg-slate-100 rounded overflow-hidden flex items-center justify-center border border-slate-100">
+                        <img
+                          src={exp.receiptAttachmentUrl}
+                          alt={`Bill ${exp.title || 'Receipt'}`}
+                          className="w-full h-full object-contain"
+                        />
+                      </div>
+                      <div className="mt-1 flex items-center justify-between text-[6.5px] text-slate-500">
+                        <span className="truncate max-w-[85px]">{exp.title || exp.categoryName}</span>
+                        <span className="text-emerald-700 font-bold">{exp.receiptSizeKb ? `${exp.receiptSizeKb} KB` : '✓ 50 KB'}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {expenses.items.filter(i => i.receiptAttachmentUrl).map((exp, bIdx) => (
-                  <div key={exp.id || bIdx} className="bg-white border border-slate-200 rounded-lg p-1.5 shadow-xs flex flex-col print:border-black print:break-inside-avoid">
-                    <div className="text-[7.5px] font-bold text-slate-800 truncate mb-1 flex items-center justify-between">
-                      <span>{exp.posLabel || exp.source || 'POS'}</span>
-                      <span className="font-mono text-emerald-700 font-black">{formatCurrency(exp.amount || 0)}</span>
-                    </div>
-                    <div className="w-full h-24 bg-slate-100 rounded overflow-hidden flex items-center justify-center border border-slate-100">
-                      <img
-                        src={exp.receiptAttachmentUrl}
-                        alt={`Bill ${exp.title || 'Receipt'}`}
-                        className="w-full h-full object-contain"
-                      />
-                    </div>
-                    <div className="mt-1 flex items-center justify-between text-[6.5px] text-slate-500">
-                      <span className="truncate max-w-[85px]">{exp.title || exp.categoryName}</span>
-                      <span className="text-emerald-700 font-bold">{exp.receiptSizeKb ? `${exp.receiptSizeKb} KB` : '✓ 50 KB'}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+            )}
+          </div>
+        );
+      })()}
 
       {/* ─────────────────────────────────────────────────────────
           3. PIN-TO-PIN DETAILED MASTER TRANSACTIONS TABLE
