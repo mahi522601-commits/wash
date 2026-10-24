@@ -149,9 +149,10 @@ export const parsePinToPinItems = (order) => {
     }
   });
 
-  // Fallback for orders with weightKg on order object but no scale item in array
-  if (scales.length === 0 && (order.pricingType === 'per_kg' || order.actualWeight || order.estimatedWeightKg || order.weightKg)) {
-    const w = Number(order.actualWeight || order.estimatedWeightKg || order.weightKg || 0);
+  // Fallback ONLY for orders with explicit manually entered weight and no scale item in array
+  const hasManualWeight = Boolean(Number(order.weightKg) > 0 || (order.isWeightEntered && Number(order.actualWeight) > 0));
+  if (scales.length === 0 && hasManualWeight) {
+    const w = Number(order.weightKg || order.actualWeight || 0);
     if (w > 0) {
       const rate = order.pricePerKg || order.priceSnapshot?.pricePerKg || 100;
       const sName = order.serviceName || order.service || 'Wash & Fold';

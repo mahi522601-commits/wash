@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { orderService, ORDER_CUSTOMER_STAGES } from '../../services/orderService';
 import { paymentService } from '../../services/paymentService';
-import { receiptService } from '../../services/receiptService';
+import { receiptService, DEFAULT_RECEIPT_CONFIG } from '../../services/receiptService';
 import { whatsappNotificationService } from '../../services/whatsappNotificationService';
 import { formatCurrency, formatDateTime } from '../../utils/formatters';
 import { Card } from '../../components/ui/Card';
@@ -63,13 +63,15 @@ export const TrackOrderPage = () => {
   const [paymentConfig, setPaymentConfig] = useState(null);
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('invoice'); // 'invoice' | 'timeline'
-  const [receiptConfig, setReceiptConfig] = useState(null);
+  const [receiptConfig, setReceiptConfig] = useState(DEFAULT_RECEIPT_CONFIG);
   const [receiptData, setReceiptData] = useState(null);
   const [isCopied, setIsCopied] = useState(false);
 
   useEffect(() => {
     paymentService.getPaymentConfig().then(setPaymentConfig);
-    receiptService.getReceiptConfig().then(setReceiptConfig);
+    receiptService.getReceiptConfig().then(cfg => {
+      if (cfg) setReceiptConfig(cfg);
+    });
 
     const handleConfigUpdate = (e) => {
       if (e.detail) setPaymentConfig(e.detail);
@@ -81,17 +83,18 @@ export const TrackOrderPage = () => {
 
   const searchOrder = async (queryToSearch) => {
     if (!queryToSearch || !queryToSearch.trim()) return;
+    const cleanQuery = queryToSearch.trim();
     setLoading(true);
     setErrorMsg('');
     try {
-      const found = await orderService.getOrderById(queryToSearch.trim());
+      const found = await orderService.getOrderById(cleanQuery);
       if (found) {
         setOrder(found);
-        const cfg = await receiptService.getReceiptConfig();
+        const cfg = (await receiptService.getReceiptConfig()) || DEFAULT_RECEIPT_CONFIG;
         setReceiptConfig(cfg);
         setReceiptData(receiptService.mapOrderToReceiptData(found, cfg));
       } else {
-        setErrorMsg(`No active order found matching "${queryToSearch}". Please verify your Order ID (e.g. TW-102948).`);
+        setErrorMsg(`No active order found matching "${cleanQuery}". Please verify your Order ID (e.g. TW-8502).`);
         setOrder(null);
         setReceiptData(null);
       }
@@ -103,7 +106,7 @@ export const TrackOrderPage = () => {
   };
 
   useEffect(() => {
-    const idParam = searchParams.get('id');
+    const idParam = searchParams.get('id') || searchParams.get('orderId') || searchParams.get('orderNumber') || searchParams.get('order') || searchParams.get('billId');
     const viewParam = searchParams.get('view');
     if (viewParam === 'timeline') {
       setActiveTab('timeline');
@@ -112,8 +115,9 @@ export const TrackOrderPage = () => {
     }
 
     if (idParam) {
-      setOrderQuery(idParam);
-      searchOrder(idParam);
+      const cleanId = decodeURIComponent(idParam).trim();
+      setOrderQuery(cleanId);
+      searchOrder(cleanId);
     }
   }, [searchParams]);
 

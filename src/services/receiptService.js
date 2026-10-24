@@ -116,7 +116,9 @@ export const receiptService = {
       : [];
 
     const totalAmount = Number(order.totalAmount || order.finalPrice || order.priceSnapshot?.finalTotal || 0);
-    const weightVal = Number(order.actualWeight || order.estimatedWeightKg || order.weightKg || 0);
+    // Only use weight if explicitly entered manually (never calculate or display weight automatically when none was entered)
+    const hasExplicitWeight = Boolean(Number(order.weightKg) > 0 || (order.isWeightEntered && Number(order.actualWeight) > 0));
+    const weightVal = hasExplicitWeight ? Number(order.weightKg || order.actualWeight || 0) : 0;
     const isPerKgService = order.pricingType === 'per_kg' || (order.serviceName && (order.serviceName.toLowerCase().includes('fold') || order.serviceName.toLowerCase().includes('steam iron') || order.serviceName.toLowerCase().includes('wash & iron')));
 
     if (isPerKgService && weightVal > 0) {

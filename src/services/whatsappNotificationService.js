@@ -338,48 +338,100 @@ ${customNote ? `📝 *Update Note:* ${customNote}\n` : ''}${actualWeight ? `⚖�
   },
 
   /**
-   * Build Official In-Detail WhatsApp Tax Invoice & Receipt
-   * Crystal-clear itemized breakdown separating Scale Batches, Batch Garments, and Individual Pieces
+   * Build Official Dedicated "Order Ready for Collection" WhatsApp Message
+   * Clean, concise, professional message with only essential details
    */
-  buildInvoiceWhatsAppMessage(order, receiptData = {}) {
+  buildOrderReadyWhatsAppMessage(order) {
     if (!order) return '';
 
     const customerName = this.cleanTextForWhatsApp((order.customerName || order.customer?.name || 'Valued Customer').toUpperCase());
-    const orderNumber = this.cleanTextForWhatsApp(order.orderNumber || order.id || 'TW-ORDER');
-    const manualBillNumber = this.cleanTextForWhatsApp(order.manualBillNumber || '');
-    const invoiceNumber = this.cleanTextForWhatsApp(receiptData.invoiceNumber || order.invoiceNumber || orderNumber);
-    const serviceName = this.cleanTextForWhatsApp(order.serviceName || order.service || 'Premium Garment Care');
-    
-    const storeBranch = order.storeBranch || receiptData.storeBranch || 'Tech Wash Laundry Main Branch';
-    const storeAddress = order.storeAddress || receiptData.storeAddress || (
+    const rawOrderNum = order.orderNumber || order.id || 'TW-ORDER';
+    const cleanOrderNumber = this.cleanTextForWhatsApp(String(rawOrderNum).replace(/^#/, ''));
+    const serviceName = this.cleanTextForWhatsApp(order.serviceName || order.service || 'Laundry Service');
+    const storeBranch = order.storeBranch || 'Tech Wash Laundry Main Branch';
+    const storeAddress = order.storeAddress || (
       storeBranch.includes('Branch 1')
         ? 'Beside Dreamscape hotel Ward No 8, Block No 1, tolichowki, OU Colony, Shaikpet, Hyderabad, Telangana 500008'
         : storeBranch.includes('Pick Up Point')
         ? 'Beside Ambience Courtyard, Hyderabad, Telangana, 500089'
         : 'Shaikpet Main Rd, Sri Ram Nagar Colony, Manikonda, Hyderabad, Telangana 500089'
     );
-    const storePhone = order.storePhone || receiptData.storePhone || (
+    const storePhone = order.storePhone || (
       storeBranch.includes('Branch 1') ? '+91 90008 13444' : storeBranch.includes('Pick Up Point') ? '+91 98667 40179' : '+91 63048 45567'
     );
-    const terminalCode = order.terminalCode || (order.isWalkIn ? 'TW-POS-01' : 'ONLINE-HUB');
-    const cashierName = order.cashierName || 'Cashier #1';
 
-    // ALWAYS use live production domain
-    const invoiceUrl = `${LIVE_PRODUCTION_DOMAIN}/track-order?id=${encodeURIComponent(orderNumber)}`;
+    // ALWAYS use live production domain with clean encoded Order ID
+    const trackingUrl = `${LIVE_PRODUCTION_DOMAIN}/track-order?id=${encodeURIComponent(cleanOrderNumber)}`;
+
+    // Calculate garments pieces & weight (ONLY if manually entered)
+    const items = order.items || [];
+    const totalPcs = items.reduce((sum, it) => sum + (Number(it.quantity) || 1), 0);
+    const manualWeight = Number(order.weightKg || (order.isWeightEntered ? order.actualWeight : 0) || 0);
+    const weightSuffix = manualWeight > 0 ? ` (${manualWeight} Kg)` : '';
+
+    const snapshot = order.priceSnapshot || {};
+    const finalTotal = Number(order.finalPrice || snapshot.finalTotal || order.totalAmount || 0);
+    const receivedAmount = Number(order.receivedAmount !== undefined ? order.receivedAmount : (order.paymentStatus === 'PAID' ? finalTotal : 0));
+    const balanceAmount = Number(order.balanceAmount !== undefined ? order.balanceAmount : Math.max(0, finalTotal - receivedAmount));
+    const isPaid = balanceAmount === 0 || order.paymentStatus === 'PAID';
+
+    const paymentLine = isPaid
+      ? '• Payment: ✅ Fully Paid (Rs.0 Due)'
+      : `• Balance Due: Rs.${balanceAmount} (Total: Rs.${finalTotal})`;
+
+    return `*TECH WASH LAUNDRY SERVICES*
+🧺 *YOUR ORDER IS READY FOR PICKUP!*
+
+Hello *${customerName}*,
+Great news! Your laundry order *#${cleanOrderNumber}* (${serviceName}) has been cleaned, pressed, quality-checked, and is ready for collection.
+
+*ORDER DETAILS:*
+• Order ID: *#${cleanOrderNumber}*
+• Total Garments: ${totalPcs > 0 ? `${totalPcs} Pieces${weightSuffix}` : 'Ready Batch'}
+${paymentLine}
+
+*STORE PICKUP LOCATION:*
+• Branch: ${storeBranch}
+• Address: ${storeAddress}
+• Store Helpline: ${storePhone}
+
+📄 *View Bill & Track Status:*
+${trackingUrl}
+
+Please collect your fresh garments at your convenience. Thank you for choosing Tech Wash!`;
+  },
+
+  /**
+   * Alias for buildStatusUpdateMessage
+   */
+  buildCustomerUpdateMessage(order, stageLabel, customNote = '') {
+    return this.buildStatusUpdateMessage(order, stageLabel, customNote);
+  },
+
+  /**
+   * Build Official Concise WhatsApp Bill Receipt
+   * Clean, compact receipt with only essential details, no bloat, and reliable tracking link
+   */
+  buildInvoiceWhatsAppMessage(order, receiptData = {}) {
+    if (!order) return '';
+
+    const customerName = this.cleanTextForWhatsApp((order.customerName || order.customer?.name || receiptData.customerName || 'Valued Customer').toUpperCase());
+    const rawOrderNum = order.orderNumber || order.id || receiptData.orderNumber || 'TW-ORDER';
+    const cleanOrderNumber = this.cleanTextForWhatsApp(String(rawOrderNum).replace(/^#/, ''));
+    const storePhone = order.storePhone || receiptData.storePhone || '+91 63048 45567';
+
+    // ALWAYS use live production domain with clean encoded Order ID
+    const invoiceUrl = `${LIVE_PRODUCTION_DOMAIN}/track-order?id=${encodeURIComponent(cleanOrderNumber)}`;
 
     // Parse Items & Separate into:
     // 1. Weighed Scale Batches
-    // 2. Individual Priced Garments
-    // 3. Garments Included in Weighed Batches (items with 0 unit price or weight sub-items)
+    // 2. Garments Included in Weighed Batches
+    // 3. Individual Priced Garments
     const rawItems = order.items || receiptData.items || [];
     
     const scaleBatches = [];
     const individualPriced = [];
     const batchIncludedGarments = [];
-
-    let totalWeighedKgFromItems = 0;
-    let totalBatchPcs = 0;
-    let totalIndividualPcs = 0;
 
     rawItems.forEach((it) => {
       const qty = Number(it.quantity || 1);
@@ -392,10 +444,8 @@ ${customNote ? `📝 *Update Note:* ${customNote}\n` : ''}${actualWeight ? `⚖�
       if (isWeightItem) {
         const wt = Number(it.weightKg || (name.match(/(\d+(\.\d+)?)\s*Kg/i) ? name.match(/(\d+(\.\d+)?)\s*Kg/i)[1] : 1));
         const ratePerKg = Number(it.pricePerKg || (name.match(/@\s*₹?Rs\.?\s*(\d+)/i) ? name.match(/@\s*₹?Rs\.?\s*(\d+)/i)[1] : (lTotal / (wt || 1))));
-        totalWeighedKgFromItems += wt;
         
-        // Clean display name
-        let cleanBatchTitle = name.includes('Wash & Steam Iron') ? 'Wash & Steam Iron Scale' : 'Wash & Fold Scale';
+        let cleanBatchTitle = name.includes('Steam Iron') ? 'Wash & Steam Iron' : (name.includes('Wash & Fold') ? 'Wash & Fold' : 'Weighed Scale Laundry');
         scaleBatches.push({
           title: cleanBatchTitle,
           weightKg: wt,
@@ -404,157 +454,120 @@ ${customNote ? `📝 *Update Note:* ${customNote}\n` : ''}${actualWeight ? `⚖�
         });
       } else if (lTotal > 0 || uPrice > 0) {
         // Individual item with price
-        totalIndividualPcs += qty;
+        let cleanName = name
+          .replace(/^(🧺|🫧|👔|👗|✨|🥻|🧥|🛏️|👟|👞)\s*/, '')
+          .replace(/\s*\[.*?\]\s*/g, '')
+          .trim();
         individualPriced.push({
-          name,
-          category,
+          name: cleanName,
           qty,
           unitPrice: uPrice,
           lineTotal: lTotal > 0 ? lTotal : (uPrice * qty),
         });
       } else {
         // Included in scale batch
-        totalBatchPcs += qty;
         let cleanName = name
-          .replace(/^(🧺|🫧|👔|👗|✨)\s*/, '')
+          .replace(/^(🧺|🫧|👔|👗|✨|🥻|🧥|🛏️|👟|👞)\s*/, '')
           .replace(/^(Wash & Fold|Wash & Steam Iron)\s*[-—:]?\s*/i, '')
+          .replace(/\s*\[.*?\]\s*/g, '')
           .trim();
-        let targetBatch = (it.serviceName || category || name).includes('Iron') ? 'Wash & Steam Iron batch' : 'Wash & Fold batch';
         batchIncludedGarments.push({
           name: cleanName,
           qty,
-          targetBatch,
         });
       }
     });
 
-    // Check top-level weightKg if scaleBatches was empty
-    const orderTopWeight = Number(order.weightKg || order.actualWeight || order.estimatedWeightKg || 0);
-    if (scaleBatches.length === 0 && orderTopWeight > 0) {
-      const isIron = serviceName.toLowerCase().includes('iron');
+    // Check top-level weightKg ONLY if manually entered on order and no scaleBatches yet
+    const manualOrderWeight = Number(order.weightKg || (order.isWeightEntered ? order.actualWeight : 0) || 0);
+    if (scaleBatches.length === 0 && manualOrderWeight > 0) {
+      const isIron = (order.serviceName || order.service || '').toLowerCase().includes('iron');
       const rate = Number(order.pricePerKg) || (isIron ? 130 : 100);
-      const cost = Math.round(orderTopWeight * rate);
+      const cost = Math.round(manualOrderWeight * rate);
       scaleBatches.push({
-        title: isIron ? 'Wash & Steam Iron Scale' : 'Wash & Fold Scale',
-        weightKg: orderTopWeight,
+        title: isIron ? 'Wash & Steam Iron' : 'Wash & Fold',
+        weightKg: manualOrderWeight,
         ratePerKg: rate,
         total: cost,
       });
-      totalWeighedKgFromItems = orderTopWeight;
     }
 
-    // ── Build Scale Section ──
-    let scaleSection = '';
-    if (scaleBatches.length > 0) {
-      const scaleLines = scaleBatches.map(s => 
-        `• ${s.title}: ${s.weightKg} Kg @ Rs.${s.ratePerKg}/Kg = Rs.${s.total}`
-      ).join('\n');
-      const scaleTotalAmt = scaleBatches.reduce((sum, s) => sum + s.total, 0);
-      scaleSection = `\n--- WEIGHED SCALE LAUNDRY (BY WEIGHT) ---\n${scaleLines}\nScale Subtotal: ${totalWeighedKgFromItems} Kg = Rs.${scaleTotalAmt}\n`;
-    }
+    // Build concise item lines
+    const itemLines = [];
 
-    // ── Build Batch Included Garments Section ──
-    let batchSection = '';
-    if (batchIncludedGarments.length > 0) {
-      const batchLines = batchIncludedGarments.map(b => 
-        `• ${b.name}: ${b.qty} pcs (Included in ${b.targetBatch})`
-      ).join('\n');
-      batchSection = `\n--- GARMENTS INCLUDED IN WEIGHED BATCHES ---\n${batchLines}\nBatch Garments Count: ${totalBatchPcs} Pieces\n`;
-    }
+    // 1. Manually entered scale batches (if any)
+    scaleBatches.forEach(s => {
+      itemLines.push(`• ${s.title}: ${s.weightKg} Kg @ Rs.${s.ratePerKg}/Kg = Rs.${s.total}`);
+    });
 
-    // ── Build Individual Garments Section ──
-    let individualSection = '';
-    if (individualPriced.length > 0) {
-      const indLines = individualPriced.map((item, idx) => {
-        const catTag = item.category ? ` [${item.category}]` : '';
-        return `${idx + 1}. ${item.name}${catTag} - Qty: ${item.qty} @ Rs.${item.unitPrice} = Rs.${item.lineTotal}`;
-      }).join('\n');
-      const indSubtotal = individualPriced.reduce((sum, i) => sum + i.lineTotal, 0);
-      individualSection = `\n--- INDIVIDUAL ITEMIZED GARMENTS & SERVICES ---\n${indLines}\nIndividual Items Subtotal: ${totalIndividualPcs} Pieces = Rs.${indSubtotal}\n`;
-    }
+    // 2. Garments count (if weight was entered, note as in batch; if no weight entered, display only count)
+    const hasWeightBatch = scaleBatches.length > 0;
+    batchIncludedGarments.forEach(b => {
+      if (hasWeightBatch) {
+        itemLines.push(`• ${b.name}: ${b.qty} pcs (In Weight Batch)`);
+      } else {
+        itemLines.push(`• ${b.name}: ${b.qty} pcs`);
+      }
+    });
 
-    // ── Volume Summary ──
-    const totalAllPieces = totalBatchPcs + totalIndividualPcs;
-    let volumeSummary = `\n--- TOTAL VOLUME SUMMARY ---\n`;
-    if (totalWeighedKgFromItems > 0) {
-      volumeSummary += `Total Weighed Laundry: ${totalWeighedKgFromItems} Kg\n`;
-    }
-    if (totalAllPieces > 0) {
-      volumeSummary += `Total Garments Received: ${totalAllPieces} Pieces${totalBatchPcs > 0 && totalIndividualPcs > 0 ? ` (${totalBatchPcs} in Scale Batches + ${totalIndividualPcs} Individual Pieces)` : ''}\n`;
+    // 3. Individually priced garments (if any)
+    individualPriced.forEach(i => {
+      itemLines.push(`• ${i.name} × ${i.qty} = Rs.${i.lineTotal}`);
+    });
+
+    if (itemLines.length === 0) {
+      const sName = order.serviceName || order.service || 'Laundry Service';
+      itemLines.push(`• ${sName}`);
     }
 
     const snapshot = order.priceSnapshot || {};
-    const itemsSubtotal = snapshot.itemsSubtotal || order.subtotal || 0;
-    const expressFee = snapshot.expressFee || (order.isExpress ? 100 : 0);
-    const discountAmount = snapshot.discountAmount || 0;
     const finalTotal = Number(order.finalPrice || snapshot.finalTotal || order.totalAmount || 0);
     const receivedAmount = Number(order.receivedAmount !== undefined ? order.receivedAmount : (order.paymentStatus === 'PAID' ? finalTotal : 0));
     const balanceAmount = Number(order.balanceAmount !== undefined ? order.balanceAmount : Math.max(0, finalTotal - receivedAmount));
 
     const paymentMethod = order.paymentMethod || 'CASH';
     const paymentLabel = paymentMethod === 'UPI_QR' || paymentMethod === 'UPI' 
-      ? 'UPI / QR Scan' 
+      ? 'UPI' 
       : paymentMethod === 'CASH' 
       ? 'Cash' 
       : paymentMethod === 'CARD' 
-      ? 'Card / POS Swipe' 
+      ? 'Card' 
       : 'Pay on Delivery';
-
-    const statusLabel = (balanceAmount === 0 || order.paymentStatus === 'PAID') 
-      ? 'PAID (Fully Settled)' 
-      : (receivedAmount > 0 ? `PARTIALLY PAID (Balance Pending: Rs.${balanceAmount})` : `PENDING PAYMENT (Rs.${finalTotal} Due)`);
 
     const orderDate = order.createdAt 
       ? new Date(order.createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
       : (order.pickupDate || new Date().toLocaleDateString('en-IN'));
 
-    const deliveryDate = order.deliveryDate || order.schedule?.deliveryDate || (order.isExpress ? 'Express (24 Hours)' : 'Standard (48 Hours)');
-    const deliverySlot = order.deliverySlot || order.schedule?.deliverySlot || (order.deliveryPeriod ? `${order.deliveryPeriod} Slot` : '');
+    const summaryLines = [
+      `• Total: Rs.${finalTotal}`,
+    ];
+    if (receivedAmount > 0) {
+      summaryLines.push(`• Paid: Rs.${receivedAmount} (${paymentLabel})`);
+    } else {
+      summaryLines.push(`• Paid: Rs.0`);
+    }
+    if (balanceAmount > 0) {
+      summaryLines.push(`• Balance Due: Rs.${balanceAmount}`);
+    } else {
+      summaryLines.push(`• Status: ✅ Fully Paid`);
+    }
 
-    return `========================================
-TECH WASH LAUNDRY SERVICES
-Official Detailed Tax Invoice & Receipt
-========================================
+    return `*TECH WASH LAUNDRY SERVICES*
+Bill Receipt: *#${cleanOrderNumber}*
+Date: ${orderDate}
+Customer: ${customerName}
 
-Hello ${customerName},
+*ITEMS:*
+${itemLines.join('\n')}
 
-Thank you for choosing Tech Wash. Here is your official detailed bill and receipt for Order #${orderNumber}:
+*BILL SUMMARY:*
+${summaryLines.join('\n')}
 
---- STORE & COUNTER INFO ---
-Store Branch: ${storeBranch}
-Store Address: ${storeAddress}
-Counter Terminal: ${terminalCode}
-Cashier Operator: ${cashierName}
-Store Phone / Support: ${storePhone}
+📄 *View / Download Bill PDF:*
+${invoiceUrl}
 
---- INVOICE & ORDER DETAILS ---
-Invoice Number: ${invoiceNumber}
-Order ID: #${orderNumber}${manualBillNumber ? `\nManual Slip / Token: #${manualBillNumber}` : ''}
-Booking Date: ${orderDate}
-Delivery Schedule: ${deliveryDate}${deliverySlot ? ` (${deliverySlot})` : ''}
-Processing Speed: ${order.isExpress ? 'Express 24-Hours' : 'Standard 48-Hours'}
-Primary Service: ${serviceName}
-${scaleSection}${batchSection}${individualSection}${volumeSummary}
---- PAYMENT & BILLING SUMMARY ---
-${itemsSubtotal > 0 && (expressFee > 0 || discountAmount > 0) ? `Items Subtotal: Rs.${itemsSubtotal}\n` : ''}${expressFee > 0 ? `Express 24h Priority: Rs.${expressFee}\n` : ''}${discountAmount > 0 ? `Special Discount: -Rs.${discountAmount}\n` : ''}GRAND TOTAL: Rs.${finalTotal}
-Amount Received: Rs.${receivedAmount}
-Balance Due: Rs.${balanceAmount}
-Payment Status: ${statusLabel}
-Payment Mode: ${paymentLabel}
-
-========================================
-VIEW & DOWNLOAD OFFICIAL PDF / TRACK LIVE STATUS:
-👉 ${invoiceUrl}
-
-⭐ RATE TECH WASH 5★ ON GOOGLE MAPS (MANIKONDA):
-👉 https://www.google.com/maps/search/?api=1&query=Tech+Wash+Laundry+Services+Shaikpet+Main+Rd+Sri+Ram+Nagar+Colony+Manikonda+Hyderabad+500089
-
-Store Helpline: ${storePhone}
-Support Email: care@techwashlaundry.com
-Official Website: ${LIVE_PRODUCTION_DOMAIN}
-
-Thank you for trusting Tech Wash for your premium garment care!
-========================================`;
+Helpline: ${storePhone}
+Thank you for choosing Tech Wash!`;
   },
 
   /**

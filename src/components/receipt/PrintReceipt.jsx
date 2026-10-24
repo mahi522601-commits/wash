@@ -222,49 +222,52 @@ export const PrintReceipt = ({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200 print:divide-slate-400 text-slate-900 print:text-black">
-            {items.map((item, idx) => {
-              const itemServiceName = item.serviceName || item.service || serviceName || 'Garment Care';
-              const itemSubServiceName = item.name || item.title || item.subServiceName || 'Standard Item';
-              const isSameName = itemServiceName.toLowerCase() === itemSubServiceName.toLowerCase();
+            {(() => {
+              const hasWeightBatch = items.some(it => it.isWeightItem || (it.weightKg && Number(it.weightKg) > 0));
+              return items.map((item, idx) => {
+                const itemServiceName = item.serviceName || item.service || serviceName || 'Garment Care';
+                const itemSubServiceName = item.name || item.title || item.subServiceName || 'Standard Item';
+                const isSameName = itemServiceName.toLowerCase() === itemSubServiceName.toLowerCase();
 
-              return (
-                <tr key={item.id || idx} className="hover:bg-slate-50/80 print:hover:bg-transparent border-b border-slate-100 print:border-slate-300">
-                  <td className="py-1.5 px-2 text-center text-slate-500 print:text-black font-mono text-[9px]">
-                    {String(idx + 1).padStart(2, '0')}
-                  </td>
-                  <td className="py-1.5 px-2 font-bold text-slate-800 print:text-black text-[9.5px] align-top">
-                    <span className="inline-block px-1.5 py-0.5 rounded bg-orange-50 print:bg-transparent print:p-0 text-orange-900 print:text-black font-semibold text-[9px] border border-orange-200 print:border-none">
-                      {itemServiceName}
-                    </span>
-                  </td>
-                  <td className="py-1.5 px-2 align-top">
-                    <div className="font-bold text-slate-900 print:text-black text-[10px]">
-                      {itemSubServiceName}
-                    </div>
-                    {(item.category || item.weightKg || item.isWeightItem) && (
-                      <div className="text-[8px] text-slate-500 print:text-slate-800 font-medium mt-0.5">
-                        {item.category && <span>Category: {item.category}</span>}
-                        {item.weightKg && <span className="ml-1">• Weight: {item.weightKg} Kg</span>}
-                        {item.dimensions && <span className="ml-1">• Size: {item.dimensions}</span>}
+                return (
+                  <tr key={item.id || idx} className="hover:bg-slate-50/80 print:hover:bg-transparent border-b border-slate-100 print:border-slate-300">
+                    <td className="py-1.5 px-2 text-center text-slate-500 print:text-black font-mono text-[9px]">
+                      {String(idx + 1).padStart(2, '0')}
+                    </td>
+                    <td className="py-1.5 px-2 font-bold text-slate-800 print:text-black text-[9.5px] align-top">
+                      <span className="inline-block px-1.5 py-0.5 rounded bg-orange-50 print:bg-transparent print:p-0 text-orange-900 print:text-black font-semibold text-[9px] border border-orange-200 print:border-none">
+                        {itemServiceName}
+                      </span>
+                    </td>
+                    <td className="py-1.5 px-2 align-top">
+                      <div className="font-bold text-slate-900 print:text-black text-[10px]">
+                        {itemSubServiceName}
                       </div>
-                    )}
-                  </td>
-                  <td className="py-1.5 px-2 text-center font-bold text-slate-900 print:text-black align-top font-mono">
-                    {item.quantity || 1}
-                  </td>
-                  <td className="py-1.5 px-2 text-right font-mono text-slate-800 print:text-black align-top">
-                    {item.unitPrice === 0 && item.lineTotal === 0
-                      ? <span className="text-[8px] font-bold text-emerald-700 print:text-black">Incl. in Kg</span>
-                      : formatCurrency(item.unitPrice !== undefined ? item.unitPrice : (item.price || 0))}
-                  </td>
-                  <td className="py-1.5 px-2 text-right font-bold font-mono text-slate-900 print:text-black align-top">
-                    {item.unitPrice === 0 && item.lineTotal === 0
-                      ? <span className="text-[8.5px] font-bold text-slate-500 print:text-black">₹0</span>
-                      : formatCurrency(item.lineTotal !== undefined ? item.lineTotal : (item.totalPrice || ((item.quantity || 1) * (item.unitPrice || item.price || 0))))}
-                  </td>
-                </tr>
-              );
-            })}
+                      {(item.category || (item.weightKg && Number(item.weightKg) > 0) || item.isWeightItem) && (
+                        <div className="text-[8px] text-slate-500 print:text-slate-800 font-medium mt-0.5">
+                          {item.category && <span>Category: {item.category}</span>}
+                          {item.weightKg && Number(item.weightKg) > 0 && <span className="ml-1">• Weight: {item.weightKg} Kg</span>}
+                          {item.dimensions && <span className="ml-1">• Size: {item.dimensions}</span>}
+                        </div>
+                      )}
+                    </td>
+                    <td className="py-1.5 px-2 text-center font-bold text-slate-900 print:text-black align-top font-mono">
+                      {item.quantity || 1}
+                    </td>
+                    <td className="py-1.5 px-2 text-right font-mono text-slate-800 print:text-black align-top">
+                      {item.unitPrice === 0 && item.lineTotal === 0
+                        ? (hasWeightBatch ? <span className="text-[8px] font-bold text-emerald-700 print:text-black">Incl. in Kg</span> : <span className="text-[8.5px] font-bold text-slate-500 print:text-black">₹0</span>)
+                        : formatCurrency(item.unitPrice !== undefined ? item.unitPrice : (item.price || 0))}
+                    </td>
+                    <td className="py-1.5 px-2 text-right font-bold font-mono text-slate-900 print:text-black align-top">
+                      {item.unitPrice === 0 && item.lineTotal === 0
+                        ? <span className="text-[8.5px] font-bold text-slate-500 print:text-black">₹0</span>
+                        : formatCurrency(item.lineTotal !== undefined ? item.lineTotal : (item.totalPrice || ((item.quantity || 1) * (item.unitPrice || item.price || 0))))}
+                    </td>
+                  </tr>
+                );
+              });
+            })()}
           </tbody>
         </table>
       </div>

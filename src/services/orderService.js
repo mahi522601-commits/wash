@@ -487,6 +487,20 @@ export const orderService = {
       console.warn('IndexedDB order write notice:', e);
     }
 
+    // STEP 1B: Immediately sync to Firebase Firestore under orderNumber and localId
+    if (isFirebaseConfigured && db) {
+      try {
+        if (orderNumber) {
+          await setDoc(doc(db, 'orders', String(orderNumber)), fullOrder, { merge: true });
+        }
+        if (localId && localId !== orderNumber) {
+          await setDoc(doc(db, 'orders', String(localId)), fullOrder, { merge: true });
+        }
+      } catch (e) {
+        console.warn('Direct Firestore save notice (syncQueue will retry):', e);
+      }
+    }
+
     // STEP 2: Enqueue into IndexedDB Synchronization Queue (status: SYNC_PENDING)
     await syncQueueService.enqueueTransaction(fullOrder, 'CREATE');
 
@@ -711,23 +725,43 @@ export const orderService = {
     const raw = String(orderIdOrNumber).trim();
     const upper = raw.toUpperCase();
     const cleanDigits = raw.replace(/\D/g, '');
-    const withoutPrefix = upper.replace(/^#|^TW-?/, '');
-    const withTW = upper.startsWith('TW-') ? upper : `TW-${withoutPrefix}`;
+    const withoutPrefix = upper.replace(/^#|^TW-?|^INV-?/i, '');
+    const numOnly = cleanDigits ? String(parseInt(cleanDigits, 10)) : '';
+    const pad4 = numOnly ? numOnly.padStart(4, '0') : '';
+    const pad5 = numOnly ? numOnly.padStart(5, '0') : '';
+    const pad6 = numOnly ? numOnly.padStart(6, '0') : '';
 
     const searchVariants = Array.from(new Set([
       raw,
       upper,
-      withTW,
       withoutPrefix,
-      `#${withoutPrefix}`,
-      `#${withTW}`,
       cleanDigits,
+      numOnly,
+      pad4,
+      pad5,
+      pad6,
+      `TW-${withoutPrefix}`,
+      `TW-${cleanDigits}`,
+      `TW-${numOnly}`,
+      `TW-${pad4}`,
+      `TW-${pad5}`,
+      `TW-${pad6}`,
+      `#${withoutPrefix}`,
+      `#TW-${withoutPrefix}`,
+      `#TW-${cleanDigits}`,
+      `#TW-${numOnly}`,
+      `#TW-${pad5}`,
+      `INV-${raw}`,
+      `INV-${withoutPrefix}`,
+      `INV-${cleanDigits}`,
+      `INV-TW-${cleanDigits}`,
+      `INV-TW-${pad5}`,
     ])).filter(Boolean);
 
     // 1. Check Firebase Firestore
     if (isFirebaseConfigured && db) {
       // Direct doc ID lookups in orders & bookings
-      for (const variant of [raw, upper, withTW, withoutPrefix]) {
+      for (const variant of searchVariants) {
         try {
           const snapO = await getDoc(doc(db, 'orders', variant));
           if (snapO.exists()) return { id: snapO.id, ...snapO.data() };
@@ -737,7 +771,7 @@ export const orderService = {
         } catch (e) {}
       }
 
-      // Query collections by fields (orderNumber, manualBillNumber, invoiceNumber, phone)
+      // Query collections by fields (orderNumber, manualBillNumber, invoiceNumber, localId, id, phone)
       try {
         const colOrders = collection(db, 'orders');
         for (const variant of searchVariants) {
@@ -755,6 +789,11 @@ export const orderService = {
           const qInv = query(colOrders, where('invoiceNumber', '==', variant), limit(1));
           const snapInv = await getDocs(qInv);
           if (!snapInv.empty) return { id: snapInv.docs[0].id, ...snapInv.docs[0].data() };
+
+          // by localId
+          const qLoc = query(colOrders, where('localId', '==', variant), limit(1));
+          const snapLoc = await getDocs(qLoc);
+          if (!snapLoc.empty) return { id: snapLoc.docs[0].id, ...snapLoc.docs[0].data() };
         }
 
         // Search by phone if >= 10 digits

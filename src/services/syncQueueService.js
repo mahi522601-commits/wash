@@ -396,6 +396,9 @@ class SyncQueueService {
     // 2. Perform Idempotent setDoc write to 'orders' collection
     try {
       await setDoc(doc(db, 'orders', targetDocId), finalOrderPayload, { merge: true });
+      if (finalOrderPayload.orderNumber && String(finalOrderPayload.orderNumber) !== targetDocId) {
+        await setDoc(doc(db, 'orders', String(finalOrderPayload.orderNumber)), finalOrderPayload, { merge: true });
+      }
     } catch (e) {
       if (e.code === 'permission-denied' || String(e.message).includes('PERMISSION_DENIED')) {
         console.warn(`Firestore order update notice for ${targetDocId}:`, e.message);

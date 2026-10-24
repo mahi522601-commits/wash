@@ -4,6 +4,7 @@ import { useToast } from '../../context/ToastContext';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import { compressImageToTargetKb, formatFileSize, TARGET_MAX_EXPENSE_BILL_KB } from '../../utils/imageCompressor';
 import { isSpeechRecognitionSupported, createSpeechRecognition } from '../../utils/speechRecognition';
+import { downloadExpensePDF } from '../../services/expensePdfGenerator';
 import { 
   Wallet, 
   Receipt, 
@@ -146,6 +147,27 @@ export const PosExpensesModal = ({
   const todayTotalAmount = useMemo(() => {
     return todayExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
   }, [todayExpenses]);
+
+  // 1-Click Generate & Download Official Expense PDF Report for POS
+  const handleDownloadExpensePDF = () => {
+    const listToDownload = (todayExpenses && todayExpenses.length > 0) ? todayExpenses : expenses;
+    if (!listToDownload || listToDownload.length === 0) {
+      error('No Expenses', 'No recorded expenses available to generate a PDF report.');
+      return;
+    }
+    try {
+      const todayDateStr = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+      downloadExpensePDF(listToDownload, {
+        periodLabel: `Today (${todayDateStr})`,
+        branchLabel: `${posName} (${posCode})`,
+        generatedBy: `POS Cashier / ${posCode}`,
+      });
+      success('Expense PDF Downloaded', `Downloaded PDF report for ${listToDownload.length} recorded expenses.`);
+    } catch (err) {
+      console.error('Failed to generate expense PDF:', err);
+      error('PDF Error', 'Failed to generate expense PDF.');
+    }
+  };
 
   // ─────────────────────────────────────────────────────────────
   // SPEECH RECOGNITION HANDLER
@@ -389,13 +411,24 @@ export const PosExpensesModal = ({
               </span>
             </div>
           </div>
-          <div className="flex items-center gap-2.5 justify-end">
-            <DollarSign className="w-4 h-4 text-emerald-400" />
-            <div className="text-right">
-              <span className="text-[10px] uppercase text-slate-400 font-bold block">Today's Total</span>
-              <span className="font-mono font-black text-rose-400 text-sm">
-                {formatCurrency(todayTotalAmount)}
-              </span>
+          <div className="flex items-center gap-3 justify-end">
+            <button
+              type="button"
+              onClick={handleDownloadExpensePDF}
+              className="px-2.5 py-1 rounded-xl bg-orange-500/20 hover:bg-orange-500/30 text-orange-300 text-xs font-bold transition flex items-center gap-1.5 border border-orange-500/30 cursor-pointer"
+              title="Download Expense PDF Report"
+            >
+              <Download className="w-3.5 h-3.5 text-orange-400" />
+              <span>Expense PDF</span>
+            </button>
+            <div className="flex items-center gap-2">
+              <DollarSign className="w-4 h-4 text-emerald-400" />
+              <div className="text-right">
+                <span className="text-[10px] uppercase text-slate-400 font-bold block">Today's Total</span>
+                <span className="font-mono font-black text-rose-400 text-sm">
+                  {formatCurrency(todayTotalAmount)}
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -761,9 +794,20 @@ export const PosExpensesModal = ({
           {/* ═══════════════════════════════════════════════════════════ */}
           {activeTab === 'list' && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between text-xs text-slate-400 border-b border-white/10 pb-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-400 border-b border-white/10 pb-2">
                 <span>Showing <strong>{todayExpenses.length}</strong> expenses recorded today at {posCode}</span>
-                <span>Total: <strong className="text-rose-400 font-mono text-sm">{formatCurrency(todayTotalAmount)}</strong></span>
+                <div className="flex items-center gap-3">
+                  <span>Total: <strong className="text-rose-400 font-mono text-sm">{formatCurrency(todayTotalAmount)}</strong></span>
+                  <button
+                    type="button"
+                    onClick={handleDownloadExpensePDF}
+                    className="px-2.5 py-1 rounded-xl bg-orange-500/20 hover:bg-orange-500/30 text-orange-300 text-xs font-bold transition flex items-center gap-1.5 border border-orange-500/30 cursor-pointer"
+                    title="Download Expense PDF Report"
+                  >
+                    <Download className="w-3.5 h-3.5 text-orange-400" />
+                    <span>Expense PDF</span>
+                  </button>
+                </div>
               </div>
 
               {todayExpenses.length === 0 ? (

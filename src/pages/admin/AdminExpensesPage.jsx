@@ -17,6 +17,7 @@ import { Tabs } from '../../components/ui/Tabs';
 import { Badge } from '../../components/ui/Badge';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { PnLReportModal } from '../../components/expenses/PnLReportModal';
+import { downloadExpensePDF, openExpensePDFPreview } from '../../services/expensePdfGenerator';
 import { 
   Wallet, 
   TrendingUp, 
@@ -841,6 +842,36 @@ export const AdminExpensesPage = () => {
     success('CSV Exported', `Downloaded P&L statement for ${pnlData.monthLabel}`);
   };
 
+  // 1-Click Generate & Download Official Expense PDF Report
+  const handleDownloadExpensePDF = () => {
+    // Choose expenses: if in ledger tab and filtered, use filteredLedger; otherwise all expenses for month/branch
+    const targetExpenses = (activeTab === 'ledger' && filteredLedger && filteredLedger.length > 0)
+      ? filteredLedger
+      : (activeTab === 'pos_counters' && (pos1Expenses.length > 0 || pos2Expenses.length > 0))
+      ? [...pos1Expenses, ...pos2Expenses]
+      : (expenses && expenses.length > 0 ? expenses : (pnlData?.expensesList || []));
+
+    if (!targetExpenses || targetExpenses.length === 0) {
+      info('No Recorded Expenses', 'There are no recorded expenses to include in the PDF report for this period.');
+      return;
+    }
+
+    const branchLabel = BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || 'All Branches';
+    const periodLabel = pnlData?.monthLabel || `${MONTHS[selectedMonth]?.label || ''} ${selectedYear}`;
+
+    try {
+      downloadExpensePDF(targetExpenses, {
+        periodLabel,
+        branchLabel,
+        generatedBy: 'Tech Wash Admin / Financial Ledger',
+      });
+      success('Expense PDF Downloaded', `Generated official Expense PDF report for ${periodLabel} (${targetExpenses.length} records).`);
+    } catch (err) {
+      console.error('Error generating expense PDF:', err);
+      error('PDF Generation Failed', err.message || 'Could not generate expense PDF report.');
+    }
+  };
+
   // Pie chart data for expense distribution
   const pieChartData = useMemo(() => {
     if (!pnlData?.categoryBreakdown) return [];
@@ -927,6 +958,17 @@ export const AdminExpensesPage = () => {
               className={`text-white border-white/20 hover:bg-white/10 ${loading ? 'opacity-60 cursor-not-allowed' : ''}`}
             >
               {loading ? 'Refreshing...' : 'Refresh'}
+            </Button>
+
+            <Button
+              variant="outline"
+              size="md"
+              icon={Download}
+              onClick={handleDownloadExpensePDF}
+              className="text-white border-white/20 hover:bg-white/10"
+              title="Generate and download official PDF report of recorded expenses"
+            >
+              Expense PDF
             </Button>
 
             <Button
@@ -1506,6 +1548,15 @@ export const AdminExpensesPage = () => {
                 <span>POS 2 Machine</span>
                 <span className="px-1.5 py-0.2 rounded bg-black/20 text-[10px] font-mono">TW-POS-02</span>
               </Link>
+              <button
+                type="button"
+                onClick={handleDownloadExpensePDF}
+                className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition flex items-center gap-1.5 border border-white/20 cursor-pointer"
+                title="Download Expense PDF Report"
+              >
+                <Download className="w-3.5 h-3.5 text-orange-400" />
+                <span>Expense PDF</span>
+              </button>
             </div>
           </div>
 
@@ -2476,14 +2527,26 @@ export const AdminExpensesPage = () => {
               </select>
             </div>
 
-            <Button
-              variant="primary"
-              size="md"
-              icon={Plus}
-              onClick={() => handleOpenAddExpense()}
-            >
-              Log New Expense
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="md"
+                icon={Download}
+                onClick={handleDownloadExpensePDF}
+                className="text-slate-700 border-slate-300 hover:bg-slate-100 text-xs font-bold"
+                title="Download Expense PDF Report"
+              >
+                Expense PDF
+              </Button>
+              <Button
+                variant="primary"
+                size="md"
+                icon={Plus}
+                onClick={() => handleOpenAddExpense()}
+              >
+                Log New Expense
+              </Button>
+            </div>
           </div>
 
           {/* Ledger Table */}

@@ -1042,10 +1042,10 @@ export const BillingMachinePage = () => {
 
     setIsCreatingBill(true);
     try {
-      // Calculate total grams & weight
-      const totalGrams = billForm.items.reduce((acc, it) => acc + (it.quantity * 350), 0);
-      const totalWeighedKg = (Number(billForm.foldWeightKg) || 0) + (Number(billForm.ironWeightKg) || 0) || (billForm.pricingType === 'per_kg' ? Number(billForm.weightKg) : null);
-      const estWeight = totalWeighedKg || (totalGrams > 0 ? (totalGrams / 1000) : null);
+      // Only set weight if manually entered by cashier (do not calculate weight automatically from garment count)
+      const totalWeighedKg = (Number(billForm.foldWeightKg) || 0) + (Number(billForm.ironWeightKg) || 0) || (billForm.pricingType === 'per_kg' && Number(billForm.weightKg) > 0 ? Number(billForm.weightKg) : null);
+      const isWeightEntered = Boolean(totalWeighedKg && totalWeighedKg > 0);
+      const estWeight = isWeightEntered ? totalWeighedKg : null;
 
       // Generate next 5-digit sequential number or use cashier-entered 4-digit offline bill slip number
       const seqData = await orderService.getNextOrderSequence();
@@ -1168,6 +1168,7 @@ export const BillingMachinePage = () => {
         items: finalItems,
         estimatedWeightKg: estWeight,
         actualWeight: estWeight,
+        isWeightEntered,
         priceSnapshot: {
           itemsSubtotal: subtotal,
           deliveryFee: 0,

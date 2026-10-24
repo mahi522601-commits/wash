@@ -156,19 +156,21 @@ export function generateInvoicePDFUint8Array(order) {
   if (Array.isArray(order.items) && order.items.length > 0) {
     order.items.forEach(it => {
       const sTitle = sanitizePdfText(it.serviceName || order.serviceName || order.service || 'Laundry Care');
-      const name = sanitizePdfText(it.name || it.subServiceName || 'Garment Item');
-      const qty = it.weight ? `${it.weight} Kg` : `${it.quantity || 1} Pcs`;
+      let name = sanitizePdfText(it.name || it.subServiceName || 'Garment Item');
+      name = name.replace(/^(🧺|🫧|👔|👗|✨|🥻|🧥|🛏️|👟|👞)\s*/, '').trim();
+      const hasWeight = Boolean(it.isWeightItem || (it.weightKg && Number(it.weightKg) > 0) || (it.weight && Number(it.weight) > 0));
+      const qty = hasWeight ? `${it.weightKg || it.weight} Kg` : `${it.quantity || 1} Pcs`;
       const rate = Number(it.unitPrice !== undefined ? it.unitPrice : (it.price || it.rate || 0));
       const lTotal = Number(it.lineTotal !== undefined ? it.lineTotal : (rate * (Number(it.quantity) || 1)));
       items.push({ sTitle, name, qty, rate, lineTotal: lTotal });
     });
   }
 
-  // Fallback if no explicit items
+  // Fallback ONLY if no explicit items
   if (items.length === 0) {
     const sName = sanitizePdfText(order.serviceName || order.service || 'Laundry Service');
-    const wt = order.actualWeight || order.estimatedWeightKg || order.weightKg;
-    const qty = wt ? `${wt} Kg` : '1 Batch';
+    const wt = Number(order.weightKg || (order.isWeightEntered ? order.actualWeight : 0) || 0);
+    const qty = wt > 0 ? `${wt} Kg` : '1 Batch';
     items.push({ sTitle: sName, name: 'Standard Processing Batch', qty, rate: total, lineTotal: total });
   }
 

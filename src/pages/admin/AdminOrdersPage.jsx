@@ -74,7 +74,8 @@ import {
   Sun,
   Moon,
   Bell,
-  FileSpreadsheet
+  FileSpreadsheet,
+  PackageCheck
 } from 'lucide-react';
 
 export const WALK_IN_SERVICES = [
@@ -885,9 +886,10 @@ export const AdminOrdersPage = () => {
 
     setIsCreatingWalkIn(true);
     try {
+      // Only set weight if manually entered (do not calculate weight automatically from garment count)
       const totalScaleKg = (foldKg > 0 || ironKg > 0) ? (foldKg + ironKg) : fallbackKg;
-      const totalGrams = walkInForm.items.reduce((acc, it) => acc + (it.quantity * 350), 0);
-      const estWeight = isScaleOrder ? totalScaleKg : (totalGrams > 0 ? (totalGrams / 1000) : null);
+      const isWeightEntered = Boolean(isScaleOrder && totalScaleKg && totalScaleKg > 0);
+      const estWeight = isWeightEntered ? totalScaleKg : null;
 
       const parsedReceived = walkInForm.receivedAmount !== '' 
         ? Math.max(0, Number(walkInForm.receivedAmount) || 0)
@@ -1005,8 +1007,10 @@ export const AdminOrdersPage = () => {
         serviceEmoji: resolvedServiceEmoji,
         pricingType: walkInForm.pricingType,
         items: finalItems,
+        weightKg: isWeightEntered ? totalScaleKg : undefined,
         estimatedWeightKg: estWeight,
         actualWeight: estWeight,
+        isWeightEntered,
         priceSnapshot: {
           itemsSubtotal: walkInSubtotal,
           deliveryFee: 0,
@@ -1257,6 +1261,32 @@ export const AdminOrdersPage = () => {
 
     whatsappNotificationService.openWhatsAppManual(phone, msg);
     success('WhatsApp Opened', `Opening WhatsApp for +91 ${phone}`);
+  };
+
+  const handleSendOrderReadyMessage = async (ord) => {
+    const phone = ord.whatsapp || ord.phone || ord.customer?.whatsapp || ord.customer?.phone;
+    if (!phone) {
+      error('No Phone', 'No customer phone number available.');
+      return;
+    }
+    const msg = whatsappNotificationService.buildOrderReadyWhatsAppMessage(ord);
+    whatsappNotificationService.openWhatsAppManual(phone, msg);
+    success('Order Ready Alert', `Opening WhatsApp Order Ready message for +91 ${phone}`);
+
+    // If order customer stage is not yet PACKED / DELIVERED, advance to PACKED
+    const currentStage = ord.customerStage || ord.status;
+    if (currentStage !== 'PACKED' && currentStage !== 'OUT_FOR_DELIVERY' && currentStage !== 'DELIVERED') {
+      try {
+        await orderService.updateOrderStatus(ord.id, {
+          customerStage: 'PACKED',
+          status: 'PACKED',
+          note: 'Marked ready for pickup & WhatsApp alert sent',
+        });
+        loadOrders();
+      } catch (e) {
+        // non-blocking
+      }
+    }
   };
 
   const handleSendDeliveryReminder = (ord, dayLabel = 'Tomorrow') => {
@@ -1626,6 +1656,15 @@ export const AdminOrdersPage = () => {
             className="w-8 h-8 rounded-xl bg-[#25D366] hover:bg-[#20bd5a] text-white flex items-center justify-center shadow-xs active:scale-95 transition-all"
           >
             <MessageSquare className="w-4 h-4" />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleSendOrderReadyMessage(row)}
+            title="1-Click WhatsApp Order Ready Alert"
+            className="w-8 h-8 rounded-xl bg-amber-500 hover:bg-amber-600 text-white flex items-center justify-center shadow-xs active:scale-95 transition-all"
+          >
+            <PackageCheck className="w-4 h-4" />
           </button>
 
           <button
@@ -2217,6 +2256,16 @@ export const AdminOrdersPage = () => {
                     className="flex-1 justify-center bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100"
                   >
                     Milestone Update
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    icon={PackageCheck}
+                    onClick={() => handleSendOrderReadyMessage(activeOrder)}
+                    className="flex-1 justify-center bg-amber-50 border-amber-300 text-amber-800 hover:bg-amber-100 font-bold"
+                  >
+                    Order Ready Alert
                   </Button>
                   <Button
                     type="button"

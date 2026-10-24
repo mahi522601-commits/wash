@@ -39,7 +39,8 @@ import {
   Edit3,
   Zap,
   Sliders,
-  FileText
+  FileText,
+  PackageCheck
 } from 'lucide-react';
 import { generateInvoicePDFBlob } from '../../services/pdfInvoiceGenerator';
 
@@ -489,6 +490,33 @@ export const PosOrdersModal = ({
     const msg = whatsappNotificationService.buildCustomerUpdateMessage(order, currentStage);
     whatsappNotificationService.openWhatsAppManual(phone, msg);
     success('WhatsApp Opened', `Order update prepared for ${order.customerName || 'Customer'}.`);
+  };
+
+  // Dedicated WhatsApp Alert: Order Ready for Collection
+  const handleSendOrderReady = async (order) => {
+    const phone = order.phone || order.customer?.phone || order.whatsapp;
+    if (!phone) {
+      error('No Phone Number', 'Customer phone number is missing.');
+      return;
+    }
+    const msg = whatsappNotificationService.buildOrderReadyWhatsAppMessage(order);
+    whatsappNotificationService.openWhatsAppManual(phone, msg);
+    success('Order Ready Alert', `Opening WhatsApp Order Ready message for ${order.customerName || 'Customer'}.`);
+
+    // Advance stage to PACKED if not yet packed or delivered
+    const currentStage = order.customerStage || order.status;
+    if (currentStage !== 'PACKED' && currentStage !== 'OUT_FOR_DELIVERY' && currentStage !== 'DELIVERED') {
+      try {
+        await orderService.updateOrderStatus(order.id, {
+          customerStage: 'PACKED',
+          status: 'PACKED',
+          note: 'Marked ready for pickup & WhatsApp alert opened',
+        });
+        loadOrders();
+      } catch (e) {
+        // non-blocking
+      }
+    }
   };
 
   if (!isOpen) return null;
@@ -1122,6 +1150,16 @@ export const PosOrdersModal = ({
                               <Send className="w-3.5 h-3.5" />
                             </button>
 
+                            {/* Send Order Ready WhatsApp */}
+                            <button
+                              type="button"
+                              onClick={() => handleSendOrderReady(order)}
+                              className="p-1.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 transition cursor-pointer"
+                              title="Send Order Ready for Collection WhatsApp Message"
+                            >
+                              <PackageCheck className="w-3.5 h-3.5" />
+                            </button>
+
                             {/* Call */}
                             {order.phone && (
                               <a
@@ -1289,6 +1327,16 @@ export const PosOrdersModal = ({
                         title="Send WhatsApp Update"
                       >
                         <Send className="w-3.5 h-3.5" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleSendOrderReady(order)}
+                        className="p-1.5 px-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                        title="Send Order Ready for Collection WhatsApp Message"
+                      >
+                        <PackageCheck className="w-3.5 h-3.5" />
+                        <span>Ready</span>
                       </button>
 
                       {order.phone && (
