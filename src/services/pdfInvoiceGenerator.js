@@ -6,6 +6,7 @@
  */
 
 import { TECHWASH_LOGO_JPEG_BASE64 } from './logoAssetBase64.js';
+import { computeServiceBreakdown } from '../utils/formatters.js';
 
 let cachedLogoBytes = null;
 function getLogoJpegBytes() {
@@ -236,19 +237,37 @@ export function generateInvoicePDFUint8Array(order) {
   s += textAt('F2', 8, '0.05 0.35 0.8', 313, cardY + 26, `Counter Ph: ${storePhone}`);
   s += textAt('F1', 7.5, '0.35 0.4 0.45', 313, cardY + 12, `Drop: ${pDate}  Ready: ${dDate} | ${order.status || 'CONFIRMED'}`);
 
-  // 3. ITEM SERVICE TABLE
-  let tblY = 618;
-  s += `0.06 0.09 0.16 rg 36 ${tblY} 523 20 re f\n`;
-  s += textAt('F2', 8, '1 1 1', 42, tblY + 6, 'S.No');
-  s += textAt('F2', 8, '1 1 1', 70, tblY + 6, 'Service & Treatment');
-  s += textAt('F2', 8, '1 1 1', 195, tblY + 6, 'Garment / Item Description');
-  s += textAt('F2', 8, '1 1 1', 355, tblY + 6, 'Qty / Wt');
-  s += textAt('F2', 8, '1 1 1', 420, tblY + 6, 'Rate');
-  s += textAt('F2', 8, '1 1 1', 490, tblY + 6, 'Line Total');
+  // 2.5 SERVICE BREAKDOWN BANNER (e.g. Dry Cleaning: 7 Pcs | Wash & Steam Iron: 4 Pcs)
+  const serviceBreakdown = computeServiceBreakdown(order);
+  let srvSummaryStr = '';
+  if (serviceBreakdown && serviceBreakdown.length > 0) {
+    srvSummaryStr = serviceBreakdown.map(sb => {
+      const wtText = sb.weightKg > 0 ? ` [${sb.weightKg} Kg]` : '';
+      return `${sb.serviceName}: ${sb.count} Pcs${wtText}`;
+    }).join('   |   ');
+  } else {
+    srvSummaryStr = `${order.serviceName || 'Laundry Service'}: ${items.length} Pcs`;
+  }
 
-  tblY -= 19;
-  const maxRows = Math.min(items.length, 12);
-  const rowHeight = maxRows > 8 ? 16 : 19;
+  const srvY = 624;
+  s += `0.95 0.975 1.0 rg 36 ${srvY} 523 18 re f\n`;
+  s += `0.8 0.85 0.92 RG 0.6 w 36 ${srvY} 523 18 re S\n`;
+  s += textAt('F2', 7.5, '0.15 0.39 0.92', 44, srvY + 5, 'SERVICES BREAKDOWN:');
+  s += textAt('F2', 7.5, '0.06 0.09 0.16', 158, srvY + 5, srvSummaryStr.slice(0, 72));
+
+  // 3. ITEM SERVICE TABLE
+  let tblY = 600;
+  s += `0.06 0.09 0.16 rg 36 ${tblY} 523 19 re f\n`;
+  s += textAt('F2', 7.5, '1 1 1', 42, tblY + 5.5, 'S.No');
+  s += textAt('F2', 7.5, '1 1 1', 70, tblY + 5.5, 'Service & Treatment');
+  s += textAt('F2', 7.5, '1 1 1', 195, tblY + 5.5, 'Garment / Item Description');
+  s += textAt('F2', 7.5, '1 1 1', 355, tblY + 5.5, 'Qty / Wt');
+  s += textAt('F2', 7.5, '1 1 1', 420, tblY + 5.5, 'Rate');
+  s += textAt('F2', 7.5, '1 1 1', 490, tblY + 5.5, 'Line Total');
+
+  tblY -= 18;
+  const maxRows = Math.min(items.length, 11);
+  const rowHeight = maxRows > 8 ? 16 : 18;
 
   for (let idx = 0; idx < maxRows; idx++) {
     const it = items[idx];
@@ -281,7 +300,10 @@ export function generateInvoicePDFUint8Array(order) {
   s += textAt('F2', 8.5, '1 1 1', 52, sumY + 43, payStatus);
 
   s += textAt('F2', 8, '0.15 0.2 0.25', 46, sumY + 22, `Payment Mode: ${payMethod}`);
-  s += textAt('F1', 7, '0.4 0.45 0.5', 46, sumY + 8, 'All accounts reconciled  Official Tax Invoice');
+  const shortSrv = (serviceBreakdown && serviceBreakdown.length > 0)
+    ? serviceBreakdown.map(sb => `${sb.serviceName}: ${sb.count} Pcs`).join(' | ').slice(0, 48)
+    : 'All accounts reconciled  Official Tax Invoice';
+  s += textAt('F1', 7, '0.2 0.35 0.55', 46, sumY + 8, shortSrv);
 
   // Right Box: Financial Summary Breakdown
   s += `0.98 0.99 1.0 rg 303 ${sumY} 256 78 re f\n`;

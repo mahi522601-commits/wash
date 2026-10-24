@@ -1,5 +1,5 @@
 import React from 'react';
-import { formatCurrency } from '../../utils/formatters';
+import { formatCurrency, computeServiceBreakdown } from '../../utils/formatters';
 import { generateQrImageUrl, generateUpiQrData } from '../../utils/qrCode';
 import { 
   Sparkles, 
@@ -60,6 +60,17 @@ export const PrintReceipt = ({
     0,
     MILESTONES.findIndex((m) => m.key === customerStage)
   );
+
+  const serviceBreakdown = React.useMemo(() => {
+    return computeServiceBreakdown(receiptData || { items, serviceName });
+  }, [receiptData, items, serviceName]);
+
+  const totalGarmentsPieces = React.useMemo(() => {
+    if (serviceBreakdown && serviceBreakdown.length > 0) {
+      return serviceBreakdown.reduce((sum, s) => sum + s.count, 0);
+    }
+    return items.reduce((sum, it) => sum + (Number(it.quantity) || 1), 0);
+  }, [serviceBreakdown, items]);
 
   return (
     <div
@@ -209,6 +220,27 @@ export const PrintReceipt = ({
       {/* ─────────────────────────────────────────────────────────
           3. GARMENTS & SERVICES LINE ITEM TABLE (SERVICE & SUB-SERVICE)
       ───────────────────────────────────────────────────────── */}
+      {serviceBreakdown && serviceBreakdown.length > 0 && (
+        <div className="mb-2 p-2 rounded-xl bg-orange-50/70 border border-orange-200 print:border-slate-300 print:bg-transparent flex flex-wrap items-center justify-between gap-2 text-[9.5px]">
+          <div className="flex items-center gap-1.5">
+            <span className="font-black uppercase tracking-wider text-orange-950 print:text-black text-[9px]">
+              Services Breakdown:
+            </span>
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {serviceBreakdown.map((sb, i) => (
+              <span key={i} className="inline-flex items-center px-2 py-0.5 rounded-md bg-white print:bg-transparent border border-orange-200 print:border-slate-300 font-bold text-slate-800 print:text-black">
+                {sb.serviceName}: <strong className="ml-1 text-orange-900 print:text-black font-mono">{sb.count} Pcs</strong>
+                {sb.weightKg > 0 ? <span className="ml-1 text-slate-500 font-normal">({sb.weightKg} Kg)</span> : ''}
+              </span>
+            ))}
+            <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-orange-600 print:bg-transparent text-white print:text-black font-bold text-[9px]">
+              Total: <strong className="ml-1 font-mono">{totalGarmentsPieces} Pcs</strong>
+            </span>
+          </div>
+        </div>
+      )}
+
       <div className="pt-0.5">
         <table className="w-full text-left border-collapse text-[10px] print:text-black">
           <thead>

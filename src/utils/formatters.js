@@ -213,3 +213,77 @@ export const parsePinToPinItems = (order) => {
   };
 };
 
+/**
+ * Compute breakdown of garment piece counts by service category (e.g. Dry Cleaning: 7 Pcs, Wash & Steam Iron: 4 Pcs)
+ * @param {Object} order - Full order or receiptData object
+ * @returns {Array<{ serviceName: string, count: number, weightKg: number }>}
+ */
+export const computeServiceBreakdown = (order) => {
+  if (!order) return [];
+  const items = Array.isArray(order.items) ? order.items : [];
+  const defaultServiceName = String(order.serviceName || order.service || '').trim();
+  const serviceMap = {};
+
+  items.forEach(it => {
+    const rawName = String(it.name || it.subServiceName || '').trim();
+    // Skip pure scale placeholder batch rows (e.g. 'Weighed Scale Laundry', 'Wash & Steam Iron Scale: 16.1 Kg')
+    const isPureScaleBatch = it.isWeightItem && (rawName.includes('Scale Batch') || rawName.includes('Scale:'));
+    if (isPureScaleBatch) return;
+
+    let sName = String(it.serviceName || it.service || '').trim();
+    const sId = String(it.serviceId || '').toLowerCase();
+    const iName = rawName.toLowerCase();
+    const iCat = String(it.category || '').toLowerCase();
+
+    let cleanService = '';
+    if (sName.toLowerCase().includes('dry clean') || sId.includes('dry-cleaning') || iName.includes('dry clean') || iCat.includes('dry clean') || iCat.includes('suits') || iCat.includes('outerwear')) {
+      cleanService = 'Dry Cleaning';
+    } else if ((sName.toLowerCase().includes('steam iron') && sName.toLowerCase().includes('wash')) || sId.includes('wash-and-iron') || iName.includes('wash & steam iron') || iName.includes('wash & iron')) {
+      cleanService = 'Wash & Steam Iron';
+    } else if (sName.toLowerCase().includes('wash & fold') || sName.toLowerCase().includes('wash and fold') || sId.includes('wash-and-fold') || iName.includes('wash & fold') || iCat.includes('fold')) {
+      cleanService = 'Wash & Fold';
+    } else if (sName.toLowerCase().includes('steam iron') || sId.includes('steam-ironing') || iName.includes('steam iron') || iCat.includes('iron')) {
+      cleanService = 'Steam Ironing';
+    } else if (sName.toLowerCase().includes('saree') || sId.includes('saree') || iCat.includes('saree') || iCat.includes('ethnic') || iName.includes('saree')) {
+      cleanService = 'Sarees & Ethnic';
+    } else if (sName.toLowerCase().includes('shoe') || sId.includes('shoe') || iCat.includes('footwear') || iCat.includes('shoe') || iName.includes('shoe') || iName.includes('sneaker')) {
+      cleanService = 'Shoe Care';
+    } else if (sName.toLowerCase().includes('quilt') || iName.includes('quilt') || iName.includes('razai') || iCat.includes('quilt') || iCat.includes('quilts')) {
+      cleanService = 'Quilts & Heavy Care';
+    } else if (sName.toLowerCase().includes('carpet') || iName.includes('carpet') || iName.includes('rug') || iCat.includes('carpet')) {
+      cleanService = 'Carpet Cleaning';
+    } else if (sName.toLowerCase().includes('curtain') || sId.includes('curtain') || iName.includes('curtain')) {
+      cleanService = 'Curtain Service';
+    } else if (sName.toLowerCase().includes('starch') || sId.includes('starch') || iName.includes('starch')) {
+      cleanService = 'Starch & Finishing';
+    } else if (sName) {
+      cleanService = sName.replace(/^(🧺|🫧|👔|👗|✨|🥻|🧥|🛏️|👟|👞)\s*/, '').trim();
+    } else if (defaultServiceName) {
+      const d = defaultServiceName.toLowerCase();
+      if (d.includes('dry clean')) cleanService = 'Dry Cleaning';
+      else if (d.includes('steam iron') && d.includes('wash')) cleanService = 'Wash & Steam Iron';
+      else if (d.includes('wash & fold')) cleanService = 'Wash & Fold';
+      else if (d.includes('steam iron')) cleanService = 'Steam Ironing';
+      else cleanService = defaultServiceName.replace(/^(🧺|🫧|👔|👗|✨|🥻|🧥|🛏️|👟|👞)\s*/, '').trim();
+    } else {
+      cleanService = 'Laundry Care';
+    }
+
+    const qty = Math.max(1, Number(it.quantity || 1));
+    if (!serviceMap[cleanService]) {
+      serviceMap[cleanService] = { serviceName: cleanService, count: 0, weightKg: 0 };
+    }
+    serviceMap[cleanService].count += qty;
+    if (it.weightKg) serviceMap[cleanService].weightKg += Number(it.weightKg);
+  });
+
+  // If no items were mapped but order has service & weight/batch
+  if (Object.keys(serviceMap).length === 0 && defaultServiceName) {
+    const cleanDef = defaultServiceName.replace(/^(🧺|🫧|👔|👗|✨|🥻|🧥|🛏️|👟|👞)\s*/, '').trim();
+    const wt = Number(order.weightKg || (order.isWeightEntered ? order.actualWeight : 0) || 0);
+    serviceMap[cleanDef] = { serviceName: cleanDef, count: items.length || 1, weightKg: wt };
+  }
+
+  return Object.values(serviceMap);
+};
+

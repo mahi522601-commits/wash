@@ -1,5 +1,6 @@
 import { db, isFirebaseConfigured } from './firebase.js';
 import { doc, getDoc, setDoc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { computeServiceBreakdown } from '../utils/formatters.js';
 
 const STORAGE_GATEWAY_KEY = 'techwash_whatsapp_gateway_config';
 export const LIVE_PRODUCTION_DOMAIN = 'https://techwashlaundry.com';
@@ -369,6 +370,12 @@ ${customNote ? `📝 *Update Note:* ${customNote}\n` : ''}${actualWeight ? `⚖�
     const manualWeight = Number(order.weightKg || (order.isWeightEntered ? order.actualWeight : 0) || 0);
     const weightSuffix = manualWeight > 0 ? ` (${manualWeight} Kg)` : '';
 
+    const serviceBreakdown = computeServiceBreakdown(order);
+    let serviceBreakdownLines = '';
+    if (serviceBreakdown && serviceBreakdown.length > 0) {
+      serviceBreakdownLines = serviceBreakdown.map(s => `• ${s.serviceName}: ${s.count} Pcs${s.weightKg > 0 ? ` (${s.weightKg} Kg)` : ''}`).join('\n') + '\n';
+    }
+
     const snapshot = order.priceSnapshot || {};
     const finalTotal = Number(order.finalPrice || snapshot.finalTotal || order.totalAmount || 0);
     const receivedAmount = Number(order.receivedAmount !== undefined ? order.receivedAmount : (order.paymentStatus === 'PAID' ? finalTotal : 0));
@@ -388,7 +395,7 @@ Great news! Your laundry order *#${cleanOrderNumber}* (${serviceName}) has been 
 *ORDER DETAILS:*
 • Order ID: *#${cleanOrderNumber}*
 • Total Garments: ${totalPcs > 0 ? `${totalPcs} Pieces${weightSuffix}` : 'Ready Batch'}
-${paymentLine}
+${serviceBreakdownLines}${paymentLine}
 
 *STORE PICKUP LOCATION:*
 • Branch: ${storeBranch}
@@ -552,11 +559,22 @@ Please collect your fresh garments at your convenience. Thank you for choosing T
       summaryLines.push(`• Status: ✅ Fully Paid`);
     }
 
+    // Compute Service Breakdown (e.g. Dry Cleaning 7 pcs, Wash & Iron 4 pcs)
+    const serviceBreakdown = computeServiceBreakdown(order || receiptData);
+    let serviceBreakdownText = '';
+    if (serviceBreakdown && serviceBreakdown.length > 0) {
+      const sLines = serviceBreakdown.map(s => {
+        const wtText = s.weightKg > 0 ? ` (${s.weightKg} Kg)` : '';
+        return `• ${s.serviceName}: ${s.count} Pcs${wtText}`;
+      });
+      serviceBreakdownText = `\n*SERVICES & PIECES:*\n${sLines.join('\n')}\n`;
+    }
+
     return `*TECH WASH LAUNDRY SERVICES*
 Bill Receipt: *#${cleanOrderNumber}*
 Date: ${orderDate}
 Customer: ${customerName}
-
+${serviceBreakdownText}
 *ITEMS:*
 ${itemLines.join('\n')}
 
