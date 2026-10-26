@@ -1,11 +1,11 @@
 /**
  * Techwash Laundry Automated Pre-rendering Build Script
  * Generates static HTML files for all SEO routes in dist/
- * Ensures Googlebot, Bingbot, and search crawlers receive 200 OK with:
+ * Guarantees Googlebot, Bingbot, and search crawlers receive 200 OK with:
  *  - Accurate canonical URLs (fixing canonical trap where everything mapped to homepage)
- *  - Targeted Page Titles and Meta Descriptions
- *  - High-intent Schema.org Service, ItemList, BreadcrumbList, and FAQPage JSON-LD
- *  - Crawlable semantic HTML with local areas, branches, and service rates
+ *  - High-intent Page Titles & Meta Descriptions targeting "Near Me" & "in Manikonda"
+ *  - Rich Schema.org Service, DryCleaningOrLaundry, ItemList, BreadcrumbList, and FAQPage JSON-LD
+ *  - High-density crawlable semantic HTML with local areas, branches, and service rates
  * Run via: node scripts/prerender-seo-pages.js
  */
 
@@ -47,7 +47,7 @@ const COMMON_FAQS = [
     answer: 'Techwash Laundry is rated #1 for dry cleaning and laundry in Hyderabad, serving Manikonda, Tolichowki, Shaikpet, Puppalaguda, Gachibowli, and Hitec City. We use 100% 0 PPM RO demineralized soft water, isolated single-customer wash drums, certified European eco-hydrocarbon solvents (zero PERC), and 3D tension steam finishing with free doorstep pickup.',
   },
   {
-    question: 'Do you offer doorstep laundry pickup and delivery near me?',
+    question: 'Do you offer doorstep laundry pickup and delivery near me in Manikonda?',
     answer: 'Yes! We provide on-demand and scheduled doorstep pickup across Manikonda (500089), Tolichowki (500008), Shaikpet, Puppalaguda, Lanco Hills, Alkapoor Township, Gachibowli, Hitec City, and Jubilee Hills. Our executive arrives at your scheduled time with digital scales, providing an instant itemized bill.',
   },
   {
@@ -59,12 +59,12 @@ const COMMON_FAQS = [
     answer: 'Absolutely. We use certified European closed-loop hydrocarbon dry cleaning with zero perchloroethylene (PERC). This preserves gold and silver zari, intricate embroidery, delicate raw silks, and tailored suit wools without fiber stiffness or harsh chemical odors.',
   },
   {
-    question: 'What is your turnaround time for laundry and dry cleaning near me?',
+    question: 'What is your turnaround time for laundry and dry cleaning in Manikonda?',
     answer: 'Our standard turnaround is 48 hours for complete washing, drying, steam pressing, and quality inspection. For urgent requirements, we provide express 24-hour turnaround across Manikonda, Tolichowki, and Hyderabad upon request.',
   },
   {
-    question: 'Can I drop off my clothes in person at a store counter near me?',
-    answer: 'Yes! You can visit any of our 3 physical branch counters: Branch 1 on Shaikpet Main Rd, Manikonda; Branch 2 beside Dreamscape Hotel, OU Colony, Tolichowki; or Counter 3 beside Ambience Courtyard, Shaikpet. Open 8:00 AM to 9:00 PM all 7 days.',
+    question: 'Can I drop off my clothes in person at a store counter near me in Manikonda?',
+    answer: 'Yes! You can visit any of our 3 physical branch counters: Branch 1 on Shaikpet Main Rd, Manikonda (opposite Sri Ram Nagar Colony); Branch 2 beside Dreamscape Hotel, OU Colony, Tolichowki; or Counter 3 beside Ambience Courtyard, Shaikpet. Open 8:00 AM to 9:00 PM all 7 days.',
   },
 ];
 
@@ -128,11 +128,47 @@ function generateAreasServedHtml() {
   `;
 }
 
+function generateManikondaLandmarksHtml(serviceName) {
+  const colonies = [
+    'Secretariat Colony',
+    'OU Colony',
+    'Lanco Hills Road',
+    'Shirdi Sai Nagar',
+    'Puppalaguda Main Road',
+    'Alkapoor Township Corridor',
+    'Ambience Courtyard Corridor',
+    'Shaikpet Main Road',
+    'Sri Ram Nagar Colony',
+    'Chitrapuri Hills',
+    'Prashant Hills Corridor',
+    'Golden Pride & Jaihind Enclave',
+    'Manikonda Gardens Rd'
+  ];
+
+  return `
+    <section style="margin-top: 36px; padding: 24px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 16px;">
+      <h3 style="font-size: 20px; font-weight: 800; color: #0F172A; margin: 0 0 12px 0;">
+        📍 Manikonda (500089) Colonies & Societies Covered for ${escapeHtml(serviceName)}
+      </h3>
+      <p style="font-size: 14px; color: #475569; margin-bottom: 14px;">
+        Our dedicated Manikonda mobile fleet delivers daily doorstep pickup and delivery (8:00 AM – 9:00 PM) to all high-rises, gated communities, and colonies:
+      </p>
+      <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+        ${colonies.map(col => `
+          <span style="display: inline-block; padding: 6px 12px; background: #FFFFFF; border: 1px solid #CBD5E1; border-radius: 999px; font-size: 13px; font-weight: 600; color: #334155;">
+            ✓ ${escapeHtml(col)}
+          </span>
+        `).join('')}
+      </div>
+    </section>
+  `;
+}
+
 function generateFaqHtml(faqs) {
   return `
     <section style="margin-top: 36px;">
       <h3 style="font-size: 20px; font-weight: 800; color: #1E293B; margin-bottom: 16px;">
-        Frequently Asked Questions — Services Near Me
+        Frequently Asked Questions — Services Near Me & Manikonda
       </h3>
       <div style="font-size: 14px; color: #475569; line-height: 1.7;">
         ${faqs.map(f => `
@@ -196,6 +232,32 @@ function buildHtmlPage(baseTemplate, config) {
   }
 
   return html;
+}
+
+function generateManikondaFaqsForService(service) {
+  const sLower = service.name.toLowerCase();
+  return [
+    {
+      question: `Which is the best ${sLower} in Manikonda, Hyderabad?`,
+      answer: `Techwash Laundry is rated #1 for ${sLower} in Manikonda (500089) with a 4.9/5 star rating. We provide 100% demineralized 0 PPM RO soft water wash, single-customer isolated drums, certified European eco hydrocarbon dry cleaning (0% PERC), and 3D tension steam form pressing with daily doorstep pickup across all Manikonda communities.`,
+    },
+    {
+      question: `What is the price of ${sLower} in Manikonda?`,
+      answer: `Our ${sLower} in Manikonda starts at ${service.pricingDisplay}. Flat 20% Off is available on your first order with free doorstep pickup across Manikonda.`,
+    },
+    {
+      question: `Do you offer free doorstep pickup in Manikonda for ${sLower}?`,
+      answer: `Yes, our pickup fleet operates daily (8:00 AM – 9:00 PM) throughout Secretariat Colony, OU Colony, Lanco Hills Road, Puppalaguda, Shirdi Sai Nagar, and Alkapoor Township with standard 48-hour and express 24-hour turnaround.`,
+    },
+    {
+      question: `Why is Techwash better than other laundries and dhobis in Manikonda for ${sLower}?`,
+      answer: `Most local laundries in Manikonda wash in hard tap or borewell water, causing white clothes to turn yellow and fabric fibers to weaken. Techwash uses 100% demineralized 0 PPM RO soft water, never mixes your garments with other customers, uses botanical bio-enzymes, and presses with 3D steam form mannequins to prevent fabric shine or burn marks.`,
+    },
+    {
+      question: `Where is your nearest store counter in Manikonda if I want to drop off clothes myself?`,
+      answer: `You can visit our Main Branch counter on Shaikpet Main Rd, Sri Ram Nagar Colony, Manikonda (500089), or our OU Colony branch beside Dreamscape Hotel, Tolichowki (500008), or our Ambience Courtyard counter. Open 8:00 AM to 9:00 PM all 7 days.`,
+    },
+  ];
 }
 
 function prerenderAll() {
@@ -358,7 +420,7 @@ function prerenderAll() {
   console.log('   ✅ dist/services/index.html generated.');
 
   // ----------------------------------------------------
-  // 2. Pre-render 11 Individual Service Pages: /services/:slug
+  // 2. Pre-render 11 Individual Service Pages: /services/:slug (Near Me)
   // ----------------------------------------------------
   for (const s of SEO_SERVICES) {
     console.log(`📁 Pre-rendering /services/${s.slug}...`);
@@ -370,11 +432,20 @@ function prerenderAll() {
       s.secondaryKeywords,
       ...(s.nearMeKeywords || []),
       `${s.name.toLowerCase()} near me`,
-      `${s.name.toLowerCase()} Manikonda`,
-      `${s.name.toLowerCase()} Hyderabad`,
+      `best ${s.name.toLowerCase()} near me`,
+      `${s.name.toLowerCase()} manikonda`,
+      `best ${s.name.toLowerCase()} in manikonda`,
+      `${s.name.toLowerCase()} hyderabad`,
+      `${s.name.toLowerCase()} 500089`,
+      `${s.name.toLowerCase()} puppalaguda`,
+      `${s.name.toLowerCase()} tolichowki`,
+      `${s.name.toLowerCase()} shaikpet`,
+      `${s.name.toLowerCase()} lanco hills`,
       'laundry near me',
       'dry cleaning near me'
     ].filter(Boolean).join(', ');
+
+    const serviceFaqs = generateManikondaFaqsForService(s);
 
     const serviceStructuredData = {
       '@context': 'https://schema.org',
@@ -390,7 +461,7 @@ function prerenderAll() {
         {
           '@type': 'Service',
           '@id': `${BASE_URL}/services/${s.slug}#service`,
-          name: `${s.name} Near Me`,
+          name: `${s.name} Near Me & in Manikonda`,
           alternateName: [
             s.name,
             `Best ${s.name} Near Me`,
@@ -450,7 +521,7 @@ function prerenderAll() {
         },
         {
           '@type': 'FAQPage',
-          mainEntity: COMMON_FAQS.map(faq => ({
+          mainEntity: serviceFaqs.map(faq => ({
             '@type': 'Question',
             name: faq.question,
             acceptedAnswer: { '@type': 'Answer', text: faq.answer },
@@ -469,10 +540,10 @@ function prerenderAll() {
 
         <header style="margin-bottom: 32px;">
           <p style="color: #EA580C; font-weight: 800; text-transform: uppercase; font-size: 13px; letter-spacing: 0.05em; margin-bottom: 8px;">
-            ✦ Rated #1 Fabric Care • ${escapeHtml(s.category)} • Free Doorstep Pickup
+            ✦ Rated #1 Fabric Care Near You • 0 PPM RO Soft Water • Flat 20% Off
           </p>
           <h1 style="font-size: 36px; line-height: 1.2; font-weight: 900; color: #111827; margin: 0 0 16px 0;">
-            ${escapeHtml(s.h1 || `${s.name} Near Me in Manikonda & Hyderabad`)}
+            ${escapeHtml(s.h1 || `Best ${s.name} Near Me in Manikonda & Hyderabad`)}
           </h1>
           <p style="font-size: 18px; color: #4B5563; max-width: 900px; margin: 0 0 16px 0;">
             ${escapeHtml(s.metaDescription)}
@@ -480,7 +551,8 @@ function prerenderAll() {
           <div style="background: #FFF7ED; border: 1px solid #FED7AA; border-radius: 12px; padding: 14px 18px; font-size: 14px; color: #9A3412; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between;">
             <div>
               <strong>Pricing:</strong> <span style="font-size: 16px; font-weight: 800; color: #EA580C;">${escapeHtml(s.pricingDisplay)}</span> |
-              <strong>Turnaround:</strong> Standard 48 Hours (Express 24h Available)
+              <strong>Turnaround:</strong> Standard 48 Hours (Express 24h Available) |
+              <strong>Hotline:</strong> <a href="tel:+916304845567" style="color: #EA580C; font-weight: bold;">+91 63048 45567</a>
             </div>
             <div>
               <a href="/book-pickup?service=${s.slug}" style="display: inline-block; padding: 8px 16px; background: #EA580C; color: #FFFFFF; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 13px;">
@@ -492,7 +564,7 @@ function prerenderAll() {
 
         <section style="margin-bottom: 32px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 16px; padding: 24px;">
           <h2 style="font-size: 22px; font-weight: 800; color: #0F172A; margin: 0 0 12px 0;">
-            How Our ${escapeHtml(s.name)} Works
+            How Our ${escapeHtml(s.name)} Works Near You
           </h2>
           <p style="font-size: 15px; color: #334155; margin-bottom: 16px;">
             ${escapeHtml(s.processSummary)}
@@ -500,19 +572,21 @@ function prerenderAll() {
           <ul style="padding-left: 20px; font-size: 14px; color: #475569; margin: 0;">
             <li style="margin-bottom: 8px;">100% Demineralized 0 PPM RO soft water preventing fabric yellowing and stiffness.</li>
             <li style="margin-bottom: 8px;">Single-customer isolated wash drums — garments are never mixed with other orders.</li>
-            <li style="margin-bottom: 8px;">Certified European non-toxic eco hydrocarbon dry cleaning with zero PERC odors.</li>
+            <li style="margin-bottom: 8px;">Certified European non-toxic eco hydrocarbon dry cleaning with zero PERC chemical odors.</li>
             <li style="margin-bottom: 8px;">Precision 3D tension steam form pressing without flat iron scorch marks or heat shine.</li>
+            <li style="margin-bottom: 8px;">Doorstep digital weighing with calibrated scales and instant WhatsApp receipts.</li>
           </ul>
         </section>
 
+        ${generateManikondaLandmarksHtml(s.name)}
         ${generateAreasServedHtml()}
         ${generateBranchHtml()}
-        ${generateFaqHtml(COMMON_FAQS)}
+        ${generateFaqHtml(serviceFaqs)}
       </main>
     `;
 
     const serviceHtml = buildHtmlPage(baseTemplate, {
-      title: s.title || `${s.name} Near Me - Best in Manikonda & Hyderabad | Techwash`,
+      title: s.title || `${s.name} Near Me & in Manikonda, Hyderabad | Flat 20% Off - Techwash`,
       description: s.metaDescription,
       keywords: serviceKeywords,
       canonicalUrl: `${BASE_URL}/services/${s.slug}`,
@@ -558,6 +632,24 @@ function prerenderAll() {
         address: BUSINESS_INFO.address,
         geo: BUSINESS_INFO.geo,
         openingHoursSpecification: BUSINESS_INFO.openingHoursSpecification,
+        department: BUSINESS_BRANCHES.map(branch => ({
+          '@type': 'DryCleaningOrLaundry',
+          name: branch.name,
+          telephone: branch.telephone,
+          address: {
+            '@type': 'PostalAddress',
+            streetAddress: branch.address,
+            addressLocality: branch.locality,
+            addressRegion: 'Telangana',
+            postalCode: branch.postalCode,
+            addressCountry: 'IN',
+          },
+          geo: {
+            '@type': 'GeoCoordinates',
+            latitude: branch.geo.latitude,
+            longitude: branch.geo.longitude,
+          },
+        })),
       },
       {
         '@type': 'FAQPage',
@@ -570,12 +662,76 @@ function prerenderAll() {
     ],
   };
 
+  const manikondaMainHtml = `
+    <main id="techwash-static-seo" style="max-width: 1200px; margin: 0 auto; padding: 24px; font-family: system-ui, -apple-system, sans-serif; color: #1F2937; line-height: 1.6;">
+      <header style="margin-bottom: 32px;">
+        <p style="color: #EA580C; font-weight: 800; text-transform: uppercase; font-size: 13px; letter-spacing: 0.05em; margin-bottom: 8px;">
+          ✦ Rated #1 Best Laundry in Manikonda 500089 • Flat 20% Off • Free Doorstep Pickup
+        </p>
+        <h1 style="font-size: 38px; line-height: 1.15; font-weight: 900; color: #111827; margin: 0 0 16px 0;">
+          Best Laundry Service in Manikonda, Hyderabad - Techwash
+        </h1>
+        <p style="font-size: 18px; color: #4B5563; max-width: 900px; margin: 0 0 16px 0;">
+          ${escapeHtml(manikondaArea.introText)}
+        </p>
+        <div style="background: #FFF7ED; border: 1px solid #FED7AA; border-radius: 12px; padding: 14px 18px; font-size: 14px; color: #9A3412;">
+          <strong>Manikonda Doorstep Hotline:</strong> <a href="tel:+916304845567" style="color: #EA580C; font-weight: bold;">+91 63048 45567</a> |
+          <strong>Store Address:</strong> Shaikpet Main Rd, Sri Ram Nagar Colony, Manikonda, Hyderabad 500089 |
+          <strong>Hours:</strong> 8:00 AM – 9:00 PM (Daily)
+        </div>
+      </header>
+
+      <section style="margin-bottom: 32px;">
+        <h2 style="font-size: 24px; font-weight: 800; color: #111827; margin-bottom: 16px;">
+          Manikonda Specialized Service Landing Pages & Rates
+        </h2>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 14px;">
+          <thead>
+            <tr style="background: #F3F4F6; text-align: left;">
+              <th style="padding: 10px; border: 1px solid #E5E7EB;">Manikonda Service</th>
+              <th style="padding: 10px; border: 1px solid #E5E7EB;">Starting Rate</th>
+              <th style="padding: 10px; border: 1px solid #E5E7EB;">Process Details</th>
+              <th style="padding: 10px; border: 1px solid #E5E7EB;">Landing Page</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${SEO_SERVICES.map(s => `
+              <tr>
+                <td style="padding: 10px; border: 1px solid #E5E7EB;">
+                  <a href="/areas/manikonda/${s.slug}" style="color: #EA580C; font-weight: bold; text-decoration: none;">
+                    ${escapeHtml(s.name)} in Manikonda
+                  </a>
+                </td>
+                <td style="padding: 10px; border: 1px solid #E5E7EB; font-weight: 700; color: #1E293B;">
+                  ${escapeHtml(s.pricingDisplay)}
+                </td>
+                <td style="padding: 10px; border: 1px solid #E5E7EB; color: #4B5563;">
+                  ${escapeHtml(s.processSummary)}
+                </td>
+                <td style="padding: 10px; border: 1px solid #E5E7EB;">
+                  <a href="/areas/manikonda/${s.slug}" style="display: inline-block; padding: 4px 10px; background: #EA580C; color: #FFFFFF; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: bold;">
+                    View Page →
+                  </a>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </section>
+
+      ${generateManikondaLandmarksHtml('Manikonda Laundry Services')}
+      ${generateBranchHtml()}
+      ${generateFaqHtml(manikondaArea.faqs)}
+    </main>
+  `;
+
   const manikondaHtml = buildHtmlPage(baseTemplate, {
     title: manikondaArea.title,
     description: manikondaArea.metaDescription,
     keywords: manikondaKeywords,
     canonicalUrl: `${BASE_URL}/areas/manikonda`,
     structuredData: manikondaStructuredData,
+    mainHtml: manikondaMainHtml,
   });
 
   fs.writeFileSync(path.join(manikondaDir, 'index.html'), manikondaHtml, 'utf-8');
@@ -583,22 +739,180 @@ function prerenderAll() {
   console.log('   ✅ dist/areas/manikonda/index.html generated.');
 
   // ----------------------------------------------------
-  // 4. Pre-render Manikonda Service Landing Pages: /areas/manikonda/:slug
+  // 4. Pre-render 11 Manikonda Service Landing Pages: /areas/manikonda/:slug
   // ----------------------------------------------------
   for (const s of SEO_SERVICES) {
     console.log(`📁 Pre-rendering /areas/manikonda/${s.slug}...`);
     const areaServiceSubDir = path.join(manikondaDir, s.slug);
     fs.mkdirSync(areaServiceSubDir, { recursive: true });
 
-    const title = `${s.name} in Manikonda, Hyderabad - Flat 20% Off | Techwash`;
-    const description = `Looking for ${s.name.toLowerCase()} in Manikonda? Techwash provides 0 PPM RO soft water wash, certified eco dry cleaning, and free doorstep pickup across Puppalaguda, Secretariat Colony, and Lanco Hills.`;
+    const title = `Best ${s.name} in Manikonda, Hyderabad (500089) - Flat 20% Off | Techwash`;
+    const description = `Looking for the best ${s.name.toLowerCase()} in Manikonda? Techwash Laundry provides 100% 0 PPM RO soft water care, certified eco hydrocarbon dry cleaning, and free doorstep pickup across Puppalaguda, Secretariat Colony, and Lanco Hills. Flat 20% Off on your first order.`;
     const canonicalUrl = `${BASE_URL}/areas/manikonda/${s.slug}`;
+    const keywords = [
+      `${s.name.toLowerCase()} in manikonda`,
+      `best ${s.name.toLowerCase()} in manikonda`,
+      `${s.name.toLowerCase()} manikonda`,
+      `${s.name.toLowerCase()} near me manikonda`,
+      `dry cleaners near me manikonda`,
+      `laundry near manikonda`,
+      `${s.name.toLowerCase()} puppalaguda`,
+      `${s.name.toLowerCase()} secretariat colony`,
+      `${s.name.toLowerCase()} lanco hills`,
+      `${s.name.toLowerCase()} alkapoor township`,
+      `${s.name.toLowerCase()} shaikpet 500089`,
+      s.primaryKeyword,
+      ...(s.nearMeKeywords || [])
+    ].join(', ');
+
+    const manikondaServiceFaqs = generateManikondaFaqsForService(s);
+
+    const areaServiceStructuredData = {
+      '@context': 'https://schema.org',
+      '@graph': [
+        {
+          '@type': 'BreadcrumbList',
+          itemListElement: [
+            { '@type': 'ListItem', position: 1, name: 'Home', item: BASE_URL },
+            { '@type': 'ListItem', position: 2, name: 'Manikonda', item: `${BASE_URL}/areas/manikonda` },
+            { '@type': 'ListItem', position: 3, name: `${s.name} in Manikonda`, item: canonicalUrl },
+          ],
+        },
+        {
+          '@type': 'Service',
+          '@id': `${canonicalUrl}#service`,
+          name: `Best ${s.name} in Manikonda`,
+          alternateName: [
+            `${s.name} in Manikonda`,
+            `Best ${s.name} Near Me Manikonda`,
+            `${s.name} Manikonda 500089`,
+            `${s.name} Puppalaguda`,
+            `${s.name} Lanco Hills`
+          ],
+          serviceType: `${s.name} in Manikonda (500089)`,
+          category: s.category || 'Garment Care',
+          description: description,
+          provider: {
+            '@type': 'DryCleaningOrLaundry',
+            name: `${BUSINESS_INFO.name} - Manikonda`,
+            telephone: BUSINESS_INFO.telephone,
+            url: canonicalUrl,
+            logo: BUSINESS_INFO.logo,
+            image: BUSINESS_INFO.image,
+            priceRange: BUSINESS_INFO.priceRange,
+            address: {
+              '@type': 'PostalAddress',
+              streetAddress: 'Shaikpet Main Rd, Sri Ram Nagar Colony, Manikonda',
+              addressLocality: 'Manikonda, Hyderabad',
+              addressRegion: 'Telangana',
+              postalCode: '500089',
+              addressCountry: 'IN',
+            },
+            geo: BUSINESS_INFO.geo,
+            hasMap: 'https://www.google.com/maps/search/?api=1&query=Tech+Wash+Laundry+Services+Shaikpet+Main+Rd+Sri+Ram+Nagar+Colony+Manikonda+Hyderabad+500089',
+            openingHoursSpecification: BUSINESS_INFO.openingHoursSpecification,
+          },
+          areaServed: [
+            { '@type': 'AdministrativeArea', name: 'Manikonda, Hyderabad (500089)' },
+            { '@type': 'AdministrativeArea', name: 'Puppalaguda, Hyderabad (500089)' },
+            { '@type': 'AdministrativeArea', name: 'Secretariat Colony, Manikonda' },
+            { '@type': 'AdministrativeArea', name: 'OU Colony, Manikonda' },
+            { '@type': 'AdministrativeArea', name: 'Lanco Hills, Manikonda' },
+            { '@type': 'AdministrativeArea', name: 'Alkapoor Township, Manikonda' },
+            { '@type': 'AdministrativeArea', name: 'Shaikpet, Hyderabad (500089)' },
+          ],
+          offers: {
+            '@type': 'Offer',
+            priceCurrency: 'INR',
+            price: s.pricingDisplay?.match(/\d+/)?.[0] || '40',
+            description: s.pricingDisplay,
+            url: canonicalUrl,
+            availability: 'https://schema.org/InStock',
+          },
+        },
+        {
+          '@type': 'FAQPage',
+          mainEntity: manikondaServiceFaqs.map(faq => ({
+            '@type': 'Question',
+            name: faq.question,
+            acceptedAnswer: { '@type': 'Answer', text: faq.answer },
+          })),
+        },
+      ],
+    };
+
+    const areaServiceMainHtml = `
+      <main id="techwash-static-seo" style="max-width: 1200px; margin: 0 auto; padding: 24px; font-family: system-ui, -apple-system, sans-serif; color: #1F2937; line-height: 1.6;">
+        <nav style="font-size: 13px; color: #64748B; margin-bottom: 16px;">
+          <a href="/" style="color: #64748B; text-decoration: none;">Home</a> &gt; 
+          <a href="/areas/manikonda" style="color: #64748B; text-decoration: none;">Manikonda Hub</a> &gt; 
+          <span style="color: #EA580C; font-weight: bold;">${escapeHtml(s.name)} in Manikonda</span>
+        </nav>
+
+        <header style="margin-bottom: 32px;">
+          <p style="color: #EA580C; font-weight: 800; text-transform: uppercase; font-size: 13px; letter-spacing: 0.05em; margin-bottom: 8px;">
+            ✦ Rated #1 in Manikonda 500089 • 0 PPM RO Soft Water • Flat 20% Off
+          </p>
+          <h1 style="font-size: 36px; line-height: 1.2; font-weight: 900; color: #111827; margin: 0 0 16px 0;">
+            Best ${escapeHtml(s.name)} in Manikonda, Hyderabad (Near Me)
+          </h1>
+          <p style="font-size: 18px; color: #4B5563; max-width: 900px; margin: 0 0 16px 0;">
+            Looking for top-rated ${escapeHtml(s.name.toLowerCase())} in Manikonda? Techwash Laundry is your premier local choice across Puppalaguda, Secretariat Colony, OU Colony, Lanco Hills Road, and Alkapoor Township. We provide 100% demineralized 0 PPM RO soft-water washing, isolated single-customer machine drums, certified non-toxic European eco hydrocarbon dry cleaning, and 3D tension steam form pressing with daily doorstep pickup.
+          </p>
+          <div style="background: #FFF7ED; border: 1px solid #FED7AA; border-radius: 12px; padding: 14px 18px; font-size: 14px; color: #9A3412; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between;">
+            <div>
+              <strong>Manikonda Rate:</strong> <span style="font-size: 16px; font-weight: 800; color: #EA580C;">${escapeHtml(s.pricingDisplay)}</span> |
+              <strong>Pickup Hours:</strong> 8:00 AM – 9:00 PM (All 7 Days) |
+              <strong>Hotline:</strong> <a href="tel:+916304845567" style="color: #EA580C; font-weight: bold;">+91 63048 45567</a>
+            </div>
+            <div>
+              <a href="/book-pickup?locality=Manikonda&service=${s.slug}" style="display: inline-block; padding: 8px 16px; background: #EA580C; color: #FFFFFF; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 13px;">
+                Schedule Manikonda Pickup →
+              </a>
+            </div>
+          </div>
+        </header>
+
+        <section style="margin-bottom: 32px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 16px; padding: 24px;">
+          <h2 style="font-size: 22px; font-weight: 800; color: #0F172A; margin: 0 0 12px 0;">
+            Why Techwash is Manikonda's #1 Rated ${escapeHtml(s.name)}
+          </h2>
+          <p style="font-size: 15px; color: #334155; margin-bottom: 16px;">
+            ${escapeHtml(s.processSummary)}
+          </p>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px;">
+            <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 14px;">
+              <h4 style="font-size: 14px; font-weight: bold; color: #EA580C; margin: 0 0 6px 0;">0 PPM RO Demineralized Water</h4>
+              <p style="font-size: 12px; color: #64748B; margin: 0;">Preserves fabric elasticity, removes mineral stains, and keeps white shirts brilliant without hard water damage.</p>
+            </div>
+            <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 14px;">
+              <h4 style="font-size: 14px; font-weight: bold; color: #EA580C; margin: 0 0 6px 0;">Single-Customer Wash Drums</h4>
+              <p style="font-size: 12px; color: #64748B; margin: 0;">100% individual sanitization. Your clothes are never mixed with other households, ensuring complete hygiene.</p>
+            </div>
+            <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 14px;">
+              <h4 style="font-size: 14px; font-weight: bold; color: #EA580C; margin: 0 0 6px 0;">European Eco Hydrocarbon Dry Clean</h4>
+              <p style="font-size: 12px; color: #64748B; margin: 0;">Zero toxic PERC odors. Gentle on suits, pure silk sarees, and embellished bridal couture.</p>
+            </div>
+            <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 14px;">
+              <h4 style="font-size: 14px; font-weight: bold; color: #EA580C; margin: 0 0 6px 0;">3D Mannequin Steam Finishing</h4>
+              <p style="font-size: 12px; color: #64748B; margin: 0;">Tension form steam press with zero heat shine, zero scorch marks, and crisp vacuum table crease locking.</p>
+            </div>
+          </div>
+        </section>
+
+        ${generateManikondaLandmarksHtml(s.name)}
+        ${generateBranchHtml()}
+        ${generateFaqHtml(manikondaServiceFaqs)}
+      </main>
+    `;
 
     const areaServiceHtml = buildHtmlPage(baseTemplate, {
       title,
       description,
-      keywords: `${s.primaryKeyword}, ${s.name.toLowerCase()} Manikonda, laundry in Manikonda 500089`,
+      keywords,
       canonicalUrl,
+      structuredData: areaServiceStructuredData,
+      mainHtml: areaServiceMainHtml,
     });
 
     fs.writeFileSync(path.join(areaServiceSubDir, 'index.html'), areaServiceHtml, 'utf-8');
@@ -608,9 +922,9 @@ function prerenderAll() {
 
   console.log(`\n🎉 SUCCESS: Successfully pre-rendered ${generatedCount} static HTML SEO pages into dist/!`);
   console.log('   - /services/index.html');
-  console.log('   - 11x /services/<slug>/index.html');
-  console.log('   - /areas/manikonda/index.html');
-  console.log('   - 11x /areas/manikonda/<slug>/index.html');
+  console.log('   - 11x /services/<slug>/index.html (Targeting "Near Me" search queries)');
+  console.log('   - /areas/manikonda/index.html (Manikonda Hub)');
+  console.log('   - 11x /areas/manikonda/<slug>/index.html (Targeting "in Manikonda" search queries)');
 }
 
 prerenderAll();
