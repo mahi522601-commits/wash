@@ -1,0 +1,616 @@
+/**
+ * Techwash Laundry Automated Pre-rendering Build Script
+ * Generates static HTML files for all SEO routes in dist/
+ * Ensures Googlebot, Bingbot, and search crawlers receive 200 OK with:
+ *  - Accurate canonical URLs (fixing canonical trap where everything mapped to homepage)
+ *  - Targeted Page Titles and Meta Descriptions
+ *  - High-intent Schema.org Service, ItemList, BreadcrumbList, and FAQPage JSON-LD
+ *  - Crawlable semantic HTML with local areas, branches, and service rates
+ * Run via: node scripts/prerender-seo-pages.js
+ */
+
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { 
+  BASE_URL, 
+  BUSINESS_INFO, 
+  BUSINESS_BRANCHES, 
+  SEO_AREAS, 
+  SEO_SERVICES 
+} from '../src/data/seoData.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const DIST_DIR = path.resolve(__dirname, '../dist');
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function escapeAttr(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+const COMMON_FAQS = [
+  {
+    question: 'Which is the best dry cleaning and laundry service near me in Hyderabad?',
+    answer: 'Techwash Laundry is rated #1 for dry cleaning and laundry in Hyderabad, serving Manikonda, Tolichowki, Shaikpet, Puppalaguda, Gachibowli, and Hitec City. We use 100% 0 PPM RO demineralized soft water, isolated single-customer wash drums, certified European eco-hydrocarbon solvents (zero PERC), and 3D tension steam finishing with free doorstep pickup.',
+  },
+  {
+    question: 'Do you offer doorstep laundry pickup and delivery near me?',
+    answer: 'Yes! We provide on-demand and scheduled doorstep pickup across Manikonda (500089), Tolichowki (500008), Shaikpet, Puppalaguda, Lanco Hills, Alkapoor Township, Gachibowli, Hitec City, and Jubilee Hills. Our executive arrives at your scheduled time with digital scales, providing an instant itemized bill.',
+  },
+  {
+    question: 'How does per-kg wash & fold and wash & iron work?',
+    answer: 'Wash & Fold starts at ₹100/kg, and Wash & Iron starts at ₹130/kg. Your garments are weighed transparently at your doorstep, washed exclusively in single-customer drums using hypoallergenic bio-detergents in 0 PPM soft water, dried with moisture sensors, and either precision hand-folded or steam-pressed on 3D form mannequins.',
+  },
+  {
+    question: 'Is your dry cleaning safe for heavy silk sarees, sherwanis, and suits?',
+    answer: 'Absolutely. We use certified European closed-loop hydrocarbon dry cleaning with zero perchloroethylene (PERC). This preserves gold and silver zari, intricate embroidery, delicate raw silks, and tailored suit wools without fiber stiffness or harsh chemical odors.',
+  },
+  {
+    question: 'What is your turnaround time for laundry and dry cleaning near me?',
+    answer: 'Our standard turnaround is 48 hours for complete washing, drying, steam pressing, and quality inspection. For urgent requirements, we provide express 24-hour turnaround across Manikonda, Tolichowki, and Hyderabad upon request.',
+  },
+  {
+    question: 'Can I drop off my clothes in person at a store counter near me?',
+    answer: 'Yes! You can visit any of our 3 physical branch counters: Branch 1 on Shaikpet Main Rd, Manikonda; Branch 2 beside Dreamscape Hotel, OU Colony, Tolichowki; or Counter 3 beside Ambience Courtyard, Shaikpet. Open 8:00 AM to 9:00 PM all 7 days.',
+  },
+];
+
+function generateBranchHtml() {
+  return `
+    <section style="margin-top: 36px; padding: 24px; background: #FFF7ED; border: 1px solid #FED7AA; border-radius: 16px;">
+      <h3 style="font-size: 20px; font-weight: 800; color: #9A3412; margin: 0 0 16px 0;">
+        📍 Store Branches & Drop-off Counters Near You (Open 8 AM – 9 PM)
+      </h3>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+        ${BUSINESS_BRANCHES.map(b => `
+          <div style="background: #FFFFFF; border: 1px solid #FED7AA; border-radius: 12px; padding: 16px;">
+            <div style="font-weight: 800; color: #1E293B; font-size: 15px; margin-bottom: 6px;">${escapeHtml(b.name)}</div>
+            <div style="font-size: 13px; color: #64748B; margin-bottom: 10px;">${escapeHtml(b.address)}</div>
+            <div style="font-size: 13px; margin-bottom: 8px;">
+              <strong>Phone:</strong> <a href="tel:${b.telephone.replace(/\s+/g, '')}" style="color: #EA580C; font-weight: bold;">${b.telephone}</a>
+            </div>
+            <div style="font-size: 13px;">
+              <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.name + ' ' + b.address)}" target="_blank" rel="noopener noreferrer" style="color: #EA580C; font-weight: bold; text-decoration: underline;">
+                Get Directions on Google Maps →
+              </a>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </section>
+  `;
+}
+
+function generateAreasServedHtml() {
+  const areas = [
+    { name: 'Manikonda', pin: '500089' },
+    { name: 'Tolichowki', pin: '500008' },
+    { name: 'OU Colony', pin: '500008' },
+    { name: 'Shaikpet', pin: '500089' },
+    { name: 'Puppalaguda', pin: '500089' },
+    { name: 'Lanco Hills', pin: '500089' },
+    { name: 'Alkapoor Township', pin: '500089' },
+    { name: 'Gachibowli', pin: '500032' },
+    { name: 'Hitec City', pin: '500081' },
+    { name: 'Jubilee Hills', pin: '500033' },
+    { name: 'Narsingi & Kokapet', pin: '500075' },
+  ];
+
+  return `
+    <section style="margin-top: 36px;">
+      <h3 style="font-size: 20px; font-weight: 800; color: #1E293B; margin-bottom: 12px;">
+        🚚 Doorstep Pickup & Delivery Areas Near Me (60-90 Min Response)
+      </h3>
+      <p style="font-size: 14px; color: #64748B; margin-bottom: 14px;">
+        Our mobile concierge fleet provides scheduled and express doorstep laundry collection across Hyderabad:
+      </p>
+      <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+        ${areas.map(a => `
+          <span style="display: inline-block; padding: 6px 12px; background: #F1F5F9; border: 1px solid #CBD5E1; border-radius: 999px; font-size: 13px; font-weight: 600; color: #334155;">
+            ${escapeHtml(a.name)} (${a.pin})
+          </span>
+        `).join('')}
+      </div>
+    </section>
+  `;
+}
+
+function generateFaqHtml(faqs) {
+  return `
+    <section style="margin-top: 36px;">
+      <h3 style="font-size: 20px; font-weight: 800; color: #1E293B; margin-bottom: 16px;">
+        Frequently Asked Questions — Services Near Me
+      </h3>
+      <div style="font-size: 14px; color: #475569; line-height: 1.7;">
+        ${faqs.map(f => `
+          <div style="margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid #E2E8F0;">
+            <p style="font-weight: 800; color: #0F172A; margin: 0 0 6px 0;">Q: ${escapeHtml(f.question)}</p>
+            <p style="margin: 0; color: #475569;">A: ${escapeHtml(f.answer)}</p>
+          </div>
+        `).join('')}
+      </div>
+    </section>
+  `;
+}
+
+function buildHtmlPage(baseTemplate, config) {
+  let html = baseTemplate;
+
+  // 1. Replace Title
+  html = html.replace(/<title>.*?<\/title>/i, `<title>${escapeHtml(config.title)}</title>`);
+
+  // 2. Replace Meta Description
+  html = html.replace(/<meta\s+name="description"\s+content=".*?"\s*\/?>/i, 
+    `<meta name="description" content="${escapeAttr(config.description)}" />`);
+
+  // 3. Replace Meta Keywords
+  html = html.replace(/<meta\s+name="keywords"\s+content=".*?"\s*\/?>/i, 
+    `<meta name="keywords" content="${escapeAttr(config.keywords)}" />`);
+
+  // 4. Replace Canonical URL
+  html = html.replace(/<link\s+rel="canonical"\s+href=".*?"\s*\/?>/i, 
+    `<link rel="canonical" href="${escapeAttr(config.canonicalUrl)}" />`);
+
+  // 5. Replace Open Graph Tags
+  html = html.replace(/<meta\s+property="og:title"\s+content=".*?"\s*\/?>/i, 
+    `<meta property="og:title" content="${escapeAttr(config.title)}" />`);
+  html = html.replace(/<meta\s+property="og:description"\s+content=".*?"\s*\/?>/i, 
+    `<meta property="og:description" content="${escapeAttr(config.description)}" />`);
+  html = html.replace(/<meta\s+property="og:url"\s+content=".*?"\s*\/?>/i, 
+    `<meta property="og:url" content="${escapeAttr(config.canonicalUrl)}" />`);
+
+  // 6. Replace Twitter Tags
+  html = html.replace(/<meta\s+name="twitter:title"\s+content=".*?"\s*\/?>/i, 
+    `<meta name="twitter:title" content="${escapeAttr(config.title)}" />`);
+  html = html.replace(/<meta\s+name="twitter:description"\s+content=".*?"\s*\/?>/i, 
+    `<meta name="twitter:description" content="${escapeAttr(config.description)}" />`);
+
+  // 7. Replace Schema.org JSON-LD (Replace the first static script tag)
+  if (config.structuredData) {
+    const jsonLdString = JSON.stringify(config.structuredData, null, 2);
+    html = html.replace(
+      /<script\s+type="application\/ld\+json">[\s\S]*?<\/script>/i,
+      `<script type="application/ld+json">\n${jsonLdString}\n</script>`
+    );
+  }
+
+  // 8. Replace semantic <main id="techwash-static-seo"> content inside #root
+  if (config.mainHtml) {
+    html = html.replace(
+      /<main\s+id="techwash-static-seo"[\s\S]*?<\/main>/i,
+      config.mainHtml
+    );
+  }
+
+  return html;
+}
+
+function prerenderAll() {
+  console.log('====================================================');
+  console.log('🚀 TECHWASH STATIC PRE-RENDERING ENGINE FOR SEO');
+  console.log('====================================================\n');
+
+  const baseTemplatePath = path.join(DIST_DIR, 'index.html');
+  if (!fs.existsSync(baseTemplatePath)) {
+    console.error('❌ dist/index.html not found. Run "vite build" first!');
+    process.exit(1);
+  }
+
+  const baseTemplate = fs.readFileSync(baseTemplatePath, 'utf-8');
+  let generatedCount = 0;
+
+  // ----------------------------------------------------
+  // 1. Pre-render Main Services Hub: /services
+  // ----------------------------------------------------
+  console.log('📁 Pre-rendering /services...');
+  const servicesDir = path.join(DIST_DIR, 'services');
+  fs.mkdirSync(servicesDir, { recursive: true });
+
+  const servicesStructuredData = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Home', item: BASE_URL },
+          { '@type': 'ListItem', position: 2, name: 'Services Near Me', item: `${BASE_URL}/services` },
+        ],
+      },
+      {
+        '@type': 'ItemList',
+        itemListElement: SEO_SERVICES.map((s, idx) => ({
+          '@type': 'ListItem',
+          position: idx + 1,
+          name: `${s.name} Near Me`,
+          url: `${BASE_URL}/services/${s.slug}`,
+          description: s.metaDescription,
+        })),
+      },
+      {
+        '@type': 'FAQPage',
+        mainEntity: COMMON_FAQS.map(faq => ({
+          '@type': 'Question',
+          name: faq.question,
+          acceptedAnswer: { '@type': 'Answer', text: faq.answer },
+        })),
+      },
+      {
+        '@type': 'DryCleaningOrLaundry',
+        '@id': `${BASE_URL}/services#localbusiness`,
+        name: BUSINESS_INFO.name,
+        telephone: BUSINESS_INFO.telephone,
+        url: `${BASE_URL}/services`,
+        logo: BUSINESS_INFO.logo,
+        image: BUSINESS_INFO.image,
+        priceRange: BUSINESS_INFO.priceRange,
+        address: BUSINESS_INFO.address,
+        geo: BUSINESS_INFO.geo,
+        openingHoursSpecification: BUSINESS_INFO.openingHoursSpecification,
+        department: BUSINESS_BRANCHES.map(branch => ({
+          '@type': 'DryCleaningOrLaundry',
+          name: branch.name,
+          telephone: branch.telephone,
+          address: {
+            '@type': 'PostalAddress',
+            streetAddress: branch.address,
+            addressLocality: branch.locality,
+            addressRegion: 'Telangana',
+            postalCode: branch.postalCode,
+            addressCountry: 'IN',
+          },
+          geo: {
+            '@type': 'GeoCoordinates',
+            latitude: branch.geo.latitude,
+            longitude: branch.geo.longitude,
+          },
+        })),
+      },
+    ],
+  };
+
+  const servicesMainHtml = `
+    <main id="techwash-static-seo" style="max-width: 1200px; margin: 0 auto; padding: 24px; font-family: system-ui, -apple-system, sans-serif; color: #1F2937; line-height: 1.6;">
+      <header style="margin-bottom: 32px;">
+        <p style="color: #EA580C; font-weight: 800; text-transform: uppercase; font-size: 13px; letter-spacing: 0.05em; margin-bottom: 8px;">
+          ✦ Certified Fabric Care Laboratory • 0 PPM RO Soft Water • Free Doorstep Pickup
+        </p>
+        <h1 style="font-size: 38px; line-height: 1.15; font-weight: 900; color: #111827; margin: 0 0 16px 0;">
+          Dry Cleaning, Laundry & Steam Pressing Services Near Me in Hyderabad
+        </h1>
+        <p style="font-size: 18px; color: #4B5563; max-width: 900px; margin: 0 0 16px 0;">
+          Looking for top-rated dry cleaners or laundry services near you? Techwash Laundry provides 100% demineralized 0 PPM RO soft-water washing, isolated single-customer machine drums, certified non-toxic European eco hydrocarbon dry cleaning, and 3D tension steam form pressing with daily scheduled and express doorstep pickup across Manikonda, Tolichowki, Shaikpet, Gachibowli, and Hyderabad.
+        </p>
+        <div style="background: #FFF7ED; border: 1px solid #FED7AA; border-radius: 12px; padding: 14px 18px; font-size: 14px; color: #9A3412;">
+          <strong>Direct Booking Hotline:</strong> <a href="tel:+916304845567" style="color: #EA580C; font-weight: bold;">+91 63048 45567</a> |
+          <strong>Operating Hours:</strong> 8:00 AM – 9:00 PM (All 7 Days) |
+          <strong>Doorstep Fleet:</strong> 60-Minute Response in Manikonda & Tolichowki
+        </div>
+      </header>
+
+      <section style="margin-bottom: 32px;">
+        <h2 style="font-size: 24px; font-weight: 800; color: #111827; margin-bottom: 16px;">
+          Full Garment Care Menu & Rates Near You
+        </h2>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 14px;">
+          <thead>
+            <tr style="background: #F3F4F6; text-align: left;">
+              <th style="padding: 10px; border: 1px solid #E5E7EB;">Service Name</th>
+              <th style="padding: 10px; border: 1px solid #E5E7EB;">Starting Price</th>
+              <th style="padding: 10px; border: 1px solid #E5E7EB;">Care Technology</th>
+              <th style="padding: 10px; border: 1px solid #E5E7EB;">Explore Details</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${SEO_SERVICES.map(s => `
+              <tr>
+                <td style="padding: 10px; border: 1px solid #E5E7EB;">
+                  <a href="/services/${s.slug}" style="color: #EA580C; font-weight: bold; text-decoration: none;">
+                    ${escapeHtml(s.name)} Near Me
+                  </a>
+                </td>
+                <td style="padding: 10px; border: 1px solid #E5E7EB; font-weight: 700; color: #1E293B;">
+                  ${escapeHtml(s.pricingDisplay)}
+                </td>
+                <td style="padding: 10px; border: 1px solid #E5E7EB; color: #4B5563;">
+                  ${escapeHtml(s.processSummary)}
+                </td>
+                <td style="padding: 10px; border: 1px solid #E5E7EB;">
+                  <a href="/services/${s.slug}" style="display: inline-block; padding: 4px 10px; background: #EA580C; color: #FFFFFF; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: bold;">
+                    View Rates →
+                  </a>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </section>
+
+      ${generateAreasServedHtml()}
+      ${generateBranchHtml()}
+      ${generateFaqHtml(COMMON_FAQS)}
+    </main>
+  `;
+
+  const servicesHtml = buildHtmlPage(baseTemplate, {
+    title: 'Dry Cleaning, Laundry & Steam Pressing Near Me in Hyderabad | Techwash',
+    description: 'Looking for the best dry cleaning, laundry or steam ironing service near you? Techwash provides 0 PPM RO soft water wash, certified eco-friendly dry cleaning, and free doorstep pickup across Manikonda, Tolichowki & Hyderabad.',
+    keywords: 'dry cleaning near me, laundry near me, laundry service near me, steam iron near me, shoe cleaning near me, clothes washing near me, best dry cleaners near me, dry cleaning services hyderabad, steam ironing manikonda',
+    canonicalUrl: `${BASE_URL}/services`,
+    structuredData: servicesStructuredData,
+    mainHtml: servicesMainHtml,
+  });
+
+  fs.writeFileSync(path.join(servicesDir, 'index.html'), servicesHtml, 'utf-8');
+  generatedCount++;
+  console.log('   ✅ dist/services/index.html generated.');
+
+  // ----------------------------------------------------
+  // 2. Pre-render 11 Individual Service Pages: /services/:slug
+  // ----------------------------------------------------
+  for (const s of SEO_SERVICES) {
+    console.log(`📁 Pre-rendering /services/${s.slug}...`);
+    const serviceSubDir = path.join(servicesDir, s.slug);
+    fs.mkdirSync(serviceSubDir, { recursive: true });
+
+    const serviceKeywords = [
+      s.primaryKeyword,
+      s.secondaryKeywords,
+      ...(s.nearMeKeywords || []),
+      `${s.name.toLowerCase()} near me`,
+      `${s.name.toLowerCase()} Manikonda`,
+      `${s.name.toLowerCase()} Hyderabad`,
+      'laundry near me',
+      'dry cleaning near me'
+    ].filter(Boolean).join(', ');
+
+    const serviceStructuredData = {
+      '@context': 'https://schema.org',
+      '@graph': [
+        {
+          '@type': 'BreadcrumbList',
+          itemListElement: [
+            { '@type': 'ListItem', position: 1, name: 'Home', item: BASE_URL },
+            { '@type': 'ListItem', position: 2, name: 'Services', item: `${BASE_URL}/services` },
+            { '@type': 'ListItem', position: 3, name: `${s.name} Near Me`, item: `${BASE_URL}/services/${s.slug}` },
+          ],
+        },
+        {
+          '@type': 'Service',
+          '@id': `${BASE_URL}/services/${s.slug}#service`,
+          name: `${s.name} Near Me`,
+          alternateName: [
+            s.name,
+            `Best ${s.name} Near Me`,
+            `${s.name} in Manikonda`,
+            `${s.name} in Hyderabad`,
+            ...(s.nearMeKeywords?.slice(0, 5) || [])
+          ],
+          serviceType: `${s.name} - Local Doorstep Garment Care`,
+          category: s.category || 'Garment Care',
+          description: s.metaDescription,
+          provider: {
+            '@type': 'DryCleaningOrLaundry',
+            name: BUSINESS_INFO.name,
+            telephone: BUSINESS_INFO.telephone,
+            url: BASE_URL,
+            logo: BUSINESS_INFO.logo,
+            image: BUSINESS_INFO.image,
+            priceRange: BUSINESS_INFO.priceRange,
+            address: BUSINESS_INFO.address,
+            geo: BUSINESS_INFO.geo,
+            openingHoursSpecification: BUSINESS_INFO.openingHoursSpecification,
+            department: BUSINESS_BRANCHES.map(branch => ({
+              '@type': 'DryCleaningOrLaundry',
+              name: branch.name,
+              telephone: branch.telephone,
+              address: {
+                '@type': 'PostalAddress',
+                streetAddress: branch.address,
+                addressLocality: branch.locality,
+                addressRegion: 'Telangana',
+                postalCode: branch.postalCode,
+                addressCountry: 'IN',
+              },
+              geo: {
+                '@type': 'GeoCoordinates',
+                latitude: branch.geo.latitude,
+                longitude: branch.geo.longitude,
+              },
+            })),
+          },
+          areaServed: [
+            ...SEO_AREAS.map(a => ({ '@type': 'AdministrativeArea', name: `${a.name}, Hyderabad` })),
+            { '@type': 'AdministrativeArea', name: 'Tolichowki, Hyderabad' },
+            { '@type': 'AdministrativeArea', name: 'Shaikpet, Hyderabad' },
+            { '@type': 'AdministrativeArea', name: 'Puppalaguda, Hyderabad' },
+            { '@type': 'AdministrativeArea', name: 'Gachibowli, Hyderabad' },
+            { '@type': 'AdministrativeArea', name: 'Hitec City, Hyderabad' },
+          ],
+          offers: {
+            '@type': 'Offer',
+            priceCurrency: 'INR',
+            price: s.pricingDisplay?.match(/\d+/)?.[0] || '40',
+            description: s.pricingDisplay,
+            url: `${BASE_URL}/services/${s.slug}`,
+            availability: 'https://schema.org/InStock',
+          },
+        },
+        {
+          '@type': 'FAQPage',
+          mainEntity: COMMON_FAQS.map(faq => ({
+            '@type': 'Question',
+            name: faq.question,
+            acceptedAnswer: { '@type': 'Answer', text: faq.answer },
+          })),
+        },
+      ],
+    };
+
+    const serviceMainHtml = `
+      <main id="techwash-static-seo" style="max-width: 1200px; margin: 0 auto; padding: 24px; font-family: system-ui, -apple-system, sans-serif; color: #1F2937; line-height: 1.6;">
+        <nav style="font-size: 13px; color: #64748B; margin-bottom: 16px;">
+          <a href="/" style="color: #64748B; text-decoration: none;">Home</a> &gt; 
+          <a href="/services" style="color: #64748B; text-decoration: none;">Services</a> &gt; 
+          <span style="color: #EA580C; font-weight: bold;">${escapeHtml(s.name)} Near Me</span>
+        </nav>
+
+        <header style="margin-bottom: 32px;">
+          <p style="color: #EA580C; font-weight: 800; text-transform: uppercase; font-size: 13px; letter-spacing: 0.05em; margin-bottom: 8px;">
+            ✦ Rated #1 Fabric Care • ${escapeHtml(s.category)} • Free Doorstep Pickup
+          </p>
+          <h1 style="font-size: 36px; line-height: 1.2; font-weight: 900; color: #111827; margin: 0 0 16px 0;">
+            ${escapeHtml(s.h1 || `${s.name} Near Me in Manikonda & Hyderabad`)}
+          </h1>
+          <p style="font-size: 18px; color: #4B5563; max-width: 900px; margin: 0 0 16px 0;">
+            ${escapeHtml(s.metaDescription)}
+          </p>
+          <div style="background: #FFF7ED; border: 1px solid #FED7AA; border-radius: 12px; padding: 14px 18px; font-size: 14px; color: #9A3412; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between;">
+            <div>
+              <strong>Pricing:</strong> <span style="font-size: 16px; font-weight: 800; color: #EA580C;">${escapeHtml(s.pricingDisplay)}</span> |
+              <strong>Turnaround:</strong> Standard 48 Hours (Express 24h Available)
+            </div>
+            <div>
+              <a href="/book-pickup?service=${s.slug}" style="display: inline-block; padding: 8px 16px; background: #EA580C; color: #FFFFFF; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 13px;">
+                Schedule Pickup Now →
+              </a>
+            </div>
+          </div>
+        </header>
+
+        <section style="margin-bottom: 32px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 16px; padding: 24px;">
+          <h2 style="font-size: 22px; font-weight: 800; color: #0F172A; margin: 0 0 12px 0;">
+            How Our ${escapeHtml(s.name)} Works
+          </h2>
+          <p style="font-size: 15px; color: #334155; margin-bottom: 16px;">
+            ${escapeHtml(s.processSummary)}
+          </p>
+          <ul style="padding-left: 20px; font-size: 14px; color: #475569; margin: 0;">
+            <li style="margin-bottom: 8px;">100% Demineralized 0 PPM RO soft water preventing fabric yellowing and stiffness.</li>
+            <li style="margin-bottom: 8px;">Single-customer isolated wash drums — garments are never mixed with other orders.</li>
+            <li style="margin-bottom: 8px;">Certified European non-toxic eco hydrocarbon dry cleaning with zero PERC odors.</li>
+            <li style="margin-bottom: 8px;">Precision 3D tension steam form pressing without flat iron scorch marks or heat shine.</li>
+          </ul>
+        </section>
+
+        ${generateAreasServedHtml()}
+        ${generateBranchHtml()}
+        ${generateFaqHtml(COMMON_FAQS)}
+      </main>
+    `;
+
+    const serviceHtml = buildHtmlPage(baseTemplate, {
+      title: s.title || `${s.name} Near Me - Best in Manikonda & Hyderabad | Techwash`,
+      description: s.metaDescription,
+      keywords: serviceKeywords,
+      canonicalUrl: `${BASE_URL}/services/${s.slug}`,
+      structuredData: serviceStructuredData,
+      mainHtml: serviceMainHtml,
+    });
+
+    fs.writeFileSync(path.join(serviceSubDir, 'index.html'), serviceHtml, 'utf-8');
+    generatedCount++;
+    console.log(`   ✅ dist/services/${s.slug}/index.html generated.`);
+  }
+
+  // ----------------------------------------------------
+  // 3. Pre-render Manikonda Area Hub: /areas/manikonda
+  // ----------------------------------------------------
+  console.log('📁 Pre-rendering /areas/manikonda...');
+  const manikondaDir = path.join(DIST_DIR, 'areas/manikonda');
+  fs.mkdirSync(manikondaDir, { recursive: true });
+
+  const manikondaArea = SEO_AREAS[0];
+  const manikondaKeywords = manikondaArea.keywords;
+
+  const manikondaStructuredData = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Home', item: BASE_URL },
+          { '@type': 'ListItem', position: 2, name: 'Areas', item: `${BASE_URL}/areas` },
+          { '@type': 'ListItem', position: 3, name: 'Manikonda', item: `${BASE_URL}/areas/manikonda` },
+        ],
+      },
+      {
+        '@type': 'DryCleaningOrLaundry',
+        '@id': `${BASE_URL}/areas/manikonda#localbusiness`,
+        name: 'Techwash Laundry Services - Manikonda',
+        telephone: BUSINESS_INFO.telephone,
+        url: `${BASE_URL}/areas/manikonda`,
+        logo: BUSINESS_INFO.logo,
+        image: BUSINESS_INFO.image,
+        priceRange: BUSINESS_INFO.priceRange,
+        address: BUSINESS_INFO.address,
+        geo: BUSINESS_INFO.geo,
+        openingHoursSpecification: BUSINESS_INFO.openingHoursSpecification,
+      },
+      {
+        '@type': 'FAQPage',
+        mainEntity: manikondaArea.faqs.map(faq => ({
+          '@type': 'Question',
+          name: faq.question,
+          acceptedAnswer: { '@type': 'Answer', text: faq.answer },
+        })),
+      },
+    ],
+  };
+
+  const manikondaHtml = buildHtmlPage(baseTemplate, {
+    title: manikondaArea.title,
+    description: manikondaArea.metaDescription,
+    keywords: manikondaKeywords,
+    canonicalUrl: `${BASE_URL}/areas/manikonda`,
+    structuredData: manikondaStructuredData,
+  });
+
+  fs.writeFileSync(path.join(manikondaDir, 'index.html'), manikondaHtml, 'utf-8');
+  generatedCount++;
+  console.log('   ✅ dist/areas/manikonda/index.html generated.');
+
+  // ----------------------------------------------------
+  // 4. Pre-render Manikonda Service Landing Pages: /areas/manikonda/:slug
+  // ----------------------------------------------------
+  for (const s of SEO_SERVICES) {
+    console.log(`📁 Pre-rendering /areas/manikonda/${s.slug}...`);
+    const areaServiceSubDir = path.join(manikondaDir, s.slug);
+    fs.mkdirSync(areaServiceSubDir, { recursive: true });
+
+    const title = `${s.name} in Manikonda, Hyderabad - Flat 20% Off | Techwash`;
+    const description = `Looking for ${s.name.toLowerCase()} in Manikonda? Techwash provides 0 PPM RO soft water wash, certified eco dry cleaning, and free doorstep pickup across Puppalaguda, Secretariat Colony, and Lanco Hills.`;
+    const canonicalUrl = `${BASE_URL}/areas/manikonda/${s.slug}`;
+
+    const areaServiceHtml = buildHtmlPage(baseTemplate, {
+      title,
+      description,
+      keywords: `${s.primaryKeyword}, ${s.name.toLowerCase()} Manikonda, laundry in Manikonda 500089`,
+      canonicalUrl,
+    });
+
+    fs.writeFileSync(path.join(areaServiceSubDir, 'index.html'), areaServiceHtml, 'utf-8');
+    generatedCount++;
+    console.log(`   ✅ dist/areas/manikonda/${s.slug}/index.html generated.`);
+  }
+
+  console.log(`\n🎉 SUCCESS: Successfully pre-rendered ${generatedCount} static HTML SEO pages into dist/!`);
+  console.log('   - /services/index.html');
+  console.log('   - 11x /services/<slug>/index.html');
+  console.log('   - /areas/manikonda/index.html');
+  console.log('   - 11x /areas/manikonda/<slug>/index.html');
+}
+
+prerenderAll();
