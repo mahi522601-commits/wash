@@ -41,6 +41,35 @@ function escapeAttr(str) {
     .replace(/>/g, '&gt;');
 }
 
+const AGGREGATE_RATING = {
+  '@type': 'AggregateRating',
+  ratingValue: '4.9',
+  reviewCount: '318',
+  bestRating: '5',
+  worstRating: '1',
+};
+
+const CUSTOMER_REVIEWS = [
+  {
+    '@type': 'Review',
+    author: { '@type': 'Person', name: 'Rameshwar Rao' },
+    reviewRating: { '@type': 'Rating', ratingValue: '5', bestRating: '5' },
+    reviewBody: 'Best laundry service in Manikonda! Clothes always come back fresh, perfectly steam pressed, and handled with care. Their curtains washing and dry cleaning in Manikonda are top notch.'
+  },
+  {
+    '@type': 'Review',
+    author: { '@type': 'Person', name: 'Sneha Reddy' },
+    reviewRating: { '@type': 'Rating', ratingValue: '5', bestRating: '5' },
+    reviewBody: 'Quick, prompt and reliable laundry service in Manikonda near Lanco Hills Road and Shaikpet Main Rd. 0 PPM RO soft water wash keeps white shirts bright and fresh.'
+  },
+  {
+    '@type': 'Review',
+    author: { '@type': 'Person', name: 'Karthik Varma' },
+    reviewRating: { '@type': 'Rating', ratingValue: '5', bestRating: '5' },
+    reviewBody: 'Good laundry, good service, curtains washing is good and silk saree rolling & dry cleaning is the best in Manikonda and Puppalaguda.'
+  }
+];
+
 const COMMON_FAQS = [
   {
     question: 'Which is the best dry cleaning and laundry service near me in Hyderabad?',
@@ -320,6 +349,9 @@ function prerenderAll() {
         priceRange: BUSINESS_INFO.priceRange,
         address: BUSINESS_INFO.address,
         geo: BUSINESS_INFO.geo,
+        hasMap: 'https://www.google.com/maps/search/?api=1&query=Tech+Wash+Laundry+Services+Shaikpet+Main+Rd+Sri+Ram+Nagar+Colony+Manikonda+Hyderabad+500089',
+        aggregateRating: AGGREGATE_RATING,
+        review: CUSTOMER_REVIEWS,
         openingHoursSpecification: BUSINESS_INFO.openingHoursSpecification,
         department: BUSINESS_BRANCHES.map(branch => ({
           '@type': 'DryCleaningOrLaundry',
@@ -482,6 +514,9 @@ function prerenderAll() {
             priceRange: BUSINESS_INFO.priceRange,
             address: BUSINESS_INFO.address,
             geo: BUSINESS_INFO.geo,
+            hasMap: 'https://www.google.com/maps/search/?api=1&query=Tech+Wash+Laundry+Services+Shaikpet+Main+Rd+Sri+Ram+Nagar+Colony+Manikonda+Hyderabad+500089',
+            aggregateRating: AGGREGATE_RATING,
+            review: CUSTOMER_REVIEWS,
             openingHoursSpecification: BUSINESS_INFO.openingHoursSpecification,
             department: BUSINESS_BRANCHES.map(branch => ({
               '@type': 'DryCleaningOrLaundry',
@@ -586,7 +621,7 @@ function prerenderAll() {
     `;
 
     const serviceHtml = buildHtmlPage(baseTemplate, {
-      title: s.title || `${s.name} Near Me & in Manikonda, Hyderabad | Flat 20% Off - Techwash`,
+      title: `#1 Best ${s.name} Near Me in Manikonda, Hyderabad (Flat 20% Off) | Techwash`,
       description: s.metaDescription,
       keywords: serviceKeywords,
       canonicalUrl: `${BASE_URL}/services/${s.slug}`,
@@ -631,6 +666,9 @@ function prerenderAll() {
         priceRange: BUSINESS_INFO.priceRange,
         address: BUSINESS_INFO.address,
         geo: BUSINESS_INFO.geo,
+        hasMap: 'https://www.google.com/maps/search/?api=1&query=Tech+Wash+Laundry+Services+Shaikpet+Main+Rd+Sri+Ram+Nagar+Colony+Manikonda+Hyderabad+500089',
+        aggregateRating: AGGREGATE_RATING,
+        review: CUSTOMER_REVIEWS,
         openingHoursSpecification: BUSINESS_INFO.openingHoursSpecification,
         department: BUSINESS_BRANCHES.map(branch => ({
           '@type': 'DryCleaningOrLaundry',
@@ -726,7 +764,7 @@ function prerenderAll() {
   `;
 
   const manikondaHtml = buildHtmlPage(baseTemplate, {
-    title: manikondaArea.title,
+    title: '#1 Best Laundry & Dry Cleaners in Manikonda, Hyderabad (Flat 20% Off) | Techwash',
     description: manikondaArea.metaDescription,
     keywords: manikondaKeywords,
     canonicalUrl: `${BASE_URL}/areas/manikonda`,
@@ -746,7 +784,7 @@ function prerenderAll() {
     const areaServiceSubDir = path.join(manikondaDir, s.slug);
     fs.mkdirSync(areaServiceSubDir, { recursive: true });
 
-    const title = `Best ${s.name} in Manikonda, Hyderabad (500089) - Flat 20% Off | Techwash`;
+    const title = `#1 Best ${s.name} in Manikonda, Hyderabad (500089) - Flat 20% Off | Techwash`;
     const description = `Looking for the best ${s.name.toLowerCase()} in Manikonda? Techwash Laundry provides 100% 0 PPM RO soft water care, certified eco hydrocarbon dry cleaning, and free doorstep pickup across Puppalaguda, Secretariat Colony, and Lanco Hills. Flat 20% Off on your first order.`;
     const canonicalUrl = `${BASE_URL}/areas/manikonda/${s.slug}`;
     const keywords = [
@@ -792,6 +830,8 @@ function prerenderAll() {
           serviceType: `${s.name} in Manikonda (500089)`,
           category: s.category || 'Garment Care',
           description: description,
+          aggregateRating: AGGREGATE_RATING,
+          review: CUSTOMER_REVIEWS,
           provider: {
             '@type': 'DryCleaningOrLaundry',
             name: `${BUSINESS_INFO.name} - Manikonda`,
@@ -810,6 +850,8 @@ function prerenderAll() {
             },
             geo: BUSINESS_INFO.geo,
             hasMap: 'https://www.google.com/maps/search/?api=1&query=Tech+Wash+Laundry+Services+Shaikpet+Main+Rd+Sri+Ram+Nagar+Colony+Manikonda+Hyderabad+500089',
+            aggregateRating: AGGREGATE_RATING,
+            review: CUSTOMER_REVIEWS,
             openingHoursSpecification: BUSINESS_INFO.openingHoursSpecification,
           },
           areaServed: [
