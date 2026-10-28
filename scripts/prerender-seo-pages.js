@@ -157,6 +157,57 @@ function generateAreasServedHtml() {
   `;
 }
 
+function generateRateCardHtml(rateCard, serviceName) {
+  if (!rateCard || rateCard.length === 0) return '';
+  return `
+    <section style="margin-top: 32px; margin-bottom: 32px;">
+      <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px; flex-wrap: wrap; gap: 8px;">
+        <h3 style="font-size: 22px; font-weight: 800; color: #0F172A; margin: 0;">
+          Transparent Rate Card & Price List — ${escapeHtml(serviceName)}
+        </h3>
+        <span style="font-size: 13px; font-weight: 700; color: #047857; background: #ECFDF5; border: 1px solid #A7F3D0; padding: 4px 10px; border-radius: 999px;">
+          ✓ Flat 20% Off Applied on 1st Order • 0 Hidden Fees
+        </span>
+      </div>
+      <div style="overflow-x: auto; border: 1px solid #E2E8F0; border-radius: 12px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+        <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
+          <thead>
+            <tr style="background: #F8FAFC; border-bottom: 2px solid #E2E8F0; color: #475569;">
+              <th style="padding: 12px 16px; font-weight: 800;">Garment / Item</th>
+              <th style="padding: 12px 16px; font-weight: 800;">Standard Price</th>
+              <th style="padding: 12px 16px; font-weight: 800;">Process & Care Specifications</th>
+              <th style="padding: 12px 16px; font-weight: 800; text-align: right;">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rateCard.map((item, idx) => `
+              <tr style="border-bottom: 1px solid #F1F5F9; ${idx % 2 === 1 ? 'background: #FAFAFA;' : ''}">
+                <td style="padding: 12px 16px; font-weight: 700; color: #1E293B;">
+                  ${escapeHtml(item.item)}
+                </td>
+                <td style="padding: 12px 16px; font-weight: 800; color: #EA580C; white-space: nowrap;">
+                  ${escapeHtml(item.rate)}
+                </td>
+                <td style="padding: 12px 16px; color: #64748B; font-size: 13px;">
+                  ${escapeHtml(item.details)}
+                </td>
+                <td style="padding: 12px 16px; text-align: right;">
+                  <a href="/book-pickup" style="display: inline-block; padding: 6px 12px; background: #FFF7ED; border: 1px solid #FDBA74; color: #EA580C; border-radius: 6px; font-weight: 700; text-decoration: none; font-size: 12px;">
+                    Book Pickup →
+                  </a>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+      <p style="font-size: 12px; color: #64748B; margin-top: 8px; margin-bottom: 0;">
+        💡 <em>Free doorstep pickup and delivery in Manikonda & Hyderabad for eligible orders. Digital electronic weigh receipt provided at pickup. Express 24-hour delivery option available.</em>
+      </p>
+    </section>
+  `;
+}
+
 function generateManikondaLandmarksHtml(serviceName) {
   const colonies = [
     'Secretariat Colony',
@@ -553,6 +604,20 @@ function prerenderAll() {
             url: `${BASE_URL}/services/${s.slug}`,
             availability: 'https://schema.org/InStock',
           },
+          hasOfferCatalog: (s.rateCard && s.rateCard.length > 0) ? {
+            '@type': 'OfferCatalog',
+            name: `${s.name} Rate Card & Price List`,
+            itemListElement: s.rateCard.map((item, index) => ({
+              '@type': 'Offer',
+              position: index + 1,
+              name: item.item,
+              description: item.details,
+              price: item.rate.match(/\d+/)?.[0] || '40',
+              priceCurrency: 'INR',
+              availability: 'https://schema.org/InStock',
+              url: `${BASE_URL}/services/${s.slug}`,
+            })),
+          } : undefined,
         },
         {
           '@type': 'FAQPage',
@@ -616,6 +681,8 @@ function prerenderAll() {
             <li style="margin-bottom: 8px;">Doorstep digital weighing with calibrated scales and instant WhatsApp receipts.</li>
           </ul>
         </section>
+
+        ${generateRateCardHtml(s.rateCard, `${s.name} Near Me`)}
 
         <div style="margin: 28px 0; padding: 16px 20px; background: #FFF7ED; border: 1px solid #FED7AA; border-radius: 12px; font-size: 14px; color: #9A3412;">
           📍 <strong>Looking for hyper-local doorstep service in Manikonda?</strong> Check out our dedicated <a href="/areas/manikonda/${s.slug}" style="color: #EA580C; font-weight: bold; text-decoration: underline;">${escapeHtml(s.name)} in Manikonda (500089)</a> page with scheduled daily pickup across Secretariat Colony, OU Colony, Lanco Hills, and Puppalaguda.
@@ -880,6 +947,20 @@ function prerenderAll() {
             url: canonicalUrl,
             availability: 'https://schema.org/InStock',
           },
+          hasOfferCatalog: (s.rateCard && s.rateCard.length > 0) ? {
+            '@type': 'OfferCatalog',
+            name: `${s.name} Rate Card in Manikonda`,
+            itemListElement: s.rateCard.map((item, index) => ({
+              '@type': 'Offer',
+              position: index + 1,
+              name: item.item,
+              description: item.details,
+              price: item.rate.match(/\d+/)?.[0] || '40',
+              priceCurrency: 'INR',
+              availability: 'https://schema.org/InStock',
+              url: canonicalUrl,
+            })),
+          } : undefined,
         },
         {
           '@type': 'FAQPage',
@@ -954,6 +1035,8 @@ function prerenderAll() {
             </div>
           </div>
         </section>
+
+        ${generateRateCardHtml(s.rateCard, `${s.name} in Manikonda`)}
 
         <div style="margin: 28px 0; padding: 16px 20px; background: #FFF7ED; border: 1px solid #FED7AA; border-radius: 12px; font-size: 14px; color: #9A3412;">
           🌐 <strong>Need doorstep laundry pickup in other Hyderabad areas?</strong> View our regional <a href="/services/${s.slug}" style="color: #EA580C; font-weight: bold; text-decoration: underline;">${escapeHtml(s.name)} Near Me</a> page covering Tolichowki, Shaikpet, Puppalaguda, Gachibowli, and Hitec City.

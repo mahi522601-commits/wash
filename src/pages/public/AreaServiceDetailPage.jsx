@@ -209,6 +209,20 @@ export const AreaServiceDetailPage = () => {
           url: canonicalUrl,
           availability: 'https://schema.org/InStock',
         },
+        hasOfferCatalog: (service.rateCard && service.rateCard.length > 0) ? {
+          '@type': 'OfferCatalog',
+          name: `${service.name} Rate Card in Manikonda`,
+          itemListElement: service.rateCard.map((item, index) => ({
+            '@type': 'Offer',
+            position: index + 1,
+            name: item.item,
+            description: item.details,
+            price: item.rate.match(/\d+/)?.[0] || '40',
+            priceCurrency: 'INR',
+            availability: 'https://schema.org/InStock',
+            url: canonicalUrl,
+          })),
+        } : undefined,
       },
       {
         '@type': 'FAQPage',
@@ -358,6 +372,74 @@ export const AreaServiceDetailPage = () => {
               </div>
             </div>
           </div>
+
+          {/* 2.5 TRANSPARENT ITEMIZED RATE CARD */}
+          {service.rateCard && service.rateCard.length > 0 && (
+            <div className="bg-white rounded-3xl border border-brand-200 p-8 sm:p-10 shadow-sm space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-50 border border-orange-200 text-orange-700 text-xs font-bold uppercase tracking-wider">
+                    <Sparkles className="w-3.5 h-3.5 text-[#F97316]" />
+                    <span>Transparent Pricing</span>
+                  </div>
+                  <h2 className="text-2xl sm:text-3xl font-black text-slate-900 font-display tracking-tight">
+                    {service.name} Rate Card in Manikonda
+                  </h2>
+                </div>
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs sm:text-sm font-extrabold shadow-2xs self-start sm:self-auto">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>Flat 20% Off on 1st Order • 0 Hidden Fees</span>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto rounded-2xl border border-slate-200 shadow-xs">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-200 text-slate-700 text-xs sm:text-sm font-extrabold font-display">
+                      <th className="py-3.5 px-4 sm:px-6">Garment / Item</th>
+                      <th className="py-3.5 px-4 sm:px-6">Rate (Starting)</th>
+                      <th className="py-3.5 px-4 sm:px-6">Care Protocol & Details</th>
+                      <th className="py-3.5 px-4 sm:px-6 text-right">Instant Booking</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-xs sm:text-sm">
+                    {service.rateCard.map((item, idx) => (
+                      <tr key={idx} className={idx % 2 === 1 ? 'bg-slate-50/50' : 'bg-white'}>
+                        <td className="py-3.5 px-4 sm:px-6 font-bold text-slate-900">
+                          {item.item}
+                        </td>
+                        <td className="py-3.5 px-4 sm:px-6 font-black text-[#F97316] font-display whitespace-nowrap">
+                          {item.rate}
+                        </td>
+                        <td className="py-3.5 px-4 sm:px-6 text-slate-600">
+                          {item.details}
+                        </td>
+                        <td className="py-3.5 px-4 sm:px-6 text-right">
+                          <Link
+                            to={`/book-pickup?locality=Manikonda&service=${encodeURIComponent(service.slug)}`}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-orange-50 hover:bg-orange-100 border border-orange-200 text-orange-700 font-bold text-xs transition-colors"
+                          >
+                            <span>Book</span>
+                            <ArrowRight className="w-3 h-3" />
+                          </Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-2 text-xs text-slate-500 border-t border-slate-100">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                  <span>Doorstep digital electronic weighing • Instant WhatsApp invoice breakdown</span>
+                </div>
+                <div className="font-semibold text-slate-700">
+                  Daily mobile fleet across all Manikonda gated communities (8 AM – 9 PM)
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* 3. 4-STEP DOORSTEP ROADMAP */}
           <div className="space-y-6">

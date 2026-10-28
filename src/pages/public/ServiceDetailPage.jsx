@@ -411,6 +411,20 @@ export const ServiceDetailPage = () => {
             name: BUSINESS_INFO.name,
           },
         },
+        hasOfferCatalog: (seoServiceMatch?.rateCard && seoServiceMatch.rateCard.length > 0) ? {
+          '@type': 'OfferCatalog',
+          name: `${serviceTitle} Price List & Rate Card`,
+          itemListElement: seoServiceMatch.rateCard.map((rc, idx) => ({
+            '@type': 'Offer',
+            position: idx + 1,
+            name: rc.item,
+            description: rc.details,
+            price: rc.rate.match(/\d+/)?.[0] || '40',
+            priceCurrency: 'INR',
+            availability: 'https://schema.org/InStock',
+            url: `${BASE_URL}/services/${targetSlug}`,
+          })),
+        } : undefined,
       },
       {
         '@type': 'FAQPage',
@@ -807,6 +821,73 @@ export const ServiceDetailPage = () => {
                 </h3>
                 <div className="text-sm sm:text-base text-slate-600 leading-relaxed whitespace-pre-line bg-white p-6 sm:p-8 rounded-3xl border border-slate-200/80 shadow-sm">
                   {service.detailedDescription}
+                </div>
+              </div>
+            )}
+
+            {/* Transparent Rate Card Table */}
+            {seoServiceMatch?.rateCard && seoServiceMatch.rateCard.length > 0 && (
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div>
+                    <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-orange-50 border border-orange-200 text-orange-700 text-xs font-bold uppercase tracking-wider">
+                      <Tag className="w-3.5 h-3.5 text-[#F97316]" />
+                      <span>Transparent Tariff</span>
+                    </div>
+                    <h3 className="text-2xl sm:text-3xl font-black text-slate-900 font-display mt-2">
+                      {serviceTitle} Itemized Price List & Rate Card
+                    </h3>
+                  </div>
+                  <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold self-start sm:self-auto">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>Flat 20% Off on 1st Order • 0 Hidden Fees</span>
+                  </div>
+                </div>
+
+                <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-slate-100 border-b border-slate-200 text-slate-700 text-xs sm:text-sm font-extrabold font-display">
+                          <th className="py-3.5 px-4 sm:px-6">Garment / Item</th>
+                          <th className="py-3.5 px-4 sm:px-6">Starting Rate</th>
+                          <th className="py-3.5 px-4 sm:px-6">Care Protocol & Details</th>
+                          <th className="py-3.5 px-4 sm:px-6 text-right">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 text-xs sm:text-sm">
+                        {seoServiceMatch.rateCard.map((item, idx) => (
+                          <tr key={idx} className={idx % 2 === 1 ? 'bg-slate-50/60' : 'bg-white'}>
+                            <td className="py-3.5 px-4 sm:px-6 font-bold text-slate-900">
+                              {item.item}
+                            </td>
+                            <td className="py-3.5 px-4 sm:px-6 font-black text-[#F97316] font-display whitespace-nowrap">
+                              {item.rate}
+                            </td>
+                            <td className="py-3.5 px-4 sm:px-6 text-slate-600">
+                              {item.details}
+                            </td>
+                            <td className="py-3.5 px-4 sm:px-6 text-right">
+                              <Link
+                                to={`/book-pickup?service=${encodeURIComponent(targetSlug)}`}
+                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-orange-50 hover:bg-orange-100 border border-orange-200 text-orange-700 font-bold text-xs transition-colors"
+                              >
+                                <span>Book</span>
+                                <ArrowRight className="w-3 h-3" />
+                              </Link>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="p-4 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-600">
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                      <span>Free doorstep pickup & delivery in Manikonda, Tolichowki, Shaikpet & Hyderabad</span>
+                    </div>
+                    <span className="font-semibold text-slate-700">Digital weigh scale at your doorstep</span>
+                  </div>
                 </div>
               </div>
             )}

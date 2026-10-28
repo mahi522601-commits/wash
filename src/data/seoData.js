@@ -70,8 +70,11 @@ export const SEO_AREAS = [
       'Alkapoor Township Corridor',
       'Shaikpet Main Road',
       'Sri Ram Nagar Colony',
-      'Ambience Courtyard',
-      'Dreamscape Hotel Lane',
+      'Ambience Courtyard Corridor',
+      'Chitrapuri Hills',
+      'Prashant Hills Corridor',
+      'Golden Pride & Jaihind Enclave',
+      'Manikonda Gardens Rd',
     ],
     introText: 'Techwash Laundry is rated the #1 Best Laundry, Dry Cleaning, and Steam Ironing Service in Manikonda, Hyderabad. We provide professional laundry, certified eco-friendly European hydrocarbon dry cleaning (dry wash), weight-based wash & fold/iron, and 3D steam form pressing for residents across Manikonda. With 100% demineralized 0 PPM RO soft water and single-customer isolated wash drums, our dedicated doorstep fleet provides daily scheduled laundry pickup and delivery across Secretariat Colony, OU Colony, Lanco Hills Road, Shirdi Sai Nagar, Puppalaguda, and Alkapoor Township.',
     turnaround: 'Standard 48-Hour Delivery • 24-Hour Express Available',
@@ -193,6 +196,12 @@ export const SEO_SERVICES = [
       'laundry by kg near me'
     ],
     processSummary: 'Demineralized 0 PPM RO soft water washing, single-customer isolated drum cycles, bio-enzyme stain removal, sensor moisture drying, and precision steam pressing.',
+    rateCard: [
+      { item: 'Wash & Fold (Everyday Clothes)', rate: '₹100 / Kg', details: '0 PPM soft water, bio-detergents, machine fold' },
+      { item: 'Wash & Steam Iron (Office Shirts/Pants)', rate: '₹130 / Kg', details: 'Full drum wash + 3D mannequin steam finishing' },
+      { item: 'Bedsheets & Pillow Covers (Wash & Fold)', rate: '₹100 / Kg', details: 'Hygienic single-customer wash and tumble dry' },
+      { item: 'Kids School Uniforms (Wash & Iron)', rate: '₹130 / Kg', details: 'Stain pre-spotting and wrinkle-free steam press' },
+    ],
     faqs: [
       {
         question: 'Which is the best laundry service near me in Manikonda, Hyderabad?',
@@ -265,6 +274,12 @@ export const SEO_SERVICES = [
       'wash & steam press near me'
     ],
     processSummary: 'Single-customer drum wash in 0 PPM soft water, bio-enzyme stain removal, followed by 3D tension mannequin steam form pressing.',
+    rateCard: [
+      { item: 'Formal Shirts & T-Shirts', rate: '₹130 / Kg', details: 'Single-customer wash + vacuum steam crease setting' },
+      { item: 'Formal Trousers, Chinos & Jeans', rate: '₹130 / Kg', details: 'Sharp crease alignment, zero heat shine' },
+      { item: 'Daily Kurtas & Pyjamas', rate: '₹130 / Kg', details: 'Gentle bio-wash with crisp steam press' },
+      { item: 'Single & Double Bedsheets', rate: '₹130 / Kg', details: 'Deep soft wash + industrial flat iron pressing' },
+    ],
     faqs: [
       {
         question: 'What is included in the wash and iron service?',
@@ -346,6 +361,14 @@ export const SEO_SERVICES = [
       'dry cleaners Tolichowki'
     ],
     processSummary: 'Ultrasonic stain pre-spotting, closed-loop non-toxic hydrocarbon solvent bath (zero PERC), 3D form tension steam finishing, and archival protective packaging.',
+    rateCard: [
+      { item: "Men's 2-Piece Suit / Tuxedo", rate: '₹250 - ₹350', details: 'European hydrocarbon dry wash, lapel shaping, hanger seal' },
+      { item: 'Pure Silk / Pattu Saree (Dry Wash)', rate: '₹180 - ₹250', details: 'Zero water, zari protection, delicate luster preservation' },
+      { item: 'Designer Blazer / Coat', rate: '₹200 - ₹300', details: 'Spot extraction, odorless hydrocarbon solvent bath' },
+      { item: 'Bridal Lehenga / Heavy Anarkali', rate: '₹350 - ₹550', details: 'Embellishment care, sequin masking, steam finishing' },
+      { item: 'Formal Shirts / Silk Tops (Dry Wash)', rate: '₹120 / item', details: 'Collar & cuff scrubbing, gentle dry cleaning' },
+      { item: 'Sherwani & Indo-Western Kurta', rate: '₹350 - ₹500', details: 'Archival dry cleaning, gold thread preservation' },
+    ],
     faqs: [
       {
         question: 'Which is the best dry cleaning and dry wash service near me in Manikonda?',
@@ -418,6 +441,12 @@ export const SEO_SERVICES = [
       'free doorstep laundry pickup near me'
     ],
     processSummary: 'Slot-based doorstep pickup, electronic weighing with digital receipt, isolated hamper transport, laboratory cleaning, and sealed return delivery.',
+    rateCard: [
+      { item: 'Standard Doorstep Pickup (Orders ₹299+)', rate: 'FREE (₹0)', details: '8:00 AM – 9:00 PM slot choice across Manikonda' },
+      { item: 'Doorstep Digital Weighing & Tagging', rate: 'FREE (₹0)', details: 'Electronic hanging scales with instant WhatsApp bill' },
+      { item: 'Sealed Garment Packaging & Delivery', rate: 'FREE (₹0)', details: 'Moisture-proof dust-free protective return' },
+      { item: 'Express 24-Hour Return Surcharge', rate: '₹50 flat', details: 'Fast turnaround priority dispatch within 24h' },
+    ],
     faqs: [
       {
         question: 'How do I schedule a laundry pickup near me in Manikonda?',
@@ -495,6 +524,14 @@ export const SEO_SERVICES = [
       'ironing Tolichowki'
     ],
     processSummary: 'Temperature calibration, high-pressure 140°C micro-steam inflation, vacuum cold-suction crease locking, and hanger delivery.',
+    rateCard: [
+      { item: 'Office Shirts & Casual T-Shirts', rate: '₹12 / item', details: '140°C Italian micro-steam press, hanger or fold' },
+      { item: 'Formal Trousers, Chinos & Jeans', rate: '₹14 / item', details: 'Vacuum suction crease locking, zero white shine' },
+      { item: 'Daily Cotton Kurtas & Tops', rate: '₹20 / item', details: 'High-precision steam finishing, zero fabric burns' },
+      { item: 'Silk Sarees / Heavy Designer Sarees', rate: '₹45 - ₹60', details: 'Low-heat steam tension finishing, zari safe' },
+      { item: 'Blazers & Suit Jackets Pressing', rate: '₹60 - ₹80', details: '3D mannequin form inflation, shoulder restoration' },
+      { item: 'Dhotis & Panchas Pressing', rate: '₹25 / item', details: 'Crisp crease alignment, traditional edge pressing' },
+    ],
     faqs: [
       {
         question: 'Which is the best iron service near me in Manikonda, Hyderabad?',
@@ -567,6 +604,12 @@ export const SEO_SERVICES = [
       'clothes wash and fold near me'
     ],
     processSummary: 'Weighing, isolated drum wash with hypoallergenic bio-detergents in 0 PPM soft water, low-heat drying, and precision hand-folding in sealed moisture wraps.',
+    rateCard: [
+      { item: 'Everyday Casual Clothes (Mixed)', rate: '₹100 / Kg', details: '0 PPM RO soft water drum wash, sensor drying, fold' },
+      { item: 'Gym Wear & Synthetic Athleisure', rate: '₹100 / Kg', details: 'Odor-neutralizing enzyme wash, low heat tumble' },
+      { item: 'Bath Towels, Hand Towels & Napkins', rate: '₹100 / Kg', details: 'Fluffy demineralized soft wash, hygienic drying' },
+      { item: 'Bedsheets, Duvet & Pillow Covers', rate: '₹100 / Kg', details: 'Deep wash, moisture-free sealing in fresh bundle' },
+    ],
     faqs: [
       {
         question: 'What is wash and fold laundry service?',
@@ -638,6 +681,12 @@ export const SEO_SERVICES = [
       'charak and iron manikonda'
     ],
     processSummary: 'Customizable natural starch ratio formulation, gentle fiber infusion bath, high-pressure vacuum steam bed pressing, and crisp collar stiffening.',
+    rateCard: [
+      { item: 'Cotton Shirts (Light / Medium / Heavy Starch)', rate: '₹25 / item', details: 'Organic rice/corn starch infusion + vacuum steam press' },
+      { item: 'Traditional Cotton Dhoti / Pancha', rate: '₹60 / item', details: 'Authentic South Indian charak starch & knife crease' },
+      { item: 'Pure Cotton Saree Starching & Press', rate: '₹80 / item', details: 'Even starch misting, roll pressing, zero stiffness crack' },
+      { item: 'Cotton Kurta & Pyjama Set', rate: '₹45 / set', details: 'Stiff collar shaping, placket stiffening, formal drape' },
+    ],
     faqs: [
       {
         question: 'What is the starch and iron service?',
@@ -710,6 +759,12 @@ export const SEO_SERVICES = [
       'pattu saree rolling Manikonda'
     ],
     processSummary: 'Zari inspection, natural starch misting, smooth wooden cylinder roller pass, and wrinkle-free fold packaging.',
+    rateCard: [
+      { item: 'Pattu & Pure Silk Saree Roller Polishing', rate: '₹120 / saree', details: 'Wooden cylinder roller pass, natural luster restoration' },
+      { item: 'Saree Dry Wash + Wooden Rolling Combo', rate: '₹250 / saree', details: 'Hydrocarbon dry wash + cylinder polishing + steam finish' },
+      { item: 'Kanjeevaram / Dharmavaram Heavy Zari Polish', rate: '₹150 / saree', details: 'Gold/silver zari protection, zero-crush wooden press' },
+      { item: 'Chiffon, Georgette & Organza Saree Polish', rate: '₹120 / saree', details: 'Gentle misting, wrinkle-free rolling without stretch' },
+    ],
     faqs: [
       {
         question: 'What is saree rolling and polishing?',
@@ -782,6 +837,12 @@ export const SEO_SERVICES = [
       'shoe laundry Manikonda'
     ],
     processSummary: 'Material inspection, soft-bristle hand scrubbing, ultrasonic sole stain lift, lace restoration, and UV anti-microbial sterilization.',
+    rateCard: [
+      { item: 'Running Shoes & Mesh Sports Sneakers', rate: '₹350 / pair', details: 'Deep foam scrub, insole sanitization, deodorizing' },
+      { item: 'White Leather & Canvas Sneakers (Stan Smith/AF1)', rate: '₹400 / pair', details: 'Midsole whitening, lace soak, UV chamber sterilization' },
+      { item: 'Suede & Nubuck Loafers Spa', rate: '₹500 / pair', details: 'Dry-sponge extraction, suede eraser, nap re-conditioning' },
+      { item: 'Pure Leather Formal Boots & Oxford Shoes', rate: '₹550 / pair', details: 'Cream polish, edge dressing, conditioning, high shine' },
+    ],
     faqs: [
       {
         question: 'What shoe types do you clean at Techwash Sneaker Spa?',
@@ -853,6 +914,12 @@ export const SEO_SERVICES = [
       'curtain dry wash Manikonda'
     ],
     processSummary: 'Dimension verification, ultrasonic dust-mite extraction, gentle fabric wash / dry wash, and vertical steam press for wrinkle-free hanging.',
+    rateCard: [
+      { item: 'Standard Cotton & Poly Drapes', rate: '₹30 / sq. ft.', details: 'Ultrasonic dust extraction, soft wash, vertical steam' },
+      { item: 'Blackout Curtains (Thermal Backing Safe)', rate: '₹35 / sq. ft.', details: 'Delicate hydrocarbon cleaning, zero backing peel' },
+      { item: 'Velvet & Heavy Embroidered Curtains', rate: '₹40 / sq. ft.', details: 'Zero-water dry cleaning, steam de-wrinkling' },
+      { item: 'Living Room Sheer Curtains', rate: '₹25 / sq. ft.', details: 'Gentle demineralized soft wash, bright whitening' },
+    ],
     faqs: [
       {
         question: 'How do you clean delicate and blackout curtains?',
@@ -924,6 +991,12 @@ export const SEO_SERVICES = [
       'carpet washing Hyderabad'
     ],
     processSummary: 'High-power dry vacuuming, rotary shampoo agitation, deep stain extraction, and anti-microbial thermal dehumidification.',
+    rateCard: [
+      { item: 'Living Room Area Rugs & Carpets', rate: '₹45 / sq. ft.', details: 'Rotary shampoo agitation, hot water extraction, dry' },
+      { item: 'Shaggy & High-Pile Modern Rugs', rate: '₹55 / sq. ft.', details: 'Deep sand dislodgement, anti-microbial thermal drying' },
+      { item: 'Hand-Knotted Woolen & Persian Silk Rugs', rate: '₹65 / sq. ft.', details: 'pH-neutral low-moisture foam wash, colorfast care' },
+      { item: 'Door Mats & Hallway Runners', rate: '₹35 / sq. ft.', details: 'Heavy mud & grime extraction, deodorizing' },
+    ],
     faqs: [
       {
         question: 'How do you wash and shampoo heavy rugs and carpets?',
