@@ -43,13 +43,13 @@ const DEFAULT_REVIEWS = [
     id: 't-3',
     customerName: 'Meera Nambiar',
     location: 'Gachibowli, Hyderabad',
-    serviceUsed: 'Designer Footwear & Suede Spa',
+    serviceUsed: 'Designer Footwear & Suede Care',
     rating: 5,
-    review: 'My limited edition white sneakers looked brand new after the ultrasonic spa treatment. Live 10-stage order tracking kept me updated every step of the way. Highly recommended!',
+    review: 'My limited edition white sneakers looked brand new after the ultrasonic deep cleaning treatment. Live 10-stage order tracking kept me updated every step of the way. Highly recommended!',
     verified: true,
     initials: 'MN',
     color: 'from-emerald-500 to-teal-700',
-    tags: ['Shoe Spa', 'Live Tracking']
+    tags: ['Shoe Care', 'Live Tracking']
   },
   {
     id: 't-4',

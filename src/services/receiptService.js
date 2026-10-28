@@ -6,7 +6,7 @@ import { settingsService } from './settingsService.js';
 
 export const DEFAULT_RECEIPT_CONFIG = {
   businessName: 'Tech Wash Laundry Services',
-  tagline: 'Next-Generation Premium Fabric Care & Couture Spa',
+  tagline: 'Next-Generation Premium Fabric Care & Couture Studio',
   phone: '+91 63048 45567',
   whatsapp: '+91 63048 45567',
   email: 'care@techwashlaundry.com',

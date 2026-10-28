@@ -73,7 +73,7 @@ export const truncateText = (text, maxLength = 100) => {
  * Splits into:
  * 1. scales: Weighed batches with weight, rate, line total (e.g. 🧺 Wash & Fold: 2.0 Kg @ ₹100/Kg = ₹200)
  * 2. clothes: Weighed piece counts without messy @₹0 (e.g. 👔 4 pcs: 2x Shirt, 2x Pant)
- * 3. specialServices: Itemized garments & specialty care (e.g. ✨ 1x Silk Saree @ ₹220, 1x Sneaker Spa @ ₹350)
+ * 3. specialServices: Itemized garments & specialty care (e.g. ✨ 1x Silk Saree @ ₹220, 1x Sneaker Care @ ₹350)
  * 4. expressFee: Express rush charge if applicable
  * 5. textSummary: Clean single-line pipe-separated string for CSV & WhatsApp
  */

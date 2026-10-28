@@ -1550,7 +1550,7 @@ export const AdminPricingPage = () => {
                 <span>⚡</span> Custom Service Categories & Dynamic Sub-Services
               </h3>
               <p className="text-xs text-slate-500 mt-1">
-                Create bespoke service categories (e.g. VIP Couture, Bag Spa, Leather Treatment) with custom pricing & sub-services. Synchronizes in real-time to POS counters and Public Website.
+                Create bespoke service categories (e.g. VIP Couture, Luxury Bag Care, Leather Treatment) with custom pricing & sub-services. Synchronizes in real-time to POS counters and Public Website.
               </p>
             </div>
 
@@ -1573,7 +1573,7 @@ export const AdminPricingPage = () => {
               <div className="space-y-1">
                 <h4 className="text-sm font-bold text-slate-900">No Custom Service Categories Yet</h4>
                 <p className="text-xs text-slate-500 max-w-md mx-auto">
-                  Click the button below to create your first custom service category (like "Gopi Care", "Shoe & Sneaker Spa", or "Leather Treatment") and attach its sub-services.
+                  Click the button below to create your first custom service category (like "Gopi Care", "Shoe & Sneaker Care", or "Leather Treatment") and attach its sub-services.
                 </p>
               </div>
               <Button
@@ -1731,7 +1731,7 @@ export const AdminPricingPage = () => {
                 <input
                   type="text"
                   required
-                  placeholder="e.g. VIP Bridal Spa, Gopi Special Care, Leather Spa"
+                  placeholder="e.g. VIP Bridal Care, Gopi Special Care, Leather Care"
                   value={newCustomService.name}
                   onChange={(e) => setNewCustomService({ ...newCustomService, name: e.target.value })}
                   className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium"

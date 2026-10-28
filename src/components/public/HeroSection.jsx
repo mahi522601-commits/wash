@@ -191,14 +191,14 @@ export const HeroSection = ({ slides = [] }) => {
                 <span className="text-[10px] text-slate-400 font-normal hidden sm:inline">• 10k+ Orders</span>
               </div>
 
-              {/* Floating Badge 2: Bottom-Left Advanced Fabric Spa */}
+              {/* Floating Badge 2: Bottom-Left Advanced Fabric Care */}
               <div className="absolute bottom-2 left-0 sm:left-2 p-2 sm:p-3 rounded-xl sm:rounded-2xl bg-white/95 backdrop-blur-md text-[#1F2937] shadow-xl border border-[#FED7AA] flex items-center gap-2 sm:gap-3 animate-float">
                 <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-[#FFF7ED] text-[#F97316] flex items-center justify-center shrink-0 border border-[#FED7AA]">
                   <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 fill-[#F97316] text-[#F97316]" />
                 </div>
                 <div>
                   <div className="text-xs sm:text-sm font-black font-display text-[#1F2937] leading-none">
-                    Next-Gen Fabric Spa
+                    Next-Gen Fabric Care
                   </div>
                   <div className="text-[10px] sm:text-[11px] font-bold text-[#F97316] mt-0.5 sm:mt-1 leading-none">
                     RO Soft Water

@@ -179,7 +179,7 @@ export const MASTER_CATALOG_ITEMS = [
   { id: 'k-7', name: 'Soft Toys - Large Giant', price: 200, emoji: '🧸', categoryKey: 'KIDS', categoryName: "Toys" },
   { id: 'k-8', name: 'Kids School Uniform Set', price: 120, emoji: '🎒', categoryKey: 'KIDS', categoryName: "Kids" },
 
-  // ── SAREES & ETHNIC SPA ──
+  // ── SAREES & ETHNIC CARE ──
   { id: 'e-1', name: 'Pattu Saree Original (>10K Hydrocarbon)', price: 900, emoji: '👑', categoryKey: 'SAREES_ETHNIC', categoryName: "Luxury Silk" },
   { id: 'e-2', name: 'Silk Saree (Kanchipuram / Banarasi / Pattu)', price: 220, emoji: '🥻', categoryKey: 'SAREES_ETHNIC', categoryName: "Silk Sarees" },
   { id: 'e-3', name: 'Saree with Heavy Zari / Stone Embroidery', price: 250, emoji: '✨', categoryKey: 'SAREES_ETHNIC', categoryName: "Designer Sarees" },

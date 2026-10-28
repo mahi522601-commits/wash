@@ -39,7 +39,7 @@ export const Footer = () => {
     { label: 'Laundry Service Near Me', path: '/services/laundry-service' },
     { label: 'Wash & Iron Near Me', path: '/services/wash-and-iron' },
     { label: 'Wash & Fold (Kilo Laundry) Near Me', path: '/services/wash-and-fold' },
-    { label: 'Shoe Cleaning & Sneaker Spa Near Me', path: '/services/shoe-cleaning' },
+    { label: 'Shoe & Sneaker Cleaning Near Me', path: '/services/shoe-cleaning' },
     { label: 'Saree Rolling & Polishing Near Me', path: '/services/saree-rolling' },
     { label: 'Curtain Cleaning & Dry Wash Near Me', path: '/services/curtain-cleaning' },
     { label: 'Carpet Cleaning & Rug Wash Near Me', path: '/services/carpet-cleaning' },

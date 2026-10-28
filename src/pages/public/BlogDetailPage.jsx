@@ -113,7 +113,7 @@ const DEFAULT_ARTICLE_CONTENT = {
     )
   },
   'how-to-keep-white-sneakers-pristine': {
-    title: 'Sneaker Spa 101: Midsole De-Yellowing and Suede Protection',
+    title: 'Sneaker Cleaning 101: Midsole De-Yellowing and Suede Protection',
     category: 'Footwear Care',
     author: 'Sneaker Restoration Lab',
     readTime: '4 min read',
@@ -131,7 +131,7 @@ const DEFAULT_ARTICLE_CONTENT = {
 
         <h2 className="text-2xl font-black text-slate-900 font-display">2. Professional Ultrasonic Hand Scrubbing & Anti-Microbial UV Sterilization</h2>
         <p>
-          At Techwash Sneaker Spa, every pair is hand-scrubbed using soft-bristle horsehair brushes and material-specific bio-cleaners. Mid-soles undergo optical de-yellowing, followed by 360° UV-C anti-bacterial sterilization to eliminate odor-causing bacteria.
+          At Techwash Shoe Care, every pair is hand-scrubbed using soft-bristle horsehair brushes and material-specific bio-cleaners. Mid-soles undergo optical de-yellowing, followed by 360° UV-C anti-bacterial sterilization to eliminate odor-causing bacteria.
         </p>
 
         <div className="p-6 rounded-2xl bg-brand-50 border border-brand-200 space-y-3">

@@ -811,26 +811,26 @@ export const SEO_SERVICES = [
     ],
   },
 
-  // 9. Core Intent: Shoe Cleaning & Sneaker Spa
+  // 9. Core Intent: Shoe Cleaning & Sneaker Care
   {
     slug: 'shoe-cleaning',
-    name: 'Shoe Cleaning & Sneaker Spa',
+    name: 'Shoe & Sneaker Cleaning',
     category: 'Footwear',
     pricingDisplay: 'Starts at ₹350 / pair',
-    h1: '#1 Best Shoe Cleaning & Sneaker Spa Near Me in Manikonda',
+    h1: '#1 Best Shoe & Sneaker Cleaning Near Me in Manikonda',
     manikondaH1: '#1 Best Shoe Cleaning & Sneaker Laundry in Manikonda (500089)',
     nearMeTitle: '#1 Best Shoe Cleaning & Sneaker Laundry in Manikonda (Near Me) | Techwash',
-    manikondaTitle: '#1 Best Shoe Cleaning & Sneaker Spa in Manikonda (From ₹350) | Techwash',
+    manikondaTitle: '#1 Best Shoe & Sneaker Cleaning in Manikonda (From ₹350) | Techwash',
     metaDescription: 'Professional sneaker laundry, midsole whitening, suede conditioning, and UV anti-bacterial sterilization in Manikonda & Hyderabad. From ₹350/pair with free doorstep pickup. Flat 20% Off!',
     manikondaDescription: 'Looking for sneaker cleaning and shoe laundry in Manikonda? Techwash offers deep hand-scrubbing, midsole de-yellowing, suede restoration, and UV sterilization with doorstep pickup across Manikonda. Flat 20% Off!',
     primaryKeyword: 'shoe cleaning near me',
-    secondaryKeywords: 'shoe laundry in manikonda, sneaker cleaning near me, shoe laundry near me, shoe wash near me, shoe dry cleaning near me, shoe spa near me, leather shoe cleaning near me, sports shoe cleaning near me, sneaker spa manikonda, shoe cleaning service in manikonda',
+    secondaryKeywords: 'shoe laundry in manikonda, sneaker cleaning near me, shoe laundry near me, shoe wash near me, shoe dry cleaning near me, shoe care near me, leather shoe cleaning near me, sports shoe cleaning near me, sneaker cleaning manikonda, shoe cleaning service in manikonda',
     nearMeKeywords: [
       'shoe cleaning near me',
       'sneaker cleaning near me',
       'shoe laundry near me',
       'shoe wash near me',
-      'shoe spa near me',
+      'shoe care near me',
       'leather shoe cleaning near me',
       'sneaker laundry Hyderabad',
       'shoe cleaning Manikonda',
@@ -840,12 +840,12 @@ export const SEO_SERVICES = [
     rateCard: [
       { item: 'Running Shoes & Mesh Sports Sneakers', rate: '₹350 / pair', details: 'Deep foam scrub, insole sanitization, deodorizing' },
       { item: 'White Leather & Canvas Sneakers (Stan Smith/AF1)', rate: '₹400 / pair', details: 'Midsole whitening, lace soak, UV chamber sterilization' },
-      { item: 'Suede & Nubuck Loafers Spa', rate: '₹500 / pair', details: 'Dry-sponge extraction, suede eraser, nap re-conditioning' },
+      { item: 'Suede & Nubuck Loafers Care', rate: '₹500 / pair', details: 'Dry-sponge extraction, suede eraser, nap re-conditioning' },
       { item: 'Pure Leather Formal Boots & Oxford Shoes', rate: '₹550 / pair', details: 'Cream polish, edge dressing, conditioning, high shine' },
     ],
     faqs: [
       {
-        question: 'What shoe types do you clean at Techwash Sneaker Spa?',
+        question: 'What shoe types do you clean at Techwash Shoe Care?',
         answer: 'We clean sports shoes, running sneakers (Nike, Adidas, Puma, Asics), luxury designer footwear, canvas Converse/Vans, suede loafers, leather dress shoes, and boots.',
       },
       {
@@ -867,8 +867,8 @@ export const SEO_SERVICES = [
     ],
     manikondaFaqs: [
       {
-        question: 'Which is the best sneaker laundry and shoe spa in Manikonda?',
-        answer: 'Techwash Sneaker Spa is rated #1 in Manikonda. We combine meticulous hand-cleaning with UV anti-bacterial chamber treatment to kill 99.9% of odor-causing bacteria.',
+        question: 'Which is the best sneaker laundry and shoe cleaning in Manikonda?',
+        answer: 'Techwash Shoe & Sneaker Care is rated #1 in Manikonda. We combine meticulous hand-cleaning with UV anti-bacterial chamber treatment to kill 99.9% of odor-causing bacteria.',
       },
       {
         question: 'How long does shoe cleaning take in Manikonda?',

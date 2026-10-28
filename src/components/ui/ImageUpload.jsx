@@ -45,7 +45,7 @@ const PRESET_CARE_IMAGES = [
     url: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=1200&q=80'
   },
   {
-    name: 'Sneaker & Shoe Spa',
+    name: 'Sneaker & Shoe Care',
     category: 'Footwear',
     url: 'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?auto=format&fit=crop&w=1200&q=80'
   },

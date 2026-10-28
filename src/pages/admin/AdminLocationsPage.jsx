@@ -342,7 +342,7 @@ export const AdminLocationsPage = () => {
           <div className="text-sm font-bold text-slate-900 mt-1 truncate">
             {locations.find(l => l.isMain)?.name || 'Tech Wash Laundry Main Branch'}
           </div>
-          <div className="text-[11px] text-slate-400 mt-0.5">Central Hub & Garment Spa</div>
+          <div className="text-[11px] text-slate-400 mt-0.5">Central Hub & Garment Care</div>
         </div>
 
         <div className="p-4 rounded-2xl bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-200 shadow-2xs flex flex-col justify-between">

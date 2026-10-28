@@ -221,7 +221,7 @@ export const systemHealthService = {
       {
         id: 'srv-shoe-cleaning',
         slug: 'shoe-cleaning',
-        title: 'Luxury Shoe Laundry & Spa',
+        title: 'Luxury Shoe & Sneaker Care',
         shortDescription: 'Deep cleaning, midsole de-yellowing, suede restoration, and deodorization for sneakers and luxury footwear.',
         detailedDescription: 'Hand-crafted restoration for sneakers, leather formals, suede loafers, and sports footwear. Using specialized horsehair brushes, gentle foam cleansers, and UV sterilization.',
         category: 'Footwear Care',

@@ -99,7 +99,7 @@ export const PrintReceipt = ({
                 {config.businessName || 'Tech Wash'}
               </h1>
               <p className="text-[9px] font-bold text-[#EA580C] tracking-wider uppercase mt-0.5">
-                {config.tagline || 'Next-Gen Fabric Care & Couture Spa'}
+                {config.tagline || 'Next-Gen Fabric Care & Couture Studio'}
               </p>
             </div>
           </div>

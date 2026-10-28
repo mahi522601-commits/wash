@@ -33,7 +33,7 @@ export const BlogSection = ({ blogs = [] }) => {
     {
       id: 'blog-3',
       slug: 'how-to-keep-white-sneakers-pristine',
-      title: 'Sneaker Spa 101: Midsole De-Yellowing and Suede Protection',
+      title: 'Sneaker Cleaning 101: Midsole De-Yellowing and Suede Protection',
       category: 'Footwear Care',
       author: 'Sneaker Restoration Lab',
       createdAt: new Date().toISOString(),
