@@ -34,29 +34,29 @@ export const Footer = () => {
   ];
 
   const serviceCategories = [
-    { label: 'Dry Cleaning Near Me', path: '/services/dry-cleaning' },
+    { label: 'Dry Cleaning & Dry Wash Near Me', path: '/services/dry-cleaning' },
+    { label: 'Iron Service & Steam Press Near Me', path: '/services/ironing-service' },
     { label: 'Laundry Service Near Me', path: '/services/laundry-service' },
     { label: 'Wash & Iron Near Me', path: '/services/wash-and-iron' },
-    { label: 'Wash & Fold Near Me', path: '/services/wash-and-fold' },
-    { label: 'Steam Ironing Near Me', path: '/services/ironing-service' },
-    { label: 'Shoe Cleaning Near Me', path: '/services/shoe-cleaning' },
-    { label: 'Saree Rolling Near Me', path: '/services/saree-rolling' },
-    { label: 'Curtain Cleaning Near Me', path: '/services/curtain-cleaning' },
-    { label: 'Carpet Cleaning Near Me', path: '/services/carpet-cleaning' },
-    { label: 'Laundry Pickup Near Me', path: '/services/laundry-pickup-and-delivery' },
+    { label: 'Wash & Fold (Kilo Laundry) Near Me', path: '/services/wash-and-fold' },
+    { label: 'Shoe Cleaning & Sneaker Spa Near Me', path: '/services/shoe-cleaning' },
+    { label: 'Saree Rolling & Polishing Near Me', path: '/services/saree-rolling' },
+    { label: 'Curtain Cleaning & Dry Wash Near Me', path: '/services/curtain-cleaning' },
+    { label: 'Carpet Cleaning & Rug Wash Near Me', path: '/services/carpet-cleaning' },
+    { label: 'Laundry Pickup & Delivery Near Me', path: '/services/laundry-pickup-and-delivery' },
   ];
 
   const priorityAreas = [
-    { label: 'Manikonda Hub', path: '/areas/manikonda' },
-    { label: 'Dry Cleaning in Manikonda', path: '/areas/manikonda/dry-cleaning' },
-    { label: 'Laundry in Manikonda', path: '/areas/manikonda/laundry-service' },
+    { label: 'Manikonda Hub (500089)', path: '/areas/manikonda' },
+    { label: 'Dry Wash & Dry Cleaning in Manikonda', path: '/areas/manikonda/dry-cleaning' },
+    { label: 'Iron Service in Manikonda', path: '/areas/manikonda/ironing-service' },
+    { label: 'Laundry Service in Manikonda', path: '/areas/manikonda/laundry-service' },
     { label: 'Wash & Iron in Manikonda', path: '/areas/manikonda/wash-and-iron' },
     { label: 'Wash & Fold in Manikonda', path: '/areas/manikonda/wash-and-fold' },
-    { label: 'Steam Ironing in Manikonda', path: '/areas/manikonda/ironing-service' },
     { label: 'Shoe Cleaning in Manikonda', path: '/areas/manikonda/shoe-cleaning' },
     { label: 'Saree Rolling in Manikonda', path: '/areas/manikonda/saree-rolling' },
-    { label: 'Curtain Cleaning Manikonda', path: '/areas/manikonda/curtain-cleaning' },
-    { label: 'Carpet Cleaning Manikonda', path: '/areas/manikonda/carpet-cleaning' },
+    { label: 'Curtain Dry Wash in Manikonda', path: '/areas/manikonda/curtain-cleaning' },
+    { label: 'Carpet Cleaning in Manikonda', path: '/areas/manikonda/carpet-cleaning' },
     { label: 'Pickup & Delivery Manikonda', path: '/areas/manikonda/laundry-pickup-and-delivery' },
   ];
 

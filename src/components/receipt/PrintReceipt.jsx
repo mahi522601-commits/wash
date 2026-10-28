@@ -331,7 +331,11 @@ export const PrintReceipt = ({
 
             <div className="flex justify-between text-slate-700 text-[9.5px]">
               <span className="text-slate-500">Payment Option:</span>
-              <span className="font-semibold text-slate-900">{String(paymentMethod).replace(/_/g, ' ')}</span>
+              <span className="font-semibold text-slate-900">
+                {receiptData.paymentBreakdown && (Number(receiptData.paymentBreakdown.cash || 0) > 0 && Number(receiptData.paymentBreakdown.upi || 0) > 0)
+                  ? 'Split (Cash + UPI)'
+                  : (paymentMethod === 'SPLIT' ? 'Split Payment' : String(paymentMethod).replace(/_/g, ' '))}
+              </span>
             </div>
 
             {receiptData.storeBranch && (
@@ -412,6 +416,19 @@ export const PrintReceipt = ({
                 {formatCurrency(receiptData.receivedAmount || 0)}
               </span>
             </div>
+
+            {receiptData.paymentBreakdown && (Number(receiptData.paymentBreakdown.cash || 0) > 0 && Number(receiptData.paymentBreakdown.upi || 0) > 0) && (
+              <div className="text-[8px] text-slate-600 pl-1 py-0.5 space-y-0.5 border-l-2 border-indigo-400 bg-slate-50/50 print:bg-transparent">
+                <div className="flex justify-between">
+                  <span>• Cash:</span>
+                  <span className="font-mono font-semibold">{formatCurrency(receiptData.paymentBreakdown.cash)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>• PhonePe / UPI:</span>
+                  <span className="font-mono font-semibold">{formatCurrency(receiptData.paymentBreakdown.upi)}</span>
+                </div>
+              </div>
+            )}
 
             <div className="flex justify-between">
               <span className="font-bold text-slate-800">Balance Due:</span>

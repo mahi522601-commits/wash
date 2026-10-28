@@ -150,7 +150,13 @@ export function generateInvoicePDFUint8Array(order) {
 
   const isPaid = bal === 0 || (order.paymentStatus === 'PAID' && bal <= 0);
   const payStatus = isPaid ? 'FULLY PAID' : (rec > 0 ? 'PARTIAL PAYMENT' : 'PAYMENT DUE');
-  const payMethod = sanitizePdfText(String(order.paymentMethod || 'CASH').toUpperCase());
+  let payMethodText = String(order.paymentMethod || 'CASH').toUpperCase();
+  if (order.paymentBreakdown && (Number(order.paymentBreakdown.cash || 0) > 0 && Number(order.paymentBreakdown.upi || 0) > 0)) {
+    payMethodText = `SPLIT (Cash Rs.${order.paymentBreakdown.cash} + UPI Rs.${order.paymentBreakdown.upi})`;
+  } else if (order.paymentMethod === 'SPLIT') {
+    payMethodText = 'SPLIT PAYMENT';
+  }
+  const payMethod = sanitizePdfText(payMethodText);
 
   // Extract / Normalize Line Items
   const items = [];

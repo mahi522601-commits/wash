@@ -364,15 +364,21 @@ export const reportService = {
       }
 
       // Map Payment Mode Collections (Category 1)
-      const pMethod = String(order.paymentMethod || 'CASH').toUpperCase();
-      if (pMethod === 'CASH') {
-        cashReceived += recAmount;
-      } else if (pMethod.includes('UPI') || pMethod.includes('QR')) {
-        upiReceived += recAmount;
-      } else if (pMethod.includes('CARD') || pMethod.includes('POS')) {
-        cardReceived += recAmount;
+      if (order.paymentBreakdown && (Number(order.paymentBreakdown.cash || 0) > 0 || Number(order.paymentBreakdown.upi || 0) > 0 || Number(order.paymentBreakdown.card || 0) > 0)) {
+        cashReceived += Number(order.paymentBreakdown.cash || 0);
+        upiReceived += Number(order.paymentBreakdown.upi || 0);
+        cardReceived += Number(order.paymentBreakdown.card || 0);
       } else {
-        onlineReceived += recAmount;
+        const pMethod = String(order.paymentMethod || 'CASH').toUpperCase();
+        if (pMethod === 'CASH') {
+          cashReceived += recAmount;
+        } else if (pMethod.includes('UPI') || pMethod.includes('QR')) {
+          upiReceived += recAmount;
+        } else if (pMethod.includes('CARD') || pMethod.includes('POS')) {
+          cardReceived += recAmount;
+        } else {
+          onlineReceived += recAmount;
+        }
       }
 
       // Balances Lifecycle (Category 2)
@@ -733,7 +739,9 @@ export const reportService = {
         total: Number(o.totalAmount || o.finalPrice || 0),
         received: Number(o.receivedAmount !== undefined ? o.receivedAmount : (o.paymentStatus === 'PAID' ? (o.totalAmount || 0) : 0)),
         balance: Number(o.balanceAmount !== undefined ? o.balanceAmount : 0),
-        method: o.paymentMethod || 'CASH',
+        method: (o.paymentBreakdown && Number(o.paymentBreakdown.cash || 0) > 0 && Number(o.paymentBreakdown.upi || 0) > 0)
+          ? `SPLIT (Cash: ₹${o.paymentBreakdown.cash}, UPI: ₹${o.paymentBreakdown.upi})`
+          : (o.paymentMethod || 'CASH'),
         status: o.paymentStatus || 'PENDING',
         time: o.createdAt || new Date().toISOString(),
       })),

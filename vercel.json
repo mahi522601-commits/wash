@@ -15,6 +15,17 @@
       "schedule": "30 16 * * *"
     }
   ],
+  "redirects": [
+    { "source": "/carpet-washing", "destination": "/services/carpet-cleaning", "permanent": true },
+    { "source": "/ironing", "destination": "/services/ironing-service", "permanent": true },
+    { "source": "/shoe-washing", "destination": "/services/shoe-cleaning", "permanent": true },
+    { "source": "/curtain-washing", "destination": "/services/curtain-cleaning", "permanent": true },
+    { "source": "/laundry-pickup-delivery", "destination": "/services/laundry-pickup-and-delivery", "permanent": true },
+    { "source": "/dry-wash", "destination": "/services/dry-cleaning", "permanent": true },
+    { "source": "/drywash", "destination": "/services/dry-cleaning", "permanent": true },
+    { "source": "/iron-service", "destination": "/services/ironing-service", "permanent": true },
+    { "source": "/press-service", "destination": "/services/ironing-service", "permanent": true }
+  ],
   "rewrites": [
     {
       "source": "/((?!api/).*)",

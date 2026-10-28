@@ -115,9 +115,11 @@ const INITIAL_BILL_STATE = {
   items: [],
   ...getInitialDeliverySchedule(),
   expressOption: 'STANDARD', // 'STANDARD' | 'EXPRESS_24H'
-  paymentMethod: 'CASH', // 'CASH' | 'UPI_QR' | 'CARD' | 'PAY_ON_DELIVERY'
+  paymentMethod: 'CASH', // 'CASH' | 'UPI_QR' | 'CARD' | 'PAY_ON_DELIVERY' | 'SPLIT'
   paymentStatus: 'PAID', // 'PAID' | 'PARTIAL' | 'UNPAID'
   receivedAmount: undefined, // undefined = auto-sync with finalGrandTotal if PAID
+  splitCash: '',
+  splitUpi: '',
   autoOpenReceipt: true,
   autoSendWhatsApp: true,
 };
@@ -990,26 +992,46 @@ export const BillingMachinePage = () => {
   const finalGrandTotal = hasCustomGrandTotal ? Math.max(0, Number(billForm.customGrandTotal)) : calculatedGrandTotal;
 
   // Received Amount & Balance Due
-  const effectiveReceived = billForm.receivedAmount !== undefined 
-    ? Number(billForm.receivedAmount) 
-    : (billForm.paymentStatus === 'PAID' ? finalGrandTotal : 0);
+  const isSplitMode = billForm.paymentMethod === 'SPLIT';
+  const effectiveReceived = isSplitMode
+    ? (Number(billForm.splitCash || 0) + Number(billForm.splitUpi || 0))
+    : (billForm.receivedAmount !== undefined 
+        ? Number(billForm.receivedAmount) 
+        : (billForm.paymentStatus === 'PAID' ? finalGrandTotal : 0));
   const balanceDueAmount = Math.max(0, finalGrandTotal - effectiveReceived);
 
   // Quick 1-Click Payment Mode Setter
   const handleQuickPaymentSelect = (method, isPaid) => {
+    if (method === 'SPLIT') {
+      const half = Math.round(finalGrandTotal / 2);
+      const otherHalf = Math.max(0, finalGrandTotal - half);
+      setBillForm(prev => ({
+        ...prev,
+        paymentMethod: 'SPLIT',
+        paymentStatus: 'PAID',
+        splitCash: half,
+        splitUpi: otherHalf,
+        receivedAmount: finalGrandTotal
+      }));
+      return;
+    }
     if (isPaid) {
       setBillForm(prev => ({
         ...prev,
         paymentMethod: method,
         paymentStatus: 'PAID',
-        receivedAmount: finalGrandTotal
+        receivedAmount: finalGrandTotal,
+        splitCash: method === 'CASH' ? finalGrandTotal : 0,
+        splitUpi: method === 'UPI_QR' ? finalGrandTotal : 0,
       }));
     } else {
       setBillForm(prev => ({
         ...prev,
         paymentMethod: method,
         paymentStatus: 'UNPAID',
-        receivedAmount: 0
+        receivedAmount: 0,
+        splitCash: 0,
+        splitUpi: 0,
       }));
     }
   };
@@ -1189,6 +1211,17 @@ export const BillingMachinePage = () => {
         balanceAmount: balanceDueAmount,
         paymentStatus: resolvedPaymentStatus,
         paymentMethod: billForm.paymentMethod,
+        paymentBreakdown: isSplitMode 
+          ? { cash: Number(billForm.splitCash || 0), upi: Number(billForm.splitUpi || 0), card: 0 }
+          : (billForm.paymentMethod === 'CASH' 
+              ? { cash: effectiveReceived, upi: 0, card: 0 }
+              : (billForm.paymentMethod === 'UPI_QR' 
+                  ? { cash: 0, upi: effectiveReceived, card: 0 }
+                  : (billForm.paymentMethod === 'CARD' 
+                      ? { cash: 0, upi: 0, card: effectiveReceived }
+                      : { cash: 0, upi: 0, card: 0 }))),
+        splitCash: isSplitMode ? Number(billForm.splitCash || 0) : undefined,
+        splitUpi: isSplitMode ? Number(billForm.splitUpi || 0) : undefined,
         customerStage: 'INSPECTION',
         internalStage: 'RECEIVED_AT_HUB',
         pickupDate: billForm.pickupDate || normalizeDateString(new Date()),
@@ -2920,50 +2953,179 @@ export const BillingMachinePage = () => {
                       <span>⏳</span>
                       <span className="text-xs">Unpaid / Pay Later</span>
                     </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleQuickPaymentSelect('SPLIT', true)}
+                      className={`col-span-2 p-2.5 rounded-xl border text-center font-bold transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                        billForm.paymentMethod === 'SPLIT'
+                          ? 'bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white border-transparent shadow-sm ring-2 ring-indigo-400/50'
+                          : 'bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-900 border-indigo-200 hover:from-indigo-100 hover:to-purple-100'
+                      }`}
+                    >
+                      <span className="text-sm">⚡</span>
+                      <span className="text-xs font-black tracking-wide">Split Payment (Half Cash + Half PhonePe / UPI)</span>
+                    </button>
                   </div>
 
-                  {/* Custom Received Amount Input */}
-                  <div className="pt-2 space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-slate-700 text-xs">Amount Received (₹):</span>
-                      <div className="flex items-center gap-1">
+                  {/* SPLIT PAYMENT DEDICATED PANEL */}
+                  {billForm.paymentMethod === 'SPLIT' ? (
+                    <div className="p-3 rounded-2xl bg-gradient-to-br from-indigo-50/90 to-purple-50/90 border-2 border-indigo-300/80 space-y-2.5 shadow-xs animate-fadeIn">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-base">⚡</span>
+                          <div>
+                            <span className="text-xs font-black text-indigo-950 uppercase tracking-wider block">
+                              Split Payment Entry
+                            </span>
+                            <span className="text-[10px] text-slate-500">Enter Cash & PhonePe/UPI portions</span>
+                          </div>
+                        </div>
                         <button
                           type="button"
-                          onClick={() => setBillForm({ ...billForm, receivedAmount: finalGrandTotal, paymentStatus: 'PAID' })}
-                          className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold hover:bg-emerald-200 cursor-pointer"
+                          onClick={() => {
+                            const half = Math.round(finalGrandTotal / 2);
+                            setBillForm(prev => ({
+                              ...prev,
+                              splitCash: half,
+                              splitUpi: Math.max(0, finalGrandTotal - half),
+                            }));
+                          }}
+                          className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-black cursor-pointer transition shadow-xs flex items-center gap-1"
                         >
-                          ⚡ Full (₹{finalGrandTotal})
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setBillForm({ ...billForm, receivedAmount: 0, paymentStatus: 'UNPAID' })}
-                          className="px-2 py-0.5 rounded bg-slate-200 text-slate-700 text-[10px] font-bold hover:bg-slate-300 cursor-pointer"
-                        >
-                          ₹0 Unpaid
+                          <span>⚡</span>
+                          <span>50 / 50 (₹{Math.round(finalGrandTotal / 2)})</span>
                         </button>
                       </div>
-                    </div>
 
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-slate-400 text-xs">₹</span>
-                      <input
-                        type="number"
-                        min="0"
-                        max={finalGrandTotal}
-                        placeholder={String(finalGrandTotal)}
-                        value={billForm.receivedAmount !== undefined ? billForm.receivedAmount : (billForm.paymentStatus === 'PAID' ? finalGrandTotal : '')}
-                        onChange={(e) => {
-                          const val = e.target.value === '' ? '' : Number(e.target.value);
-                          setBillForm({ 
-                            ...billForm, 
-                            receivedAmount: val,
-                            paymentStatus: val === finalGrandTotal ? 'PAID' : (val > 0 ? 'PARTIAL' : 'UNPAID')
-                          });
-                        }}
-                        className="w-full pl-7 pr-3 py-1.5 bg-white border border-slate-300 rounded-xl font-mono font-bold text-sm text-slate-900 focus:ring-2 focus:ring-orange-500 outline-none"
-                      />
+                      <div className="grid grid-cols-2 gap-2">
+                        {/* Cash Input */}
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between">
+                            <label className="text-[11px] font-bold text-slate-700 flex items-center gap-1">
+                              <span>💵</span> Cash (₹)
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const currentUpi = Number(billForm.splitUpi || 0);
+                                const remainder = Math.max(0, finalGrandTotal - currentUpi);
+                                setBillForm(prev => ({ ...prev, splitCash: remainder }));
+                              }}
+                              className="text-[9.5px] font-bold text-emerald-700 hover:underline cursor-pointer"
+                              title="Fill remainder with cash"
+                            >
+                              Fill Bal
+                            </button>
+                          </div>
+                          <div className="relative">
+                            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 font-bold text-slate-400 text-xs">₹</span>
+                            <input
+                              type="number"
+                              min="0"
+                              max={finalGrandTotal}
+                              placeholder="0"
+                              value={billForm.splitCash}
+                              onChange={(e) => {
+                                const val = e.target.value === '' ? '' : Math.max(0, Number(e.target.value));
+                                setBillForm(prev => ({ ...prev, splitCash: val }));
+                              }}
+                              className="w-full pl-6 pr-2 py-1.5 bg-white border border-slate-300 rounded-xl font-mono font-bold text-xs text-slate-900 focus:ring-2 focus:ring-emerald-500 outline-none"
+                            />
+                          </div>
+                        </div>
+
+                        {/* PhonePe / UPI Input */}
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between">
+                            <label className="text-[11px] font-bold text-slate-700 flex items-center gap-1">
+                              <span>📱</span> PhonePe / UPI (₹)
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const currentCash = Number(billForm.splitCash || 0);
+                                const remainder = Math.max(0, finalGrandTotal - currentCash);
+                                setBillForm(prev => ({ ...prev, splitUpi: remainder }));
+                              }}
+                              className="text-[9.5px] font-bold text-indigo-700 hover:underline cursor-pointer"
+                              title="Fill remainder with UPI"
+                            >
+                              Fill Bal
+                            </button>
+                          </div>
+                          <div className="relative">
+                            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 font-bold text-slate-400 text-xs">₹</span>
+                            <input
+                              type="number"
+                              min="0"
+                              max={finalGrandTotal}
+                              placeholder="0"
+                              value={billForm.splitUpi}
+                              onChange={(e) => {
+                                const val = e.target.value === '' ? '' : Math.max(0, Number(e.target.value));
+                                setBillForm(prev => ({ ...prev, splitUpi: val }));
+                              }}
+                              className="w-full pl-6 pr-2 py-1.5 bg-white border border-slate-300 rounded-xl font-mono font-bold text-xs text-slate-900 focus:ring-2 focus:ring-indigo-500 outline-none"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Split Breakdown Quick Summary */}
+                      <div className="flex items-center justify-between text-[11px] font-bold pt-1.5 border-t border-indigo-200">
+                        <span className="text-slate-700">
+                          Total Paid: <strong className="font-mono text-slate-900">₹{effectiveReceived}</strong> of <strong className="font-mono text-slate-900">₹{finalGrandTotal}</strong>
+                        </span>
+                        <span className={`font-mono font-black ${balanceDueAmount === 0 ? 'text-emerald-700' : 'text-rose-600'}`}>
+                          {balanceDueAmount === 0 ? '✓ FULL (₹0 DUE)' : `₹${balanceDueAmount} DUE`}
+                        </span>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    /* Custom Received Amount Input */
+                    <div className="pt-2 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-slate-700 text-xs">Amount Received (₹):</span>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setBillForm({ ...billForm, receivedAmount: finalGrandTotal, paymentStatus: 'PAID' })}
+                            className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold hover:bg-emerald-200 cursor-pointer"
+                          >
+                            ⚡ Full (₹{finalGrandTotal})
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setBillForm({ ...billForm, receivedAmount: 0, paymentStatus: 'UNPAID' })}
+                            className="px-2 py-0.5 rounded bg-slate-200 text-slate-700 text-[10px] font-bold hover:bg-slate-300 cursor-pointer"
+                          >
+                            ₹0 Unpaid
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-slate-400 text-xs">₹</span>
+                        <input
+                          type="number"
+                          min="0"
+                          max={finalGrandTotal}
+                          placeholder={String(finalGrandTotal)}
+                          value={billForm.receivedAmount !== undefined ? billForm.receivedAmount : (billForm.paymentStatus === 'PAID' ? finalGrandTotal : '')}
+                          onChange={(e) => {
+                            const val = e.target.value === '' ? '' : Number(e.target.value);
+                            setBillForm({ 
+                              ...billForm, 
+                              receivedAmount: val,
+                              paymentStatus: val === finalGrandTotal ? 'PAID' : (val > 0 ? 'PARTIAL' : 'UNPAID')
+                            });
+                          }}
+                          className="w-full pl-7 pr-3 py-1.5 bg-white border border-slate-300 rounded-xl font-mono font-bold text-sm text-slate-900 focus:ring-2 focus:ring-orange-500 outline-none"
+                        />
+                      </div>
+                    </div>
+                  )}
 
                   {/* Live Payment Status Banner */}
                   <div className={`p-2.5 rounded-xl border flex items-center justify-between text-xs font-bold transition-all ${

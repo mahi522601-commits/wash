@@ -477,7 +477,7 @@ function prerenderAll() {
       'dry cleaning near me'
     ].filter(Boolean).join(', ');
 
-    const serviceFaqs = generateManikondaFaqsForService(s);
+    const serviceFaqs = (s.faqs && s.faqs.length > 0) ? s.faqs : generateManikondaFaqsForService(s);
 
     const serviceStructuredData = {
       '@context': 'https://schema.org',
@@ -621,7 +621,7 @@ function prerenderAll() {
     `;
 
     const serviceHtml = buildHtmlPage(baseTemplate, {
-      title: `#1 Best ${s.name} Near Me in Manikonda, Hyderabad (Flat 20% Off) | Techwash`,
+      title: s.nearMeTitle || `#1 Best ${s.name} Near Me in Manikonda, Hyderabad (Flat 20% Off) | Techwash`,
       description: s.metaDescription,
       keywords: serviceKeywords,
       canonicalUrl: `${BASE_URL}/services/${s.slug}`,
@@ -784,10 +784,12 @@ function prerenderAll() {
     const areaServiceSubDir = path.join(manikondaDir, s.slug);
     fs.mkdirSync(areaServiceSubDir, { recursive: true });
 
-    const title = `#1 Best ${s.name} in Manikonda, Hyderabad (500089) - Flat 20% Off | Techwash`;
-    const description = `Looking for the best ${s.name.toLowerCase()} in Manikonda? Techwash Laundry provides 100% 0 PPM RO soft water care, certified eco hydrocarbon dry cleaning, and free doorstep pickup across Puppalaguda, Secretariat Colony, and Lanco Hills. Flat 20% Off on your first order.`;
+    const title = s.manikondaTitle || `#1 Best ${s.name} in Manikonda, Hyderabad (500089) - Flat 20% Off | Techwash`;
+    const description = s.manikondaDescription || `Looking for the best ${s.name.toLowerCase()} in Manikonda? Techwash Laundry provides 100% 0 PPM RO soft water care, certified eco hydrocarbon dry cleaning, and free doorstep pickup across Puppalaguda, Secretariat Colony, and Lanco Hills. Flat 20% Off on your first order.`;
     const canonicalUrl = `${BASE_URL}/areas/manikonda/${s.slug}`;
     const keywords = [
+      s.primaryKeyword,
+      s.secondaryKeywords,
       `${s.name.toLowerCase()} in manikonda`,
       `best ${s.name.toLowerCase()} in manikonda`,
       `${s.name.toLowerCase()} manikonda`,
@@ -799,11 +801,10 @@ function prerenderAll() {
       `${s.name.toLowerCase()} lanco hills`,
       `${s.name.toLowerCase()} alkapoor township`,
       `${s.name.toLowerCase()} shaikpet 500089`,
-      s.primaryKeyword,
       ...(s.nearMeKeywords || [])
-    ].join(', ');
+    ].filter(Boolean).join(', ');
 
-    const manikondaServiceFaqs = generateManikondaFaqsForService(s);
+    const manikondaServiceFaqs = (s.manikondaFaqs && s.manikondaFaqs.length > 0) ? s.manikondaFaqs : generateManikondaFaqsForService(s);
 
     const areaServiceStructuredData = {
       '@context': 'https://schema.org',
@@ -896,10 +897,10 @@ function prerenderAll() {
             ✦ Rated #1 in Manikonda 500089 • 0 PPM RO Soft Water • Flat 20% Off
           </p>
           <h1 style="font-size: 36px; line-height: 1.2; font-weight: 900; color: #111827; margin: 0 0 16px 0;">
-            Best ${escapeHtml(s.name)} in Manikonda, Hyderabad (Near Me)
+            ${escapeHtml(s.manikondaH1 || `Best ${s.name} in Manikonda, Hyderabad (Near Me)`)}
           </h1>
           <p style="font-size: 18px; color: #4B5563; max-width: 900px; margin: 0 0 16px 0;">
-            Looking for top-rated ${escapeHtml(s.name.toLowerCase())} in Manikonda? Techwash Laundry is your premier local choice across Puppalaguda, Secretariat Colony, OU Colony, Lanco Hills Road, and Alkapoor Township. We provide 100% demineralized 0 PPM RO soft-water washing, isolated single-customer machine drums, certified non-toxic European eco hydrocarbon dry cleaning, and 3D tension steam form pressing with daily doorstep pickup.
+            ${escapeHtml(s.manikondaDescription || description)}
           </p>
           <div style="background: #FFF7ED; border: 1px solid #FED7AA; border-radius: 12px; padding: 14px 18px; font-size: 14px; color: #9A3412; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between;">
             <div>

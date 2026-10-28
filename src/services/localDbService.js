@@ -49,7 +49,47 @@ export const localDbService = {
     }
 
     // Extract and store payment if present
-    if (order.receivedAmount > 0 || order.paymentMethod) {
+    if (Array.isArray(order.paymentHistory) && order.paymentHistory.length > 0) {
+      for (const p of order.paymentHistory) {
+        try {
+          await this.saveLocalPayment({
+            id: p.paymentEventId || p.id || `pay-${localId}-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+            localId,
+            orderId: order.id || localId,
+            amount: Number(p.amount || 0),
+            method: p.mode || p.method || order.paymentMethod || 'CASH',
+            createdAt: p.timestamp || p.createdAt || order.createdAt || new Date().toISOString(),
+          });
+        } catch (e) {
+          console.warn('Payment auto-save error:', e);
+        }
+      }
+    } else if (order.paymentBreakdown && (Number(order.paymentBreakdown.cash || 0) > 0 || Number(order.paymentBreakdown.upi || 0) > 0)) {
+      if (Number(order.paymentBreakdown.cash || 0) > 0) {
+        try {
+          await this.saveLocalPayment({
+            id: `pay-${localId}-cash-${Date.now()}`,
+            localId,
+            orderId: order.id || localId,
+            amount: Number(order.paymentBreakdown.cash),
+            method: 'CASH',
+            createdAt: order.createdAt || new Date().toISOString(),
+          });
+        } catch (e) {}
+      }
+      if (Number(order.paymentBreakdown.upi || 0) > 0) {
+        try {
+          await this.saveLocalPayment({
+            id: `pay-${localId}-upi-${Date.now()}`,
+            localId,
+            orderId: order.id || localId,
+            amount: Number(order.paymentBreakdown.upi),
+            method: 'UPI_QR',
+            createdAt: order.createdAt || new Date().toISOString(),
+          });
+        } catch (e) {}
+      }
+    } else if (order.receivedAmount > 0 || order.paymentMethod) {
       try {
         await this.saveLocalPayment({
           id: `pay-${localId}-${Date.now()}`,

@@ -177,10 +177,17 @@ export const whatsappNotificationService = {
     const discountAmount = snapshot.discountAmount || 0;
     const finalTotal = snapshot.finalTotal || order.totalAmount || (subtotal + deliveryFee + expressFee - discountAmount);
 
-    const paymentMethodLabel = order.paymentMethod === 'UPI_QR' 
+    const hasSplitBreakdown = order.paymentBreakdown && (Number(order.paymentBreakdown.cash || 0) > 0 && Number(order.paymentBreakdown.upi || 0) > 0);
+    const paymentMethodLabel = hasSplitBreakdown
+      ? `Split Payment (Cash Rs.${order.paymentBreakdown.cash} + PhonePe/UPI Rs.${order.paymentBreakdown.upi})`
+      : order.paymentMethod === 'SPLIT'
+      ? 'Split Payment (Cash + PhonePe/UPI)'
+      : order.paymentMethod === 'UPI_QR' 
       ? 'UPI Instant QR (PhonePe / GPay / Paytm)' 
       : order.paymentMethod === 'ONLINE'
       ? 'Online Payment'
+      : order.paymentMethod === 'CASH'
+      ? 'Cash at Counter'
       : 'Pay on Delivery (Cash / UPI at Doorstep)';
 
     const paymentStatusBadge = (order.paymentStatus || 'PENDING') === 'PAID' ? '✅ PAID' : '⏳ Pending on Delivery';
@@ -533,7 +540,12 @@ Please collect your fresh garments at your convenience. Thank you for choosing T
     const balanceAmount = Number(order.balanceAmount !== undefined ? order.balanceAmount : Math.max(0, finalTotal - receivedAmount));
 
     const paymentMethod = order.paymentMethod || 'CASH';
-    const paymentLabel = paymentMethod === 'UPI_QR' || paymentMethod === 'UPI' 
+    const hasSplitBreakdown = order.paymentBreakdown && (Number(order.paymentBreakdown.cash || 0) > 0 && Number(order.paymentBreakdown.upi || 0) > 0);
+    const paymentLabel = hasSplitBreakdown
+      ? `Split: Cash Rs.${order.paymentBreakdown.cash} + UPI Rs.${order.paymentBreakdown.upi}`
+      : paymentMethod === 'SPLIT'
+      ? 'Split Payment'
+      : paymentMethod === 'UPI_QR' || paymentMethod === 'UPI' 
       ? 'UPI' 
       : paymentMethod === 'CASH' 
       ? 'Cash' 

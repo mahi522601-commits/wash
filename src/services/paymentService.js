@@ -24,6 +24,12 @@ export const PAYMENT_METHODS = {
     name: 'Online Payment Gateway (Cards/Netbanking)',
     description: 'Credit Card, Debit Card, Net Banking & Wallets via secure PCI-DSS gateway.',
     badge: '100% Encrypted',
+  },
+  SPLIT: {
+    id: 'SPLIT',
+    name: 'Split Payment (Cash + PhonePe/UPI)',
+    description: 'Split payment between cash and PhonePe or UPI.',
+    badge: 'Flexible Split',
   }
 };
 

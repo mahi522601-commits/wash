@@ -365,9 +365,38 @@ export const orderService = {
       ? Number(orderPayload.receivedAmount || 0) 
       : (orderPayload.paymentStatus === 'PAID' ? totalAmount : 0);
     
+    // Resolve paymentBreakdown for split or single payment
+    let paymentBreakdown = orderPayload.paymentBreakdown || null;
+    const isSplitPayment = orderPayload.paymentMethod === 'SPLIT' || (orderPayload.splitCash !== undefined && orderPayload.splitUpi !== undefined);
+    
+    if (isSplitPayment) {
+      const splitCash = Number(orderPayload.paymentBreakdown?.cash !== undefined ? orderPayload.paymentBreakdown.cash : (orderPayload.splitCash || 0));
+      const splitUpi = Number(orderPayload.paymentBreakdown?.upi !== undefined ? orderPayload.paymentBreakdown.upi : (orderPayload.splitUpi || 0));
+      const splitCard = Number(orderPayload.paymentBreakdown?.card !== undefined ? orderPayload.paymentBreakdown.card : (orderPayload.splitCard || 0));
+      paymentBreakdown = { cash: splitCash, upi: splitUpi, card: splitCard };
+      if (orderPayload.receivedAmount === undefined) {
+        receivedAmount = splitCash + splitUpi + splitCard;
+      }
+    } else if (!paymentBreakdown && receivedAmount > 0) {
+      paymentBreakdown = {
+        cash: orderPayload.paymentMethod === 'CASH' ? receivedAmount : 0,
+        upi: (orderPayload.paymentMethod === 'UPI_QR' || orderPayload.paymentMethod === 'UPI') ? receivedAmount : 0,
+        card: orderPayload.paymentMethod === 'CARD' ? receivedAmount : 0,
+      };
+    } else if (!paymentBreakdown) {
+      paymentBreakdown = { cash: 0, upi: 0, card: 0 };
+    }
+
     // Auto-fix if marked PAID
     if (orderPayload.paymentStatus === 'PAID' && receivedAmount < totalAmount) {
       receivedAmount = totalAmount;
+      if (isSplitPayment && paymentBreakdown) {
+        // Adjust split if total was under
+        const sum = paymentBreakdown.cash + paymentBreakdown.upi;
+        if (sum < totalAmount) {
+          paymentBreakdown.cash += (totalAmount - sum);
+        }
+      }
     }
 
     const balanceAmount = Math.max(0, totalAmount - receivedAmount);
@@ -414,6 +443,47 @@ export const orderService = {
       instructions: orderPayload.schedule?.instructions || orderPayload.notes || '',
       ...(orderPayload.schedule || {})
     };
+
+    const initialPaymentHistory = [];
+    if (receivedAmount > 0) {
+      if (paymentBreakdown && (paymentBreakdown.cash > 0 || paymentBreakdown.upi > 0 || paymentBreakdown.card > 0)) {
+        if (paymentBreakdown.cash > 0) {
+          initialPaymentHistory.push({
+            paymentEventId: `pay-${activeTerminalId}-${Date.now()}-cash`,
+            timestamp: new Date().toISOString(),
+            amount: paymentBreakdown.cash,
+            mode: 'CASH',
+            note: 'Initial Cash Payment',
+          });
+        }
+        if (paymentBreakdown.upi > 0) {
+          initialPaymentHistory.push({
+            paymentEventId: `pay-${activeTerminalId}-${Date.now()}-upi`,
+            timestamp: new Date().toISOString(),
+            amount: paymentBreakdown.upi,
+            mode: 'UPI_QR',
+            note: 'Initial PhonePe / UPI Payment',
+          });
+        }
+        if (paymentBreakdown.card > 0) {
+          initialPaymentHistory.push({
+            paymentEventId: `pay-${activeTerminalId}-${Date.now()}-card`,
+            timestamp: new Date().toISOString(),
+            amount: paymentBreakdown.card,
+            mode: 'CARD',
+            note: 'Initial Card Payment',
+          });
+        }
+      } else {
+        initialPaymentHistory.push({
+          paymentEventId: `pay-${activeTerminalId}-${Date.now()}-init`,
+          timestamp: new Date().toISOString(),
+          amount: receivedAmount,
+          mode: orderPayload.paymentMethod || 'CASH',
+          note: 'Initial Payment',
+        });
+      }
+    }
 
     const fullOrder = {
       ...orderPayload,
@@ -464,7 +534,9 @@ export const orderService = {
       status: orderPayload.status || 'CONFIRMED',
       internalStage: orderPayload.internalStage || 'RECEIVED_AT_HUB',
       paymentStatus: resolvedPaymentStatus,
-      paymentMethod: orderPayload.paymentMethod || 'PAY_ON_DELIVERY',
+      paymentMethod: isSplitPayment ? 'SPLIT' : (orderPayload.paymentMethod || 'PAY_ON_DELIVERY'),
+      paymentBreakdown: paymentBreakdown || { cash: 0, upi: 0, card: 0 },
+      paymentHistory: orderPayload.paymentHistory || initialPaymentHistory,
       priceSnapshot,
       syncStatus: 'LOCAL_SAVED',
       createdAt: orderPayload.createdAt || new Date().toISOString(),
@@ -1178,14 +1250,23 @@ export const orderService = {
   /**
    * Dedicated helper to update received payment, balance due, and payment status
    */
-  async updateOrderPayment(orderId, { receivedAmount, paymentMethod, paymentStatus, markDelivered = false, note = 'Payment updated' }) {
+  async updateOrderPayment(orderId, { receivedAmount, amountCollected, paymentMethod, paymentBreakdown, paymentStatus, markDelivered = false, note = 'Payment updated' }) {
     const orders = await this.getOrders({ limitCount: 500 });
     const order = orders.find(o => o.id === orderId || o.orderNumber === orderId || o.bookingId === orderId);
     if (!order) throw new Error(`Order ${orderId} not found`);
 
     const total = Number(order.totalAmount || order.finalPrice || order.priceSnapshot?.finalTotal || 0);
-    const newReceived = Number(receivedAmount);
     const oldReceived = Number(order.receivedAmount !== undefined ? order.receivedAmount : 0);
+
+    let newReceived;
+    if (receivedAmount !== undefined && receivedAmount !== null && !isNaN(Number(receivedAmount))) {
+      newReceived = Number(receivedAmount);
+    } else if (amountCollected !== undefined && amountCollected !== null && !isNaN(Number(amountCollected))) {
+      newReceived = Math.min(total, oldReceived + Number(amountCollected));
+    } else {
+      newReceived = oldReceived;
+    }
+
     const diffCollected = Math.max(0, newReceived - oldReceived);
     const newBalance = Math.max(0, total - newReceived);
     
@@ -1196,15 +1277,84 @@ export const orderService = {
       else newStatus = 'PENDING';
     }
 
-    const newPaymentEntry = {
-      paymentEventId: `pay-${order.terminalId || 'POS'}-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`,
-      timestamp: new Date().toISOString(),
-      amount: diffCollected > 0 ? diffCollected : newReceived,
-      mode: paymentMethod || order.paymentMethod || 'CASH',
-      note: note || `Payment recorded`,
-      isBalanceSettlement: oldReceived > 0,
-      balanceRemaining: newBalance,
+    // Merge or accumulate paymentBreakdown
+    const existingBreakdown = order.paymentBreakdown || {
+      cash: order.paymentMethod === 'CASH' ? oldReceived : 0,
+      upi: (order.paymentMethod === 'UPI_QR' || order.paymentMethod === 'UPI') ? oldReceived : 0,
+      card: order.paymentMethod === 'CARD' ? oldReceived : 0,
     };
+
+    let updatedBreakdown = { ...existingBreakdown };
+    const newHistoryEntries = [];
+
+    const isSplit = paymentMethod === 'SPLIT' || Boolean(paymentBreakdown && (Number(paymentBreakdown.cash || 0) > 0 && Number(paymentBreakdown.upi || 0) > 0));
+
+    if (isSplit && paymentBreakdown) {
+      const addedCash = Number(paymentBreakdown.cash || 0);
+      const addedUpi = Number(paymentBreakdown.upi || 0);
+      const addedCard = Number(paymentBreakdown.card || 0);
+      updatedBreakdown.cash = (updatedBreakdown.cash || 0) + addedCash;
+      updatedBreakdown.upi = (updatedBreakdown.upi || 0) + addedUpi;
+      updatedBreakdown.card = (updatedBreakdown.card || 0) + addedCard;
+
+      if (addedCash > 0) {
+        newHistoryEntries.push({
+          paymentEventId: `pay-${order.terminalId || 'POS'}-${Date.now()}-cash`,
+          timestamp: new Date().toISOString(),
+          amount: addedCash,
+          mode: 'CASH',
+          note: note ? `${note} (Cash: ₹${addedCash})` : `Settlement of ₹${addedCash} via Cash`,
+          isBalanceSettlement: oldReceived > 0,
+          balanceRemaining: newBalance,
+        });
+      }
+      if (addedUpi > 0) {
+        newHistoryEntries.push({
+          paymentEventId: `pay-${order.terminalId || 'POS'}-${Date.now()}-upi`,
+          timestamp: new Date().toISOString(),
+          amount: addedUpi,
+          mode: 'UPI_QR',
+          note: note ? `${note} (PhonePe/UPI: ₹${addedUpi})` : `Settlement of ₹${addedUpi} via PhonePe / UPI`,
+          isBalanceSettlement: oldReceived > 0,
+          balanceRemaining: newBalance,
+        });
+      }
+      if (addedCard > 0) {
+        newHistoryEntries.push({
+          paymentEventId: `pay-${order.terminalId || 'POS'}-${Date.now()}-card`,
+          timestamp: new Date().toISOString(),
+          amount: addedCard,
+          mode: 'CARD',
+          note: note ? `${note} (Card: ₹${addedCard})` : `Settlement of ₹${addedCard} via Card`,
+          isBalanceSettlement: oldReceived > 0,
+          balanceRemaining: newBalance,
+        });
+      }
+    } else {
+      const pMode = paymentMethod || order.paymentMethod || 'CASH';
+      const inc = diffCollected > 0 ? diffCollected : newReceived;
+      if (pMode === 'CASH') {
+        updatedBreakdown.cash = (updatedBreakdown.cash || 0) + inc;
+      } else if (pMode.includes('UPI') || pMode.includes('QR')) {
+        updatedBreakdown.upi = (updatedBreakdown.upi || 0) + inc;
+      } else if (pMode.includes('CARD')) {
+        updatedBreakdown.card = (updatedBreakdown.card || 0) + inc;
+      }
+
+      newHistoryEntries.push({
+        paymentEventId: `pay-${order.terminalId || 'POS'}-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`,
+        timestamp: new Date().toISOString(),
+        amount: inc,
+        mode: pMode,
+        note: note || `Payment recorded`,
+        isBalanceSettlement: oldReceived > 0,
+        balanceRemaining: newBalance,
+      });
+    }
+
+    const resolvedMethod = (isSplit || (updatedBreakdown.cash > 0 && updatedBreakdown.upi > 0)) 
+      ? 'SPLIT' 
+      : (paymentMethod || order.paymentMethod || 'CASH');
 
     const shouldMarkDelivered = Boolean(markDelivered || (paymentMethod === 'CASH' && newStatus === 'PAID' && markDelivered !== false));
     const targetStage = shouldMarkDelivered ? 'DELIVERED' : (order.customerStage || 'CONFIRMED');
@@ -1214,10 +1364,11 @@ export const orderService = {
       receivedAmount: newReceived,
       balanceAmount: newBalance,
       paymentStatus: newStatus,
-      paymentMethod: paymentMethod || order.paymentMethod,
+      paymentMethod: resolvedMethod,
+      paymentBreakdown: updatedBreakdown,
       customerStage: targetStage,
       status: targetStage,
-      paymentHistory: [...(order.paymentHistory || []), newPaymentEntry],
+      paymentHistory: [...(order.paymentHistory || []), ...newHistoryEntries],
       priceSnapshot: {
         ...(order.priceSnapshot || {}),
         receivedAmount: newReceived,
@@ -1230,7 +1381,7 @@ export const orderService = {
           stage: targetStage,
           label: `Payment: ₹${newReceived} Received (Balance: ₹${newBalance})`,
           timestamp: new Date().toISOString(),
-          note: note || `Payment of ₹${newReceived} recorded via ${paymentMethod || order.paymentMethod}.`,
+          note: note || `Payment of ₹${newReceived} recorded via ${resolvedMethod}.`,
         },
         ...(shouldMarkDelivered ? [{
           stage: 'DELIVERED',

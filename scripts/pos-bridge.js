@@ -314,11 +314,17 @@ function generateShiftPDFBuffer(dateKey, orders = [], targetPreset = activePrese
         totalRec += rec;
         totalBal += bal;
 
-        const pm = String(o.paymentMethod || 'CASH').toUpperCase();
-        if (pm === 'CASH') cashRec += rec;
-        else if (pm.includes('UPI') || pm.includes('QR')) upiRec += rec;
-        else if (pm.includes('CARD') || pm.includes('POS')) cardRec += rec;
-        else cashRec += rec;
+        if (o.paymentBreakdown && (Number(o.paymentBreakdown.cash || 0) > 0 || Number(o.paymentBreakdown.upi || 0) > 0 || Number(o.paymentBreakdown.card || 0) > 0)) {
+          cashRec += Number(o.paymentBreakdown.cash || 0);
+          upiRec += Number(o.paymentBreakdown.upi || 0);
+          cardRec += Number(o.paymentBreakdown.card || 0);
+        } else {
+          const pm = String(o.paymentMethod || 'CASH').toUpperCase();
+          if (pm === 'CASH') cashRec += rec;
+          else if (pm.includes('UPI') || pm.includes('QR')) upiRec += rec;
+          else if (pm.includes('CARD') || pm.includes('POS')) cardRec += rec;
+          else cashRec += rec;
+        }
 
         if (Array.isArray(o.items)) {
           o.items.forEach(it => { totalGarments += Number(it.quantity) || 1; });

@@ -271,11 +271,17 @@ export default async function handler(req, res) {
         }
         totalWeightKg += Number(order.actualWeight || order.estimatedWeightKg || order.weightKg || 0);
 
-        const pMethod = String(order.paymentMethod || 'CASH').toUpperCase();
-        if (pMethod.includes('CASH')) cashReceived += recAmount;
-        else if (pMethod.includes('UPI') || pMethod.includes('QR')) upiReceived += recAmount;
-        else if (pMethod.includes('CARD') || pMethod.includes('POS')) cardReceived += recAmount;
-        else onlineReceived += recAmount;
+        if (order.paymentBreakdown && (Number(order.paymentBreakdown.cash || 0) > 0 || Number(order.paymentBreakdown.upi || 0) > 0 || Number(order.paymentBreakdown.card || 0) > 0)) {
+          cashReceived += Number(order.paymentBreakdown.cash || 0);
+          upiReceived += Number(order.paymentBreakdown.upi || 0);
+          cardReceived += Number(order.paymentBreakdown.card || 0);
+        } else {
+          const pMethod = String(order.paymentMethod || 'CASH').toUpperCase();
+          if (pMethod.includes('CASH')) cashReceived += recAmount;
+          else if (pMethod.includes('UPI') || pMethod.includes('QR')) upiReceived += recAmount;
+          else if (pMethod.includes('CARD') || pMethod.includes('POS')) cardReceived += recAmount;
+          else onlineReceived += recAmount;
+        }
 
         if (balAmount === 0 || order.paymentStatus === 'PAID') fullyPaidOrdersCount += 1;
         else if (recAmount > 0) { partialOrdersCount += 1; totalNetPendingDues += balAmount; }
