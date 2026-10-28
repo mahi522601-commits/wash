@@ -11,7 +11,8 @@ import {
   Layers,
   ArrowRight,
   Clock,
-  HelpCircle
+  HelpCircle,
+  Phone
 } from 'lucide-react';
 
 export const ServicesShowcase = ({ services = [] }) => {
@@ -161,9 +162,9 @@ export const ServicesShowcase = ({ services = [] }) => {
                   </div>
                 </div>
 
-                {/* 3. CARD FOOTER: DIRECT BOOK BUTTON */}
+                {/* 3. CARD FOOTER: DIRECT BOOK BUTTON & CALL BUTTON */}
                 <div className="px-5 sm:px-6 pb-5 pt-0">
-                  <div className="pt-3 border-t border-slate-100">
+                  <div className="pt-3 border-t border-slate-100 space-y-2">
                     <Link
                       to={`/book-pickup?service=${service.slug}`}
                       className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-[#F97316] to-amber-500 hover:from-[#EA580C] hover:to-orange-500 text-white text-xs sm:text-sm font-black shadow-sm flex items-center justify-center gap-2 transition-all active:scale-95 text-center"
@@ -172,6 +173,14 @@ export const ServicesShowcase = ({ services = [] }) => {
                       <Calendar className="w-4 h-4 shrink-0" />
                       <span>Book Now</span>
                     </Link>
+                    <a
+                      href="tel:6304845567"
+                      className="w-full py-2.5 px-4 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all active:scale-95 text-center shadow-xs"
+                      title="Call Techwash directly at 6304845567"
+                    >
+                      <Phone className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>Call 6304845567</span>
+                    </a>
                   </div>
                 </div>
 

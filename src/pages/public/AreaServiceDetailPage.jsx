@@ -68,14 +68,31 @@ export const AreaServiceDetailPage = () => {
   }
 
   // Exact titles, H1s, and meta descriptions as per SEO Keyword Map & Rules
-  const pageTitle = service.title;
-  const pageH1 = service.h1;
-  const pageDescription = service.metaDescription;
+  const pageTitle = service.manikondaTitle || service.title || `#1 Best ${service.name} in Manikonda, Hyderabad (500089) - Flat 20% Off | Techwash`;
+  const pageH1 = service.manikondaH1 || service.h1 || `#1 Best ${service.name} in Manikonda (500089)`;
+  const pageDescription = service.manikondaDescription || service.metaDescription;
   const canonicalUrl = `${BASE_URL}/areas/manikonda/${service.slug}`;
-  const pageKeywords = `${service.primaryKeyword}${service.secondaryKeywords ? `, ${service.secondaryKeywords}` : ''}`;
+  const pageKeywords = [
+    service.primaryKeyword,
+    service.secondaryKeywords,
+    `${service.name.toLowerCase()} in manikonda`,
+    `best ${service.name.toLowerCase()} in manikonda`,
+    `${service.name.toLowerCase()} manikonda`,
+    `${service.name.toLowerCase()} near me manikonda`,
+    `dry cleaners near me manikonda`,
+    `laundry near manikonda`,
+    `${service.name.toLowerCase()} puppalaguda`,
+    `${service.name.toLowerCase()} secretariat colony`,
+    `${service.name.toLowerCase()} lanco hills`,
+    `${service.name.toLowerCase()} alkapoor township`,
+    `${service.name.toLowerCase()} shaikpet 500089`,
+    ...(service.nearMeKeywords || [])
+  ].filter(Boolean).join(', ');
 
   // Localized FAQ list targeting intent
-  const serviceAreaFaqs = [
+  const serviceAreaFaqs = (service.manikondaFaqs && service.manikondaFaqs.length > 0)
+    ? service.manikondaFaqs
+    : [
     {
       question: `How does Techwash Laundry ${service.name.toLowerCase()} work in Manikonda?`,
       answer: `Our ${service.name.toLowerCase()} in Manikonda starts at ${service.pricingDisplay}. You schedule a pickup online or via WhatsApp, our rider collects your garments at your Manikonda doorstep, processes them using 0 PPM soft water or European hydrocarbon dry cleaning, and delivers them back fresh and sealed.`,
@@ -135,28 +152,61 @@ export const AreaServiceDetailPage = () => {
         '@type': 'Service',
         '@id': `${canonicalUrl}#service`,
         name: `${service.name} in Manikonda`,
-        serviceType: service.name,
+        alternateName: [
+          `${service.name} in Manikonda`,
+          `Best ${service.name} Near Me Manikonda`,
+          `${service.name} Manikonda 500089`,
+          service.primaryKeyword,
+          ...(service.nearMeKeywords?.slice(0, 4) || [])
+        ],
+        serviceType: `${service.name} - Manikonda Local Garment Care`,
         category: service.category,
         description: pageDescription,
         provider: {
-          '@type': 'LocalBusiness',
+          '@type': 'DryCleaningOrLaundry',
           '@id': `${BASE_URL}/#organization`,
-          name: BUSINESS_INFO.name,
+          name: `${BUSINESS_INFO.name} - Manikonda`,
           telephone: BUSINESS_INFO.telephone,
-          url: BASE_URL,
+          url: canonicalUrl,
+          priceRange: BUSINESS_INFO.priceRange,
           address: {
             ...BUSINESS_INFO.address,
             postalCode: '500089',
           },
+          geo: BUSINESS_INFO.geo,
+          hasMap: 'https://www.google.com/maps/search/?api=1&query=Tech+Wash+Laundry+Services+Shaikpet+Main+Rd+Sri+Ram+Nagar+Colony+Manikonda+Hyderabad+500089',
+          aggregateRating: {
+            '@type': 'AggregateRating',
+            ratingValue: '4.9',
+            reviewCount: '318',
+            bestRating: '5',
+            worstRating: '1',
+          },
+          review: [
+            {
+              '@type': 'Review',
+              author: { '@type': 'Person', name: 'Rameshwar Rao' },
+              reviewRating: { '@type': 'Rating', ratingValue: '5', bestRating: '5' },
+              reviewBody: 'Best laundry service in Manikonda! Clothes always come back fresh, perfectly steam pressed, and handled with care.'
+            },
+            {
+              '@type': 'Review',
+              author: { '@type': 'Person', name: 'Sneha Reddy' },
+              reviewRating: { '@type': 'Rating', ratingValue: '5', bestRating: '5' },
+              reviewBody: 'Quick, prompt and reliable laundry service in Manikonda near Lanco Hills Road and Shaikpet Main Rd.'
+            }
+          ]
         },
         areaServed: {
           '@type': 'AdministrativeArea',
-          name: 'Manikonda, Hyderabad, Telangana, India',
+          name: 'Manikonda, Hyderabad, Telangana, India (500089)',
         },
         offers: {
           '@type': 'Offer',
           priceCurrency: 'INR',
+          price: service.pricingDisplay?.match(/\d+/)?.[0] || '40',
           description: service.pricingDisplay,
+          url: canonicalUrl,
           availability: 'https://schema.org/InStock',
         },
       },

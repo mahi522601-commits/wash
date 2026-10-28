@@ -5,7 +5,7 @@ import { Button } from '../ui/Button';
 import { YouTubeEmbed } from '../ui/YouTubeEmbed';
 import { ProcessSteps } from '../ui/ProcessSteps';
 import { formatCurrency } from '../../utils/formatters';
-import { Calendar, CheckCircle2, ArrowLeft, Sparkles, ShieldCheck } from 'lucide-react';
+import { Calendar, CheckCircle2, ArrowLeft, Sparkles, ShieldCheck, Phone } from 'lucide-react';
 
 export const ServicePreviewModal = ({
   isOpen,
@@ -54,9 +54,19 @@ export const ServicePreviewModal = ({
                 {service.startingPrice ? `${formatCurrency(service.startingPrice)}` : 'Custom Quote'}
                 <span className="text-xs font-normal text-slate-400 ml-1">/ {service.pricingType || 'per piece'}</span>
               </div>
-              <Button variant="primary" size="md" icon={Calendar}>
-                Book This Service
-              </Button>
+              <div className="flex flex-wrap items-center gap-3 pt-2">
+                <Button variant="primary" size="md" icon={Calendar}>
+                  Book This Service
+                </Button>
+                <a
+                  href="tel:6304845567"
+                  className="px-4 py-2.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 text-xs font-bold flex items-center gap-1.5 transition-all"
+                  title="Call 6304845567"
+                >
+                  <Phone className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Call 6304845567</span>
+                </a>
+              </div>
             </div>
           </div>
         </div>

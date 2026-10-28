@@ -249,18 +249,39 @@ export const ServiceDetailPage = () => {
          s.name.toLowerCase() === serviceTitle.toLowerCase()
   );
 
-  const pageMetaTitle = seoServiceMatch?.title || `${serviceTitle} Near Me - Best in Manikonda & Hyderabad | Techwash`;
-  const pageMetaDesc = seoServiceMatch?.metaDescription || service.shortDescription || `Looking for top-rated ${serviceTitle.toLowerCase()} near you? Techwash provides 100% RO soft water care, isolated drum hygiene, and free doorstep pickup across Manikonda, Tolichowki & Hyderabad.`;
+  const pageMetaTitle = seoServiceMatch?.nearMeTitle || seoServiceMatch?.title || `#1 Best ${serviceTitle} Near Me in Manikonda, Hyderabad (Flat 20% Off) | Techwash`;
+  const pageMetaH1 = seoServiceMatch?.h1 || `#1 Best ${serviceTitle} Near Me in Manikonda, Hyderabad`;
+  const pageMetaDesc = seoServiceMatch?.metaDescription || service.shortDescription || `Looking for top-rated ${serviceTitle.toLowerCase()} near you? Techwash provides 100% RO soft water care, isolated drum hygiene, and free doorstep pickup across Manikonda, Tolichowki & Hyderabad. Flat 20% Off!`;
   const pageKeywords = [
     seoServiceMatch?.primaryKeyword,
     seoServiceMatch?.secondaryKeywords,
     ...(seoServiceMatch?.nearMeKeywords || []),
     `${serviceTitle.toLowerCase()} near me`,
+    `best ${serviceTitle.toLowerCase()} near me`,
     `${serviceTitle.toLowerCase()} Manikonda`,
     `${serviceTitle.toLowerCase()} Hyderabad`,
     'laundry near me',
     'dry cleaning near me'
   ].filter(Boolean).join(', ');
+
+  const resolvedFaqs = (seoServiceMatch?.faqs && seoServiceMatch.faqs.length > 0)
+    ? seoServiceMatch.faqs
+    : (service.faqs && service.faqs.length > 0)
+      ? service.faqs
+      : [
+          {
+            question: `Which is the best ${serviceTitle.toLowerCase()} service near me in Manikonda & Hyderabad?`,
+            answer: `Techwash Laundry is rated #1 for ${serviceTitle.toLowerCase()} in Manikonda and Hyderabad with 4.9/5 stars. We provide 100% RO soft water wash, single-customer isolated drum cycles, European eco hydrocarbon dry wash, and 3D steam form pressing with free doorstep pickup.`,
+          },
+          {
+            question: `What are your rates for ${serviceTitle.toLowerCase()} near me?`,
+            answer: `Our ${serviceTitle.toLowerCase()} starts at ${seoServiceMatch?.pricingDisplay || service.startingPrice || '₹40'}. Flat 20% Off is available on your first order.`,
+          },
+          {
+            question: `Do you provide doorstep pickup and delivery in Manikonda for ${serviceTitle.toLowerCase()}?`,
+            answer: `Yes! We provide doorstep pickup from 8:00 AM to 9:00 PM all 7 days across Manikonda, Puppalaguda, Secretariat Colony, OU Colony, and Lanco Hills.`,
+          },
+        ];
 
   const structuredData = {
     '@context': 'https://schema.org',
@@ -312,6 +333,28 @@ export const ServiceDetailPage = () => {
           priceRange: BUSINESS_INFO.priceRange,
           address: BUSINESS_INFO.address,
           geo: BUSINESS_INFO.geo,
+          hasMap: 'https://www.google.com/maps/search/?api=1&query=Tech+Wash+Laundry+Services+Shaikpet+Main+Rd+Sri+Ram+Nagar+Colony+Manikonda+Hyderabad+500089',
+          aggregateRating: {
+            '@type': 'AggregateRating',
+            ratingValue: '4.9',
+            reviewCount: '318',
+            bestRating: '5',
+            worstRating: '1',
+          },
+          review: [
+            {
+              '@type': 'Review',
+              author: { '@type': 'Person', name: 'Rameshwar Rao' },
+              reviewRating: { '@type': 'Rating', ratingValue: '5', bestRating: '5' },
+              reviewBody: 'Best laundry service in Manikonda! Clothes always come back fresh, perfectly steam pressed, and handled with care.'
+            },
+            {
+              '@type': 'Review',
+              author: { '@type': 'Person', name: 'Sneha Reddy' },
+              reviewRating: { '@type': 'Rating', ratingValue: '5', bestRating: '5' },
+              reviewBody: 'Quick, prompt and reliable laundry service in Manikonda near Lanco Hills Road and Shaikpet Main Rd.'
+            }
+          ],
           openingHoursSpecification: BUSINESS_INFO.openingHoursSpecification,
           department: BUSINESS_BRANCHES.map(branch => ({
             '@type': 'DryCleaningOrLaundry',
@@ -372,32 +415,14 @@ export const ServiceDetailPage = () => {
       {
         '@type': 'FAQPage',
         '@id': `${BASE_URL}/services/${service.slug}#faq`,
-        mainEntity: [
-          {
-            '@type': 'Question',
-            name: `Is there a reliable ${serviceTitle} service near me in Manikonda & Hyderabad?`,
-            acceptedAnswer: {
-              '@type': 'Answer',
-              text: `Yes! Techwash Laundry provides 100% free doorstep pickup and delivery for ${serviceTitle} across Manikonda, Shaikpet, Tolichowki, Puppalaguda, Khajaguda, and surrounding Hyderabad neighborhoods. You can also visit our physical store counters in Manikonda, Tolichowki, and Ambience Courtyard.`,
-            },
+        mainEntity: resolvedFaqs.map((f) => ({
+          '@type': 'Question',
+          name: f.question || f.q,
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: f.answer || f.a,
           },
-          {
-            '@type': 'Question',
-            name: `How quickly can I get ${serviceTitle} pickup and delivery near me?`,
-            acceptedAnswer: {
-              '@type': 'Answer',
-              text: `We offer daily pickup slots between 8:00 AM and 9:00 PM (all 7 days). Standard delivery turnaround is 48 hours, and 24-hour express turnaround is available for urgent garment care.`,
-            },
-          },
-          {
-            '@type': 'Question',
-            name: `Where is the nearest Techwash Laundry counter located?`,
-            acceptedAnswer: {
-              '@type': 'Answer',
-              text: `Techwash operates 3 physical counters in Hyderabad: (1) Main Branch on Shaikpet Main Rd, Manikonda (500089); (2) Branch 1 beside Dreamscape Hotel, Tolichowki / OU Colony (500008); and (3) Pickup Point beside Ambience Courtyard, Shaikpet (500089). All branches are open daily from 8:00 AM to 9:00 PM.`,
-            },
-          },
-        ],
+        })),
       },
     ],
   };
@@ -499,6 +524,15 @@ export const ServiceDetailPage = () => {
                     Book Doorstep Pickup
                   </Button>
                 </Link>
+
+                <a
+                  href="tel:6304845567"
+                  className="px-5 py-3.5 rounded-2xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 hover:text-white border border-emerald-500/30 text-xs font-bold transition-all flex items-center gap-2 hover:scale-105 active:scale-95"
+                  title="Call 6304845567"
+                >
+                  <Phone className="w-4 h-4 text-emerald-400" />
+                  <span>Call 6304845567</span>
+                </a>
 
                 <a 
                   href="#interactive-process"
@@ -874,19 +908,19 @@ export const ServiceDetailPage = () => {
             )}
 
             {/* Service-Specific FAQs */}
-            {service.faqs && service.faqs.length > 0 && (
+            {resolvedFaqs && resolvedFaqs.length > 0 && (
               <div className="space-y-6 pt-4">
                 <div>
                   <span className="text-xs font-bold text-orange-600 uppercase tracking-wider">
                     Helpful Information
                   </span>
                   <h3 className="text-2xl sm:text-3xl font-black text-slate-900 font-display mt-1">
-                    Frequently Asked Questions
+                    Frequently Asked Questions — {serviceTitle}
                   </h3>
                 </div>
 
                 <div className="space-y-3">
-                  {service.faqs.map((faq, idx) => {
+                  {resolvedFaqs.map((faq, idx) => {
                     const isOpen = openFaqIndex === idx;
                     return (
                       <div
@@ -1105,11 +1139,22 @@ export const ServiceDetailPage = () => {
                 </div>
 
                 {/* Direct Action Button */}
-                <Link to={`/book-pickup?service=${service.slug}`} className="block">
-                  <Button variant="primary" size="lg" className="w-full shadow-luxury" icon={Calendar}>
-                    Book Pickup with this Care
-                  </Button>
-                </Link>
+                <div className="space-y-2.5">
+                  <Link to={`/book-pickup?service=${service.slug}`} className="block">
+                    <Button variant="primary" size="lg" className="w-full shadow-luxury" icon={Calendar}>
+                      Book Pickup with this Care
+                    </Button>
+                  </Link>
+
+                  <a
+                    href="tel:6304845567"
+                    className="w-full py-3 px-4 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-sm font-bold flex items-center justify-center gap-2 transition-all active:scale-95 text-center shadow-xs block"
+                    title="Call 6304845567"
+                  >
+                    <Phone className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>Call 6304845567</span>
+                  </a>
+                </div>
 
                 <div className="text-center text-[11px] text-slate-400 flex items-center justify-center gap-1.5">
                   <ShieldCheck className="w-4 h-4 text-emerald-500" />

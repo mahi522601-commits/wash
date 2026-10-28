@@ -586,12 +586,16 @@ function prerenderAll() {
           <div style="background: #FFF7ED; border: 1px solid #FED7AA; border-radius: 12px; padding: 14px 18px; font-size: 14px; color: #9A3412; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between;">
             <div>
               <strong>Pricing:</strong> <span style="font-size: 16px; font-weight: 800; color: #EA580C;">${escapeHtml(s.pricingDisplay)}</span> |
+              <strong>Special Offer:</strong> <span style="font-weight: 800; color: #047857;">Flat 20% Off</span> |
               <strong>Turnaround:</strong> Standard 48 Hours (Express 24h Available) |
               <strong>Hotline:</strong> <a href="tel:+916304845567" style="color: #EA580C; font-weight: bold;">+91 63048 45567</a>
             </div>
-            <div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
               <a href="/book-pickup?service=${s.slug}" style="display: inline-block; padding: 8px 16px; background: #EA580C; color: #FFFFFF; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 13px;">
                 Schedule Pickup Now →
+              </a>
+              <a href="https://wa.me/916304845567?text=${encodeURIComponent(`Hello Techwash, I want to book ${s.name} with Flat 20% Off.`)}" style="display: inline-block; padding: 8px 16px; background: #25D366; color: #FFFFFF; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 13px;">
+                WhatsApp Booking
               </a>
             </div>
           </div>
@@ -612,6 +616,10 @@ function prerenderAll() {
             <li style="margin-bottom: 8px;">Doorstep digital weighing with calibrated scales and instant WhatsApp receipts.</li>
           </ul>
         </section>
+
+        <div style="margin: 28px 0; padding: 16px 20px; background: #FFF7ED; border: 1px solid #FED7AA; border-radius: 12px; font-size: 14px; color: #9A3412;">
+          📍 <strong>Looking for hyper-local doorstep service in Manikonda?</strong> Check out our dedicated <a href="/areas/manikonda/${s.slug}" style="color: #EA580C; font-weight: bold; text-decoration: underline;">${escapeHtml(s.name)} in Manikonda (500089)</a> page with scheduled daily pickup across Secretariat Colony, OU Colony, Lanco Hills, and Puppalaguda.
+        </div>
 
         ${generateManikondaLandmarksHtml(s.name)}
         ${generateAreasServedHtml()}
@@ -905,12 +913,16 @@ function prerenderAll() {
           <div style="background: #FFF7ED; border: 1px solid #FED7AA; border-radius: 12px; padding: 14px 18px; font-size: 14px; color: #9A3412; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between;">
             <div>
               <strong>Manikonda Rate:</strong> <span style="font-size: 16px; font-weight: 800; color: #EA580C;">${escapeHtml(s.pricingDisplay)}</span> |
+              <strong>Special Offer:</strong> <span style="font-weight: 800; color: #047857;">Flat 20% Off</span> |
               <strong>Pickup Hours:</strong> 8:00 AM – 9:00 PM (All 7 Days) |
               <strong>Hotline:</strong> <a href="tel:+916304845567" style="color: #EA580C; font-weight: bold;">+91 63048 45567</a>
             </div>
-            <div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
               <a href="/book-pickup?locality=Manikonda&service=${s.slug}" style="display: inline-block; padding: 8px 16px; background: #EA580C; color: #FFFFFF; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 13px;">
                 Schedule Manikonda Pickup →
+              </a>
+              <a href="https://wa.me/916304845567?text=${encodeURIComponent(`Hello Techwash, I want to book ${s.name} in Manikonda with Flat 20% Off.`)}" style="display: inline-block; padding: 8px 16px; background: #25D366; color: #FFFFFF; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 13px;">
+                WhatsApp Booking
               </a>
             </div>
           </div>
@@ -942,6 +954,10 @@ function prerenderAll() {
             </div>
           </div>
         </section>
+
+        <div style="margin: 28px 0; padding: 16px 20px; background: #FFF7ED; border: 1px solid #FED7AA; border-radius: 12px; font-size: 14px; color: #9A3412;">
+          🌐 <strong>Need doorstep laundry pickup in other Hyderabad areas?</strong> View our regional <a href="/services/${s.slug}" style="color: #EA580C; font-weight: bold; text-decoration: underline;">${escapeHtml(s.name)} Near Me</a> page covering Tolichowki, Shaikpet, Puppalaguda, Gachibowli, and Hitec City.
+        </div>
 
         ${generateManikondaLandmarksHtml(s.name)}
         ${generateBranchHtml()}

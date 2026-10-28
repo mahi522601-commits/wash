@@ -404,22 +404,32 @@ export const ServicesPage = () => {
                     )}
                   </div>
 
-                  {/* Dual Action Buttons: Details & Rates + Book Pickup */}
-                  <div className="pt-4 border-t border-slate-100 grid grid-cols-2 gap-2">
-                    <Link
-                      to={`/services/${service.slug}`}
-                      className="py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold flex items-center justify-center gap-1.5 transition-all text-center border border-slate-200"
+                  {/* Action Buttons: Details & Rates + Book Pickup + Call Button */}
+                  <div className="pt-4 border-t border-slate-100 space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <Link
+                        to={`/services/${service.slug}`}
+                        className="py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold flex items-center justify-center gap-1.5 transition-all text-center border border-slate-200"
+                      >
+                        <span>Details & Rates</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </Link>
+                      <Link
+                        to={`/book-pickup?service=${service.slug}`}
+                        className="py-2.5 px-3 rounded-xl bg-gradient-to-r from-[#F97316] to-amber-500 hover:from-[#EA580C] hover:to-orange-500 text-white text-xs font-bold shadow-sm flex items-center justify-center gap-1.5 transition-all active:scale-95 text-center"
+                      >
+                        <Calendar className="w-3.5 h-3.5" />
+                        <span>Book Pickup</span>
+                      </Link>
+                    </div>
+                    <a
+                      href="tel:6304845567"
+                      className="w-full py-2.5 px-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold flex items-center justify-center gap-2 transition-all active:scale-95 text-center shadow-xs"
+                      title="Call Techwash directly at 6304845567"
                     >
-                      <span>Details & Rates</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </Link>
-                    <Link
-                      to={`/book-pickup?service=${service.slug}`}
-                      className="py-2.5 px-3 rounded-xl bg-gradient-to-r from-[#F97316] to-amber-500 hover:from-[#EA580C] hover:to-orange-500 text-white text-xs font-bold shadow-sm flex items-center justify-center gap-1.5 transition-all active:scale-95 text-center"
-                    >
-                      <Calendar className="w-3.5 h-3.5" />
-                      <span>Book Pickup</span>
-                    </Link>
+                      <Phone className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span>Call 6304845567</span>
+                    </a>
                   </div>
                 </div>
 
