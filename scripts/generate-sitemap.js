@@ -1,133 +1,23 @@
 /**
  * Automated Advanced Sitemap Generator for Techwash Laundry Services
- * Generates modular multi-part XML sitemaps (pages, services, areas, blog) + master sitemap index + TXT URL lists
- * Focuses exclusively on Manikonda local SEO cluster for area routes.
+ * Single source of truth: src/data/seoRegistry.js
+ * Generates modular multi-part XML sitemaps (pages, services, areas, blog) + master sitemap + TXT URL lists
+ * Excludes all noindex, private, duplicate, and redirect URLs.
  * Run via: node scripts/generate-sitemap.js
  */
 
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { 
+  BASE_URL, 
+  MASTER_SEO_REGISTRY, 
+  getSitemapEligiblePages 
+} from '../src/data/seoRegistry.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-const BASE_URL = 'https://www.techwashlaundry.com';
-
-const CORE_PAGES = [
-  { 
-    url: '', 
-    priority: '1.0', 
-    changefreq: 'daily',
-    images: [
-      {
-        loc: `${BASE_URL}/techwashlogo.webp`,
-        title: 'Techwash Laundry Services Logo',
-        caption: 'Next-Gen Premium Garment Care Hyderabad',
-      },
-      {
-        loc: `${BASE_URL}/techwash_hero_cutout.webp`,
-        title: 'Techwash Eco-Friendly Hydrocarbon Laundry Lab',
-        caption: 'Certified 0 PPM RO Water Soft Wash and Express Doorstep Delivery Hyderabad',
-      },
-    ]
-  },
-  { url: '/services', priority: '0.9', changefreq: 'weekly' },
-  { url: '/pricing', priority: '0.9', changefreq: 'weekly' },
-  { url: '/areas', priority: '0.9', changefreq: 'weekly' },
-  { url: '/how-it-works', priority: '0.8', changefreq: 'monthly' },
-  { url: '/locations', priority: '0.8', changefreq: 'weekly' },
-  { url: '/offers', priority: '0.8', changefreq: 'weekly' },
-  { url: '/book-pickup', priority: '0.9', changefreq: 'weekly' },
-  { url: '/track-order', priority: '0.8', changefreq: 'weekly' },
-  { url: '/blog', priority: '0.8', changefreq: 'weekly' },
-  { url: '/about', priority: '0.7', changefreq: 'monthly' },
-  { url: '/contact', priority: '0.7', changefreq: 'monthly' },
-  { url: '/faq', priority: '0.7', changefreq: 'monthly' },
-  { url: '/gallery', priority: '0.7', changefreq: 'monthly' },
-  { url: '/privacy-policy', priority: '0.3', changefreq: 'yearly' },
-  { url: '/terms-and-conditions', priority: '0.3', changefreq: 'yearly' },
-  { url: '/refund-policy', priority: '0.3', changefreq: 'yearly' },
-];
-
-const SERVICE_ITEMS = [
-  {
-    slug: 'laundry-service',
-    title: '#1 Best Laundry Service Near Me in Manikonda | Techwash',
-    image: 'https://images.unsplash.com/photo-1545173168-9f1947eebb7f?auto=format&fit=crop&w=1200&q=80',
-    caption: 'Best laundry service near me with 100% Demineralized 0 PPM RO soft water batch washing and free doorstep pickup',
-  },
-  {
-    slug: 'dry-cleaning',
-    title: '#1 Best Dry Cleaning & Dry Wash Near Me in Manikonda | Techwash',
-    image: 'https://images.unsplash.com/photo-1545173168-9f1947eebb7f?auto=format&fit=crop&w=1200&q=80',
-    caption: 'Top-rated dry cleaning and dry wash near me with European non-toxic hydrocarbon solvents, zero PERC, and free doorstep delivery',
-  },
-  {
-    slug: 'laundry-pickup-and-delivery',
-    title: '#1 Doorstep Laundry Pickup and Delivery Near Me in Manikonda | Techwash',
-    image: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=1200&q=80',
-    caption: 'Doorstep laundry pickup and delivery near me with express 24 to 48-hour delivery fleet',
-  },
-  {
-    slug: 'ironing-service',
-    title: '#1 Best Iron Service & Steam Press Near Me in Manikonda | Techwash',
-    image: 'https://images.unsplash.com/photo-1489274495757-95c7c837b101?auto=format&fit=crop&w=1200&q=80',
-    caption: 'Steam ironing and iron service near me with vacuum table crease retention and zero heat shine',
-  },
-  {
-    slug: 'starch-and-iron',
-    title: '#1 Best Starch and Iron Near Me in Manikonda | Techwash',
-    image: 'https://images.unsplash.com/photo-1545173168-9f1947eebb7f?auto=format&fit=crop&w=1200&q=80',
-    caption: 'Starch and iron service near me with natural organic rice and corn starching treatment',
-  },
-  {
-    slug: 'wash-and-iron',
-    title: '#1 Best Wash and Iron Near Me in Manikonda | Techwash',
-    image: 'https://images.unsplash.com/photo-1517677208171-0bc6725a3e60?auto=format&fit=crop&w=1200&q=80',
-    caption: 'Wash and iron near me with isolated single-customer wash drum and crisp 3D steam finishing',
-  },
-  {
-    slug: 'wash-and-fold',
-    title: '#1 Best Wash and Fold Near Me in Manikonda | Techwash',
-    image: 'https://images.unsplash.com/photo-1582735689369-4fe89db7114c?auto=format&fit=crop&w=1200&q=80',
-    caption: 'Wash and fold near me with hygienic RO soft water washing and store-ready packaging',
-  },
-  {
-    slug: 'saree-rolling',
-    title: '#1 Best Saree Rolling & Polishing Near Me in Manikonda | Techwash',
-    image: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=1200&q=80',
-    caption: 'Saree rolling and polishing near me with zero-pressure wooden cylinder roller care',
-  },
-  {
-    slug: 'shoe-cleaning',
-    title: '#1 Best Shoe Cleaning & Sneaker Laundry Near Me in Manikonda | Techwash',
-    image: 'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?auto=format&fit=crop&w=1200&q=80',
-    caption: 'Shoe cleaning and sneaker laundry near me with midsole whitening, UV disinfection, and suede care',
-  },
-  {
-    slug: 'curtain-cleaning',
-    title: '#1 Best Curtain Cleaning & Dry Wash Near Me in Manikonda | Techwash',
-    image: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=1200&q=80',
-    caption: 'Curtain cleaning near me with dust mite extraction and vertical steam de-wrinkling',
-  },
-  {
-    slug: 'carpet-cleaning',
-    title: '#1 Best Carpet Cleaning & Rug Wash Near Me in Manikonda | Techwash',
-    image: 'https://images.unsplash.com/photo-1600121848594-d8644e57abab?auto=format&fit=crop&w=1200&q=80',
-    caption: 'Carpet cleaning and rug shampoo near me with rotary extraction washing and thermal moisture removal',
-  },
-];
-
-const AREA_SLUGS = [
-  'manikonda',
-];
-
-const BLOG_SLUGS = [
-  'why-hard-water-destroys-delicate-fabrics',
-  'the-complete-guide-to-silk-and-zari-dry-cleaning',
-  'how-to-keep-white-sneakers-pristine',
-];
+const PUBLIC_DIR = path.resolve(__dirname, '../public');
 
 function escapeXml(str) {
   if (!str) return '';
@@ -143,7 +33,9 @@ function buildUrlEntry(fullUrl, priority, changefreq, currentDate, images = []) 
   let entry = `  <url>\n    <loc>${escapeXml(fullUrl)}</loc>\n    <lastmod>${currentDate}</lastmod>\n    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>`;
   if (images && images.length > 0) {
     images.forEach((img) => {
-      entry += `\n    <image:image>\n      <image:loc>${escapeXml(img.loc)}</image:loc>\n      <image:title>${escapeXml(img.title)}</image:title>\n      <image:caption>${escapeXml(img.caption)}</image:caption>\n    </image:image>`;
+      if (img && img.loc) {
+        entry += `\n    <image:image>\n      <image:loc>${escapeXml(img.loc)}</image:loc>\n      <image:title>${escapeXml(img.title || '')}</image:title>\n      <image:caption>${escapeXml(img.caption || '')}</image:caption>\n    </image:image>`;
+      }
     });
   }
   entry += `\n  </url>`;
@@ -157,71 +49,71 @@ ${entries.join('\n')}
 </urlset>`;
 }
 
-function generateSitemaps() {
+export function generateSitemaps() {
   const currentDate = new Date().toISOString().split('T')[0];
+  const eligiblePages = getSitemapEligiblePages();
   const allUrls = [];
 
-  // 1. Pages
   const pagesEntries = [];
-  CORE_PAGES.forEach((page) => {
-    const fullUrl = `${BASE_URL}${page.url}`;
-    allUrls.push(fullUrl);
-    pagesEntries.push(buildUrlEntry(fullUrl, page.priority, page.changefreq, currentDate, page.images));
-  });
-
-  // 2. Services
   const servicesEntries = [];
-  SERVICE_ITEMS.forEach((srv) => {
-    const fullUrl = `${BASE_URL}/services/${srv.slug}`;
-    allUrls.push(fullUrl);
-    const images = srv.image ? [{ loc: srv.image, title: srv.title, caption: srv.caption }] : [];
-    servicesEntries.push(buildUrlEntry(fullUrl, '0.9', 'weekly', currentDate, images));
-  });
-
-  // 3. Areas (1 Manikonda area hub + 11 Manikonda service pages = 12 local landing pages)
   const areasEntries = [];
-  AREA_SLUGS.forEach((slug) => {
-    const hubUrl = `${BASE_URL}/areas/${slug}`;
-    allUrls.push(hubUrl);
-    areasEntries.push(buildUrlEntry(hubUrl, '1.0', 'weekly', currentDate));
-  });
-  AREA_SLUGS.forEach((areaSlug) => {
-    SERVICE_ITEMS.forEach((srv) => {
-      const serviceAreaUrl = `${BASE_URL}/areas/${areaSlug}/${srv.slug}`;
-      allUrls.push(serviceAreaUrl);
-      // Determine priority based on Manikonda SEO priority specification
-      let priority = '0.85';
-      if (srv.slug === 'laundry-service') priority = '1.0';
-      else if (srv.slug === 'wash-and-iron') priority = '0.95';
-      else if (srv.slug === 'dry-cleaning') priority = '0.95';
-      else if (srv.slug === 'laundry-pickup-and-delivery') priority = '0.90';
-      else if (srv.slug === 'ironing-service') priority = '0.88';
-      else if (srv.slug === 'wash-and-fold') priority = '0.88';
-
-      areasEntries.push(buildUrlEntry(serviceAreaUrl, priority, 'weekly', currentDate));
-    });
-  });
-
-  // 4. Blog
   const blogEntries = [];
-  BLOG_SLUGS.forEach((slug) => {
-    const blogUrl = `${BASE_URL}/blog/${slug}`;
-    allUrls.push(blogUrl);
-    blogEntries.push(buildUrlEntry(blogUrl, '0.7', 'monthly', currentDate));
-  });
 
-  // Write Sub-Sitemaps
-  fs.writeFileSync(path.resolve(__dirname, '../public/sitemap-pages.xml'), wrapUrlSet(pagesEntries), 'utf8');
-  fs.writeFileSync(path.resolve(__dirname, '../public/sitemap-services.xml'), wrapUrlSet(servicesEntries), 'utf8');
-  fs.writeFileSync(path.resolve(__dirname, '../public/sitemap-areas.xml'), wrapUrlSet(areasEntries), 'utf8');
-  fs.writeFileSync(path.resolve(__dirname, '../public/sitemap-blog.xml'), wrapUrlSet(blogEntries), 'utf8');
+  for (const page of eligiblePages) {
+    allUrls.push(page.canonicalUrl);
 
-  // Master Unified XML Sitemap
+    let images = [];
+    if (page.path === '/') {
+      images = [
+        {
+          loc: `${BASE_URL}/techwashlogo.webp`,
+          title: 'Techwash Laundry Services Logo',
+          caption: 'Next-Gen Premium Garment Care Hyderabad',
+        },
+        {
+          loc: `${BASE_URL}/techwash_hero_cutout.webp`,
+          title: 'Techwash Eco-Friendly Hydrocarbon Laundry Lab',
+          caption: 'Certified 0 PPM RO Water Soft Wash and Express Doorstep Delivery Hyderabad',
+        },
+      ];
+    }
+
+    const xmlEntry = buildUrlEntry(
+      page.canonicalUrl,
+      page.priority || '0.8',
+      page.changefreq || 'weekly',
+      currentDate,
+      images
+    );
+
+    if (page.type === 'service_detail') {
+      servicesEntries.push(xmlEntry);
+    } else if (page.type === 'area_service_detail' || page.path === '/areas/manikonda') {
+      areasEntries.push(xmlEntry);
+    } else if (page.type === 'blog_post') {
+      blogEntries.push(xmlEntry);
+    } else {
+      pagesEntries.push(xmlEntry);
+    }
+  }
+
+  // Ensure public directory exists
+  if (!fs.existsSync(PUBLIC_DIR)) {
+    fs.mkdirSync(PUBLIC_DIR, { recursive: true });
+  }
+
+  // 1. Write Sub-Sitemaps
+  fs.writeFileSync(path.join(PUBLIC_DIR, 'sitemap-pages.xml'), wrapUrlSet(pagesEntries), 'utf8');
+  fs.writeFileSync(path.join(PUBLIC_DIR, 'sitemap-services.xml'), wrapUrlSet(servicesEntries), 'utf8');
+  fs.writeFileSync(path.join(PUBLIC_DIR, 'sitemap-areas.xml'), wrapUrlSet(areasEntries), 'utf8');
+  fs.writeFileSync(path.join(PUBLIC_DIR, 'sitemap-blog.xml'), wrapUrlSet(blogEntries), 'utf8');
+
+  // 2. Master Unified XML Sitemap
   const masterEntries = [...pagesEntries, ...servicesEntries, ...areasEntries, ...blogEntries];
-  fs.writeFileSync(path.resolve(__dirname, '../public/sitemap.xml'), wrapUrlSet(masterEntries), 'utf8');
+  fs.writeFileSync(path.join(PUBLIC_DIR, 'sitemap.xml'), wrapUrlSet(masterEntries), 'utf8');
 
-  // Master TXT Sitemap
-  fs.writeFileSync(path.resolve(__dirname, '../public/sitemap.txt'), allUrls.join('\n'), 'utf8');
+  // 3. Master Plain-Text Sitemap
+  fs.writeFileSync(path.join(PUBLIC_DIR, 'sitemap.txt'), allUrls.join('\n'), 'utf8');
 
   console.log(`✅ Advanced Multi-Part Sitemaps successfully updated with ${allUrls.length} total URLs:`);
   console.log(`   - sitemap.xml (Master Unified: ${masterEntries.length} URLs)`);
@@ -230,6 +122,14 @@ function generateSitemaps() {
   console.log(`   - sitemap-areas.xml (${areasEntries.length} Manikonda URLs)`);
   console.log(`   - sitemap-blog.xml (${blogEntries.length} URLs)`);
   console.log(`   - sitemap.txt (${allUrls.length} plain text URLs)`);
+
+  return {
+    total: allUrls.length,
+    pages: pagesEntries.length,
+    services: servicesEntries.length,
+    areas: areasEntries.length,
+    blog: blogEntries.length,
+  };
 }
 
 generateSitemaps();

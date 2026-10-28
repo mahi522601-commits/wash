@@ -13,16 +13,22 @@
     <priority>1.0</priority>
   </url>
   <url>
+    <loc>https://www.techwashlaundry.com/areas/manikonda/wash-and-iron</loc>
+    <lastmod>2026-10-28</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
     <loc>https://www.techwashlaundry.com/areas/manikonda/dry-cleaning</loc>
     <lastmod>2026-10-28</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.95</priority>
+    <priority>1.0</priority>
   </url>
   <url>
     <loc>https://www.techwashlaundry.com/areas/manikonda/laundry-pickup-and-delivery</loc>
     <lastmod>2026-10-28</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.90</priority>
+    <priority>0.88</priority>
   </url>
   <url>
     <loc>https://www.techwashlaundry.com/areas/manikonda/ironing-service</loc>
@@ -31,19 +37,13 @@
     <priority>0.88</priority>
   </url>
   <url>
-    <loc>https://www.techwashlaundry.com/areas/manikonda/starch-and-iron</loc>
-    <lastmod>2026-10-28</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.85</priority>
-  </url>
-  <url>
-    <loc>https://www.techwashlaundry.com/areas/manikonda/wash-and-iron</loc>
-    <lastmod>2026-10-28</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.95</priority>
-  </url>
-  <url>
     <loc>https://www.techwashlaundry.com/areas/manikonda/wash-and-fold</loc>
+    <lastmod>2026-10-28</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.88</priority>
+  </url>
+  <url>
+    <loc>https://www.techwashlaundry.com/areas/manikonda/starch-and-iron</loc>
     <lastmod>2026-10-28</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.88</priority>
@@ -52,24 +52,24 @@
     <loc>https://www.techwashlaundry.com/areas/manikonda/saree-rolling</loc>
     <lastmod>2026-10-28</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.85</priority>
+    <priority>0.88</priority>
   </url>
   <url>
     <loc>https://www.techwashlaundry.com/areas/manikonda/shoe-cleaning</loc>
     <lastmod>2026-10-28</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.85</priority>
+    <priority>0.88</priority>
   </url>
   <url>
     <loc>https://www.techwashlaundry.com/areas/manikonda/curtain-cleaning</loc>
     <lastmod>2026-10-28</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.85</priority>
+    <priority>0.88</priority>
   </url>
   <url>
     <loc>https://www.techwashlaundry.com/areas/manikonda/carpet-cleaning</loc>
     <lastmod>2026-10-28</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.85</priority>
+    <priority>0.88</priority>
   </url>
 </urlset>

@@ -38,6 +38,7 @@ import { RefundPolicyPage } from './pages/public/RefundPolicyPage';
 import { AreasPage } from './pages/public/AreasPage';
 import { AreaDetailPage } from './pages/public/AreaDetailPage';
 import { AreaServiceDetailPage } from './pages/public/AreaServiceDetailPage';
+import { NotFoundPage } from './pages/public/NotFoundPage';
 
 // Admin Layout & Pages
 import { AdminLayout } from './components/admin/AdminLayout';
@@ -203,7 +204,7 @@ export function App() {
             <Route path="/pos/:terminalId" element={<BillingMachinePage />} />
 
             {/* Catch-all Fallback */}
-            <Route path="*" element={<PublicLayout><HomePage /></PublicLayout>} />
+            <Route path="*" element={<PublicLayout><NotFoundPage /></PublicLayout>} />
 
           </Routes>
         </WorkerAuthProvider>

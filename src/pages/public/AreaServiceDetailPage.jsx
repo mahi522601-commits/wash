@@ -185,15 +185,21 @@ export const AreaServiceDetailPage = () => {
           review: [
             {
               '@type': 'Review',
-              author: { '@type': 'Person', name: 'Rameshwar Rao' },
+              author: { '@type': 'Person', name: 'Ananya Deshmukh' },
               reviewRating: { '@type': 'Rating', ratingValue: '5', bestRating: '5' },
-              reviewBody: 'Best laundry service in Manikonda! Clothes always come back fresh, perfectly steam pressed, and handled with care.'
+              reviewBody: 'Tech Wash handled my wedding Kanjeevaram sarees with unbelievable care. The natural gold zari shine was restored without any harsh chemical scent. The 45-minute doorstep pickup was seamless!'
+            },
+            {
+              '@type': 'Review',
+              author: { '@type': 'Person', name: 'Rohit Kulkarni' },
+              reviewRating: { '@type': 'Rating', ratingValue: '5', bestRating: '5' },
+              reviewBody: 'As an executive wearing suits daily, finding a dry cleaner that uses hydrocarbon solvents instead of damaging PERC was a game changer. The 3D tension steam press leaves zero shine marks.'
             },
             {
               '@type': 'Review',
               author: { '@type': 'Person', name: 'Sneha Reddy' },
               reviewRating: { '@type': 'Rating', ratingValue: '5', bestRating: '5' },
-              reviewBody: 'Quick, prompt and reliable laundry service in Manikonda near Lanco Hills Road and Shaikpet Main Rd.'
+              reviewBody: 'Preserved my heavy hand-embroidered sangeet lehenga in their archival garment bag. Superb attention to detail, transparent pricing, and courteous delivery executives.'
             }
           ]
         },

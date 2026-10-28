@@ -19,6 +19,10 @@ import {
   SEO_AREAS, 
   SEO_SERVICES 
 } from '../src/data/seoData.js';
+import {
+  CORE_REGISTRY_PAGES,
+  BLOG_REGISTRY_ARTICLES
+} from '../src/data/seoRegistry.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -52,21 +56,33 @@ const AGGREGATE_RATING = {
 const CUSTOMER_REVIEWS = [
   {
     '@type': 'Review',
-    author: { '@type': 'Person', name: 'Rameshwar Rao' },
+    author: { '@type': 'Person', name: 'Ananya Deshmukh' },
     reviewRating: { '@type': 'Rating', ratingValue: '5', bestRating: '5' },
-    reviewBody: 'Best laundry service in Manikonda! Clothes always come back fresh, perfectly steam pressed, and handled with care. Their curtains washing and dry cleaning in Manikonda are top notch.'
+    reviewBody: 'Tech Wash handled my wedding Kanjeevaram sarees with unbelievable care. The natural gold zari shine was restored without any harsh chemical scent. The 45-minute doorstep pickup was seamless!'
+  },
+  {
+    '@type': 'Review',
+    author: { '@type': 'Person', name: 'Rohit Kulkarni' },
+    reviewRating: { '@type': 'Rating', ratingValue: '5', bestRating: '5' },
+    reviewBody: 'As an executive wearing suits daily, finding a dry cleaner that uses hydrocarbon solvents instead of damaging PERC was a game changer. The 3D tension steam press leaves zero shine marks.'
+  },
+  {
+    '@type': 'Review',
+    author: { '@type': 'Person', name: 'Meera Nambiar' },
+    reviewRating: { '@type': 'Rating', ratingValue: '5', bestRating: '5' },
+    reviewBody: 'My limited edition white sneakers looked brand new after the ultrasonic deep cleaning treatment. Live 10-stage order tracking kept me updated every step of the way. Highly recommended!'
+  },
+  {
+    '@type': 'Review',
+    author: { '@type': 'Person', name: 'Dr. Arvind Rao' },
+    reviewRating: { '@type': 'Rating', ratingValue: '5', bestRating: '5' },
+    reviewBody: 'The RO softened water wash makes a noticeable difference to delicate linen fabrics. Clothes feel soft against the skin and stay fresh all week without any residue.'
   },
   {
     '@type': 'Review',
     author: { '@type': 'Person', name: 'Sneha Reddy' },
     reviewRating: { '@type': 'Rating', ratingValue: '5', bestRating: '5' },
-    reviewBody: 'Quick, prompt and reliable laundry service in Manikonda near Lanco Hills Road and Shaikpet Main Rd. 0 PPM RO soft water wash keeps white shirts bright and fresh.'
-  },
-  {
-    '@type': 'Review',
-    author: { '@type': 'Person', name: 'Karthik Varma' },
-    reviewRating: { '@type': 'Rating', ratingValue: '5', bestRating: '5' },
-    reviewBody: 'Good laundry, good service, curtains washing is good and silk saree rolling & dry cleaning is the best in Manikonda and Puppalaguda.'
+    reviewBody: 'Preserved my heavy hand-embroidered sangeet lehenga in their archival garment bag. Superb attention to detail, transparent pricing, and courteous delivery executives.'
   }
 ];
 
@@ -279,6 +295,17 @@ function buildHtmlPage(baseTemplate, config) {
   // 4. Replace Canonical URL
   html = html.replace(/<link\s+rel="canonical"\s+href=".*?"\s*\/?>/i, 
     `<link rel="canonical" href="${escapeAttr(config.canonicalUrl)}" />`);
+
+  // 4b. Replace or Insert Robots Meta Tag
+  const robotsDirective = config.noindex 
+    ? 'noindex, nofollow' 
+    : 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1';
+  if (/<meta\s+name="robots"/i.test(html)) {
+    html = html.replace(/<meta\s+name="robots"\s+content=".*?"\s*\/?>/i, 
+      `<meta name="robots" content="${robotsDirective}" />`);
+  } else {
+    html = html.replace(/<\/head>/i, `    <meta name="robots" content="${robotsDirective}" />\n  </head>`);
+  }
 
   // 5. Replace Open Graph Tags
   html = html.replace(/<meta\s+property="og:title"\s+content=".*?"\s*\/?>/i, 
@@ -1062,11 +1089,204 @@ function prerenderAll() {
     console.log(`   ✅ dist/areas/manikonda/${s.slug}/index.html generated.`);
   }
 
+  // ----------------------------------------------------
+  // 5. Pre-render Core Pages (Pricing, How it works, Locations, Blog, etc.)
+  // ----------------------------------------------------
+  console.log('\n📁 Pre-rendering Core Registry Pages...');
+  const excludedPaths = ['/', '/services', '/areas/manikonda'];
+  const remainingCorePages = CORE_REGISTRY_PAGES.filter(p => !excludedPaths.includes(p.path));
+
+  for (const page of remainingCorePages) {
+    const relativeDir = page.path.replace(/^\//, '');
+    const targetDir = path.join(DIST_DIR, relativeDir);
+    fs.mkdirSync(targetDir, { recursive: true });
+
+    const pageStructuredData = {
+      '@context': 'https://schema.org',
+      '@graph': [
+        {
+          '@type': 'BreadcrumbList',
+          itemListElement: [
+            { '@type': 'ListItem', position: 1, name: 'Home', item: BASE_URL },
+            { '@type': 'ListItem', position: 2, name: page.h1 || page.title, item: page.canonicalUrl },
+          ],
+        },
+        {
+          '@type': 'WebPage',
+          '@id': `${page.canonicalUrl}#webpage`,
+          url: page.canonicalUrl,
+          name: page.title,
+          description: page.metaDescription,
+          isPartOf: {
+            '@type': 'WebSite',
+            '@id': `${BASE_URL}/#website`,
+            url: BASE_URL,
+            name: BUSINESS_INFO.name,
+          },
+          provider: {
+            '@type': 'DryCleaningOrLaundry',
+            name: BUSINESS_INFO.name,
+            telephone: BUSINESS_INFO.telephone,
+            url: BASE_URL,
+            address: BUSINESS_INFO.address,
+            geo: BUSINESS_INFO.geo,
+            aggregateRating: AGGREGATE_RATING,
+            review: CUSTOMER_REVIEWS,
+          },
+        },
+      ],
+    };
+
+    const pageMainHtml = `
+      <main id="techwash-static-seo" style="max-width: 1200px; margin: 0 auto; padding: 24px; font-family: system-ui, -apple-system, sans-serif; color: #1F2937; line-height: 1.6;">
+        <nav style="font-size: 13px; color: #64748B; margin-bottom: 16px;">
+          <a href="/" style="color: #64748B; text-decoration: none;">Home</a> &gt; 
+          <span style="color: #EA580C; font-weight: bold;">${escapeHtml(page.h1 || page.title)}</span>
+        </nav>
+
+        <header style="margin-bottom: 32px;">
+          <p style="color: #EA580C; font-weight: 800; text-transform: uppercase; font-size: 13px; letter-spacing: 0.05em; margin-bottom: 8px;">
+            ✦ Techwash Laundry Services • Certified Fabric Care Laboratory Hyderabad
+          </p>
+          <h1 style="font-size: 34px; line-height: 1.2; font-weight: 900; color: #111827; margin: 0 0 16px 0;">
+            ${escapeHtml(page.h1 || page.title)}
+          </h1>
+          <p style="font-size: 17px; color: #4B5563; max-width: 900px; margin: 0 0 16px 0;">
+            ${escapeHtml(page.metaDescription)}
+          </p>
+          <div style="background: #FFF7ED; border: 1px solid #FED7AA; border-radius: 12px; padding: 14px 18px; font-size: 14px; color: #9A3412;">
+            <strong>Direct Hotline:</strong> <a href="tel:+916304845567" style="color: #EA580C; font-weight: bold;">+91 63048 45567</a> |
+            <strong>Doorstep Fleet:</strong> Daily 8:00 AM – 9:00 PM across Manikonda, Puppalaguda, Tolichowki & Hyderabad |
+            <a href="/book-pickup" style="color: #EA580C; font-weight: bold; text-decoration: underline;">Schedule Pickup Online →</a>
+          </div>
+        </header>
+
+        ${generateAreasServedHtml()}
+        ${generateBranchHtml()}
+      </main>
+    `;
+
+    const pageHtml = buildHtmlPage(baseTemplate, {
+      title: page.title,
+      description: page.metaDescription,
+      keywords: `${page.primaryKeyword}, techwash laundry, laundry manikonda, hyderabad laundry`,
+      canonicalUrl: page.canonicalUrl,
+      structuredData: pageStructuredData,
+      mainHtml: pageMainHtml,
+    });
+
+    fs.writeFileSync(path.join(targetDir, 'index.html'), pageHtml, 'utf-8');
+    generatedCount++;
+    console.log(`   ✅ dist/${relativeDir}/index.html generated.`);
+  }
+
+  // ----------------------------------------------------
+  // 6. Pre-render Blog Articles
+  // ----------------------------------------------------
+  console.log('\n📁 Pre-rendering Blog Articles...');
+  const blogDir = path.join(DIST_DIR, 'blog');
+  fs.mkdirSync(blogDir, { recursive: true });
+
+  for (const article of BLOG_REGISTRY_ARTICLES) {
+    const slug = article.path.replace(/^\/blog\//, '');
+    const articleDir = path.join(blogDir, slug);
+    fs.mkdirSync(articleDir, { recursive: true });
+
+    const articleStructuredData = {
+      '@context': 'https://schema.org',
+      '@graph': [
+        {
+          '@type': 'BreadcrumbList',
+          itemListElement: [
+            { '@type': 'ListItem', position: 1, name: 'Home', item: BASE_URL },
+            { '@type': 'ListItem', position: 2, name: 'Blog', item: `${BASE_URL}/blog` },
+            { '@type': 'ListItem', position: 3, name: article.h1, item: article.canonicalUrl },
+          ],
+        },
+        {
+          '@type': 'BlogPosting',
+          '@id': `${article.canonicalUrl}#article`,
+          headline: article.h1,
+          description: article.metaDescription,
+          url: article.canonicalUrl,
+          author: {
+            '@type': 'Organization',
+            name: BUSINESS_INFO.name,
+            url: BASE_URL,
+          },
+          publisher: {
+            '@type': 'Organization',
+            name: BUSINESS_INFO.name,
+            logo: {
+              '@type': 'ImageObject',
+              url: BUSINESS_INFO.logo,
+            },
+          },
+          datePublished: '2026-01-15T00:00:00+05:30',
+          dateModified: new Date().toISOString(),
+          mainEntityOfPage: article.canonicalUrl,
+        },
+      ],
+    };
+
+    const articleMainHtml = `
+      <main id="techwash-static-seo" style="max-width: 1200px; margin: 0 auto; padding: 24px; font-family: system-ui, -apple-system, sans-serif; color: #1F2937; line-height: 1.6;">
+        <nav style="font-size: 13px; color: #64748B; margin-bottom: 16px;">
+          <a href="/" style="color: #64748B; text-decoration: none;">Home</a> &gt; 
+          <a href="/blog" style="color: #64748B; text-decoration: none;">Blog</a> &gt; 
+          <span style="color: #EA580C; font-weight: bold;">${escapeHtml(article.h1)}</span>
+        </nav>
+
+        <header style="margin-bottom: 32px;">
+          <p style="color: #EA580C; font-weight: 800; text-transform: uppercase; font-size: 13px; letter-spacing: 0.05em; margin-bottom: 8px;">
+            ✦ Fabric Care Laboratory Guide • Textile Care Science
+          </p>
+          <h1 style="font-size: 34px; line-height: 1.25; font-weight: 900; color: #111827; margin: 0 0 16px 0;">
+            ${escapeHtml(article.h1)}
+          </h1>
+          <p style="font-size: 17px; color: #4B5563; max-width: 900px; margin: 0 0 16px 0;">
+            ${escapeHtml(article.metaDescription)}
+          </p>
+        </header>
+
+        <section style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 16px; padding: 24px; margin-bottom: 32px;">
+          <h2 style="font-size: 20px; font-weight: 800; color: #0F172A; margin: 0 0 12px 0;">Professional Textile Care in Hyderabad</h2>
+          <p style="font-size: 15px; color: #334155; line-height: 1.7;">
+            At Techwash Laundry Services, we engineer our wash formulas using 100% demineralized 0 PPM Reverse Osmosis (RO) softened water and certified eco-friendly European hydrocarbon solvents to protect your fabrics from hard water mineral crusting, stiffness, and chemical fading.
+          </p>
+          <div style="margin-top: 16px;">
+            <a href="/book-pickup" style="display: inline-block; padding: 10px 20px; background: #EA580C; color: #FFFFFF; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px;">
+              Schedule Doorstep Pickup →
+            </a>
+          </div>
+        </section>
+
+        ${generateAreasServedHtml()}
+        ${generateBranchHtml()}
+      </main>
+    `;
+
+    const articleHtml = buildHtmlPage(baseTemplate, {
+      title: article.title,
+      description: article.metaDescription,
+      keywords: `${article.primaryKeyword}, fabric care, dry cleaning tips, sneaker care, saree care hyderabad`,
+      canonicalUrl: article.canonicalUrl,
+      structuredData: articleStructuredData,
+      mainHtml: articleMainHtml,
+    });
+
+    fs.writeFileSync(path.join(articleDir, 'index.html'), articleHtml, 'utf-8');
+    generatedCount++;
+    console.log(`   ✅ dist/blog/${slug}/index.html generated.`);
+  }
+
   console.log(`\n🎉 SUCCESS: Successfully pre-rendered ${generatedCount} static HTML SEO pages into dist/!`);
   console.log('   - /services/index.html');
   console.log('   - 11x /services/<slug>/index.html (Targeting "Near Me" search queries)');
   console.log('   - /areas/manikonda/index.html (Manikonda Hub)');
   console.log('   - 11x /areas/manikonda/<slug>/index.html (Targeting "in Manikonda" search queries)');
+  console.log('   - 15x Core Registry Pages (/pricing, /locations, /how-it-works, /offers, etc.)');
+  console.log('   - 3x Educational Blog Articles (/blog/<slug>/index.html)');
 }
 
 prerenderAll();

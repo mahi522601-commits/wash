@@ -22,14 +22,11 @@ Allow: /privacy-policy
 Allow: /terms-and-conditions
 Allow: /refund-policy
 
-# Protected SaaS & Worker Portals
+# Protected SaaS & Worker Portals (Disallowed from indexing)
 Disallow: /admin
 Disallow: /admin/
 Disallow: /worker
 Disallow: /worker/
-
-# Private Parameterized Order Tracking
-Disallow: /track-order?*
 
 # Sitemaps (XML & TXT)
 Sitemap: https://www.techwashlaundry.com/sitemap.xml

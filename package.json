@@ -12,7 +12,8 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "node scripts/generate-sitemap.js && vite build && node scripts/prerender-seo-pages.js",
+    "build": "node scripts/generate-sitemap.js && vite build && node scripts/prerender-seo-pages.js && node scripts/test-seo.js",
+    "test:seo": "node scripts/test-seo.js",
     "generate:sitemap": "node scripts/generate-sitemap.js",
     "prerender": "node scripts/prerender-seo-pages.js",
     "preview": "vite preview"
