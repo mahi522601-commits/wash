@@ -256,7 +256,7 @@ export const AreaDetailPage = () => {
                     </p>
                   </div>
 
-                  <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
+                  <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-2">
                     <Link
                       to={`/areas/manikonda/${srv.slug}`}
                       className="text-xs font-bold text-[#F97316] hover:text-[#EA580C] inline-flex items-center gap-1 group-hover:gap-1.5 transition-all"
@@ -265,11 +265,21 @@ export const AreaDetailPage = () => {
                       <ArrowRight className="w-3.5 h-3.5" />
                     </Link>
 
-                    <Link to={`/book-pickup?locality=Manikonda&service=${encodeURIComponent(srv.slug)}`}>
-                      <Button variant="primary" size="sm">
-                        Book
-                      </Button>
-                    </Link>
+                    <div className="flex items-center gap-2">
+                      <a
+                        href="tel:6304845567"
+                        className="py-1.5 px-2.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold flex items-center gap-1 transition-all active:scale-95"
+                        title="Call 6304845567"
+                      >
+                        <Phone className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Call</span>
+                      </a>
+                      <Link to={`/book-pickup?locality=Manikonda&service=${encodeURIComponent(srv.slug)}`}>
+                        <Button variant="primary" size="sm">
+                          Book
+                        </Button>
+                      </Link>
+                    </div>
                   </div>
                 </Card>
               ))}
