@@ -334,7 +334,9 @@ const INITIAL_WALK_IN_FORM = {
   deliverySlot: '04:00 PM - 08:00 PM',
   receivedAmount: '', // empty defaults to full or custom entered
   paymentStatus: 'PAID', // 'PAID' | 'PARTIAL' | 'PENDING'
-  paymentMethod: 'CASH', // 'CASH' | 'UPI_QR' | 'CARD' | 'PAY_ON_DELIVERY'
+  paymentMethod: 'CASH', // 'CASH' | 'UPI_QR' | 'CARD' | 'PAY_ON_DELIVERY' | 'SPLIT'
+  splitCash: '',
+  splitUpi: '',
   notes: '',
   internalAdminNotes: 'In-Store Walk-in Customer POS Order',
   terminalId: 'counter-1',
@@ -412,6 +414,8 @@ export const AdminOrdersPage = () => {
   // Quick payment collection state inside active order modal
   const [collectionAmount, setCollectionAmount] = useState('');
   const [collectionMode, setCollectionMode] = useState('UPI_QR');
+  const [collectionSplitCash, setCollectionSplitCash] = useState('');
+  const [collectionSplitUpi, setCollectionSplitUpi] = useState('');
   const [collectionNotes, setCollectionNotes] = useState('');
   const [isCollectingPayment, setIsCollectingPayment] = useState(false);
 
@@ -618,9 +622,12 @@ export const AdminOrdersPage = () => {
   const hasWalkInCustomTotal = walkInForm.customGrandTotal !== '' && walkInForm.customGrandTotal !== undefined && !isNaN(Number(walkInForm.customGrandTotal));
   const walkInFinalTotal = hasWalkInCustomTotal ? Math.max(0, Number(walkInForm.customGrandTotal)) : walkInCalculatedTotal;
 
-  const walkInReceived = walkInForm.receivedAmount !== '' 
-    ? Number(walkInForm.receivedAmount) 
-    : (walkInForm.paymentStatus === 'PAID' ? walkInFinalTotal : 0);
+  const isWalkInSplit = walkInForm.paymentMethod === 'SPLIT';
+  const walkInReceived = isWalkInSplit
+    ? (Number(walkInForm.splitCash || 0) + Number(walkInForm.splitUpi || 0))
+    : (walkInForm.receivedAmount !== '' 
+        ? Number(walkInForm.receivedAmount) 
+        : (walkInForm.paymentStatus === 'PAID' ? walkInFinalTotal : 0));
   const walkInBalanceDue = Math.max(0, walkInFinalTotal - (isNaN(walkInReceived) ? 0 : walkInReceived));
 
   // Comprehensive Multi-Branch, Channel, Month, Status & Search filtering
@@ -1028,6 +1035,25 @@ export const AdminOrdersPage = () => {
         balanceAmount: computedBalance,
         paymentStatus: computedPaymentStatus,
         paymentMethod: walkInForm.paymentMethod,
+        paymentBreakdown: isWalkInSplit ? {
+          cash: Number(walkInForm.splitCash || 0),
+          upi: Number(walkInForm.splitUpi || 0),
+          card: 0,
+        } : (walkInForm.paymentMethod === 'CASH' ? {
+          cash: parsedReceived,
+          upi: 0,
+          card: 0,
+        } : (walkInForm.paymentMethod === 'UPI_QR' ? {
+          cash: 0,
+          upi: parsedReceived,
+          card: 0,
+        } : {
+          cash: 0,
+          upi: 0,
+          card: parsedReceived,
+        })),
+        splitCash: isWalkInSplit ? Number(walkInForm.splitCash || 0) : undefined,
+        splitUpi: isWalkInSplit ? Number(walkInForm.splitUpi || 0) : undefined,
         customerStage: 'INSPECTION',
         internalStage: 'RECEIVED_AT_HUB',
         notes: walkInForm.notes || 'In-store counter drop-off',
@@ -1092,7 +1118,11 @@ export const AdminOrdersPage = () => {
   const handleQuickCollectPayment = async (e) => {
     e?.preventDefault();
     if (!activeOrder) return;
-    const amountNum = Number(collectionAmount);
+    const isSplit = collectionMode === 'SPLIT';
+    const amountNum = isSplit
+      ? (Number(collectionSplitCash || 0) + Number(collectionSplitUpi || 0))
+      : Number(collectionAmount);
+
     if (isNaN(amountNum) || amountNum <= 0) {
       error('Invalid Amount', 'Please enter a valid amount in ₹ to collect (e.g. 200).');
       return;
@@ -1103,6 +1133,24 @@ export const AdminOrdersPage = () => {
       const updated = await orderService.updateOrderPayment(activeOrder.id, {
         amountCollected: amountNum,
         paymentMethod: collectionMode,
+        paymentBreakdown: isSplit ? {
+          cash: Number(collectionSplitCash || 0),
+          upi: Number(collectionSplitUpi || 0),
+          card: 0,
+        } : (collectionMode === 'CASH' ? {
+          cash: amountNum,
+          upi: 0,
+          card: 0,
+        } : (collectionMode === 'UPI_QR' ? {
+          cash: 0,
+          upi: amountNum,
+          card: 0,
+        } : {
+          cash: 0,
+          upi: 0,
+          card: amountNum,
+        })),
+        note: collectionNotes || `Settled in Admin Order Manager (${isSplit ? `Cash ₹${collectionSplitCash} + PhonePe/UPI ₹${collectionSplitUpi}` : collectionMode})`,
         paymentNotes: collectionNotes || 'Settled in Admin Order Manager',
         recordedBy: currentUser?.email || 'Admin Staff',
       });
@@ -2316,56 +2364,122 @@ export const AdminOrdersPage = () => {
                   </span>
                 </div>
 
-                <form onSubmit={handleQuickCollectPayment} className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end">
-                  <div className="sm:col-span-4">
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Amount to Collect (₹) *</label>
-                    <Input
-                      type="number"
-                      required
-                      placeholder={`e.g. ${activeOrder.balanceAmount || activeOrder.totalAmount || 100}`}
-                      value={collectionAmount}
-                      onChange={(e) => setCollectionAmount(e.target.value)}
-                      className="bg-white font-mono font-bold"
-                    />
+                <form onSubmit={handleQuickCollectPayment} className="space-y-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end">
+                    <div className="sm:col-span-4">
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Payment Method</label>
+                      <select
+                        value={collectionMode}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setCollectionMode(val);
+                          if (val === 'SPLIT') {
+                            const bal = Number(activeOrder.balanceAmount !== undefined ? activeOrder.balanceAmount : (activeOrder.finalPrice || activeOrder.totalAmount || 0));
+                            const half = Math.round(bal / 2);
+                            setCollectionSplitCash(String(half));
+                            setCollectionSplitUpi(String(Math.max(0, bal - half)));
+                          }
+                        }}
+                        className="w-full bg-white border border-slate-300 rounded-xl py-2 px-2 text-xs font-bold text-slate-800"
+                      >
+                        <option value="UPI_QR">📱 UPI / QR</option>
+                        <option value="CASH">💵 Cash</option>
+                        <option value="CARD">💳 Card</option>
+                        <option value="SPLIT">⚡ Split (Cash + UPI)</option>
+                        <option value="NET_BANKING">🏦 Bank</option>
+                      </select>
+                    </div>
+
+                    {collectionMode !== 'SPLIT' && (
+                      <div className="sm:col-span-4">
+                        <label className="block text-[11px] font-bold text-slate-700 mb-1">Amount to Collect (₹) *</label>
+                        <Input
+                          type="number"
+                          required
+                          placeholder={`e.g. ${activeOrder.balanceAmount || activeOrder.totalAmount || 100}`}
+                          value={collectionAmount}
+                          onChange={(e) => setCollectionAmount(e.target.value)}
+                          className="bg-white font-mono font-bold"
+                        />
+                      </div>
+                    )}
+
+                    {collectionMode !== 'SPLIT' && (
+                      <div className="sm:col-span-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCollectionAmount(String(activeOrder.balanceAmount !== undefined ? activeOrder.balanceAmount : activeOrder.totalAmount))}
+                          className="w-full justify-center bg-white text-xs border-amber-300 text-amber-900 hover:bg-amber-100 py-2 font-bold"
+                        >
+                          [Full Bal]
+                        </Button>
+                      </div>
+                    )}
+
+                    <div className={collectionMode === 'SPLIT' ? 'sm:col-span-8 flex justify-end' : 'sm:col-span-2'}>
+                      <Button
+                        type="submit"
+                        variant="primary"
+                        size="sm"
+                        isLoading={isCollectingPayment}
+                        className="w-full justify-center bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2"
+                      >
+                        ✓ Record
+                      </Button>
+                    </div>
                   </div>
 
-                  <div className="sm:col-span-3">
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Payment Method</label>
-                    <select
-                      value={collectionMode}
-                      onChange={(e) => setCollectionMode(e.target.value)}
-                      className="w-full bg-white border border-slate-300 rounded-xl py-2 px-2 text-xs font-bold text-slate-800"
-                    >
-                      <option value="UPI_QR">📱 UPI / QR</option>
-                      <option value="CASH">💵 Cash</option>
-                      <option value="CARD">💳 Card</option>
-                      <option value="NET_BANKING">🏦 Bank</option>
-                    </select>
-                  </div>
-
-                  <div className="sm:col-span-3">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCollectionAmount(String(activeOrder.balanceAmount !== undefined ? activeOrder.balanceAmount : activeOrder.totalAmount))}
-                      className="w-full justify-center bg-white text-xs border-amber-300 text-amber-900 hover:bg-amber-100 py-2 font-bold"
-                    >
-                      [Collect Full Balance]
-                    </Button>
-                  </div>
-
-                  <div className="sm:col-span-2">
-                    <Button
-                      type="submit"
-                      variant="primary"
-                      size="sm"
-                      isLoading={isCollectingPayment}
-                      className="w-full justify-center bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2"
-                    >
-                      ✓ Record
-                    </Button>
-                  </div>
+                  {collectionMode === 'SPLIT' && (
+                    <div className="p-2.5 rounded-xl bg-white border border-indigo-200 space-y-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-bold text-indigo-950 flex items-center gap-1">
+                          <span>⚡</span> Split Collection
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const bal = Number(activeOrder.balanceAmount !== undefined ? activeOrder.balanceAmount : (activeOrder.finalPrice || activeOrder.totalAmount || 0));
+                            const half = Math.round(bal / 2);
+                            setCollectionSplitCash(String(half));
+                            setCollectionSplitUpi(String(Math.max(0, bal - half)));
+                          }}
+                          className="text-[10px] bg-indigo-50 border border-indigo-200 text-indigo-700 px-2 py-0.5 rounded font-bold cursor-pointer"
+                        >
+                          50 / 50 Split
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-600 mb-0.5">💵 Cash (₹)</label>
+                          <input
+                            type="number"
+                            min="0"
+                            placeholder="0"
+                            value={collectionSplitCash}
+                            onChange={(e) => setCollectionSplitCash(e.target.value)}
+                            className="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-xs font-mono font-bold"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-600 mb-0.5">📱 PhonePe / UPI (₹)</label>
+                          <input
+                            type="number"
+                            min="0"
+                            placeholder="0"
+                            value={collectionSplitUpi}
+                            onChange={(e) => setCollectionSplitUpi(e.target.value)}
+                            className="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-xs font-mono font-bold"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex justify-between text-[11px] font-bold text-slate-600 pt-1 border-t border-slate-100">
+                        <span>Total Settle: ₹{Number(collectionSplitCash || 0) + Number(collectionSplitUpi || 0)}</span>
+                        <span>Due: ₹{activeOrder.balanceAmount !== undefined ? activeOrder.balanceAmount : (activeOrder.finalPrice || activeOrder.totalAmount || 0)}</span>
+                      </div>
+                    </div>
+                  )}
                 </form>
               </div>
             )}
@@ -3814,7 +3928,117 @@ export const AdminOrdersPage = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 mb-0.5">Payment Mode</label>
+                <select
+                  value={walkInForm.paymentMethod}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === 'SPLIT') {
+                      const half = Math.round(walkInFinalTotal / 2);
+                      setWalkInForm({
+                        ...walkInForm,
+                        paymentMethod: 'SPLIT',
+                        splitCash: half,
+                        splitUpi: Math.max(0, walkInFinalTotal - half),
+                        paymentStatus: 'PAID',
+                      });
+                    } else {
+                      setWalkInForm({ ...walkInForm, paymentMethod: val });
+                    }
+                  }}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl py-2 px-2 text-xs font-bold text-slate-800"
+                >
+                  <option value="CASH">💵 Cash</option>
+                  <option value="UPI_QR">📱 UPI / QR</option>
+                  <option value="CARD">💳 Card</option>
+                  <option value="SPLIT">⚡ Split (Cash + UPI / PhonePe)</option>
+                  <option value="NET_BANKING">🏦 Net Banking</option>
+                </select>
+              </div>
+
+              {walkInForm.paymentMethod === 'SPLIT' ? (
+                <div className="p-2.5 rounded-xl bg-indigo-50 border border-indigo-200 space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-indigo-950 flex items-center gap-1">
+                      <span>⚡</span> Split Mode
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const half = Math.round(walkInFinalTotal / 2);
+                        setWalkInForm(prev => ({
+                          ...prev,
+                          splitCash: half,
+                          splitUpi: Math.max(0, walkInFinalTotal - half),
+                          paymentStatus: 'PAID',
+                        }));
+                      }}
+                      className="text-[10px] bg-indigo-600 text-white px-2 py-0.5 rounded font-bold hover:bg-indigo-700 cursor-pointer"
+                    >
+                      50 / 50 Split
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <div className="flex items-center justify-between text-[10px] font-bold text-slate-600 mb-0.5">
+                        <span>💵 Cash (₹)</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const upiNum = Number(walkInForm.splitUpi || 0);
+                            setWalkInForm(prev => ({ ...prev, splitCash: Math.max(0, walkInFinalTotal - upiNum) }));
+                          }}
+                          className="text-emerald-700 hover:underline cursor-pointer"
+                        >
+                          Fill Bal
+                        </button>
+                      </div>
+                      <input
+                        type="number"
+                        min="0"
+                        placeholder="0"
+                        value={walkInForm.splitCash}
+                        onChange={(e) => {
+                          const val = e.target.value === '' ? '' : Math.max(0, Number(e.target.value));
+                          setWalkInForm(prev => ({ ...prev, splitCash: val }));
+                        }}
+                        className="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-xs font-mono font-bold bg-white"
+                      />
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between text-[10px] font-bold text-slate-600 mb-0.5">
+                        <span>📱 PhonePe / UPI (₹)</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const cashNum = Number(walkInForm.splitCash || 0);
+                            setWalkInForm(prev => ({ ...prev, splitUpi: Math.max(0, walkInFinalTotal - cashNum) }));
+                          }}
+                          className="text-indigo-700 hover:underline cursor-pointer"
+                        >
+                          Fill Bal
+                        </button>
+                      </div>
+                      <input
+                        type="number"
+                        min="0"
+                        placeholder="0"
+                        value={walkInForm.splitUpi}
+                        onChange={(e) => {
+                          const val = e.target.value === '' ? '' : Math.max(0, Number(e.target.value));
+                          setWalkInForm(prev => ({ ...prev, splitUpi: val }));
+                        }}
+                        className="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-xs font-mono font-bold bg-white"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-between text-[11px] font-bold text-slate-600 pt-1 border-t border-indigo-100">
+                    <span>Total Paid: ₹{walkInReceived}</span>
+                    <span>Total Bill: ₹{walkInFinalTotal}</span>
+                  </div>
+                </div>
+              ) : (
                 <div>
                   <label className="block text-[10px] font-bold text-slate-500 mb-0.5">Amount Received (₹)</label>
                   <Input
@@ -3830,20 +4054,7 @@ export const AdminOrdersPage = () => {
                     className="bg-slate-50 font-mono font-bold"
                   />
                 </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-500 mb-0.5">Payment Mode</label>
-                  <select
-                    value={walkInForm.paymentMethod}
-                    onChange={(e) => setWalkInForm({ ...walkInForm, paymentMethod: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl py-2 px-2 text-xs font-bold text-slate-800"
-                  >
-                    <option value="CASH">💵 Cash</option>
-                    <option value="UPI_QR">📱 UPI / QR</option>
-                    <option value="CARD">💳 Card</option>
-                    <option value="NET_BANKING">🏦 Net Banking</option>
-                  </select>
-                </div>
-              </div>
+              )}
 
               <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-[11px]">
                 <span className="text-slate-500 font-semibold">Balance Due:</span>

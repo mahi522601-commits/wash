@@ -53,7 +53,9 @@ export const AdminBalanceDuePage = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [collectModalOpen, setCollectModalOpen] = useState(false);
   const [collectAmount, setCollectAmount] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('CASH'); // 'CASH' | 'UPI_QR' | 'CARD'
+  const [paymentMethod, setPaymentMethod] = useState('CASH'); // 'CASH' | 'UPI_QR' | 'CARD' | 'SPLIT'
+  const [splitCash, setSplitCash] = useState('');
+  const [splitUpi, setSplitUpi] = useState('');
   const [collectNote, setCollectNote] = useState('');
   const [isCollecting, setIsCollecting] = useState(false);
 
@@ -150,9 +152,12 @@ export const AdminBalanceDuePage = () => {
     const received = Number(order.receivedAmount !== undefined ? order.receivedAmount : (order.paymentStatus === 'PAID' ? total : 0));
     const balance = Number(order.balanceAmount !== undefined ? order.balanceAmount : Math.max(0, total - received));
 
+    const half = Math.round(balance / 2);
     setSelectedOrder(order);
     setCollectAmount(String(balance));
     setPaymentMethod('CASH');
+    setSplitCash(String(half));
+    setSplitUpi(String(Math.max(0, balance - half)));
     setCollectNote(`Balance settlement of ₹${balance}`);
     setCollectModalOpen(true);
   };
@@ -162,7 +167,11 @@ export const AdminBalanceDuePage = () => {
     e.preventDefault();
     if (!selectedOrder) return;
 
-    const amountNum = Number(collectAmount);
+    const isSplit = paymentMethod === 'SPLIT';
+    const amountNum = isSplit
+      ? (Number(splitCash || 0) + Number(splitUpi || 0))
+      : Number(collectAmount);
+
     if (isNaN(amountNum) || amountNum <= 0) {
       error('Invalid Amount', 'Please enter a valid amount greater than ₹0.');
       return;
@@ -178,8 +187,25 @@ export const AdminBalanceDuePage = () => {
       const updated = await orderService.updateOrderPayment(selectedOrder.id, {
         receivedAmount: newTotalReceived,
         paymentMethod,
+        paymentBreakdown: isSplit ? {
+          cash: Number(splitCash || 0),
+          upi: Number(splitUpi || 0),
+          card: 0,
+        } : (paymentMethod === 'CASH' ? {
+          cash: amountNum,
+          upi: 0,
+          card: 0,
+        } : (paymentMethod === 'UPI_QR' ? {
+          cash: 0,
+          upi: amountNum,
+          card: 0,
+        } : {
+          cash: 0,
+          upi: 0,
+          card: amountNum,
+        })),
         paymentStatus: newBalance === 0 ? 'PAID' : 'PARTIAL',
-        note: collectNote || `Collected ₹${amountNum} via ${paymentMethod}`,
+        note: collectNote || `Collected ₹${amountNum} via ${isSplit ? `Split (Cash ₹${splitCash} + UPI ₹${splitUpi})` : paymentMethod}`,
       });
 
       await auditService.logAction({
@@ -657,50 +683,31 @@ For queries or assistance, contact our concierge at *+91 63048 45567*. Thank you
               </div>
             </div>
 
-            {/* Quick Balance Shortcut */}
-            <div className="flex items-center justify-between">
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
-                Settlement Amount (₹) *
-              </label>
-              <button
-                type="button"
-                onClick={() => {
-                  const bal = Number(selectedOrder.balanceAmount || (Number(selectedOrder.totalAmount || 0) - Number(selectedOrder.receivedAmount || 0)));
-                  setCollectAmount(String(bal));
-                }}
-                className="text-[11px] text-emerald-600 font-bold hover:text-emerald-700"
-              >
-                ⚡ Full Balance (₹{selectedOrder.balanceAmount || (Number(selectedOrder.totalAmount || 0) - Number(selectedOrder.receivedAmount || 0))})
-              </button>
-            </div>
-
-            <Input
-              type="number"
-              required
-              min="1"
-              max={selectedOrder.totalAmount || 999999}
-              placeholder="Enter amount being collected"
-              value={collectAmount}
-              onChange={(e) => setCollectAmount(e.target.value)}
-              className="text-base font-mono font-bold"
-            />
-
             {/* Payment Method Selector */}
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
                 Payment Method Received *
               </label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {[
                   { key: 'CASH', label: '💵 Cash', color: 'border-emerald-300 bg-emerald-50 text-emerald-900' },
                   { key: 'UPI_QR', label: '📱 UPI / QR', color: 'border-cyan-300 bg-cyan-50 text-cyan-900' },
                   { key: 'CARD', label: '💳 Card / POS', color: 'border-purple-300 bg-purple-50 text-purple-900' },
+                  { key: 'SPLIT', label: '⚡ Split (Cash+UPI)', color: 'border-indigo-300 bg-indigo-50 text-indigo-900' },
                 ].map((pm) => (
                   <button
                     key={pm.key}
                     type="button"
-                    onClick={() => setPaymentMethod(pm.key)}
-                    className={`py-2 px-3 rounded-xl border text-xs font-bold transition flex items-center justify-center cursor-pointer ${
+                    onClick={() => {
+                      setPaymentMethod(pm.key);
+                      if (pm.key === 'SPLIT') {
+                        const bal = Number(selectedOrder.balanceAmount || (Number(selectedOrder.totalAmount || 0) - Number(selectedOrder.receivedAmount || 0)));
+                        const half = Math.round(bal / 2);
+                        setSplitCash(String(half));
+                        setSplitUpi(String(Math.max(0, bal - half)));
+                      }
+                    }}
+                    className={`py-2 px-2 rounded-xl border text-xs font-bold transition flex items-center justify-center cursor-pointer ${
                       paymentMethod === pm.key
                         ? `${pm.color} ring-2 ring-emerald-500 shadow-xs font-black`
                         : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
@@ -711,6 +718,123 @@ For queries or assistance, contact our concierge at *+91 63048 45567*. Thank you
                 ))}
               </div>
             </div>
+
+            {paymentMethod === 'SPLIT' ? (
+              <div className="p-3.5 rounded-2xl bg-indigo-50/80 border border-indigo-200 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-indigo-950 flex items-center gap-1">
+                    <span>⚡</span> Split Collection (Cash + PhonePe/UPI)
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const bal = Number(selectedOrder.balanceAmount || (Number(selectedOrder.totalAmount || 0) - Number(selectedOrder.receivedAmount || 0)));
+                      const half = Math.round(bal / 2);
+                      setSplitCash(String(half));
+                      setSplitUpi(String(Math.max(0, bal - half)));
+                    }}
+                    className="px-2 py-0.5 rounded-md bg-indigo-600 text-white text-[10px] font-bold hover:bg-indigo-700 cursor-pointer shadow-2xs"
+                  >
+                    50 / 50 Split
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between text-xs font-bold text-slate-700">
+                      <span>💵 Cash (₹)</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const bal = Number(selectedOrder.balanceAmount || (Number(selectedOrder.totalAmount || 0) - Number(selectedOrder.receivedAmount || 0)));
+                          const upiNum = Number(splitUpi || 0);
+                          setSplitCash(String(Math.max(0, bal - upiNum)));
+                        }}
+                        className="text-[10px] text-emerald-600 hover:underline cursor-pointer"
+                      >
+                        Fill Bal
+                      </button>
+                    </div>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">₹</span>
+                      <input
+                        type="number"
+                        min="0"
+                        value={splitCash}
+                        onChange={(e) => setSplitCash(e.target.value)}
+                        placeholder="0"
+                        className="w-full pl-7 pr-3 py-2 bg-white rounded-xl border border-slate-300 text-slate-900 font-mono text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between text-xs font-bold text-slate-700">
+                      <span>📱 PhonePe / UPI (₹)</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const bal = Number(selectedOrder.balanceAmount || (Number(selectedOrder.totalAmount || 0) - Number(selectedOrder.receivedAmount || 0)));
+                          const cashNum = Number(splitCash || 0);
+                          setSplitUpi(String(Math.max(0, bal - cashNum)));
+                        }}
+                        className="text-[10px] text-indigo-600 hover:underline cursor-pointer"
+                      >
+                        Fill Bal
+                      </button>
+                    </div>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">₹</span>
+                      <input
+                        type="number"
+                        min="0"
+                        value={splitUpi}
+                        onChange={(e) => setSplitUpi(e.target.value)}
+                        placeholder="0"
+                        className="w-full pl-7 pr-3 py-2 bg-white rounded-xl border border-slate-300 text-slate-900 font-mono text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between text-xs font-bold pt-1 border-t border-indigo-200/60 text-slate-600">
+                  <span>Total To Settle: <strong className="text-slate-900 font-mono">₹{Number(splitCash || 0) + Number(splitUpi || 0)}</strong></span>
+                  <span className="text-indigo-700">
+                    Due: ₹{selectedOrder.balanceAmount || (Number(selectedOrder.totalAmount || 0) - Number(selectedOrder.receivedAmount || 0))}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Quick Balance Shortcut */}
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                    Settlement Amount (₹) *
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const bal = Number(selectedOrder.balanceAmount || (Number(selectedOrder.totalAmount || 0) - Number(selectedOrder.receivedAmount || 0)));
+                      setCollectAmount(String(bal));
+                    }}
+                    className="text-[11px] text-emerald-600 font-bold hover:text-emerald-700"
+                  >
+                    ⚡ Full Balance (₹{selectedOrder.balanceAmount || (Number(selectedOrder.totalAmount || 0) - Number(selectedOrder.receivedAmount || 0))})
+                  </button>
+                </div>
+
+                <Input
+                  type="number"
+                  required
+                  min="1"
+                  max={selectedOrder.totalAmount || 999999}
+                  placeholder="Enter amount being collected"
+                  value={collectAmount}
+                  onChange={(e) => setCollectAmount(e.target.value)}
+                  className="text-base font-mono font-bold"
+                />
+              </>
+            )}
 
             <Input
               label="Collection Notes / Remarks"

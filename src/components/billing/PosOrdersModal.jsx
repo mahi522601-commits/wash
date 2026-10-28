@@ -81,6 +81,8 @@ export const PosOrdersModal = ({
   const [collectOrder, setCollectOrder] = useState(null);
   const [collectAmount, setCollectAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('CASH');
+  const [splitCash, setSplitCash] = useState('');
+  const [splitUpi, setSplitUpi] = useState('');
   const [isCollecting, setIsCollecting] = useState(false);
 
   const loadOrders = useCallback(async () => {
@@ -423,16 +425,23 @@ export const PosOrdersModal = ({
     const received = Number(order.receivedAmount !== undefined ? order.receivedAmount : (order.paymentStatus === 'PAID' ? total : 0));
     const balance = Number(order.balanceAmount !== undefined ? order.balanceAmount : Math.max(0, total - received));
 
+    const half = Math.round(balance / 2);
     setCollectOrder(order);
     setCollectAmount(String(balance));
     setPaymentMethod('CASH');
+    setSplitCash(String(half));
+    setSplitUpi(String(Math.max(0, balance - half)));
   };
 
   const handleSaveCollection = async (e) => {
     if (e) e.preventDefault();
     if (!collectOrder) return;
 
-    const amountNum = Number(collectAmount);
+    const isSplit = paymentMethod === 'SPLIT';
+    const amountNum = isSplit
+      ? (Number(splitCash || 0) + Number(splitUpi || 0))
+      : Number(collectAmount);
+
     if (isNaN(amountNum) || amountNum <= 0) {
       error('Invalid Amount', 'Please enter a valid amount.');
       return;
@@ -442,7 +451,7 @@ export const PosOrdersModal = ({
     const prevReceived = Number(collectOrder.receivedAmount !== undefined ? collectOrder.receivedAmount : 0);
     const newTotalReceived = Math.min(total, prevReceived + amountNum);
     const newBalance = Math.max(0, total - newTotalReceived);
-    const isCash = paymentMethod === 'CASH';
+    const isCash = paymentMethod === 'CASH' || (isSplit && Number(splitCash || 0) > 0);
     const markAsDelivered = isCash || newBalance === 0;
 
     setIsCollecting(true);
@@ -450,16 +459,33 @@ export const PosOrdersModal = ({
       const updated = await orderService.updateOrderPayment(collectOrder.id, {
         receivedAmount: newTotalReceived,
         paymentMethod,
+        paymentBreakdown: isSplit ? {
+          cash: Number(splitCash || 0),
+          upi: Number(splitUpi || 0),
+          card: 0,
+        } : (paymentMethod === 'CASH' ? {
+          cash: amountNum,
+          upi: 0,
+          card: 0,
+        } : (paymentMethod === 'UPI_QR' ? {
+          cash: 0,
+          upi: amountNum,
+          card: 0,
+        } : {
+          cash: 0,
+          upi: 0,
+          card: amountNum,
+        })),
         paymentStatus: newBalance === 0 ? 'PAID' : 'PARTIAL',
         markDelivered: markAsDelivered,
-        note: `POS Counter collected ₹${amountNum} (${paymentMethod}) — Status: PAID & DELIVERED`,
+        note: `POS Counter collected ₹${amountNum} (${isSplit ? `Cash ₹${splitCash} + PhonePe/UPI ₹${splitUpi}` : paymentMethod}) — Status: ${newBalance === 0 ? 'PAID & DELIVERED' : 'PARTIAL'}`,
       });
 
       if (markAsDelivered) {
         await orderService.updateOrderStatus(
           collectOrder.id,
           'DELIVERED',
-          `Payment of ₹${amountNum} (${paymentMethod}) collected at POS counter — Status updated to PAID & DELIVERED`
+          `Payment of ₹${amountNum} (${isSplit ? `Cash ₹${splitCash} + PhonePe/UPI ₹${splitUpi}` : paymentMethod}) collected at POS counter — Status updated to PAID & DELIVERED`
         );
       }
 
@@ -1380,26 +1406,15 @@ export const PosOrdersModal = ({
               </div>
 
               <form onSubmit={handleSaveCollection} className="space-y-3.5">
-                <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">Amount to Collect (₹) *</label>
-                  <input
-                    type="number"
-                    required
-                    value={collectAmount}
-                    onChange={(e) => setCollectAmount(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono text-base font-bold outline-none focus:border-emerald-500"
-                  />
-                </div>
-
                 <div className="space-y-1">
                   <label className="block text-xs font-bold text-slate-300 mb-1">Payment Method</label>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-4 gap-1.5">
                     <button
                       type="button"
                       onClick={() => setPaymentMethod('CASH')}
-                      className={`py-2 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer ${
+                      className={`py-2 px-1 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer ${
                         paymentMethod === 'CASH'
-                          ? 'bg-emerald-600 text-white border-emerald-500'
+                          ? 'bg-emerald-600 text-white border-emerald-500 shadow-xs'
                           : 'bg-slate-950 text-slate-400 border-slate-800'
                       }`}
                     >
@@ -1408,9 +1423,9 @@ export const PosOrdersModal = ({
                     <button
                       type="button"
                       onClick={() => setPaymentMethod('UPI_QR')}
-                      className={`py-2 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer ${
+                      className={`py-2 px-1 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer ${
                         paymentMethod === 'UPI_QR'
-                          ? 'bg-blue-600 text-white border-blue-500'
+                          ? 'bg-blue-600 text-white border-blue-500 shadow-xs'
                           : 'bg-slate-950 text-slate-400 border-slate-800'
                       }`}
                     >
@@ -1419,16 +1434,133 @@ export const PosOrdersModal = ({
                     <button
                       type="button"
                       onClick={() => setPaymentMethod('CARD')}
-                      className={`py-2 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer ${
+                      className={`py-2 px-1 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer ${
                         paymentMethod === 'CARD'
-                          ? 'bg-purple-600 text-white border-purple-500'
+                          ? 'bg-purple-600 text-white border-purple-500 shadow-xs'
                           : 'bg-slate-950 text-slate-400 border-slate-800'
                       }`}
                     >
                       💳 Card
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPaymentMethod('SPLIT');
+                        const bal = Number(collectOrder.balanceAmount !== undefined ? collectOrder.balanceAmount : Math.max(0, (collectOrder.totalAmount || 0) - (collectOrder.receivedAmount || 0)));
+                        const half = Math.round(bal / 2);
+                        setSplitCash(String(half));
+                        setSplitUpi(String(Math.max(0, bal - half)));
+                      }}
+                      className={`py-2 px-1 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer ${
+                        paymentMethod === 'SPLIT'
+                          ? 'bg-indigo-600 text-white border-indigo-400 shadow-xs ring-1 ring-indigo-400'
+                          : 'bg-slate-950 text-slate-400 border-slate-800'
+                      }`}
+                    >
+                      ⚡ Split
+                    </button>
                   </div>
                 </div>
+
+                {paymentMethod === 'SPLIT' ? (
+                  <div className="p-3 rounded-2xl bg-slate-950/90 border border-indigo-500/40 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-indigo-300 flex items-center gap-1">
+                        <span>⚡</span> Split Collection (Cash + UPI)
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const bal = Number(collectOrder.balanceAmount !== undefined ? collectOrder.balanceAmount : Math.max(0, (collectOrder.totalAmount || 0) - (collectOrder.receivedAmount || 0)));
+                          const half = Math.round(bal / 2);
+                          setSplitCash(String(half));
+                          setSplitUpi(String(Math.max(0, bal - half)));
+                        }}
+                        className="px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 text-[10px] font-bold border border-indigo-500/40 hover:bg-indigo-500/30 cursor-pointer"
+                      >
+                        50 / 50 Split
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      {/* Cash Portion */}
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between text-[11px] font-bold text-slate-300">
+                          <span>💵 Cash (₹)</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const bal = Number(collectOrder.balanceAmount !== undefined ? collectOrder.balanceAmount : Math.max(0, (collectOrder.totalAmount || 0) - (collectOrder.receivedAmount || 0)));
+                              const upiNum = Number(splitUpi || 0);
+                              setSplitCash(String(Math.max(0, bal - upiNum)));
+                            }}
+                            className="text-[9.5px] text-emerald-400 hover:underline cursor-pointer"
+                          >
+                            Fill Bal
+                          </button>
+                        </div>
+                        <div className="relative">
+                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">₹</span>
+                          <input
+                            type="number"
+                            min="0"
+                            value={splitCash}
+                            onChange={(e) => setSplitCash(e.target.value)}
+                            placeholder="0"
+                            className="w-full pl-6 pr-2 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white font-mono text-xs font-bold outline-none focus:border-emerald-500"
+                          />
+                        </div>
+                      </div>
+
+                      {/* PhonePe / UPI Portion */}
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between text-[11px] font-bold text-slate-300">
+                          <span>📱 PhonePe / UPI (₹)</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const bal = Number(collectOrder.balanceAmount !== undefined ? collectOrder.balanceAmount : Math.max(0, (collectOrder.totalAmount || 0) - (collectOrder.receivedAmount || 0)));
+                              const cashNum = Number(splitCash || 0);
+                              setSplitUpi(String(Math.max(0, bal - cashNum)));
+                            }}
+                            className="text-[9.5px] text-indigo-400 hover:underline cursor-pointer"
+                          >
+                            Fill Bal
+                          </button>
+                        </div>
+                        <div className="relative">
+                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">₹</span>
+                          <input
+                            type="number"
+                            min="0"
+                            value={splitUpi}
+                            onChange={(e) => setSplitUpi(e.target.value)}
+                            placeholder="0"
+                            className="w-full pl-6 pr-2 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white font-mono text-xs font-bold outline-none focus:border-indigo-500"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[11px] font-bold text-slate-400 pt-1 border-t border-slate-800">
+                      <span>Total Settle: <strong className="text-white font-mono">₹{Number(splitCash || 0) + Number(splitUpi || 0)}</strong></span>
+                      <span className="text-indigo-400">
+                        Balance Due: ₹{collectOrder.balanceAmount !== undefined ? collectOrder.balanceAmount : Math.max(0, (collectOrder.totalAmount || 0) - (collectOrder.receivedAmount || 0))}
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-xs font-bold text-slate-300 mb-1">Amount to Collect (₹) *</label>
+                    <input
+                      type="number"
+                      required
+                      value={collectAmount}
+                      onChange={(e) => setCollectAmount(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono text-base font-bold outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                )}
 
                 {/* Auto Delivery Notice */}
                 <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center gap-2 text-xs text-emerald-300">
