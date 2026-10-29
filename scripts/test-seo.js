@@ -187,11 +187,19 @@ function testVercelRedirects() {
     }
   }
 
-  // Verify cleanUrls is enabled
-  if (vercel.cleanUrls !== true) {
-    logFail('vercel.json cleanUrls is not set to true. Risk of trailing slash redirects.');
+  // Verify SPA fallback rewrites
+  const hasSpaRewrite = vercel.rewrites && vercel.rewrites.some(r => r.destination === '/index.html');
+  if (!hasSpaRewrite) {
+    logFail('vercel.json is missing SPA catch-all rewrite to /index.html.');
   } else {
-    logPass('vercel.json cleanUrls is enabled.');
+    logPass('vercel.json SPA catch-all rewrite to /index.html verified.');
+  }
+
+  // Verify cleanUrls is not enabled (prevents breaking catch-all /index.html rewrite)
+  if (vercel.cleanUrls === true) {
+    logFail('vercel.json cleanUrls must not be true as it breaks catch-all rewrites to /index.html.');
+  } else {
+    logPass('vercel.json cleanUrls is cleanly omitted for SPA routing stability.');
   }
 }
 

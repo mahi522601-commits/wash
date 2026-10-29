@@ -1280,6 +1280,37 @@ function prerenderAll() {
     console.log(`   ✅ dist/blog/${slug}/index.html generated.`);
   }
 
+  // ----------------------------------------------------
+  // 6. Pre-render Application Shells for Direct CDN Route Resolution
+  // Guarantees zero 404s when navigating directly or refreshing /admin, /pos, /billing, /worker
+  // ----------------------------------------------------
+  console.log('\n⚡ Pre-rendering SPA Application Shells (admin, billing, pos, worker)...');
+  const appShellRoutes = [
+    { path: '/admin', title: 'Admin Command Center | Techwash Laundry' },
+    { path: '/admin/login', title: 'Admin Login | Techwash Laundry' },
+    { path: '/billing', title: 'POS Billing Terminals & Counter Machines | Techwash' },
+    { path: '/pos', title: 'POS Billing Terminals & Counter Machines | Techwash' },
+    { path: '/worker', title: 'Worker Portal | Techwash Laundry' },
+    { path: '/worker/login', title: 'Worker Login | Techwash Laundry' },
+  ];
+
+  for (const shell of appShellRoutes) {
+    const targetDir = path.join(DIST_DIR, shell.path.replace(/^\//, ''));
+    fs.mkdirSync(targetDir, { recursive: true });
+
+    const shellHtml = buildHtmlPage(baseTemplate, {
+      title: shell.title,
+      description: 'Techwash Laundry Services Internal Management & POS Portal',
+      keywords: 'techwash laundry, admin, pos billing',
+      canonicalUrl: `${BASE_URL}${shell.path}`,
+      noindex: true,
+      mainHtml: '<main id="techwash-static-seo" style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #0B0A1C; color: #FFFFFF; font-family: system-ui, sans-serif;"><p style="font-size: 16px; font-weight: 600;">Loading Techwash Application...</p></main>',
+    });
+
+    fs.writeFileSync(path.join(targetDir, 'index.html'), shellHtml, 'utf-8');
+    console.log(`   ✅ dist${shell.path}/index.html generated (SPA Shell).`);
+  }
+
   console.log(`\n🎉 SUCCESS: Successfully pre-rendered ${generatedCount} static HTML SEO pages into dist/!`);
   console.log('   - /services/index.html');
   console.log('   - 11x /services/<slug>/index.html (Targeting "Near Me" search queries)');

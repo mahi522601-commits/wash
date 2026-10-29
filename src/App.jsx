@@ -200,6 +200,7 @@ export function App() {
 
             {/* STANDALONE POS BILLING TERMINAL SUITE */}
             <Route path="/billing" element={<BillingHubPage />} />
+            <Route path="/pos" element={<BillingHubPage />} />
             <Route path="/billing/:terminalId" element={<BillingMachinePage />} />
             <Route path="/pos/:terminalId" element={<BillingMachinePage />} />
 
