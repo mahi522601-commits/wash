@@ -340,18 +340,23 @@ export const TestimonialsSection = ({ testimonials = [] }) => {
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
           
           {/* Clickable Animated Dots */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             {reviews.map((r, idx) => (
               <button
                 key={r.id || idx}
+                type="button"
                 onClick={() => setActiveIndex(idx)}
-                className={`transition-all duration-300 rounded-full h-2.5 ${
-                  activeIndex === idx
-                    ? 'w-8 bg-gradient-to-r from-[#F97316] to-amber-500 shadow-xs'
-                    : 'w-2.5 bg-slate-300 hover:bg-slate-400'
-                }`}
+                className="p-1.5 min-w-[28px] min-h-[28px] flex items-center justify-center focus:outline-hidden"
                 aria-label={`Go to slide ${idx + 1}`}
-              />
+              >
+                <span
+                  className={`block transition-all duration-300 rounded-full h-2.5 ${
+                    activeIndex === idx
+                      ? 'w-8 bg-gradient-to-r from-[#EA580C] to-amber-600 shadow-xs'
+                      : 'w-2.5 bg-slate-400 hover:bg-slate-500'
+                  }`}
+                />
+              </button>
             ))}
           </div>
 

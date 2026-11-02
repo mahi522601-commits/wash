@@ -62,7 +62,7 @@ export const HeroSection = ({ slides = [] }) => {
           <div className="lg:col-span-6 space-y-5 sm:space-y-8 text-left">
             
             {/* Eyebrow Pill Badge */}
-            <div className="inline-flex items-center gap-2 px-3.5 sm:px-4 py-1.5 rounded-full bg-white border border-[#FED7AA] text-[#F97316] text-[11px] sm:text-xs font-bold uppercase tracking-wider shadow-sm animate-fade-in">
+            <div className="inline-flex items-center gap-2 px-3.5 sm:px-4 py-1.5 rounded-full bg-white border border-[#FED7AA] text-[#C2410C] text-[11px] sm:text-xs font-bold uppercase tracking-wider shadow-sm animate-fade-in">
               <Sparkles className="w-3.5 h-3.5 fill-current text-[#F97316]" />
               <span>{currentSlide.badge && currentSlide.badge !== '✦ PREMIUM LAUNDRY & DRY CLEANING' ? currentSlide.badge : '✦ #1 RATED LAUNDRY SERVICE IN MANIKONDA'}</span>
             </div>
@@ -70,7 +70,7 @@ export const HeroSection = ({ slides = [] }) => {
             {/* Display Headline */}
             <h1 className="text-3xl sm:text-5xl lg:text-6xl xl:text-[62px] font-black font-display tracking-tight text-[#1F2937] leading-[1.1]">
               {currentSlide.title && currentSlide.title !== 'Laundry Care,' ? currentSlide.title : 'Best Laundry Service in'} <br />
-              <span className="text-[#F97316]">
+              <span className="text-[#C2410C]">
                 {currentSlide.highlightedWord && currentSlide.highlightedWord !== 'Reimagined.' ? currentSlide.highlightedWord : 'Manikonda, Hyderabad'}
               </span>
             </h1>
@@ -87,7 +87,7 @@ export const HeroSection = ({ slides = [] }) => {
               <Link to={currentSlide.ctaPrimaryUrl || '/book-pickup'}>
                 <button
                   type="button"
-                  className="w-full xs:w-auto justify-center px-6 sm:px-8 py-3.5 sm:py-4 rounded-full bg-[#F97316] hover:bg-[#EA580C] text-white font-bold text-sm sm:text-base flex items-center gap-2.5 shadow-lg shadow-brand-500/25 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 group cursor-pointer"
+                  className="w-full xs:w-auto justify-center px-6 sm:px-8 py-3.5 sm:py-4 rounded-full bg-[#C2410C] hover:bg-[#9A3412] text-white font-bold text-sm sm:text-base flex items-center gap-2.5 shadow-lg shadow-brand-500/25 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 group cursor-pointer"
                 >
                   <Calendar className="w-4 h-4 text-white" />
                   <span>{currentSlide.ctaPrimaryText || 'Book Pickup Now'}</span>
@@ -223,9 +223,9 @@ export const HeroSection = ({ slides = [] }) => {
                 <Award className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
               <div>
-                <h3 className="text-lg sm:text-2xl font-black text-[#1F2937] font-display tracking-tight leading-none">
+                <p className="text-lg sm:text-2xl font-black text-[#1F2937] font-display tracking-tight leading-none">
                   9+ Years
-                </h3>
+                </p>
                 <p className="text-[11px] sm:text-sm font-semibold text-slate-600 mt-0.5 sm:mt-1">
                   Experience
                 </p>
@@ -237,9 +237,9 @@ export const HeroSection = ({ slides = [] }) => {
                 <Users className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
               <div>
-                <h3 className="text-lg sm:text-2xl font-black text-[#1F2937] font-display tracking-tight leading-none">
+                <p className="text-lg sm:text-2xl font-black text-[#1F2937] font-display tracking-tight leading-none">
                   10k+
-                </h3>
+                </p>
                 <p className="text-[11px] sm:text-sm font-semibold text-slate-600 mt-0.5 sm:mt-1">
                   Happy Clients
                 </p>
@@ -251,9 +251,9 @@ export const HeroSection = ({ slides = [] }) => {
                 <Clock className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
               <div>
-                <h3 className="text-lg sm:text-2xl font-black text-[#1F2937] font-display tracking-tight leading-none">
+                <p className="text-lg sm:text-2xl font-black text-[#1F2937] font-display tracking-tight leading-none">
                   45 Min
-                </h3>
+                </p>
                 <p className="text-[11px] sm:text-sm font-semibold text-slate-600 mt-0.5 sm:mt-1">
                   Express Slots
                 </p>
@@ -265,9 +265,9 @@ export const HeroSection = ({ slides = [] }) => {
                 <Star className="w-5 h-5 sm:w-6 sm:h-6 fill-[#F97316]" />
               </div>
               <div>
-                <h3 className="text-lg sm:text-2xl font-black text-[#1F2937] font-display tracking-tight leading-none">
+                <p className="text-lg sm:text-2xl font-black text-[#1F2937] font-display tracking-tight leading-none">
                   5-Star
-                </h3>
+                </p>
                 <p className="text-[11px] sm:text-sm font-semibold text-slate-600 mt-0.5 sm:mt-1">
                   Top Rated Care
                 </p>

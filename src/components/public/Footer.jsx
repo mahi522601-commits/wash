@@ -208,7 +208,7 @@ export const Footer = () => {
 
         {/* BOTTOM: Massive Editorial Typography Statement & Copyright */}
         <div className="pt-10 border-t border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-400">
-          <div className="font-display font-black text-2xl sm:text-3xl tracking-tighter text-slate-700 uppercase select-none">
+          <div aria-hidden="true" className="font-display font-black text-2xl sm:text-3xl tracking-tighter text-slate-600 uppercase select-none">
             CLEAN. CARE. CONFIDENCE.
           </div>
 

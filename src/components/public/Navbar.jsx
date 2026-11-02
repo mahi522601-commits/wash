@@ -87,6 +87,7 @@ export const Navbar = () => {
               href={`https://wa.me/${cleanWa}?text=${encodeURIComponent('Hello Tech Wash, I would like to schedule a laundry pickup.')}`}
               target="_blank"
               rel="noopener noreferrer"
+              aria-label="Chat with Tech Wash on WhatsApp"
               className="flex items-center gap-1.5 text-[#25D366] hover:text-white font-bold transition-colors"
             >
               <WhatsAppLogo className="w-3.5 h-3.5 fill-current text-[#25D366]" />
@@ -134,9 +135,9 @@ export const Navbar = () => {
             </div>
             <div className="flex flex-col">
               <span className="font-black font-display text-base sm:text-xl lg:text-2xl tracking-tight leading-none text-[#1F2937]">
-                TECH <span className="text-[#F97316]">WASH</span>
+                TECH <span className="text-[#C2410C]">WASH</span>
               </span>
-              <span className="text-[8px] sm:text-[9px] lg:text-[10px] font-black uppercase tracking-widest text-[#F97316] leading-none mt-0.5 sm:mt-1">
+              <span className="text-[8px] sm:text-[9px] lg:text-[10px] font-black uppercase tracking-widest text-[#C2410C] leading-none mt-0.5 sm:mt-1">
                 LAUNDRY SERVICES
               </span>
             </div>
@@ -152,8 +153,8 @@ export const Navbar = () => {
                     to={link.path}
                     className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1 ${
                       isActive
-                        ? 'text-[#F97316] bg-[#FFF7ED]'
-                        : 'text-[#1F2937] hover:text-[#F97316] hover:bg-[#FFF7ED]'
+                        ? 'text-[#C2410C] bg-[#FFF7ED]'
+                        : 'text-[#1F2937] hover:text-[#C2410C] hover:bg-[#FFF7ED]'
                     }`}
                   >
                     <span>{link.label}</span>
@@ -172,6 +173,7 @@ export const Navbar = () => {
               href={`https://wa.me/${cleanWa}?text=${encodeURIComponent('Hello Tech Wash, I would like to schedule a laundry pickup.')}`}
               target="_blank"
               rel="noopener noreferrer"
+              aria-label="Chat with Tech Wash on WhatsApp"
               className="hidden xl:flex items-center gap-2 px-3.5 py-2 rounded-full bg-[#25D366]/10 hover:bg-[#25D366] text-slate-800 hover:text-white border border-[#25D366]/40 text-xs font-bold transition-all group"
               title="Chat on WhatsApp"
             >
@@ -195,7 +197,7 @@ export const Navbar = () => {
             <Link to="/book-pickup">
               <button
                 type="button"
-                className="px-3 sm:px-5 py-1.5 sm:py-2.5 rounded-full bg-[#F97316] hover:bg-[#EA580C] text-white text-[11px] sm:text-xs font-bold flex items-center gap-1 sm:gap-1.5 shadow-md shadow-brand-500/20 hover:shadow-lg hover:scale-105 active:scale-95 transition-all"
+                className="px-3 sm:px-5 py-1.5 sm:py-2.5 rounded-full bg-[#C2410C] hover:bg-[#9A3412] text-white text-[11px] sm:text-xs font-bold flex items-center gap-1 sm:gap-1.5 shadow-md shadow-brand-500/20 hover:shadow-lg hover:scale-105 active:scale-95 transition-all"
               >
                 <Calendar className="w-3 sm:w-3.5 h-3 sm:h-3.5 text-white" />
                 <span>Book Pickup</span>
@@ -237,7 +239,7 @@ export const Navbar = () => {
 
             <div className="pt-2 flex flex-col gap-2">
               <Link to="/book-pickup" className="w-full">
-                <button className="w-full py-2.5 rounded-xl bg-[#F97316] hover:bg-[#EA580C] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm">
+                <button className="w-full py-2.5 rounded-xl bg-[#C2410C] hover:bg-[#9A3412] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm">
                   <Calendar className="w-3.5 h-3.5" />
                   <span>Book Doorstep Pickup</span>
                 </button>
@@ -248,6 +250,7 @@ export const Navbar = () => {
                 href={`https://wa.me/${cleanWa}?text=${encodeURIComponent('Hello Tech Wash, I would like to schedule a laundry pickup.')}`}
                 target="_blank"
                 rel="noopener noreferrer"
+              aria-label="Chat with Tech Wash on WhatsApp"
                 className="w-full"
               >
                 <button className="w-full py-2.5 rounded-xl bg-[#25D366] hover:bg-[#1EBE5D] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all">

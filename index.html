@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>#1 Best Laundry, Dry Cleaning (Dry Wash) & Iron Service in Manikonda - Flat 20% Off | Techwash</title>
     <meta name="description" content="Rated #1 Best Laundry, Dry Cleaning (Dry Wash) & Steam Iron Service in Manikonda (Near Me). Flat 20% Off + Free Doorstep Pickup in Puppalaguda, Secretariat Colony, OU Colony & Lanco Hills. 0 PPM RO water wash & eco dry cleaning." />
     <meta name="keywords" content="iron service in manikonda, dry wash service in manikonda, laundry in manikonda, best laundry in manikonda, dry cleaners in manikonda, best dry cleaners in manikonda, dry cleaning in manikonda, steam ironing manikonda, press service in manikonda, laundry near me, dry cleaning near me, laundry services manikonda hyderabad, tech wash laundry" />
@@ -237,10 +237,14 @@
     <link rel="apple-touch-icon" sizes="192x192" href="/techwashlogo.webp" />
     <link rel="apple-touch-icon" sizes="512x512" href="/techwashlogo.webp" />
     
-    <!-- Google Fonts for Modern POS & Luxury Typography -->
+    <!-- Google Fonts for Modern POS & Luxury Typography (Non-render-blocking) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap" rel="stylesheet">
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Outfit:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Outfit:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" media="print" onload="this.media='all'" />
+    <noscript>
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Outfit:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" />
+    </noscript>
   </head>
     <div id="root">
       <!-- High-End Tech Wash Initial Boot Preloader (disappears upon React mount) -->
@@ -270,7 +274,7 @@
             <!-- Specular Light Sheen -->
             <div style="position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.7),transparent);animation:twPreShine 2.5s ease-in-out infinite;pointer-events:none;"></div>
             <!-- Tech Wash Logo -->
-            <img src="/techwashlogo.webp" alt="Tech Wash" style="width:62px;height:62px;object-fit:contain;z-index:2;" />
+            <img src="/techwashlogo.webp" alt="Tech Wash" width="62" height="62" style="width:62px;height:62px;object-fit:contain;z-index:2;" />
           </div>
         </div>
 

@@ -40,11 +40,9 @@ try {
 
   auth = getAuth(app);
   try {
-    db = initializeFirestore(app, {
-      experimentalAutoDetectLongPolling: true,
-    });
-  } catch (err) {
     db = getFirestore(app);
+  } catch (err) {
+    db = initializeFirestore(app, {});
   }
   storage = getStorage(app);
 

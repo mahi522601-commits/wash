@@ -12,7 +12,6 @@ import {
 import { paymentService, PAYMENT_METHODS } from '../../services/paymentService';
 import { UpiPaymentCard } from '../../components/payment/UpiPaymentCard';
 import { UpiAppLogosRow } from '../../components/payment/UpiLogos';
-import { playOrderPlacedSound } from '../../utils/audioNotification';
 import { whatsappNotificationService } from '../../services/whatsappNotificationService';
 import { WhatsAppLogo } from '../../components/ui/BrandIcons';
 import { analyticsService } from '../../services/analyticsService';
@@ -994,9 +993,6 @@ export const BookPickupPage = () => {
       };
 
       const created = await orderService.createOrder(orderPayload);
-
-      // Play custom order confirmation chime from /1.mp4
-      playOrderPlacedSound();
 
       // Automatically dispatch rich WhatsApp order confirmation to customer's WhatsApp in the background
       whatsappNotificationService.sendCustomerWhatsAppOrderConfirmation(created, { autoOpen: false });

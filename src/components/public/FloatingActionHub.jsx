@@ -16,13 +16,11 @@ import {
   Zap, 
   Bell, 
   Compass, 
-  Volume2, 
   QrCode,
   ArrowRight,
   MessageCircle,
   Phone
 } from 'lucide-react';
-import { testOrderPlacedSound } from '../../utils/audioNotification';
 
 export const FloatingActionHub = ({ onOpenAssistant }) => {
   const { pathname } = useLocation();
@@ -541,22 +539,12 @@ export const FloatingActionHub = ({ onOpenAssistant }) => {
 
             </div>
 
-            {/* Audio Chime Preview & Footer Bar */}
-            <div className="pt-2 border-t border-white/10 flex items-center justify-between text-xs text-slate-400 relative z-10">
-              <button
-                type="button"
-                onClick={testOrderPlacedSound}
-                className="flex items-center gap-1.5 text-[11px] text-cyan-400 hover:text-cyan-300 font-bold transition-colors"
-                title="Test /1.mp4 notification sound"
-              >
-                <Volume2 className="w-3.5 h-3.5" />
-                <span>Test Audio Chime</span>
-              </button>
-
+            {/* Modal Footer Bar */}
+            <div className="pt-2 border-t border-white/10 flex items-center justify-end text-xs text-slate-400 relative z-10">
               <button
                 type="button"
                 onClick={() => setInstallModalOpen(false)}
-                className="hover:text-white transition-colors"
+                className="hover:text-white transition-colors py-1 px-2.5 rounded-lg hover:bg-white/5"
               >
                 Close
               </button>

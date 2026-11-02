@@ -15,6 +15,21 @@ let html5AudioInstance = null;
 let isAudioUnlocked = false;
 
 /**
+ * Check if the current context is an internal staff/management workspace (Admin, Billing, POS, Worker).
+ * Public customer-facing pages (e.g. booking, home, services) must never play order alert audio.
+ */
+export const isInternalWorkspace = () => {
+  if (typeof window === 'undefined') return false;
+  const path = (window.location.pathname || '').toLowerCase();
+  return (
+    path.startsWith('/admin') ||
+    path.startsWith('/billing') ||
+    path.startsWith('/pos') ||
+    path.startsWith('/worker')
+  );
+};
+
+/**
  * Get or initialize Web Audio Context
  */
 const getAudioContext = () => {
@@ -108,6 +123,8 @@ export const setNotificationVolume = (volume) => {
  */
 export const unlockAudioNotification = () => {
   if (isAudioUnlocked || typeof window === 'undefined') return;
+  // Audio chime is strictly reserved for Admin, POS Billing machines, and Worker dispatch
+  if (!isInternalWorkspace()) return;
 
   const unlock = async () => {
     try {
@@ -196,6 +213,13 @@ export const showSystemNotification = (title, options = {}) => {
  */
 export const playOrderPlacedSound = async (force = false, { title = null, message = null } = {}) => {
   if (typeof window === 'undefined') return false;
+
+  // STRICT RULE: Sound notification is exclusively for Admin, POS, and internal staff.
+  // Customers/users booking services or browsing the public site must NEVER hear alert sounds.
+  if (!isInternalWorkspace()) {
+    return false;
+  }
+
   if (!force && !isAudioNotificationEnabled()) return false;
 
   const volume = getNotificationVolume();

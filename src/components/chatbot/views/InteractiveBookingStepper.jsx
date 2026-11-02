@@ -4,7 +4,6 @@ import { getQuickItemsCatalog, QUICK_ITEMS_CATALOG } from '../../../services/cha
 import { pricingService, INITIAL_PRICING_CONFIG } from '../../../services/pricingConfig';
 import { locationService } from '../../../services/locationService';
 import { orderService } from '../../../services/orderService';
-import { playOrderPlacedSound } from '../../../utils/audioNotification';
 import { whatsappNotificationService } from '../../../services/whatsappNotificationService';
 import { WhatsAppLogo } from '../../ui/BrandIcons';
 import confetti from 'canvas-confetti';
@@ -194,9 +193,6 @@ export const InteractiveBookingStepper = ({
       };
 
       const created = await orderService.createOrder(orderPayload);
-
-      // Play custom order received sound from /1.mp4
-      playOrderPlacedSound();
 
       // Automatically dispatch rich WhatsApp order confirmation to customer in background
       whatsappNotificationService.sendCustomerWhatsAppOrderConfirmation(created, { autoOpen: false });

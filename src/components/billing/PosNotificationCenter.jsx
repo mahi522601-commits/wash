@@ -28,7 +28,7 @@ import {
 } from '../../utils/audioNotification';
 import { generateInvoicePDFBlob } from '../../services/pdfInvoiceGenerator';
 import { formatCurrency, formatDateTime } from '../../utils/formatters';
-import { getOrderBranchKey } from '../../services/orderService';
+import { getOrderBranchKey, orderService } from '../../services/orderService';
 
 const getStorageKey = (termId) => `techwash_pos_notifications_${termId || 'counter-1'}`;
 
@@ -107,12 +107,14 @@ export const PosNotificationCenter = ({
     setIsChiming(true);
     setTimeout(() => setIsChiming(false), 2500);
 
-    // Play Audio Chime
-    playOrderPlacedSound(newEntry.title, {
-      body: newEntry.message,
-      tag: newEntry.id,
-    });
-  }, [activeTerminalId]);
+    // Play Audio Chime for POS (respecting terminal mute setting)
+    if (!isAudioMuted && isAudioNotificationEnabled()) {
+      playOrderPlacedSound(true, {
+        title: newEntry.title,
+        message: newEntry.message,
+      });
+    }
+  }, [activeTerminalId, isAudioMuted]);
 
   // Listen to Global POS Events with Strict Terminal Isolation
   useEffect(() => {
@@ -184,12 +186,16 @@ export const PosNotificationCenter = ({
       }
     };
 
-    window.addEventListener('techwash-new-order-placed', handleNewOrder);
+    // Multi-source real-time new orders listener (Local, BroadcastChannel, Firestore)
+    const unsubOrders = orderService.subscribeToNewOrders((ord) => {
+      handleNewOrder({ detail: { order: ord } });
+    });
+
     window.addEventListener('techwash-order-payment-updated', handlePayment);
     window.addEventListener('techwash-order-updated', handleOrderUpdated);
 
     return () => {
-      window.removeEventListener('techwash-new-order-placed', handleNewOrder);
+      if (typeof unsubOrders === 'function') unsubOrders();
       window.removeEventListener('techwash-order-payment-updated', handlePayment);
       window.removeEventListener('techwash-order-updated', handleOrderUpdated);
     };
