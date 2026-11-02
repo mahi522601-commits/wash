@@ -185,12 +185,12 @@ export const Navbar = () => {
             <a
               href={`tel:${cleanPhone}`}
               className="hidden sm:flex items-center gap-2 px-3.5 py-2 rounded-full bg-emerald-50 hover:bg-emerald-100 text-slate-800 border border-emerald-300 text-xs font-bold transition-all shadow-xs group"
-              title={`Call ${primaryPhone}`}
+              title={`Call Tech Wash at ${primaryPhone}`}
             >
               <div className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center group-hover:scale-110 transition-transform shadow-xs">
                 <PhoneCallLogo className="w-3.5 h-3.5 fill-current text-white" />
               </div>
-              <span className="font-semibold">{primaryPhone}</span>
+              <span className="font-semibold">Call Us</span>
             </a>
 
             {/* Book Pickup Primary Button */}
@@ -263,7 +263,7 @@ export const Navbar = () => {
               <a href={`tel:${cleanPhone}`} className="w-full">
                 <button className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all">
                   <PhoneCallLogo className="w-4 h-4 fill-current text-white" />
-                  <span>Call Hotline: {primaryPhone}</span>
+                  <span>Call Us</span>
                 </button>
               </a>
             </div>

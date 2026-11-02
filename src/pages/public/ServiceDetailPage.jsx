@@ -551,7 +551,7 @@ export const ServiceDetailPage = () => {
                   title="Call 90008 13444"
                 >
                   <Phone className="w-4 h-4 text-emerald-400" />
-                  <span>Call 90008 13444</span>
+                  <span>Call Now</span>
                 </a>
 
                 <a 
@@ -1239,7 +1239,7 @@ export const ServiceDetailPage = () => {
                     title="Call 90008 13444"
                   >
                     <Phone className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Call 90008 13444</span>
+                    <span>Call Now</span>
                   </a>
                 </div>
 

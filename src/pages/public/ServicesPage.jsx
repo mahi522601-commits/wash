@@ -419,7 +419,7 @@ export const ServicesPage = () => {
                       title="Call Techwash directly at 90008 13444"
                     >
                       <Phone className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                      <span>Call 90008 13444</span>
+                      <span>Call Now</span>
                     </a>
                   </div>
                 </div>

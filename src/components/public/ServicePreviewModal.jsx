@@ -64,7 +64,7 @@ export const ServicePreviewModal = ({
                   title="Call 90008 13444"
                 >
                   <Phone className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Call 90008 13444</span>
+                  <span>Call Now</span>
                 </a>
               </div>
             </div>
