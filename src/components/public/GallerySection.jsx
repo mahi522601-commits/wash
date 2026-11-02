@@ -63,7 +63,7 @@ const DEFAULT_TRANSFORMATIONS = [
 ];
 
 export const GallerySection = ({ gallery = [] }) => {
-  const [items, setItems] = useState([]);
+  const [items, setItems] = useState(DEFAULT_TRANSFORMATIONS);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [lightboxItem, setLightboxItem] = useState(null);
 

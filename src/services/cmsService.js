@@ -30,8 +30,8 @@ export const cmsService = {
       items = [];
     }
 
-    // Only query Firestore if forceFresh or no local items
-    if ((forceFresh || items.length === 0) && isFirebaseConfigured && db) {
+    // Only query Firestore if forceFresh is explicitly requested
+    if (forceFresh && isFirebaseConfigured && db) {
       try {
         const snap = await getDocs(collection(db, entityName));
         if (!snap.empty) {

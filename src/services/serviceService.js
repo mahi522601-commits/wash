@@ -603,8 +603,9 @@ export const serviceService = {
 
     if (missingDefaults.length > 0) {
       list = [...list, ...missingDefaults];
-      // Seed missing services to Firestore in background
-      if (isFirebaseConfigured && db) {
+      // Seed missing services to Firestore in background (admin/worker portals only)
+      const isSpecial = typeof window !== 'undefined' && (window.location.pathname.startsWith('/admin') || window.location.pathname.startsWith('/worker'));
+      if (isSpecial && isFirebaseConfigured && db) {
         Promise.all(
           missingDefaults.map(srv => setDoc(doc(db, 'services', srv.id), srv, { merge: true }))
         ).catch(err => console.warn("Background service seed error:", err));

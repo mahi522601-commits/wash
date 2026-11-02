@@ -80,7 +80,7 @@ const DEFAULT_REVIEWS = [
 const AUTO_PLAY_INTERVAL = 5000; // 5 seconds per slide
 
 export const TestimonialsSection = ({ testimonials = [] }) => {
-  const [reviews, setReviews] = useState([]);
+  const [reviews, setReviews] = useState(DEFAULT_REVIEWS);
   const [activeIndex, setActiveIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [touchStart, setTouchStart] = useState(null);
