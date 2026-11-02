@@ -11,7 +11,7 @@ export const BookingCTA = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="max-w-3xl mx-auto text-center space-y-6">
           
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#F97316]/15 border border-[#F97316]/40 text-[#F97316] text-xs font-bold uppercase tracking-wider">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#F97316]/15 border border-[#F97316]/40 text-orange-300 text-xs font-bold uppercase tracking-wider">
             <Sparkles className="w-3.5 h-3.5" />
             <span>Ready for Pure Fabric Perfection?</span>
           </div>
@@ -26,7 +26,7 @@ export const BookingCTA = () => {
 
           <div className="pt-4 flex items-center justify-center gap-4 flex-wrap">
             <Link to="/book-pickup">
-              <Button variant="primary" size="xl" icon={Calendar} className="bg-[#F97316] hover:bg-[#EA580C] text-white shadow-glow-orange border-none">
+              <Button variant="primary" size="xl" icon={Calendar} className="bg-[#C2410C] hover:bg-[#9A3412] text-white shadow-glow-orange border-none">
                 Book Doorstep Pickup
               </Button>
             </Link>
@@ -40,11 +40,11 @@ export const BookingCTA = () => {
 
           <div className="pt-8 border-t border-slate-700/60 flex items-center justify-center gap-8 text-xs text-slate-300 flex-wrap">
             <span className="flex items-center gap-1.5 font-medium">
-              <ShieldCheck className="w-4 h-4 text-[#F97316]" />
+              <ShieldCheck className="w-4 h-4 text-[#C2410C]" />
               <span>100% Quality & Fabric Guarantee</span>
             </span>
             <span className="flex items-center gap-1.5 font-medium">
-              <Clock className="w-4 h-4 text-[#F97316]" />
+              <Clock className="w-4 h-4 text-[#C2410C]" />
               <span>Express 24-Hr Turnaround Available</span>
             </span>
           </div>

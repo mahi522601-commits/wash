@@ -15,7 +15,7 @@ export const BUSINESS_INFO = {
   url: BASE_URL,
   logo: `${BASE_URL}/techwashlogo.webp`,
   image: `${BASE_URL}/techwashlogo.webp`,
-  telephone: '+91 63048 45567',
+  telephone: '+91 90008 13444',
   email: 'support@techwashlaundry.com',
   priceRange: '₹12 - ₹350',
   currenciesAccepted: 'INR',
@@ -106,7 +106,7 @@ export const SEO_AREAS = [
       },
       {
         question: 'How does laundry pickup and delivery in Manikonda work?',
-        answer: 'You can schedule a pickup online in 60 seconds or call +91 63048 45567. Our executive arrives at your preferred time slot (8 AM – 9 PM) anywhere in Manikonda with calibrated electronic scales and delivers your clothes back fresh, crisp, and sealed within 24–48 hours.',
+        answer: 'You can schedule a pickup online in 60 seconds or call +91 90008 13444. Our executive arrives at your preferred time slot (8 AM – 9 PM) anywhere in Manikonda with calibrated electronic scales and delivers your clothes back fresh, crisp, and sealed within 24–48 hours.',
       },
       {
         question: 'Where can I find your physical store counter in Manikonda?',
@@ -139,7 +139,7 @@ export const BUSINESS_BRANCHES = [
     address: 'Shaikpet Main Rd, Sri Ram Nagar Colony, Manikonda, Hyderabad, Telangana 500089',
     locality: 'Manikonda',
     postalCode: '500089',
-    telephone: '+91 63048 45567',
+    telephone: '+91 90008 13444',
     geo: { latitude: 17.4005, longitude: 78.3895 },
   },
   {
@@ -221,7 +221,7 @@ export const SEO_SERVICES = [
       },
       {
         question: 'How do I book a laundry pickup with Techwash?',
-        answer: 'You can book online via techwashlaundry.com/book-pickup or WhatsApp/call +91 63048 45567. Our executive will arrive at your scheduled time with digital scales.',
+        answer: 'You can book online via techwashlaundry.com/book-pickup or WhatsApp/call +91 90008 13444. Our executive will arrive at your scheduled time with digital scales.',
       },
     ],
     manikondaFaqs: [
@@ -321,7 +321,7 @@ export const SEO_SERVICES = [
       },
       {
         question: 'Where can I book wash and iron in Manikonda?',
-        answer: 'Book online at techwashlaundry.com or call our Manikonda hotline at +91 63048 45567.',
+        answer: 'Book online at techwashlaundry.com or call our Manikonda hotline at +91 90008 13444.',
       },
     ],
   },
@@ -488,7 +488,7 @@ export const SEO_SERVICES = [
       },
       {
         question: 'How do I contact customer support for my pickup?',
-        answer: 'You can call or WhatsApp our Manikonda support team directly at +91 63048 45567.',
+        answer: 'You can call or WhatsApp our Manikonda support team directly at +91 90008 13444.',
       },
     ],
   },
@@ -651,7 +651,7 @@ export const SEO_SERVICES = [
       },
       {
         question: 'How can I schedule wash and fold pickup in Manikonda?',
-        answer: 'Book in 60 seconds at techwashlaundry.com or call +91 63048 45567.',
+        answer: 'Book in 60 seconds at techwashlaundry.com or call +91 90008 13444.',
       },
     ],
   },
@@ -806,7 +806,7 @@ export const SEO_SERVICES = [
       },
       {
         question: 'Where can I book saree rolling in Manikonda?',
-        answer: 'Book online at techwashlaundry.com or call +91 63048 45567.',
+        answer: 'Book online at techwashlaundry.com or call +91 90008 13444.',
       },
     ],
   },
@@ -961,7 +961,7 @@ export const SEO_SERVICES = [
       },
       {
         question: 'How do I book curtain pickup in Manikonda?',
-        answer: 'Call +91 63048 45567 or book online at techwashlaundry.com.',
+        answer: 'Call +91 90008 13444 or book online at techwashlaundry.com.',
       },
     ],
   },
@@ -1038,7 +1038,7 @@ export const SEO_SERVICES = [
       },
       {
         question: 'How to book carpet cleaning in Manikonda?',
-        answer: 'Book online at techwashlaundry.com or call +91 63048 45567.',
+        answer: 'Book online at techwashlaundry.com or call +91 90008 13444.',
       },
     ],
   },

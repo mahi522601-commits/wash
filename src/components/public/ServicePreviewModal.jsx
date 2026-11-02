@@ -59,12 +59,12 @@ export const ServicePreviewModal = ({
                   Book This Service
                 </Button>
                 <a
-                  href="tel:6304845567"
+                  href="tel:9000813444"
                   className="px-4 py-2.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 text-xs font-bold flex items-center gap-1.5 transition-all"
-                  title="Call 6304845567"
+                  title="Call 90008 13444"
                 >
                   <Phone className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Call 6304845567</span>
+                  <span>Call 90008 13444</span>
                 </a>
               </div>
             </div>

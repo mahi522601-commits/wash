@@ -31,6 +31,12 @@ class SyncQueueService {
 
   async initQueue() {
     if (typeof window !== 'undefined') {
+      const isPosOrAdmin = 
+        window.location.pathname.startsWith('/admin') || 
+        window.location.pathname.startsWith('/billing') || 
+        window.location.pathname.startsWith('/pos') || 
+        window.location.pathname.startsWith('/worker');
+      if (!isPosOrAdmin) return;
       try {
         await this.loadQueueFromDB();
         await this.reconcileFromIndexedDB();

@@ -414,12 +414,12 @@ export const ServicesPage = () => {
                       <span>Book Pickup</span>
                     </Link>
                     <a
-                      href="tel:6304845567"
+                      href="tel:9000813444"
                       className="w-full py-2.5 px-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold flex items-center justify-center gap-2 transition-all active:scale-95 text-center shadow-xs"
-                      title="Call Techwash directly at 6304845567"
+                      title="Call Techwash directly at 90008 13444"
                     >
                       <Phone className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                      <span>Call 6304845567</span>
+                      <span>Call 90008 13444</span>
                     </a>
                   </div>
                 </div>

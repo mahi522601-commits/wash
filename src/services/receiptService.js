@@ -7,8 +7,8 @@ import { settingsService } from './settingsService.js';
 export const DEFAULT_RECEIPT_CONFIG = {
   businessName: 'Tech Wash Laundry Services',
   tagline: 'Next-Generation Premium Fabric Care & Couture Studio',
-  phone: '+91 63048 45567',
-  whatsapp: '+91 63048 45567',
+  phone: '+91 90008 13444',
+  whatsapp: '+91 90008 13444',
   email: 'care@techwashlaundry.com',
   website: 'https://techwashlaundry.com',
   address: 'Shaikpet Main Rd, Sri Ram Nagar Colony, Manikonda, Hyderabad, Telangana - 500089',
@@ -16,7 +16,7 @@ export const DEFAULT_RECEIPT_CONFIG = {
   fssaiOrReg: 'REG-TW-2026-HYD',
   prefixPattern: 'TW-{YEAR}-{NUMBER}',
   thankYouMessage: 'Thank you for trusting Tech Wash with your garments. Fresh clothes. Professional care.',
-  footerContactNote: 'For queries, scheduling changes or feedback, contact our concierge at +91 63048 45567.',
+  footerContactNote: 'For queries, scheduling changes or feedback, contact our concierge at +91 90008 13444.',
   termsAndConditions: '1. Garments are inspected and processed according to international textile care standards.\n2. Please report any discrepancy within 24 hours of delivery.\n3. Digital invoices are GST compliant and stored securely.',
   
   // Visibility toggles

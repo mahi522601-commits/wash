@@ -4,7 +4,13 @@ import { useAuth } from '../../context/AuthContext';
 import { authService } from '../../services/authService';
 import { useToast } from '../../context/ToastContext';
 import { orderService } from '../../services/orderService';
-import { playOrderPlacedSound, unlockAudioNotification } from '../../utils/audioNotification';
+import { 
+  playOrderPlacedSound, 
+  unlockAudioNotification,
+  startOrderRingingAlarm,
+  stopOrderRingingAlarm
+} from '../../utils/audioNotification';
+import { IncomingOrderAlertModal } from '../common/IncomingOrderAlertModal';
 import { AdminSidebar } from './AdminSidebar';
 import { AdminHeader } from './AdminHeader';
 import { AdminCommandPalette } from './AdminCommandPalette';
@@ -31,19 +37,32 @@ export const AdminLayout = () => {
     unlockAudioNotification();
   }, []);
 
-  // Listen for real-time new customer orders across all channels & play notification sound (/1.mp4)
+  // Listen for real-time new customer orders & trigger persistent ringing alarm for unaccepted bookings
   useEffect(() => {
+    // 1. Check existing unaccepted online orders on load
+    orderService.getPendingAcceptanceOrders().then(pending => {
+      if (pending && pending.length > 0) {
+        pending.forEach(ord => startOrderRingingAlarm(ord));
+      }
+    }).catch(() => {});
+
+    // 2. Real-time new orders handler
     const handleNewOrder = (order) => {
       const customer = order?.customerName || order?.customer?.name || 'Customer';
       const serviceName = order?.serviceName || order?.service || 'Laundry Service';
       const orderNum = order?.orderNumber || order?.id || 'New Order';
       const amount = order?.totalAmount || order?.priceSnapshot?.finalTotal;
 
-      // Play enhanced notification chime (/1.mp4) with gain booster & system notification
-      playOrderPlacedSound(false, {
-        title: `🚨 New Order #${orderNum} Received!`,
-        message: `${customer} placed an order for ${serviceName}${amount ? ` (₹${amount})` : ''}.`
-      });
+      // If online booking requiring acceptance, start continuous ringing alarm
+      if (order?.needsAcceptance === true || order?.acceptanceStatus === 'PENDING_ACCEPTANCE') {
+        startOrderRingingAlarm(order);
+      } else {
+        // Regular staff / offline walk-in single chime
+        playOrderPlacedSound(false, {
+          title: `🧾 New Bill #${orderNum} Generated`,
+          message: `${customer} • ${serviceName}${amount ? ` (₹${amount})` : ''}.`
+        });
+      }
 
       info(
         '🔔 New Order Received!',
@@ -132,6 +151,9 @@ export const AdminLayout = () => {
 
       {/* 4. INTERNAL MASTER STORAGE & OFFLINE PERSISTENCE MANAGER */}
       <InternalStorageSyncManager />
+
+      {/* 5. URGENT INCOMING ONLINE ORDER RINGING ALARM MODAL */}
+      <IncomingOrderAlertModal acceptedByRole="Admin Command Center" />
 
     </div>
   );

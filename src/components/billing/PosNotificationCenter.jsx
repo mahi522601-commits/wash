@@ -24,7 +24,9 @@ import {
   isAudioNotificationEnabled, 
   setAudioNotificationEnabled,
   requestSystemNotificationPermission,
-  showSystemNotification
+  showSystemNotification,
+  startOrderRingingAlarm,
+  stopOrderRingingAlarm
 } from '../../utils/audioNotification';
 import { generateInvoicePDFBlob } from '../../services/pdfInvoiceGenerator';
 import { formatCurrency, formatDateTime } from '../../utils/formatters';
@@ -132,11 +134,18 @@ export const PosNotificationCenter = ({
       const custName = ord.customerName || ord.customer?.name || 'Customer';
       const total = Number(ord.totalAmount || ord.finalPrice || 0);
       const isPaid = ord.paymentStatus === 'PAID';
+      const isOnlinePending = (ord.isOnlineBooking || ord.needsAcceptance) && ord.acceptanceStatus !== 'ACCEPTED';
+
+      if (activeTerminalId === 'counter-2' && isOnlinePending) {
+        startOrderRingingAlarm(ord);
+      }
 
       addNotification({
         type: 'BILL',
         icon: 'BILL',
-        title: `🧾 New Bill Generated: #${billNum}`,
+        title: isOnlinePending 
+          ? `🚨 Online Booking #${billNum} (Needs Acceptance)`
+          : `🧾 New Bill Generated: #${billNum}`,
         message: `${custName} • ${formatCurrency(total)} (${ord.paymentMethod || 'CASH'})${isPaid ? ' — PAID' : ' — DUE'}`,
         order: ord,
         orderId: ord.id || billNum,
@@ -185,6 +194,15 @@ export const PosNotificationCenter = ({
         });
       }
     };
+
+    // If on POS 2, check for any unaccepted online orders that need ringing alarm
+    if (activeTerminalId === 'counter-2') {
+      orderService.getPendingAcceptanceOrders('counter-2').then(pending => {
+        if (pending && pending.length > 0) {
+          pending.forEach(ord => startOrderRingingAlarm(ord));
+        }
+      }).catch(() => {});
+    }
 
     // Multi-source real-time new orders listener (Local, BroadcastChannel, Firestore)
     const unsubOrders = orderService.subscribeToNewOrders((ord) => {
@@ -460,7 +478,26 @@ export const PosNotificationCenter = ({
 
                     {/* Action Toolbar for Order Notifications */}
                     {notif.order && (
-                      <div className="mt-2 pt-2 border-t border-slate-800/80 flex items-center gap-1.5">
+                      <div className="mt-2 pt-2 border-t border-slate-800/80 flex items-center gap-1.5 flex-wrap">
+                        {(notif.order.needsAcceptance || notif.order.acceptanceStatus === 'PENDING_ACCEPTANCE') && (
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                await orderService.acceptOrder(notif.order.id, `POS-2 (${terminal?.name || 'Tolichowki'})`);
+                                stopOrderRingingAlarm(notif.order.id);
+                              } catch (e) {
+                                stopOrderRingingAlarm(notif.order.id);
+                              }
+                            }}
+                            className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-black transition flex items-center gap-1 cursor-pointer shadow-sm animate-pulse"
+                            title="Accept Online Order"
+                          >
+                            <CheckCircle2 className="w-3 h-3 text-white" />
+                            <span>Accept</span>
+                          </button>
+                        )}
+
                         <button
                           type="button"
                           onClick={() => handleOpenPdf(notif.order)}

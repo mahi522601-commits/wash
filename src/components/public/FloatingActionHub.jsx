@@ -62,9 +62,9 @@ export const FloatingActionHub = ({ onOpenAssistant }) => {
     return null;
   }
 
-  const whatsappNumber = settings?.general?.whatsappNumber || '+91 63048 45567';
+  const whatsappNumber = settings?.general?.whatsappNumber || '+91 90008 13444';
   const whatsappMsg = settings?.general?.whatsappDefaultMessage || 'Hi Tech Wash, I would like to inquire about laundry & dry cleaning pickup!';
-  const primaryPhone = settings?.general?.primaryPhone || '+91 63048 45567';
+  const primaryPhone = settings?.general?.primaryPhone || '+91 90008 13444';
 
   const cleanWa = whatsappNumber.replace(/[^0-9]/g, '');
   const cleanPhone = primaryPhone.replace(/[^0-9]/g, '');

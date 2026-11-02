@@ -185,7 +185,7 @@ To rank on Google 3-Pack for local "near me" searches, maintain 100% exact Name,
 - **Business Name:** Techwash Laundry Services
 - **Full Address:** Shaikpet Main Rd, Sri Ram Nagar Colony, Manikonda, Hyderabad, Telangana 500089
 - **Landmark:** Near Sri Ram Nagar Colony / Puppalaguda junction
-- **Phone:** +91 63048 45567
+- **Phone:** +91 90008 13444
 - **GPS Coordinates:** `17.4005, 78.3895`
 - **Hours:** 8:00 AM – 9:00 PM (Monday – Sunday)
 

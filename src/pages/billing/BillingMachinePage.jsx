@@ -29,6 +29,7 @@ import { PosTasksModal } from '../../components/billing/PosTasksModal';
 import { PosBalanceDueModal } from '../../components/billing/PosBalanceDueModal';
 import { PosExpensesModal } from '../../components/billing/PosExpensesModal';
 import { PosNotificationCenter } from '../../components/billing/PosNotificationCenter';
+import { IncomingOrderAlertModal } from '../../components/common/IncomingOrderAlertModal';
 import { 
   pricingService, 
   INITIAL_PRICING_CONFIG,
@@ -3290,6 +3291,14 @@ export const BillingMachinePage = () => {
         terminal={terminal}
         activeTerminalId={activeTerminalId}
       />
+
+      {/* ── URGENT INCOMING ONLINE ORDER RINGING ALARM (POS-2 ONLY) ── */}
+      {activeTerminalId === 'counter-2' && (
+        <IncomingOrderAlertModal
+          terminalId="counter-2"
+          acceptedByRole={`POS-2 (${terminal?.name || 'Tolichowki'})`}
+        />
+      )}
     </>
   );
 };

@@ -18,7 +18,7 @@ export const Footer = () => {
 
   const businessName = settings?.general?.businessName || 'Tech Wash Laundry Services';
   const tagline = settings?.general?.tagline || 'Next-Generation Premium Garment Care';
-  const primaryPhone = settings?.general?.primaryPhone || '+91 63048 45567';
+  const primaryPhone = settings?.general?.primaryPhone || '+91 90008 13444';
   const supportEmail = settings?.general?.supportEmail || 'support@techwashlaundry.com';
   const hours = settings?.workingHours?.weekdays || '8:00 AM - 9:00 PM (Daily)';
 
@@ -72,7 +72,7 @@ export const Footer = () => {
         {/* TOP: Call to Action Banner */}
         <div className="p-8 sm:p-12 rounded-[36px] bg-[#111827] border border-[#F97316]/30 flex flex-col md:flex-row items-center justify-between gap-8 shadow-2xl">
           <div className="space-y-2 text-center md:text-left">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#F97316]/15 border border-[#F97316]/40 text-[#F97316] text-xs font-bold uppercase tracking-wider">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#F97316]/15 border border-[#F97316]/40 text-orange-300 text-xs font-bold uppercase tracking-wider">
               <Sparkles className="w-3.5 h-3.5" />
               <span>Doorstep White-Glove Care</span>
             </div>
@@ -86,7 +86,7 @@ export const Footer = () => {
 
           <Link
             to="/book-pickup"
-            className="px-8 py-4 rounded-full bg-[#F97316] hover:bg-[#EA580C] text-white font-extrabold text-sm shadow-[0_0_25px_rgba(249,115,22,0.4)] hover:scale-105 transition-all shrink-0 flex items-center gap-2"
+            className="px-8 py-4 rounded-full bg-[#C2410C] hover:bg-[#9A3412] text-white font-extrabold text-sm shadow-[0_0_25px_rgba(249,115,22,0.4)] hover:scale-105 transition-all shrink-0 flex items-center gap-2"
           >
             <Calendar className="w-4 h-4 text-white" />
             <span>Schedule Doorstep Pickup</span>
@@ -208,7 +208,7 @@ export const Footer = () => {
 
         {/* BOTTOM: Massive Editorial Typography Statement & Copyright */}
         <div className="pt-10 border-t border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-400">
-          <div aria-hidden="true" className="font-display font-black text-2xl sm:text-3xl tracking-tighter text-slate-600 uppercase select-none">
+          <div aria-hidden="true" className="font-display font-black text-2xl sm:text-3xl tracking-tighter text-slate-400 uppercase select-none">
             CLEAN. CARE. CONFIDENCE.
           </div>
 

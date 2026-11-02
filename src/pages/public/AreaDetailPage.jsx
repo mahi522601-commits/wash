@@ -267,9 +267,9 @@ export const AreaDetailPage = () => {
 
                     <div className="flex items-center gap-2">
                       <a
-                        href="tel:6304845567"
+                        href="tel:9000813444"
                         className="py-1.5 px-2.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold flex items-center gap-1 transition-all active:scale-95"
-                        title="Call 6304845567"
+                        title="Call 90008 13444"
                       >
                         <Phone className="w-3.5 h-3.5 text-emerald-600" />
                         <span>Call</span>

@@ -23,7 +23,7 @@ export const ContactPage = () => {
 
   const general = settings?.general || {};
   const hours = settings?.workingHours || {};
-  const phone = general.primaryPhone || '+91 63048 45567';
+  const phone = general.primaryPhone || '+91 90008 13444';
   const whatsapp = (general.whatsappNumber || phone).replace(/\D/g, '');
 
   const structuredData = {
@@ -182,7 +182,7 @@ export const ContactPage = () => {
                     label="Mobile Number *"
                     required
                     type="tel"
-                    placeholder="e.g. 6304845567"
+                    placeholder="e.g. 9000813444"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   />

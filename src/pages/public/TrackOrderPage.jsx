@@ -368,7 +368,7 @@ export const TrackOrderPage = () => {
                       <Button variant="outline" size="sm" icon={Printer} onClick={() => setIsReceiptOpen(true)}>
                         Official Tax Invoice
                       </Button>
-                      <a href={`tel:${order.customer?.phone || (settings?.general?.primaryPhone || '+916304845567').replace(/\s/g, '')}`}>
+                      <a href={`tel:${order.customer?.phone || (settings?.general?.primaryPhone || '+919000813444').replace(/\s/g, '')}`}>
                         <Button variant="secondary" size="sm" icon={Phone}>
                           Call Rider
                         </Button>

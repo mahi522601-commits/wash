@@ -546,12 +546,12 @@ export const ServiceDetailPage = () => {
                 </Link>
 
                 <a
-                  href="tel:6304845567"
+                  href="tel:9000813444"
                   className="px-5 py-3.5 rounded-2xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 hover:text-white border border-emerald-500/30 text-xs font-bold transition-all flex items-center gap-2 hover:scale-105 active:scale-95"
-                  title="Call 6304845567"
+                  title="Call 90008 13444"
                 >
                   <Phone className="w-4 h-4 text-emerald-400" />
-                  <span>Call 6304845567</span>
+                  <span>Call 90008 13444</span>
                 </a>
 
                 <a 
@@ -1234,12 +1234,12 @@ export const ServiceDetailPage = () => {
                   </Link>
 
                   <a
-                    href="tel:6304845567"
+                    href="tel:9000813444"
                     className="w-full py-3 px-4 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-sm font-bold flex items-center justify-center gap-2 transition-all active:scale-95 text-center shadow-xs block"
-                    title="Call 6304845567"
+                    title="Call 90008 13444"
                   >
                     <Phone className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Call 6304845567</span>
+                    <span>Call 90008 13444</span>
                   </a>
                 </div>
 

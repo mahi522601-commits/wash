@@ -262,7 +262,7 @@ ${trackingLink}
 • Scan UPI QR upon delivery / counter
 • Cash / UPI on delivery
 
-For queries or assistance, contact our concierge at *+91 63048 45567*. Thank you!`;
+For queries or assistance, contact our concierge at *+91 90008 13444*. Thank you!`;
 
     whatsappNotificationService.openWhatsAppManual(phone, message);
     success('WhatsApp Opened', `Payment reminder prepared for ${order.customerName}.`);

@@ -171,7 +171,7 @@ export const TestimonialsSection = ({ testimonials = [] }) => {
           <div className="space-y-2 max-w-xl">
             {/* Luminous Animated Badge */}
             <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-gradient-to-r from-orange-500/10 via-amber-500/15 to-orange-500/10 border border-orange-300/40 text-orange-700 text-[11px] sm:text-xs font-bold uppercase tracking-wider shadow-xs">
-              <Sparkles className="w-3.5 h-3.5 text-[#F97316] animate-spin" style={{ animationDuration: '6s' }} />
+              <Sparkles className="w-3.5 h-3.5 text-[#C2410C] animate-spin" style={{ animationDuration: '6s' }} />
               <span className="font-extrabold text-orange-900">4.9/5 Rating</span>
               <span className="text-orange-400">•</span>
               <span>500+ Discerning Patrons</span>
@@ -271,7 +271,7 @@ export const TestimonialsSection = ({ testimonials = [] }) => {
                     <span>Verified Order</span>
                   </span>
                 )}
-                <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-orange-50 text-[#F97316] text-[10px] sm:text-xs font-bold border border-orange-200">
+                <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-orange-50 text-[#C2410C] text-[10px] sm:text-xs font-bold border border-orange-200">
                   <Sparkles className="w-3 h-3" />
                   <span>{current.serviceUsed}</span>
                 </span>
@@ -287,7 +287,7 @@ export const TestimonialsSection = ({ testimonials = [] }) => {
 
             {/* Service tag for mobile view */}
             <div className="sm:hidden relative z-10">
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-orange-50 text-[#F97316] text-[10px] font-bold border border-orange-200">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-orange-50 text-[#C2410C] text-[10px] font-bold border border-orange-200">
                 <Sparkles className="w-3 h-3" />
                 <span>{current.serviceUsed}</span>
               </span>
@@ -331,7 +331,7 @@ export const TestimonialsSection = ({ testimonials = [] }) => {
           </div>
 
           {/* Swipe Hint on Mobile */}
-          <div className="sm:hidden text-center mt-2.5 text-[10px] font-medium text-slate-400">
+          <div className="sm:hidden text-center mt-2.5 text-[10px] font-medium text-slate-600">
             Swipe left/right to browse reviews • Tap to pause
           </div>
         </div>

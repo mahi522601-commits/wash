@@ -49,8 +49,8 @@ export const Navbar = () => {
     { label: 'Track Order', path: '/track-order' },
   ];
 
-  const primaryPhone = settings?.general?.primaryPhone || '+91 63048 45567';
-  const whatsappNumber = settings?.general?.whatsappNumber || '+91 63048 45567';
+  const primaryPhone = settings?.general?.primaryPhone || '+91 90008 13444';
+  const whatsappNumber = settings?.general?.whatsappNumber || '+91 90008 13444';
   const supportEmail = settings?.general?.supportEmail || 'support@techwashlaundry.com';
   const businessAddress = settings?.general?.businessAddress || 'Shaikpet Main Rd, Manikonda, Hyderabad';
 

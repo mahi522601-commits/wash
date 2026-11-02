@@ -165,12 +165,12 @@ export const HowItWorksSection = () => {
         {/* Compact Header with Flow Status */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-orange-200/50 pb-5">
           <div className="text-center sm:text-left space-y-1">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/90 border border-[#FED7AA] text-[#F97316] text-[11px] font-black uppercase tracking-wider shadow-sm">
-              <Sparkles className="w-3.5 h-3.5 text-[#F97316] animate-pulse" />
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/90 border border-[#FED7AA] text-[#C2410C] text-[11px] font-black uppercase tracking-wider shadow-sm">
+              <Sparkles className="w-3.5 h-3.5 text-[#C2410C] animate-pulse" />
               <span>Scientific Custodial Pipeline</span>
             </div>
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black font-display tracking-tight text-[#1F2937]">
-              6-Stage Precision <span className="text-[#F97316]">Processing Flow</span>
+              6-Stage Precision <span className="text-[#C2410C]">Processing Flow</span>
             </h2>
           </div>
 
@@ -179,7 +179,7 @@ export const HowItWorksSection = () => {
             <button
               onClick={handlePrev}
               aria-label="Previous Stage"
-              className="w-7 h-7 rounded-full flex items-center justify-center text-slate-500 hover:text-[#F97316] hover:bg-orange-50 transition-colors"
+              className="w-7 h-7 rounded-full flex items-center justify-center text-slate-500 hover:text-[#C2410C] hover:bg-orange-50 transition-colors"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -187,7 +187,7 @@ export const HowItWorksSection = () => {
             <button
               onClick={togglePlay}
               aria-label={isPlaying ? 'Pause Flow' : 'Play Flow'}
-              className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FFF7ED] text-xs font-bold text-[#F97316] hover:bg-[#F97316] hover:text-white transition-all"
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FFF7ED] text-xs font-bold text-[#C2410C] hover:bg-[#F97316] hover:text-white transition-all"
             >
               {isPlaying ? (
                 <>
@@ -205,7 +205,7 @@ export const HowItWorksSection = () => {
             <button
               onClick={handleNext}
               aria-label="Next Stage"
-              className="w-7 h-7 rounded-full flex items-center justify-center text-slate-500 hover:text-[#F97316] hover:bg-orange-50 transition-colors"
+              className="w-7 h-7 rounded-full flex items-center justify-center text-slate-500 hover:text-[#C2410C] hover:bg-orange-50 transition-colors"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -289,8 +289,8 @@ export const HowItWorksSection = () => {
                         isActive
                           ? 'bg-gradient-to-tr from-[#EA580C] to-[#F97316] text-white shadow-glow-orange scale-110 ring-4 ring-orange-200'
                           : isCompleted
-                          ? 'bg-orange-100/90 text-[#F97316] border-2 border-orange-300 hover:scale-105'
-                          : 'bg-white/90 backdrop-blur-sm text-slate-400 border border-slate-200 hover:border-orange-300 hover:text-[#F97316] hover:scale-105'
+                          ? 'bg-orange-100/90 text-[#C2410C] border-2 border-orange-300 hover:scale-105'
+                          : 'bg-white/90 backdrop-blur-sm text-slate-400 border border-slate-200 hover:border-orange-300 hover:text-[#C2410C] hover:scale-105'
                       }`}
                     >
                       <StepIcon className={`w-6 h-6 transition-transform ${isActive ? 'animate-bounce' : 'group-hover:scale-110'}`} />
@@ -331,7 +331,7 @@ export const HowItWorksSection = () => {
                   {/* Stage Name & Tag */}
                   <div className="space-y-0.5">
                     <span className={`text-xs font-black font-display block transition-colors leading-tight ${
-                      isActive ? 'text-[#F97316]' : 'text-slate-800 group-hover:text-[#F97316]'
+                      isActive ? 'text-[#C2410C]' : 'text-slate-800 group-hover:text-[#C2410C]'
                     }`}>
                       {step.title}
                     </span>
@@ -386,7 +386,7 @@ export const HowItWorksSection = () => {
                       isActive
                         ? 'bg-[#F97316] text-white shadow-glow-orange ring-2 ring-orange-200 scale-110'
                         : isCompleted
-                        ? 'bg-orange-100 text-[#F97316] border border-orange-300'
+                        ? 'bg-orange-100 text-[#C2410C] border border-orange-300'
                         : 'bg-white text-slate-400 border border-slate-200'
                     }`}
                   >
@@ -400,7 +400,7 @@ export const HowItWorksSection = () => {
                 {/* Info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
-                    <span className={`text-xs font-bold font-display ${isActive ? 'text-[#F97316]' : 'text-slate-800'}`}>
+                    <span className={`text-xs font-bold font-display ${isActive ? 'text-[#C2410C]' : 'text-slate-800'}`}>
                       {step.title}
                     </span>
                     <span className="text-[10px] text-slate-400 font-mono">
@@ -428,7 +428,7 @@ export const HowItWorksSection = () => {
             <div className="space-y-1.5 flex-1">
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-[#F97316] animate-ping" />
-                <span className="text-[11px] font-black text-[#F97316] uppercase tracking-wider">
+                <span className="text-[11px] font-black text-[#C2410C] uppercase tracking-wider">
                   Live Stage {activeStep.stepNumber} of 06 Protocol:
                 </span>
                 <strong className="text-xs sm:text-sm font-bold text-slate-900">
@@ -447,7 +447,7 @@ export const HowItWorksSection = () => {
                   key={hIdx} 
                   className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white border border-[#FED7AA] text-[11px] font-bold text-slate-700 shadow-sm"
                 >
-                  <Check className="w-3 h-3 text-[#F97316]" />
+                  <Check className="w-3 h-3 text-[#C2410C]" />
                   <span>{hl}</span>
                 </div>
               ))}

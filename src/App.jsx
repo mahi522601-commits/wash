@@ -16,9 +16,10 @@ import { Navbar } from './components/public/Navbar';
 import { Footer } from './components/public/Footer';
 import { MobileBottomNav } from './components/public/MobileBottomNav';
 import { FloatingActionHub } from './components/public/FloatingActionHub';
-import { FloatingOffersWidget } from './components/public/FloatingOffersWidget';
-import { FirstVisitOfferModal } from './components/public/FirstVisitOfferModal';
-import { ChatbotDrawer } from './components/public/ChatbotDrawer';
+// Lazy Secondary Components
+const FloatingOffersWidget = lazyNamed(() => import('./components/public/FloatingOffersWidget'), 'FloatingOffersWidget');
+const FirstVisitOfferModal = lazyNamed(() => import('./components/public/FirstVisitOfferModal'), 'FirstVisitOfferModal');
+const ChatbotDrawer = lazyNamed(() => import('./components/public/ChatbotDrawer'), 'ChatbotDrawer');
 import { FloatingAppInstallBar } from './components/common/FloatingAppInstallBar';
 
 // Critical Direct Route (Instant Homepage Paint)
@@ -108,16 +109,26 @@ const PublicLayout = ({ children }) => {
       <FloatingActionHub onOpenAssistant={() => setAssistantOpen(true)} />
 
       {/* Floating Promotional Offer Bar */}
-      <FloatingOffersWidget />
+      <Suspense fallback={null}>
+        <FloatingOffersWidget />
+      </Suspense>
 
       {/* First Visit Exclusive 20% Off Popup */}
-      {pathname !== '/book-pickup' && <FirstVisitOfferModal />}
+      {pathname !== '/book-pickup' && (
+        <Suspense fallback={null}>
+          <FirstVisitOfferModal />
+        </Suspense>
+      )}
 
       {/* Floating PWA / .APK Mobile App Install Bar */}
       <FloatingAppInstallBar />
 
       {/* Conversational AI Assistant Concierge */}
-      <ChatbotDrawer isOpen={assistantOpen} onClose={() => setAssistantOpen(false)} />
+      {assistantOpen && (
+        <Suspense fallback={null}>
+          <ChatbotDrawer isOpen={assistantOpen} onClose={() => setAssistantOpen(false)} />
+        </Suspense>
+      )}
     </div>
   );
 };

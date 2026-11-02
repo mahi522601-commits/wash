@@ -80,26 +80,29 @@ export const offerService = {
   /**
    * Get all active offers with priority sorting
    */
-  async getActiveOffers() {
+  async getActiveOffers({ forceFresh = false } = {}) {
     let list = [];
 
-    if (isFirebaseConfigured && db) {
+    // Instant local cache / default load
+    try {
+      const stored = typeof window !== 'undefined' ? localStorage.getItem(OFFERS_STORAGE_KEY) : null;
+      if (stored) list = JSON.parse(stored);
+    } catch (e) {}
+
+    if (!list || list.length === 0) {
+      list = DEFAULT_OFFERS;
+    }
+
+    // Only query Firestore if forceFresh or on user request
+    if (forceFresh && isFirebaseConfigured && db) {
       try {
         const snap = await getDocs(collection(db, 'offers'));
         if (!snap.empty) {
           list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          if (typeof window !== 'undefined') localStorage.setItem(OFFERS_STORAGE_KEY, JSON.stringify(list));
         }
       } catch (e) {
         console.warn("Firestore offers read error:", e);
-      }
-    }
-
-    if (list.length === 0) {
-      try {
-        const stored = localStorage.getItem(OFFERS_STORAGE_KEY);
-        list = stored ? JSON.parse(stored) : DEFAULT_OFFERS;
-      } catch (e) {
-        list = DEFAULT_OFFERS;
       }
     }
 

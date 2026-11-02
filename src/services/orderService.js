@@ -184,16 +184,14 @@ const ORDER_SEQ_KEY = 'techwash_order_sequence_counter';
 export const getOrderBranchKey = (order) => {
   if (!order) return 'counter-1';
 
-  // 1. Check if explicit Online Website order without terminal assignment
+  // 1. Online Website Bookings route exclusively to POS 2 (Branch 1 - Tolichowki) & Admin
   if (
     order.isOnlineBooking === true || 
     order.orderSource === 'ONLINE_WEBSITE' || 
     order.channel === 'ONLINE_WEBSITE' || 
     order.channel === 'ONLINE'
   ) {
-    if (!order.terminalId && !order.counterNumber && !order.terminalCode && !order.localId?.startsWith('POS')) {
-      return 'ONLINE_WEBSITE';
-    }
+    return 'counter-2';
   }
 
   // 2. Extract and normalize identifiers
@@ -325,17 +323,26 @@ export const orderService = {
    */
   async createOrder(orderPayload) {
     // 1. Generate Deterministic Local ID (POS01-YYYYMMDD-XXXXXX / POS02 / POS03)
+    const isOnline = Boolean(
+      orderPayload.isOnlineBooking || 
+      orderPayload.orderSource === 'ONLINE_WEBSITE' || 
+      orderPayload.channel === 'ONLINE_WEBSITE'
+    );
     let activeTerminalId = orderPayload.terminalId;
     if (!activeTerminalId) {
-      const cNum = String(orderPayload.counterNumber || orderPayload.customer?.counterNumber || '').trim();
-      if (cNum === '2' || cNum === 'counter-2') activeTerminalId = 'counter-2';
-      else if (cNum === '3' || cNum === 'counter-3') activeTerminalId = 'counter-3';
-      else if (cNum === '1' || cNum === 'counter-1') activeTerminalId = 'counter-1';
-      else if (typeof localStorage !== 'undefined') {
-        activeTerminalId = localStorage.getItem('techwash_active_device_terminal') || localStorage.getItem('techwash_terminal_id');
+      if (isOnline) {
+        activeTerminalId = 'counter-2';
+      } else {
+        const cNum = String(orderPayload.counterNumber || orderPayload.customer?.counterNumber || '').trim();
+        if (cNum === '2' || cNum === 'counter-2') activeTerminalId = 'counter-2';
+        else if (cNum === '3' || cNum === 'counter-3') activeTerminalId = 'counter-3';
+        else if (cNum === '1' || cNum === 'counter-1') activeTerminalId = 'counter-1';
+        else if (typeof localStorage !== 'undefined') {
+          activeTerminalId = localStorage.getItem('techwash_active_device_terminal') || localStorage.getItem('techwash_terminal_id');
+        }
       }
     }
-    if (!activeTerminalId) activeTerminalId = 'counter-1';
+    if (!activeTerminalId) activeTerminalId = isOnline ? 'counter-2' : 'counter-1';
 
     const activeBranchCode = activeTerminalId === 'counter-2' ? 'POS02' : (activeTerminalId === 'counter-3' ? 'POS03' : 'POS01');
     const dateCompact = new Date().toISOString().slice(0, 10).replace(/-/g, '');
@@ -515,11 +522,15 @@ export const orderService = {
       receivedAmount,
       balanceAmount,
       isWalkIn,
-      orderSource,
+      isOnlineBooking: Boolean(isOnline),
+      needsAcceptance: orderPayload.needsAcceptance !== undefined ? orderPayload.needsAcceptance : (isOnline ? true : false),
+      acceptanceStatus: orderPayload.acceptanceStatus || (isOnline ? 'PENDING_ACCEPTANCE' : 'ACCEPTED'),
+      orderSource: isOnline ? 'ONLINE_WEBSITE' : orderSource,
       terminalId: activeTerminalId,
       terminalCode: activeTerminalId === 'counter-2' ? 'TW-POS-02' : (activeTerminalId === 'counter-3' ? 'TW-POS-03' : 'TW-POS-01'),
       counterNumber: activeTerminalId === 'counter-2' ? '2' : (activeTerminalId === 'counter-3' ? '3' : '1'),
-      storeBranch: orderPayload.storeBranch || (activeTerminalId === 'counter-2' ? 'Branch 1 — Tolichowki' : (activeTerminalId === 'counter-3' ? 'Pick Up Point — Ambience' : 'Main Branch — Manikonda')),
+      storeBranch: orderPayload.storeBranch || (activeTerminalId === 'counter-2' ? 'Tech Wash Laundry Services (Branch 1 - Tolichowki)' : (activeTerminalId === 'counter-3' ? 'Pick Up Point — Ambience' : 'Main Branch — Manikonda')),
+      storePhone: orderPayload.storePhone || (activeTerminalId === 'counter-2' ? '+91 90008 13444' : (activeTerminalId === 'counter-3' ? '+91 98667 40179' : '+91 63048 45567')),
       cashierName: orderPayload.cashierName || 'Cashier #1',
       pickupDate,
       pickupPeriod,
@@ -1043,6 +1054,111 @@ export const orderService = {
     }
 
     return updatedOrder;
+  },
+
+  /**
+   * Accept an incoming online customer booking.
+   * Silences repeating ring alarm across all tabs (Admin & POS 2), updates acceptance status,
+   * adds timeline event, and notifies connected terminals via BroadcastChannel.
+   */
+  async acceptOrder(orderId, acceptedBy = 'Admin / POS-2') {
+    if (!orderId) throw new Error('Missing orderId to accept');
+
+    const orders = await this.getOrders({ forceRefresh: true });
+    const order = orders.find(o => 
+      String(o.id) === String(orderId) || 
+      String(o.orderNumber) === String(orderId) || 
+      String(o.localId) === String(orderId)
+    );
+    if (!order) throw new Error(`Order ${orderId} not found`);
+
+    const acceptedAt = new Date().toISOString();
+    const updatedOrder = {
+      ...order,
+      needsAcceptance: false,
+      acceptanceStatus: 'ACCEPTED',
+      acceptedAt,
+      acceptedBy,
+      updatedAt: acceptedAt,
+      statusTimeline: [
+        ...(order.statusTimeline || []),
+        {
+          stage: order.customerStage || 'CONFIRMED',
+          label: 'Order Accepted & Scheduled',
+          timestamp: acceptedAt,
+          note: `Booking verified and accepted by ${acceptedBy}. Route confirmed.`,
+        }
+      ]
+    };
+
+    // Save to IndexedDB
+    try {
+      await posIndexedDB.saveItem('orders', updatedOrder);
+      await localDbService.saveLocalOrder(updatedOrder);
+    } catch (e) {}
+
+    // Save to Firestore
+    if (isFirebaseConfigured && db) {
+      try {
+        await Promise.all([
+          setDoc(doc(db, 'orders', order.id), updatedOrder, { merge: true }),
+          setDoc(doc(db, 'bookings', order.id), updatedOrder, { merge: true })
+        ]);
+      } catch (e) {}
+    }
+
+    // Save to localStorage
+    const idx = orders.findIndex(o => o.id === order.id);
+    if (idx >= 0) orders[idx] = updatedOrder;
+    localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(orders));
+
+    invalidateOrdersMemoryCache();
+
+    // Broadcast cross-tab and cross-window
+    if (typeof window !== 'undefined') {
+      try {
+        if ('BroadcastChannel' in window) {
+          const channel = new BroadcastChannel('techwash_orders_channel');
+          channel.postMessage({
+            type: 'ORDER_ACCEPTED',
+            orderId: order.id,
+            orderNumber: order.orderNumber,
+            order: updatedOrder,
+            acceptedBy,
+            timestamp: Date.now()
+          });
+          setTimeout(() => { try { channel.close(); } catch (e) {} }, 500);
+        }
+      } catch (e) {}
+
+      window.dispatchEvent(new CustomEvent('techwash-order-accepted', {
+        detail: { orderId: order.id, orderNumber: order.orderNumber, order: updatedOrder, acceptedBy }
+      }));
+      window.dispatchEvent(new CustomEvent('techwash-order-updated', {
+        detail: { orderId: order.id, order: updatedOrder }
+      }));
+    }
+
+    return updatedOrder;
+  },
+
+  /**
+   * Retrieve all pending unaccepted online customer orders (for ringing alarm & modal banner)
+   * Can be filtered by terminal (e.g. 'counter-2')
+   */
+  async getPendingAcceptanceOrders(terminalFilter = null) {
+    const orders = await this.getOrders({ forceRefresh: false });
+    return orders.filter(o => {
+      const needs = o.needsAcceptance === true || o.acceptanceStatus === 'PENDING_ACCEPTANCE';
+      if (!needs) return false;
+      if (o.acceptanceStatus === 'ACCEPTED' || o.needsAcceptance === false) return false;
+
+      if (terminalFilter) {
+        const bKey = getOrderBranchKey(o);
+        if (bKey !== terminalFilter) return false;
+      }
+      return true;
+    });
   },
 
   /**

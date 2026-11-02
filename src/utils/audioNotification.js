@@ -14,6 +14,10 @@ let audioBuffer = null;
 let html5AudioInstance = null;
 let isAudioUnlocked = false;
 
+// Persistent continuous ringing alarm state for unaccepted customer orders
+let ringingInterval = null;
+const pendingRingingOrders = new Map();
+
 /**
  * Check if the current context is an internal staff/management workspace (Admin, Billing, POS, Worker).
  * Public customer-facing pages (e.g. booking, home, services) must never play order alert audio.
@@ -315,3 +319,130 @@ export const testOrderPlacedSound = () => {
     message: 'Chime sound is active and operating at maximum fidelity.'
   });
 };
+
+/**
+ * Start the continuous ringing alarm for an incoming customer online order.
+ * Plays /1.mp4 repeatedly every 3.2 seconds until an operator or admin accepts the order.
+ * Strictly constrained to Admin & POS internal workspaces.
+ */
+export const startOrderRingingAlarm = (order) => {
+  if (typeof window === 'undefined') return false;
+  if (!isInternalWorkspace()) return false;
+  if (!order) return false;
+
+  const orderId = String(order.id || order.orderNumber || order.localId || 'ORDER');
+  
+  // Do not re-trigger if already tracking this order
+  const isAlreadyRegistered = pendingRingingOrders.has(orderId);
+  pendingRingingOrders.set(orderId, order);
+
+  // Trigger system notification & initial sound immediately
+  if (!isAlreadyRegistered) {
+    const custName = order.customerName || order.customer?.name || 'Customer';
+    const srvName = order.serviceName || order.service || 'Laundry Service';
+    const amount = order.totalAmount || order.priceSnapshot?.finalTotal || '';
+
+    playOrderPlacedSound(true, {
+      title: `🚨 INCOMING ORDER #${order.orderNumber || orderId}`,
+      message: `${custName} booked ${srvName}${amount ? ` (₹${amount})` : ''}. Accept order to schedule.`,
+    });
+  }
+
+  // Ensure repeating interval is ticking
+  if (!ringingInterval) {
+    ringingInterval = setInterval(() => {
+      if (pendingRingingOrders.size === 0) {
+        stopOrderRingingAlarm('ALL');
+        return;
+      }
+      playOrderPlacedSound(true);
+    }, 3200);
+  }
+
+  // Broadcast state change to components (IncomingOrderAlertModal, Topbars)
+  window.dispatchEvent(new CustomEvent('techwash-ringing-orders-changed', {
+    detail: {
+      count: pendingRingingOrders.size,
+      orders: Array.from(pendingRingingOrders.values())
+    }
+  }));
+
+  return true;
+};
+
+/**
+ * Stop the continuous ringing alarm for a specific order or for all orders.
+ * Silences audio immediately across tabs.
+ */
+export const stopOrderRingingAlarm = (orderId = 'ALL') => {
+  if (typeof window === 'undefined') return;
+
+  if (orderId === 'ALL') {
+    pendingRingingOrders.clear();
+  } else if (orderId) {
+    const key = String(orderId);
+    pendingRingingOrders.delete(key);
+    // Also delete any entry with matching orderNumber or id
+    for (const [k, ord] of pendingRingingOrders.entries()) {
+      if (ord.id === key || ord.orderNumber === key || ord.localId === key) {
+        pendingRingingOrders.delete(k);
+      }
+    }
+  }
+
+  // If no more unaccepted orders remain, kill the interval and halt audio
+  if (pendingRingingOrders.size === 0) {
+    if (ringingInterval) {
+      clearInterval(ringingInterval);
+      ringingInterval = null;
+    }
+    if (html5AudioInstance) {
+      try {
+        html5AudioInstance.pause();
+        html5AudioInstance.currentTime = 0;
+      } catch (e) {}
+    }
+  }
+
+  window.dispatchEvent(new CustomEvent('techwash-ringing-orders-changed', {
+    detail: {
+      count: pendingRingingOrders.size,
+      orders: Array.from(pendingRingingOrders.values())
+    }
+  }));
+};
+
+/**
+ * Returns whether any order is currently ringing
+ */
+export const isOrderRingingActive = () => {
+  return pendingRingingOrders.size > 0;
+};
+
+/**
+ * Returns an array of current orders that are ringing
+ */
+export const getActiveRingingOrders = () => {
+  return Array.from(pendingRingingOrders.values());
+};
+
+// Cross-tab and event listener sync: stop ringing as soon as order is accepted anywhere
+if (typeof window !== 'undefined') {
+  window.addEventListener('techwash-order-accepted', (e) => {
+    const orderId = e?.detail?.orderId || e?.detail?.order?.id || e?.detail?.orderNumber;
+    if (orderId) {
+      stopOrderRingingAlarm(orderId);
+    }
+  });
+
+  try {
+    if ('BroadcastChannel' in window) {
+      const channel = new BroadcastChannel('techwash_orders_channel');
+      channel.onmessage = (event) => {
+        if (event.data?.type === 'ORDER_ACCEPTED' && event.data?.orderId) {
+          stopOrderRingingAlarm(event.data.orderId);
+        }
+      };
+    }
+  } catch (e) {}
+}

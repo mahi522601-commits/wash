@@ -21,6 +21,24 @@ export const FirstVisitOfferModal = () => {
   const [popupConfig, setPopupConfig] = useState(null);
   const [isOpen, setIsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [hasInteracted, setHasInteracted] = useState(false);
+
+  useEffect(() => {
+    const handleAction = () => {
+      setHasInteracted(true);
+      window.removeEventListener('scroll', handleAction);
+      window.removeEventListener('click', handleAction);
+      window.removeEventListener('touchstart', handleAction);
+    };
+    window.addEventListener('scroll', handleAction, { passive: true });
+    window.addEventListener('click', handleAction, { passive: true });
+    window.addEventListener('touchstart', handleAction, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', handleAction);
+      window.removeEventListener('click', handleAction);
+      window.removeEventListener('touchstart', handleAction);
+    };
+  }, []);
 
   useEffect(() => {
     const initPopup = async () => {
@@ -53,7 +71,7 @@ export const FirstVisitOfferModal = () => {
         offerService.trackImpression(featuredOffer.code);
         sessionStorage.setItem(sessionKey, 'true');
         localStorage.setItem(dayKey, 'true');
-      }, config.delayMs || 1000);
+      }, config.delayMs || 8000);
 
       return () => clearTimeout(timer);
     };
@@ -121,12 +139,12 @@ export const FirstVisitOfferModal = () => {
       >
         
         {/* Ambient Decorative Light Rings */}
-        <div className="absolute -top-16 -left-16 w-44 h-44 bg-[#F97316]/15 rounded-full blur-2xl pointer-events-none" />
-        <div className="absolute -bottom-16 -right-16 w-44 h-44 bg-[#F97316]/10 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute -top-16 -left-16 w-44 h-44 bg-[#C2410C]/15 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute -bottom-16 -right-16 w-44 h-44 bg-[#C2410C]/10 rounded-full blur-2xl pointer-events-none" />
 
         {/* 1. TOP BAR (BADGE + CLOSE BUTTON) */}
         <div className="relative z-10 flex items-center justify-between">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FFF7ED] border border-[#FED7AA] text-[#F97316] text-[10px] sm:text-xs font-bold uppercase tracking-wider backdrop-blur-md">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FFF7ED] border border-[#FED7AA] text-[#C2410C] text-[10px] sm:text-xs font-bold uppercase tracking-wider backdrop-blur-md">
             <Sparkles className="w-3 h-3 text-[#F97316] fill-current animate-pulse" />
             <span>{offer.badgeText || '✦ LIMITED OFFER'}</span>
           </div>
@@ -168,7 +186,7 @@ export const FirstVisitOfferModal = () => {
                 className={`py-1 px-3 rounded-xl font-bold text-[10px] sm:text-[11px] flex items-center gap-1 transition-all shadow-sm ${
                   copied
                     ? 'bg-emerald-500 text-white'
-                    : 'bg-[#F97316] hover:bg-[#EA580C] text-white active:scale-95'
+                    : 'bg-[#C2410C] hover:bg-[#9A3412] text-white active:scale-95'
                 }`}
               >
                 {copied ? (
@@ -196,7 +214,7 @@ export const FirstVisitOfferModal = () => {
           <button
             type="button"
             onClick={handleBookNow}
-            className="w-full py-2.5 sm:py-3 px-5 rounded-2xl bg-[#F97316] hover:bg-[#EA580C] text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-[0_10px_25px_rgba(249,115,22,0.35)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-300"
+            className="w-full py-2.5 sm:py-3 px-5 rounded-2xl bg-[#C2410C] hover:bg-[#9A3412] text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-[0_10px_25px_rgba(249,115,22,0.35)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-300"
           >
             <span>BOOK NOW</span>
             <ArrowRight className="w-3.5 h-3.5 text-white" />

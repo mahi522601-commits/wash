@@ -25,7 +25,7 @@ export const DEFAULT_GATEWAY_CONFIG = {
     url: '',
     secretKey: '',
   },
-  senderPhone: '+91 63048 45567',
+  senderPhone: '+91 90008 13444',
   businessName: 'Tech Wash Laundry Services',
   autoNotifyOnNewOrder: true,
   autoNotifyOnStageChange: true,
@@ -342,7 +342,7 @@ ${customNote ? `📝 *Update Note:* ${customNote}\n` : ''}${actualWeight ? `⚖�
 ⭐ *LOVE OUR SERVICE? RATE US 5★ ON GOOGLE MAPS:*
 👉 ${googleReviewUrl}
 
-📞 *Questions?* Reply to this WhatsApp or call +91 63048 45567.`;
+📞 *Questions?* Reply to this WhatsApp or call +91 90008 13444.`;
   },
 
   /**

@@ -100,8 +100,8 @@ export const AdminSettingsPage = () => {
     }
   };
 
-  const currentPhoneClean = (formData.general?.primaryPhone || '6304845567').replace(/[^0-9]/g, '');
-  const currentWaClean = (formData.general?.whatsappNumber || '6304845567').replace(/[^0-9]/g, '');
+  const currentPhoneClean = (formData.general?.primaryPhone || '9000813444').replace(/[^0-9]/g, '');
+  const currentWaClean = (formData.general?.whatsappNumber || '9000813444').replace(/[^0-9]/g, '');
 
   if (contextLoading) {
     return (
@@ -188,7 +188,7 @@ export const AdminSettingsPage = () => {
               <input
                 type="text"
                 required
-                placeholder="+91 63048 45567"
+                placeholder="+91 90008 13444"
                 value={formData.general?.primaryPhone || ''}
                 onChange={(e) => handleGeneralChange('primaryPhone', e.target.value)}
                 className="w-full p-3 rounded-xl bg-white border border-slate-200 text-sm font-black text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
@@ -216,7 +216,7 @@ export const AdminSettingsPage = () => {
               <input
                 type="text"
                 required
-                placeholder="+91 63048 45567"
+                placeholder="+91 90008 13444"
                 value={formData.general?.whatsappNumber || ''}
                 onChange={(e) => handleGeneralChange('whatsappNumber', e.target.value)}
                 className="w-full p-3 rounded-xl bg-white border border-slate-200 text-sm font-black text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#25D366]/20 focus:border-[#25D366]"

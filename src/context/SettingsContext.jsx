@@ -26,7 +26,25 @@ export const SettingsProvider = ({ children }) => {
   };
 
   useEffect(() => {
-    loadSettings();
+    let triggered = false;
+    const triggerSync = () => {
+      if (triggered) return;
+      triggered = true;
+      cleanup();
+      loadSettings();
+    };
+
+    const cleanup = () => {
+      window.removeEventListener('scroll', triggerSync);
+      window.removeEventListener('click', triggerSync);
+      window.removeEventListener('touchstart', triggerSync);
+    };
+
+    window.addEventListener('scroll', triggerSync, { passive: true });
+    window.addEventListener('click', triggerSync, { passive: true });
+    window.addEventListener('touchstart', triggerSync, { passive: true });
+
+    return cleanup;
   }, []);
 
   const updateSettings = async (newSettings) => {

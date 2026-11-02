@@ -18,8 +18,8 @@ export const DEFAULT_SETTINGS = {
     faviconUrl: '/techwashlogo.webp',
     businessAddress: 'Shaikpet Main Rd, Sri Ram Nagar Colony, Manikonda, Hyderabad, Telangana 500089',
     supportEmail: 'support@techwashlaundry.com',
-    primaryPhone: '+91 63048 45567',
-    whatsappNumber: '+91 63048 45567',
+    primaryPhone: '+91 90008 13444',
+    whatsappNumber: '+91 90008 13444',
     whatsappDefaultMessage: 'Hello Tech Wash, I would like to schedule a premium garment pickup.',
   },
   branding: {

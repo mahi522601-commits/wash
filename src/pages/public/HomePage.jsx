@@ -37,17 +37,33 @@ export const HomePage = () => {
           serviceService.getServices({ publishedOnly: true }),
           settingsService.getLocations(),
         ]);
-        setHeroSlides(slides);
+        if (Array.isArray(slides) && slides.length > 0) setHeroSlides(slides);
         if (Array.isArray(srvList) && srvList.length > 0) setServices(srvList);
-        setLocations(locList);
+        if (Array.isArray(locList) && locList.length > 0) setLocations(locList);
       } catch (e) {
         console.warn("Home data load error:", e);
-      } finally {
-        setLoading(false);
       }
     };
 
-    loadHomeData();
+    let triggered = false;
+    const triggerSync = () => {
+      if (triggered) return;
+      triggered = true;
+      cleanup();
+      loadHomeData();
+    };
+
+    const cleanup = () => {
+      window.removeEventListener('scroll', triggerSync);
+      window.removeEventListener('click', triggerSync);
+      window.removeEventListener('touchstart', triggerSync);
+    };
+
+    window.addEventListener('scroll', triggerSync, { passive: true });
+    window.addEventListener('click', triggerSync, { passive: true });
+    window.addEventListener('touchstart', triggerSync, { passive: true });
+
+    return cleanup;
   }, []);
 
   const website = settings?.website || {};
@@ -113,7 +129,7 @@ export const HomePage = () => {
       <section className="py-20 lg:py-24 bg-[#1F2937] text-white relative overflow-hidden text-center">
         <div className="absolute inset-0 bg-[#F97316]/5 pointer-events-none" />
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6 relative z-10">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#F97316]/15 border border-[#F97316]/40 text-[#F97316] text-xs font-bold uppercase tracking-wider">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#F97316]/15 border border-[#F97316]/40 text-orange-300 text-xs font-bold uppercase tracking-wider">
             <Sparkles className="w-3.5 h-3.5 text-[#F97316]" />
             <span>The Tech Wash Philosophy</span>
           </div>
@@ -181,7 +197,7 @@ export const HomePage = () => {
 
             <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
               <div className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white border border-slate-200 text-xs font-bold text-slate-800 shadow-2xs">
-                <span className="text-amber-500 font-bold">★ 4.9 / 5</span>
+                <span className="text-amber-600 font-bold">★</span> <span className="text-slate-800 font-bold">4.9 / 5</span>
                 <span className="text-slate-500 font-normal">• 318+ Verified Google Reviews in Manikonda</span>
               </div>
 
@@ -258,64 +274,64 @@ export const HomePage = () => {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <Link to="/book-pickup?service=ironing&locality=Manikonda" className="p-4 rounded-2xl bg-slate-50 hover:bg-brand-50 border border-slate-200/80 hover:border-brand-300 transition-all group block">
                 <div className="text-xs font-semibold text-slate-500">Steam Ironing</div>
-                <div className="text-lg font-black text-brand-700 font-display mt-0.5">From ₹12 <span className="text-xs font-normal text-slate-400">/ item</span></div>
-                <div className="text-[10px] text-slate-400 mt-1 group-hover:text-brand-700 font-bold flex items-center gap-1">
+                <div className="text-lg font-black text-brand-700 font-display mt-0.5">From ₹12 <span className="text-xs font-normal text-slate-600">/ item</span></div>
+                <div className="text-[10px] text-slate-600 mt-1 group-hover:text-brand-700 font-bold flex items-center gap-1">
                   <span>Book Ironing</span> →
                 </div>
               </Link>
 
               <Link to="/book-pickup?service=wash-and-fold&locality=Manikonda" className="p-4 rounded-2xl bg-slate-50 hover:bg-brand-50 border border-slate-200/80 hover:border-brand-300 transition-all group block">
                 <div className="text-xs font-semibold text-slate-500">Wash & Fold</div>
-                <div className="text-lg font-black text-brand-700 font-display mt-0.5">From ₹90 <span className="text-xs font-normal text-slate-400">/ Kg</span></div>
-                <div className="text-[10px] text-slate-400 mt-1 group-hover:text-brand-700 font-bold flex items-center gap-1">
+                <div className="text-lg font-black text-brand-700 font-display mt-0.5">From ₹90 <span className="text-xs font-normal text-slate-600">/ Kg</span></div>
+                <div className="text-[10px] text-slate-600 mt-1 group-hover:text-brand-700 font-bold flex items-center gap-1">
                   <span>Book Wash & Fold</span> →
                 </div>
               </Link>
 
               <Link to="/book-pickup?service=wash-and-iron&locality=Manikonda" className="p-4 rounded-2xl bg-slate-50 hover:bg-brand-50 border border-slate-200/80 hover:border-brand-300 transition-all group block">
                 <div className="text-xs font-semibold text-slate-500">Wash & Steam Iron</div>
-                <div className="text-lg font-black text-brand-700 font-display mt-0.5">From ₹130 <span className="text-xs font-normal text-slate-400">/ Kg</span></div>
-                <div className="text-[10px] text-slate-400 mt-1 group-hover:text-brand-700 font-bold flex items-center gap-1">
+                <div className="text-lg font-black text-brand-700 font-display mt-0.5">From ₹130 <span className="text-xs font-normal text-slate-600">/ Kg</span></div>
+                <div className="text-[10px] text-slate-600 mt-1 group-hover:text-brand-700 font-bold flex items-center gap-1">
                   <span>Book Wash & Iron</span> →
                 </div>
               </Link>
 
               <Link to="/book-pickup?service=dry-cleaning&locality=Manikonda" className="p-4 rounded-2xl bg-slate-50 hover:bg-brand-50 border border-slate-200/80 hover:border-brand-300 transition-all group block">
                 <div className="text-xs font-semibold text-slate-500">Eco Dry Cleaning</div>
-                <div className="text-lg font-black text-brand-700 font-display mt-0.5">From ₹40 <span className="text-xs font-normal text-slate-400">/ item</span></div>
-                <div className="text-[10px] text-slate-400 mt-1 group-hover:text-brand-700 font-bold flex items-center gap-1">
+                <div className="text-lg font-black text-brand-700 font-display mt-0.5">From ₹40 <span className="text-xs font-normal text-slate-600">/ item</span></div>
+                <div className="text-[10px] text-slate-600 mt-1 group-hover:text-brand-700 font-bold flex items-center gap-1">
                   <span>Book Dry Cleaning</span> →
                 </div>
               </Link>
 
               <Link to="/book-pickup?service=saree-rolling&locality=Manikonda" className="p-4 rounded-2xl bg-slate-50 hover:bg-brand-50 border border-slate-200/80 hover:border-brand-300 transition-all group block">
                 <div className="text-xs font-semibold text-slate-500">Saree Rolling & Polish</div>
-                <div className="text-lg font-black text-brand-700 font-display mt-0.5">From ₹150 <span className="text-xs font-normal text-slate-400">/ saree</span></div>
-                <div className="text-[10px] text-slate-400 mt-1 group-hover:text-brand-700 font-bold flex items-center gap-1">
+                <div className="text-lg font-black text-brand-700 font-display mt-0.5">From ₹150 <span className="text-xs font-normal text-slate-600">/ saree</span></div>
+                <div className="text-[10px] text-slate-600 mt-1 group-hover:text-brand-700 font-bold flex items-center gap-1">
                   <span>Book Saree Rolling</span> →
                 </div>
               </Link>
 
               <Link to="/book-pickup?service=shoe-washing&locality=Manikonda" className="p-4 rounded-2xl bg-slate-50 hover:bg-brand-50 border border-slate-200/80 hover:border-brand-300 transition-all group block">
                 <div className="text-xs font-semibold text-slate-500">Shoe & Sneaker Laundry</div>
-                <div className="text-lg font-black text-brand-700 font-display mt-0.5">₹350 <span className="text-xs font-normal text-slate-400">/ pair</span></div>
-                <div className="text-[10px] text-slate-400 mt-1 group-hover:text-brand-700 font-bold flex items-center gap-1">
+                <div className="text-lg font-black text-brand-700 font-display mt-0.5">₹350 <span className="text-xs font-normal text-slate-600">/ pair</span></div>
+                <div className="text-[10px] text-slate-600 mt-1 group-hover:text-brand-700 font-bold flex items-center gap-1">
                   <span>Book Shoe Laundry</span> →
                 </div>
               </Link>
 
               <Link to="/book-pickup?service=curtain-washing&locality=Manikonda" className="p-4 rounded-2xl bg-slate-50 hover:bg-brand-50 border border-slate-200/80 hover:border-brand-300 transition-all group block">
                 <div className="text-xs font-semibold text-slate-500">Curtain Cleaning</div>
-                <div className="text-lg font-black text-brand-700 font-display mt-0.5">From ₹60 <span className="text-xs font-normal text-slate-400">/ panel</span></div>
-                <div className="text-[10px] text-slate-400 mt-1 group-hover:text-brand-700 font-bold flex items-center gap-1">
+                <div className="text-lg font-black text-brand-700 font-display mt-0.5">From ₹60 <span className="text-xs font-normal text-slate-600">/ panel</span></div>
+                <div className="text-[10px] text-slate-600 mt-1 group-hover:text-brand-700 font-bold flex items-center gap-1">
                   <span>Book Curtains</span> →
                 </div>
               </Link>
 
               <Link to="/book-pickup?service=carpet-washing&locality=Manikonda" className="p-4 rounded-2xl bg-slate-50 hover:bg-brand-50 border border-slate-200/80 hover:border-brand-300 transition-all group block">
                 <div className="text-xs font-semibold text-slate-500">Carpet Shampooing</div>
-                <div className="text-lg font-black text-brand-700 font-display mt-0.5">₹45 <span className="text-xs font-normal text-slate-400">/ sq. ft.</span></div>
-                <div className="text-[10px] text-slate-400 mt-1 group-hover:text-brand-700 font-bold flex items-center gap-1">
+                <div className="text-lg font-black text-brand-700 font-display mt-0.5">₹45 <span className="text-xs font-normal text-slate-600">/ sq. ft.</span></div>
+                <div className="text-[10px] text-slate-600 mt-1 group-hover:text-brand-700 font-bold flex items-center gap-1">
                   <span>Book Carpets</span> →
                 </div>
               </Link>

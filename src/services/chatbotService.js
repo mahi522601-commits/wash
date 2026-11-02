@@ -19,7 +19,7 @@ export const DEFAULT_CHATBOT_CONFIG = {
   botName: 'Tech Wash Concierge',
   welcomeMessage: "Hello! I am your Tech Wash Concierge. How can I assist with your garment care today?",
   workingHoursText: 'Available 24/7 for instant assistance & bookings',
-  whatsappFallbackPhone: '+91 63048 45567',
+  whatsappFallbackPhone: '+91 90008 13444',
 };
 
 export const getQuickItemsCatalog = (pricingConfig) => {
@@ -630,8 +630,8 @@ export const chatbotService = {
         type: 'CONTACT_CARD',
         text: "Our fabric care specialists are available for bespoke garment inquiries, stain consultations, and instant booking help:",
         payload: {
-          phone: settings?.general?.primaryPhone || '+91 63048 45567',
-          whatsapp: settings?.general?.whatsappNumber || '+91 63048 45567',
+          phone: settings?.general?.primaryPhone || '+91 90008 13444',
+          whatsapp: settings?.general?.whatsappNumber || '+91 90008 13444',
           email: settings?.general?.supportEmail || 'care@techwashlaundry.com',
         },
         contextPills: [

@@ -466,7 +466,7 @@ function prerenderAll() {
           Looking for top-rated dry cleaners or laundry services near you? Techwash Laundry provides 100% demineralized 0 PPM RO soft-water washing, isolated single-customer machine drums, certified non-toxic European eco hydrocarbon dry cleaning, and 3D tension steam form pressing with daily scheduled and express doorstep pickup across Manikonda, Tolichowki, Shaikpet, Gachibowli, and Hyderabad.
         </p>
         <div style="background: #FFF7ED; border: 1px solid #FED7AA; border-radius: 12px; padding: 14px 18px; font-size: 14px; color: #9A3412;">
-          <strong>Direct Booking Hotline:</strong> <a href="tel:+916304845567" style="color: #EA580C; font-weight: bold;">+91 63048 45567</a> |
+          <strong>Direct Booking Hotline:</strong> <a href="tel:+919000813444" style="color: #EA580C; font-weight: bold;">+91 90008 13444</a> |
           <strong>Operating Hours:</strong> 8:00 AM – 9:00 PM (All 7 Days) |
           <strong>Doorstep Fleet:</strong> 60-Minute Response in Manikonda & Tolichowki
         </div>
@@ -680,13 +680,13 @@ function prerenderAll() {
               <strong>Pricing:</strong> <span style="font-size: 16px; font-weight: 800; color: #EA580C;">${escapeHtml(s.pricingDisplay)}</span> |
               <strong>Special Offer:</strong> <span style="font-weight: 800; color: #047857;">Flat 20% Off</span> |
               <strong>Turnaround:</strong> Standard 48 Hours (Express 24h Available) |
-              <strong>Hotline:</strong> <a href="tel:+916304845567" style="color: #EA580C; font-weight: bold;">+91 63048 45567</a>
+              <strong>Hotline:</strong> <a href="tel:+919000813444" style="color: #EA580C; font-weight: bold;">+91 90008 13444</a>
             </div>
             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
               <a href="/book-pickup?service=${s.slug}" style="display: inline-block; padding: 8px 16px; background: #EA580C; color: #FFFFFF; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 13px;">
                 Schedule Pickup Now →
               </a>
-              <a href="https://wa.me/916304845567?text=${encodeURIComponent(`Hello Techwash, I want to book ${s.name} with Flat 20% Off.`)}" style="display: inline-block; padding: 8px 16px; background: #25D366; color: #FFFFFF; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 13px;">
+              <a href="https://wa.me/919000813444?text=${encodeURIComponent(`Hello Techwash, I want to book ${s.name} with Flat 20% Off.`)}" style="display: inline-block; padding: 8px 16px; background: #25D366; color: #FFFFFF; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 13px;">
                 WhatsApp Booking
               </a>
             </div>
@@ -815,7 +815,7 @@ function prerenderAll() {
           ${escapeHtml(manikondaArea.introText)}
         </p>
         <div style="background: #FFF7ED; border: 1px solid #FED7AA; border-radius: 12px; padding: 14px 18px; font-size: 14px; color: #9A3412;">
-          <strong>Manikonda Doorstep Hotline:</strong> <a href="tel:+916304845567" style="color: #EA580C; font-weight: bold;">+91 63048 45567</a> |
+          <strong>Manikonda Doorstep Hotline:</strong> <a href="tel:+919000813444" style="color: #EA580C; font-weight: bold;">+91 90008 13444</a> |
           <strong>Store Address:</strong> Shaikpet Main Rd, Sri Ram Nagar Colony, Manikonda, Hyderabad 500089 |
           <strong>Hours:</strong> 8:00 AM – 9:00 PM (Daily)
         </div>
@@ -1023,13 +1023,13 @@ function prerenderAll() {
               <strong>Manikonda Rate:</strong> <span style="font-size: 16px; font-weight: 800; color: #EA580C;">${escapeHtml(s.pricingDisplay)}</span> |
               <strong>Special Offer:</strong> <span style="font-weight: 800; color: #047857;">Flat 20% Off</span> |
               <strong>Pickup Hours:</strong> 8:00 AM – 9:00 PM (All 7 Days) |
-              <strong>Hotline:</strong> <a href="tel:+916304845567" style="color: #EA580C; font-weight: bold;">+91 63048 45567</a>
+              <strong>Hotline:</strong> <a href="tel:+919000813444" style="color: #EA580C; font-weight: bold;">+91 90008 13444</a>
             </div>
             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
               <a href="/book-pickup?locality=Manikonda&service=${s.slug}" style="display: inline-block; padding: 8px 16px; background: #EA580C; color: #FFFFFF; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 13px;">
                 Schedule Manikonda Pickup →
               </a>
-              <a href="https://wa.me/916304845567?text=${encodeURIComponent(`Hello Techwash, I want to book ${s.name} in Manikonda with Flat 20% Off.`)}" style="display: inline-block; padding: 8px 16px; background: #25D366; color: #FFFFFF; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 13px;">
+              <a href="https://wa.me/919000813444?text=${encodeURIComponent(`Hello Techwash, I want to book ${s.name} in Manikonda with Flat 20% Off.`)}" style="display: inline-block; padding: 8px 16px; background: #25D366; color: #FFFFFF; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 13px;">
                 WhatsApp Booking
               </a>
             </div>
@@ -1155,7 +1155,7 @@ function prerenderAll() {
             ${escapeHtml(page.metaDescription)}
           </p>
           <div style="background: #FFF7ED; border: 1px solid #FED7AA; border-radius: 12px; padding: 14px 18px; font-size: 14px; color: #9A3412;">
-            <strong>Direct Hotline:</strong> <a href="tel:+916304845567" style="color: #EA580C; font-weight: bold;">+91 63048 45567</a> |
+            <strong>Direct Hotline:</strong> <a href="tel:+919000813444" style="color: #EA580C; font-weight: bold;">+91 90008 13444</a> |
             <strong>Doorstep Fleet:</strong> Daily 8:00 AM – 9:00 PM across Manikonda, Puppalaguda, Tolichowki & Hyderabad |
             <a href="/book-pickup" style="color: #EA580C; font-weight: bold; text-decoration: underline;">Schedule Pickup Online →</a>
           </div>

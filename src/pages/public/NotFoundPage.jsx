@@ -55,9 +55,9 @@ export const NotFoundPage = () => {
               <span>Manikonda Hub</span>
             </Link>
             <span>•</span>
-            <a href="tel:6304845567" className="hover:text-orange-600 transition-colors flex items-center gap-1">
+            <a href="tel:9000813444" className="hover:text-orange-600 transition-colors flex items-center gap-1">
               <Phone className="w-3.5 h-3.5" />
-              <span>Hotline: +91 63048 45567</span>
+              <span>Hotline: +91 90008 13444</span>
             </a>
           </div>
         </div>

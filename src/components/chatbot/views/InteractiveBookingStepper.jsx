@@ -188,6 +188,18 @@ export const InteractiveBookingStepper = ({
           finalTotal: estimatedTotal,
         },
         totalAmount: estimatedTotal,
+        // Routed directly to Counter 2 (Branch 1 - Tolichowki) & Admin
+        terminalId: 'counter-2',
+        counterNumber: '2',
+        terminalCode: 'TW-POS-02',
+        storeBranch: 'Tech Wash Laundry Services (Branch 1 - Tolichowki)',
+        storeAddress: 'Beside Dreamscape hotel Ward No 8, Block No 1, Tolichowki, OU Colony, Shaikpet, Hyderabad, Telangana 500008',
+        storePhone: '+91 90008 13444',
+        orderSource: 'ONLINE_WEBSITE',
+        isOnlineBooking: true,
+        channel: 'ONLINE_WEBSITE',
+        needsAcceptance: true,
+        acceptanceStatus: 'PENDING_ACCEPTANCE',
         paymentMethod: 'PAY_ON_DELIVERY',
         paymentStatus: 'PENDING',
       };

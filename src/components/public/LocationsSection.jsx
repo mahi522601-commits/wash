@@ -46,7 +46,7 @@ export const LocationsSection = ({ locations = [] }) => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {locations.map((loc) => {
-            const rawPhone = loc.phone || '+91 63048 45567';
+            const rawPhone = loc.phone || '+91 90008 13444';
             const rawWhatsapp = loc.whatsapp || rawPhone;
             const cleanWhatsapp = rawWhatsapp.replace(/\D/g, '');
 
@@ -85,13 +85,13 @@ export const LocationsSection = ({ locations = [] }) => {
                     </div>
 
                     <p className="text-xs sm:text-sm text-slate-600 mb-4 flex items-start gap-2">
-                      <MapPin className="w-4 h-4 text-brand-600 shrink-0 mt-0.5" />
+                      <MapPin className="w-4 h-4 text-brand-700 shrink-0 mt-0.5" />
                       <span>{loc.address}</span>
                     </p>
 
                     <div className="space-y-2 pt-3 border-t border-slate-100 text-xs text-slate-600">
                       <div className="flex items-center gap-2">
-                        <Clock className="w-4 h-4 text-brand-600 shrink-0" />
+                        <Clock className="w-4 h-4 text-brand-700 shrink-0" />
                         <span>{loc.timings || '8:00 AM - 9:00 PM (All Days)'}</span>
                       </div>
                       {loc.weeklyHolidays && (
@@ -165,7 +165,7 @@ export const LocationsSection = ({ locations = [] }) => {
               </h3>
 
               <p className="text-xs text-slate-600 leading-relaxed">
-                <strong>Address:</strong> Shaikpet Main Rd, Sri Ram Nagar Colony, Manikonda, Hyderabad, Telangana 500089 (Near Zilla Parishad High School, Lanco Hills Road &amp; OU Colony) • <strong>Phone:</strong> +91 63048 45567
+                <strong>Address:</strong> Shaikpet Main Rd, Sri Ram Nagar Colony, Manikonda, Hyderabad, Telangana 500089 (Near Zilla Parishad High School, Lanco Hills Road &amp; OU Colony) • <strong>Phone:</strong> +91 90008 13444
               </p>
 
               <div className="pt-2 space-y-2">
@@ -200,7 +200,7 @@ export const LocationsSection = ({ locations = [] }) => {
                 href={googleMapsReviewUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex-1 min-w-[200px] inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs uppercase tracking-wider shadow-sm transition-all"
+                className="flex-1 min-w-[200px] inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-brand-700 hover:bg-brand-800 text-white font-bold text-xs uppercase tracking-wider shadow-sm transition-all"
               >
                 <Star className="w-4 h-4 fill-white" />
                 <span>Rate 5★ on Google Maps</span>

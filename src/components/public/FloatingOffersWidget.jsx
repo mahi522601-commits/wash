@@ -27,6 +27,24 @@ export const FloatingOffersWidget = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [copiedCode, setCopiedCode] = useState(null);
   const [showFirstVisitTeaser, setShowFirstVisitTeaser] = useState(false);
+  const [hasInteracted, setHasInteracted] = useState(false);
+
+  useEffect(() => {
+    const handleAction = () => {
+      setHasInteracted(true);
+      window.removeEventListener('scroll', handleAction);
+      window.removeEventListener('click', handleAction);
+      window.removeEventListener('touchstart', handleAction);
+    };
+    window.addEventListener('scroll', handleAction, { passive: true });
+    window.addEventListener('click', handleAction, { passive: true });
+    window.addEventListener('touchstart', handleAction, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', handleAction);
+      window.removeEventListener('click', handleAction);
+      window.removeEventListener('touchstart', handleAction);
+    };
+  }, []);
 
   // Load active offers from CMS
   useEffect(() => {
@@ -119,7 +137,7 @@ export const FloatingOffersWidget = () => {
               />
             </div>
             <div className="text-[11px] leading-tight">
-              <span className="font-black text-[#F97316] block">{currentOffer.discountValue}</span>
+              <span className="font-black text-[#C2410C] block">{currentOffer.discountValue}</span>
               <span className="text-slate-300 text-[10px]">{currentOffer.title}</span>
             </div>
           </div>
@@ -137,8 +155,8 @@ export const FloatingOffersWidget = () => {
           <span className="absolute -inset-1 rounded-2xl sm:rounded-full bg-orange-400/25 animate-pulse pointer-events-none" />
 
           {/* Active Promo Notification Dot */}
-          <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-[#F97316] border-2 border-[#1F2937] rounded-full shadow-sm animate-ping" />
-          <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-[#F97316] border-2 border-[#1F2937] rounded-full shadow-sm" />
+          <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-[#C2410C] border-2 border-[#1F2937] rounded-full shadow-sm animate-ping" />
+          <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-[#C2410C] border-2 border-[#1F2937] rounded-full shadow-sm" />
 
           <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-white flex items-center justify-center shrink-0 shadow-sm p-1 group-hover:rotate-12 transition-transform overflow-hidden border border-orange-200">
             <img
@@ -151,9 +169,9 @@ export const FloatingOffersWidget = () => {
           <div className="hidden sm:block text-left pr-1">
             <div className="text-xs font-black font-display tracking-wider text-white flex items-center gap-1 leading-none">
               <span>OFFERS</span>
-              <Sparkles className="w-3 h-3 text-[#F97316]" />
+              <Sparkles className="w-3 h-3 text-[#C2410C]" />
             </div>
-            <span className="text-[10px] font-bold text-[#F97316] leading-none block mt-1">
+            <span className="text-[10px] font-bold text-[#C2410C] leading-none block mt-1">
               Save More
             </span>
           </div>
@@ -204,7 +222,7 @@ export const FloatingOffersWidget = () => {
             
             {/* Top Badges & Carousel Counter */}
             <div className="flex items-center justify-between">
-              <span className="px-2.5 py-0.5 rounded-full bg-[#FFF7ED] border border-[#FED7AA] text-[#F97316] text-[10px] font-black tracking-wider uppercase">
+              <span className="px-2.5 py-0.5 rounded-full bg-[#FFF7ED] border border-[#FED7AA] text-[#C2410C] text-[10px] font-black tracking-wider uppercase">
                 {currentOffer.badgeText || '✨ LIMITED TIME'}
               </span>
 
@@ -238,7 +256,7 @@ export const FloatingOffersWidget = () => {
               <h3 className="text-sm font-bold text-slate-900 font-display">
                 {currentOffer.title}
               </h3>
-              <div className="text-2xl sm:text-3xl font-black font-display tracking-tight text-[#F97316] mt-0.5">
+              <div className="text-2xl sm:text-3xl font-black font-display tracking-tight text-[#C2410C] mt-0.5">
                 {currentOffer.discountValue}
               </div>
               <p className="text-[11px] text-slate-600 mt-1 leading-snug">
@@ -249,7 +267,7 @@ export const FloatingOffersWidget = () => {
             {/* Meta Information Bar */}
             <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-[10px] text-slate-600">
               <span className="font-semibold">Min. Order: <strong className="text-slate-900">{currentOffer.minOrder}</strong></span>
-              <span className="flex items-center gap-1 text-[#F97316] font-bold">
+              <span className="flex items-center gap-1 text-[#C2410C] font-bold">
                 <Clock className="w-3.5 h-3.5" />
                 <span>{currentOffer.validTill}</span>
               </span>
@@ -272,7 +290,7 @@ export const FloatingOffersWidget = () => {
                 className={`py-1.5 px-3 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm ${
                   copiedCode === currentOffer.code
                     ? 'bg-emerald-600 text-white'
-                    : 'bg-[#F97316] hover:bg-[#EA580C] text-white hover:scale-105 active:scale-95'
+                    : 'bg-[#C2410C] hover:bg-[#9A3412] text-white hover:scale-105 active:scale-95'
                 }`}
               >
                 {copiedCode === currentOffer.code ? (
@@ -293,7 +311,7 @@ export const FloatingOffersWidget = () => {
             <button
               type="button"
               onClick={() => handleBookNow(currentOffer)}
-              className="w-full py-2.5 px-4 rounded-xl bg-[#F97316] hover:bg-[#EA580C] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all"
+              className="w-full py-2.5 px-4 rounded-xl bg-[#C2410C] hover:bg-[#9A3412] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all"
             >
               <span>Book With This Offer</span>
               <ArrowRight className="w-3.5 h-3.5 text-white" />
@@ -307,7 +325,7 @@ export const FloatingOffersWidget = () => {
                     key={idx}
                     onClick={() => setCurrentIndex(idx)}
                     className={`w-2 h-2 rounded-full cursor-pointer transition-all ${
-                      currentIndex === idx ? 'w-4 bg-[#F97316]' : 'bg-slate-300'
+                      currentIndex === idx ? 'w-4 bg-[#C2410C]' : 'bg-slate-300'
                     }`}
                   />
                 ))}
@@ -316,7 +334,7 @@ export const FloatingOffersWidget = () => {
               <Link
                 to="/offers"
                 onClick={() => setIsOpen(false)}
-                className="font-bold text-[#F97316] hover:underline flex items-center gap-1"
+                className="font-bold text-[#C2410C] hover:underline flex items-center gap-1"
               >
                 <span>View All Offers ({offers.length})</span>
                 <ArrowRight className="w-3 h-3" />

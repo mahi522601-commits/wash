@@ -20,25 +20,26 @@ export const cmsService = {
   /**
    * Generic get collection
    */
-  async getItems(entityName, { filterActive = false } = {}) {
+  async getItems(entityName, { filterActive = false, forceFresh = false } = {}) {
     let items = [];
 
-    if (isFirebaseConfigured && db) {
+    // Instant local cache load
+    try {
+      items = JSON.parse((typeof window !== 'undefined' ? localStorage.getItem(getStorageKey(entityName)) : null) || '[]');
+    } catch (e) {
+      items = [];
+    }
+
+    // Only query Firestore if forceFresh or no local items
+    if ((forceFresh || items.length === 0) && isFirebaseConfigured && db) {
       try {
         const snap = await getDocs(collection(db, entityName));
         if (!snap.empty) {
           items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          if (typeof window !== 'undefined') localStorage.setItem(getStorageKey(entityName), JSON.stringify(items));
         }
       } catch (e) {
         console.warn(`Firestore read failed for ${entityName}:`, e);
-      }
-    }
-
-    if (items.length === 0) {
-      try {
-        items = JSON.parse(localStorage.getItem(getStorageKey(entityName)) || '[]');
-      } catch (e) {
-        items = [];
       }
     }
 

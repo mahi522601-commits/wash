@@ -4,9 +4,7 @@
  */
 import { logEvent } from 'firebase/analytics';
 import { analytics } from './firebase.js';
-import { orderService } from './orderService.js';
-import { customerService } from './customerService.js';
-import { serviceService } from './serviceService.js';
+
 
 const LOCAL_EVENTS_KEY = 'techwash_analytics_events';
 
@@ -43,6 +41,11 @@ export const analyticsService = {
    * Compute comprehensive SaaS BI Dashboard Metrics
    */
   async getBusinessIntelligence() {
+    const [{ orderService }, { customerService }, { serviceService }] = await Promise.all([
+      import('./orderService.js'),
+      import('./customerService.js'),
+      import('./serviceService.js'),
+    ]);
     const orders = await orderService.getOrders({ limitCount: 1000 });
     const customers = await customerService.getCustomers();
     const services = await serviceService.getServices();

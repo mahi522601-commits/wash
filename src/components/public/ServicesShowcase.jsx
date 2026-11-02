@@ -174,12 +174,12 @@ export const ServicesShowcase = ({ services = [] }) => {
                       <span>Book Now</span>
                     </Link>
                     <a
-                      href="tel:6304845567"
+                      href="tel:9000813444"
                       className="w-full py-2.5 px-4 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all active:scale-95 text-center shadow-xs"
-                      title="Call Techwash directly at 6304845567"
+                      title="Call Techwash directly at 90008 13444"
                     >
                       <Phone className="w-4 h-4 text-emerald-600 shrink-0" />
-                      <span>Call 6304845567</span>
+                      <span>Call 90008 13444</span>
                     </a>
                   </div>
                 </div>

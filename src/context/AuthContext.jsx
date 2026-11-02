@@ -24,6 +24,14 @@ export const AuthProvider = ({ children }) => {
       return;
     }
 
+    const isSpecialRoute = typeof window !== 'undefined' && 
+      (window.location.pathname.startsWith('/admin') || window.location.pathname.startsWith('/worker'));
+
+    if (!isSpecialRoute) {
+      setLoading(false);
+      return;
+    }
+
     // Real Firebase Auth listener with Firestore admin verification
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {

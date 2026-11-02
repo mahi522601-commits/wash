@@ -17,6 +17,7 @@ import { whatsappNotificationService } from '../../services/whatsappNotification
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { formatCurrency, formatDate, formatDateTime } from '../../utils/formatters';
+import { stopOrderRingingAlarm } from '../../utils/audioNotification';
 import { AdminPageHeader } from '../../components/admin/AdminPageHeader';
 import { Table } from '../../components/ui/Table';
 import { Button } from '../../components/ui/Button';
@@ -1524,9 +1525,16 @@ export const AdminOrdersPage = () => {
                 )}
               </div>
             ) : (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black bg-blue-50 text-blue-800 border border-blue-200 shadow-2xs">
-                🌐 ONLINE DOORSTEP
-              </span>
+              <div className="flex flex-col gap-1 items-start">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black bg-blue-50 text-blue-800 border border-blue-200 shadow-2xs">
+                  🌐 ONLINE DOORSTEP (POS-02)
+                </span>
+                {(row.needsAcceptance || row.acceptanceStatus === 'PENDING_ACCEPTANCE') && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black bg-rose-50 text-rose-800 border border-rose-300 animate-pulse shadow-xs">
+                    🚨 NEEDS ACCEPTANCE
+                  </span>
+                )}
+              </div>
             )}
           </div>
         );
@@ -1688,6 +1696,28 @@ export const AdminOrdersPage = () => {
       className: 'whitespace-nowrap min-w-[240px]',
       render: (_, row) => (
         <div className="flex items-center gap-1.5">
+          {(row.needsAcceptance || row.acceptanceStatus === 'PENDING_ACCEPTANCE') && (
+            <button
+              type="button"
+              onClick={async (e) => {
+                e.stopPropagation();
+                try {
+                  await orderService.acceptOrder(row.id, 'Admin Command Center');
+                  stopOrderRingingAlarm(row.id);
+                  success('Order Accepted', `Order #${row.orderNumber || row.id} has been accepted.`);
+                  loadOrders();
+                } catch (err) {
+                  error('Error', err.message || 'Could not accept order.');
+                }
+              }}
+              className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs flex items-center gap-1 shadow-sm active:scale-95 transition-all animate-pulse"
+              title="Accept Online Order & Silence Alarm"
+            >
+              <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+              <span>Accept</span>
+            </button>
+          )}
+
           <button
             type="button"
             onClick={() => openOrderModal(row)}
