@@ -12,11 +12,15 @@ import {
   ArrowRight,
   Clock,
   HelpCircle,
-  Phone
+  Phone,
+  Truck
 } from 'lucide-react';
+import { DoorstepPickupModal } from './DoorstepPickupModal';
 
 export const ServicesShowcase = ({ services = [] }) => {
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [pickupModalService, setPickupModalService] = useState(null);
+  const [isPickupModalOpen, setIsPickupModalOpen] = useState(false);
 
   const displayServices = services && services.length > 0 ? services : DEFAULT_SERVICES;
 
@@ -162,23 +166,40 @@ export const ServicesShowcase = ({ services = [] }) => {
                   </div>
                 </div>
 
-                {/* 3. CARD FOOTER: DIRECT BOOK BUTTON & CALL BUTTON */}
+                {/* 3. CARD FOOTER: DIRECT BOOK BUTTON, DOORSTEP PICKUP BUTTON & CALL BUTTON */}
                 <div className="px-5 sm:px-6 pb-5 pt-0">
                   <div className="pt-3 border-t border-slate-100 space-y-2">
+                    {/* 1. Book Now - Orange Gradient Button */}
                     <Link
                       to={`/book-pickup?service=${service.slug}`}
-                      className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-[#F97316] to-amber-500 hover:from-[#EA580C] hover:to-orange-500 text-white text-xs sm:text-sm font-black shadow-sm flex items-center justify-center gap-2 transition-all active:scale-95 text-center"
-                      title={`Book ${service.title || service.name} pickup`}
+                      className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-[#F97316] to-amber-500 hover:from-[#EA580C] hover:to-orange-500 text-white text-xs sm:text-sm font-black shadow-sm flex items-center justify-center gap-2 transition-all active:scale-95 text-center"
+                      title={`Book ${service.title || service.name} online`}
                     >
                       <Calendar className="w-4 h-4 shrink-0" />
                       <span>Book Now</span>
                     </Link>
+
+                    {/* 2. Request Doorstep Pickup - Dark Green Premium Button */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPickupModalService(service);
+                        setIsPickupModalOpen(true);
+                      }}
+                      className="w-full py-2.5 px-4 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs sm:text-sm font-black shadow-sm flex items-center justify-center gap-2 transition-all active:scale-95 text-center cursor-pointer border border-emerald-900/20"
+                      title={`Request Doorstep Pickup for ${service.title || service.name}`}
+                    >
+                      <Truck className="w-4 h-4 text-emerald-300 shrink-0" />
+                      <span>Request Doorstep Pickup</span>
+                    </button>
+
+                    {/* 3. Call Now - Light Green Button */}
                     <a
                       href="tel:9000813444"
-                      className="w-full py-2.5 px-4 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all active:scale-95 text-center shadow-xs"
+                      className="w-full py-2 px-4 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all active:scale-95 text-center shadow-xs"
                       title="Call Techwash directly at 90008 13444"
                     >
-                      <Phone className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <Phone className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                       <span>Call Now</span>
                     </a>
                   </div>
@@ -201,6 +222,13 @@ export const ServicesShowcase = ({ services = [] }) => {
         </div>
 
       </div>
+
+      {/* Doorstep Pickup Modal */}
+      <DoorstepPickupModal
+        isOpen={isPickupModalOpen}
+        onClose={() => setIsPickupModalOpen(false)}
+        initialService={pickupModalService}
+      />
     </section>
   );
 };

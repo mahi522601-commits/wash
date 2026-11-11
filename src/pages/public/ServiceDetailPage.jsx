@@ -43,6 +43,7 @@ import {
 } from 'lucide-react';
 import { SEOHead } from '../../components/seo/SEOHead';
 import { BASE_URL, BUSINESS_INFO, SEO_AREAS, SEO_SERVICES, BUSINESS_BRANCHES } from '../../data/seoData';
+import { DoorstepPickupModal } from '../../components/public/DoorstepPickupModal';
 
 const DEFAULT_PROCESS_STEPS = [
   {
@@ -142,6 +143,7 @@ export const ServiceDetailPage = () => {
   // Sticky interactive estimator state
   const [estimateQty, setEstimateQty] = useState(2);
   const [isExpress, setIsExpress] = useState(false);
+  const [isDoorstepModalOpen, setIsDoorstepModalOpen] = useState(false);
 
   useEffect(() => {
     const initialMatch = findInitialService(slug);
@@ -541,9 +543,19 @@ export const ServiceDetailPage = () => {
 
                 <Link to={`/book-pickup?service=${service.slug}`}>
                   <Button variant="primary" size="lg" icon={Calendar} className="shadow-[0_10px_35px_rgba(249,115,22,0.4)] hover:shadow-[0_15px_45px_rgba(249,115,22,0.6)]">
-                    Book Doorstep Pickup
+                    Book Now
                   </Button>
                 </Link>
+
+                <button
+                  type="button"
+                  onClick={() => setIsDoorstepModalOpen(true)}
+                  className="px-5 py-3.5 rounded-2xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold transition-all flex items-center gap-2 hover:scale-105 active:scale-95 shadow-md cursor-pointer border border-emerald-700/50"
+                  title="Request Doorstep Pickup"
+                >
+                  <Truck className="w-4 h-4 text-emerald-300" />
+                  <span>Request Doorstep Pickup</span>
+                </button>
 
                 <a
                   href="tel:9000813444"
@@ -1222,20 +1234,30 @@ export const ServiceDetailPage = () => {
                       {formatCurrency(estimatedTotal)}
                     </span>
                   </div>
-                  <span className="text-[11px] text-slate-400 font-medium">+5% GST</span>
+                  <span className="text-[11px] text-slate-400 font-medium">All Inclusive Pricing</span>
                 </div>
 
-                {/* Direct Action Button */}
+                {/* Direct Action Buttons: Book Now, Request Doorstep Pickup & Call Now */}
                 <div className="space-y-2.5">
                   <Link to={`/book-pickup?service=${service.slug}`} className="block">
                     <Button variant="primary" size="lg" className="w-full shadow-luxury" icon={Calendar}>
-                      Book Pickup with this Care
+                      Book Now
                     </Button>
                   </Link>
 
+                  <button
+                    type="button"
+                    onClick={() => setIsDoorstepModalOpen(true)}
+                    className="w-full py-3 px-4 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs sm:text-sm font-black flex items-center justify-center gap-2 transition-all active:scale-95 text-center shadow-md cursor-pointer border border-emerald-900/20"
+                    title={`Request Doorstep Pickup for ${service.title || service.name}`}
+                  >
+                    <Truck className="w-4 h-4 text-emerald-300 shrink-0" />
+                    <span>Request Doorstep Pickup</span>
+                  </button>
+
                   <a
                     href="tel:9000813444"
-                    className="w-full py-3 px-4 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-sm font-bold flex items-center justify-center gap-2 transition-all active:scale-95 text-center shadow-xs block"
+                    className="w-full py-2.5 px-4 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all active:scale-95 text-center shadow-xs block"
                     title="Call 90008 13444"
                   >
                     <Phone className="w-4 h-4 text-emerald-600 shrink-0" />
@@ -1288,6 +1310,12 @@ export const ServiceDetailPage = () => {
         </div>
       </section>
 
+      {/* Doorstep Pickup Modal */}
+      <DoorstepPickupModal
+        isOpen={isDoorstepModalOpen}
+        onClose={() => setIsDoorstepModalOpen(false)}
+        initialService={service}
+      />
     </div>
     </>
   );

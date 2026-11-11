@@ -38,6 +38,7 @@ const LocationsPage = lazyNamed(() => import('./pages/public/LocationsPage'), 'L
 const ContactPage = lazyNamed(() => import('./pages/public/ContactPage'), 'ContactPage');
 const FAQPage = lazyNamed(() => import('./pages/public/FAQPage'), 'FAQPage');
 const BookPickupPage = lazyNamed(() => import('./pages/public/BookPickupPage'), 'BookPickupPage');
+const RequestPickupPage = lazyNamed(() => import('./pages/public/RequestPickupPage'), 'RequestPickupPage');
 const TrackOrderPage = lazyNamed(() => import('./pages/public/TrackOrderPage'), 'TrackOrderPage');
 const OffersPage = lazyNamed(() => import('./pages/public/OffersPage'), 'OffersPage');
 const PrivacyPolicyPage = lazyNamed(() => import('./pages/public/PrivacyPolicyPage'), 'PrivacyPolicyPage');
@@ -66,6 +67,7 @@ const AdminStaffPage = lazyNamed(() => import('./pages/admin/AdminStaffPage'), '
 const AdminAttendancePage = lazyNamed(() => import('./pages/admin/AdminAttendancePage'), 'AdminAttendancePage');
 const AdminBalanceDuePage = lazyNamed(() => import('./pages/admin/AdminBalanceDuePage'), 'AdminBalanceDuePage');
 const AdminTasksPage = lazyNamed(() => import('./pages/admin/AdminTasksPage'), 'AdminTasksPage');
+const AdminPickupRequestsPage = lazyNamed(() => import('./pages/admin/AdminPickupRequestsPage'), 'AdminPickupRequestsPage');
 const AdminReportsPage = lazyNamed(() => import('./pages/admin/AdminReportsPage'), 'AdminReportsPage');
 const AdminExpensesPage = lazyNamed(() => import('./pages/admin/AdminExpensesPage'), 'AdminExpensesPage');
 const AdminSettingsPage = lazyNamed(() => import('./pages/admin/AdminSettingsPage'), 'AdminSettingsPage');
@@ -157,6 +159,8 @@ export function App() {
               <Route path="/contact" element={<PublicLayout><ContactPage /></PublicLayout>} />
               <Route path="/faq" element={<PublicLayout><FAQPage /></PublicLayout>} />
               <Route path="/book-pickup" element={<PublicLayout><BookPickupPage /></PublicLayout>} />
+              <Route path="/request-pickup" element={<PublicLayout><RequestPickupPage /></PublicLayout>} />
+              <Route path="/doorstep-pickup" element={<Navigate to="/request-pickup" replace />} />
               <Route path="/track-order" element={<PublicLayout><TrackOrderPage /></PublicLayout>} />
               <Route path="/offers" element={<PublicLayout><OffersPage /></PublicLayout>} />
               <Route path="/areas" element={<PublicLayout><AreasPage /></PublicLayout>} />
@@ -181,6 +185,8 @@ export function App() {
                 <Route index element={<AdminDashboardPage />} />
                 <Route path="dashboard" element={<AdminDashboardPage />} />
                 <Route path="analytics" element={<AdminAnalyticsPage />} />
+                <Route path="pickup-requests" element={<AdminPickupRequestsPage />} />
+                <Route path="doorstep-pickups" element={<AdminPickupRequestsPage />} />
                 <Route path="tasks" element={<AdminTasksPage />} />
                 <Route path="schedule" element={<AdminTasksPage />} />
                 <Route path="orders" element={<AdminOrdersPage />} />

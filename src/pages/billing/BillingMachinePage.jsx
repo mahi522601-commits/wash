@@ -28,6 +28,7 @@ import { PosOrdersModal } from '../../components/billing/PosOrdersModal';
 import { PosTasksModal } from '../../components/billing/PosTasksModal';
 import { PosBalanceDueModal } from '../../components/billing/PosBalanceDueModal';
 import { PosExpensesModal } from '../../components/billing/PosExpensesModal';
+import { PosPickupRequestsModal } from '../../components/billing/PosPickupRequestsModal';
 import { PosNotificationCenter } from '../../components/billing/PosNotificationCenter';
 import { IncomingOrderAlertModal } from '../../components/common/IncomingOrderAlertModal';
 import { 
@@ -293,6 +294,7 @@ export const BillingMachinePage = () => {
   const [isTasksModalOpen, setIsTasksModalOpen] = useState(false);
   const [isBalancesModalOpen, setIsBalancesModalOpen] = useState(false);
   const [isExpensesModalOpen, setIsExpensesModalOpen] = useState(false);
+  const [isPickupsModalOpen, setIsPickupsModalOpen] = useState(false);
 
   useEffect(() => {
     const view = searchParams.get('view') || searchParams.get('tab') || searchParams.get('modal');
@@ -301,21 +303,31 @@ export const BillingMachinePage = () => {
       setIsTasksModalOpen(false);
       setIsBalancesModalOpen(false);
       setIsExpensesModalOpen(false);
+      setIsPickupsModalOpen(false);
     } else if (view === 'tasks' || view === 'task') {
       setIsTasksModalOpen(true);
       setIsOrdersModalOpen(false);
       setIsBalancesModalOpen(false);
       setIsExpensesModalOpen(false);
+      setIsPickupsModalOpen(false);
     } else if (view === 'balances' || view === 'balance' || view === 'due') {
       setIsBalancesModalOpen(true);
       setIsOrdersModalOpen(false);
       setIsTasksModalOpen(false);
       setIsExpensesModalOpen(false);
+      setIsPickupsModalOpen(false);
     } else if (view === 'expenses' || view === 'expense') {
       setIsExpensesModalOpen(true);
       setIsOrdersModalOpen(false);
       setIsTasksModalOpen(false);
       setIsBalancesModalOpen(false);
+      setIsPickupsModalOpen(false);
+    } else if (view === 'pickups' || view === 'pickup' || view === 'doorstep') {
+      setIsPickupsModalOpen(true);
+      setIsOrdersModalOpen(false);
+      setIsTasksModalOpen(false);
+      setIsBalancesModalOpen(false);
+      setIsExpensesModalOpen(false);
     }
   }, [searchParams]);
 
@@ -325,21 +337,31 @@ export const BillingMachinePage = () => {
       setIsTasksModalOpen(false);
       setIsBalancesModalOpen(false);
       setIsExpensesModalOpen(false);
+      setIsPickupsModalOpen(false);
     } else if (viewName === 'tasks') {
       setIsTasksModalOpen(true);
       setIsOrdersModalOpen(false);
       setIsBalancesModalOpen(false);
       setIsExpensesModalOpen(false);
+      setIsPickupsModalOpen(false);
     } else if (viewName === 'balances') {
       setIsBalancesModalOpen(true);
       setIsOrdersModalOpen(false);
       setIsTasksModalOpen(false);
       setIsExpensesModalOpen(false);
+      setIsPickupsModalOpen(false);
     } else if (viewName === 'expenses') {
       setIsExpensesModalOpen(true);
       setIsOrdersModalOpen(false);
       setIsTasksModalOpen(false);
       setIsBalancesModalOpen(false);
+      setIsPickupsModalOpen(false);
+    } else if (viewName === 'pickups') {
+      setIsPickupsModalOpen(true);
+      setIsOrdersModalOpen(false);
+      setIsTasksModalOpen(false);
+      setIsBalancesModalOpen(false);
+      setIsExpensesModalOpen(false);
     }
     const newParams = new URLSearchParams(searchParams);
     newParams.set('view', viewName);
@@ -351,6 +373,7 @@ export const BillingMachinePage = () => {
     if (viewName === 'tasks') setIsTasksModalOpen(false);
     if (viewName === 'balances') setIsBalancesModalOpen(false);
     if (viewName === 'expenses') setIsExpensesModalOpen(false);
+    if (viewName === 'pickups') setIsPickupsModalOpen(false);
     const newParams = new URLSearchParams(searchParams);
     if (
       newParams.get('view') === viewName || 
@@ -1384,6 +1407,7 @@ export const BillingMachinePage = () => {
                   onOpenTasks={() => openModalWithUrl('tasks')}
                   onOpenBalances={() => openModalWithUrl('balances')}
                   onOpenExpenses={() => openModalWithUrl('expenses')}
+                  onOpenPickups={() => openModalWithUrl('pickups')}
                 />
               </div>
 
@@ -1571,6 +1595,7 @@ export const BillingMachinePage = () => {
                 onOpenTasks={() => openModalWithUrl('tasks')}
                 onOpenBalances={() => openModalWithUrl('balances')}
                 onOpenExpenses={() => openModalWithUrl('expenses')}
+                onOpenPickups={() => openModalWithUrl('pickups')}
               />
 
               <div className="hidden md:flex items-center gap-3 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-xs">
@@ -3290,6 +3315,18 @@ export const BillingMachinePage = () => {
         onClose={() => closeModalWithUrl('expenses')}
         terminal={terminal}
         activeTerminalId={activeTerminalId}
+      />
+
+      {/* ── POS DOORSTEP PICKUP REQUESTS MODAL (IN-POS) ── */}
+      <PosPickupRequestsModal
+        isOpen={isPickupsModalOpen}
+        onClose={() => closeModalWithUrl('pickups')}
+        terminal={terminal}
+        activeTerminalId={activeTerminalId}
+        onOrderCreated={(newOrder) => {
+          setReceiptOrder(newOrder);
+          setIsReceiptModalOpen(true);
+        }}
       />
 
       {/* ── URGENT INCOMING ONLINE ORDER RINGING ALARM (POS-2 ONLY) ── */}

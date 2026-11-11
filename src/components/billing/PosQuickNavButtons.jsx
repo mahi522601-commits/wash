@@ -2,13 +2,15 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { orderService, getOrderBranchKey } from '../../services/orderService';
 import { expenseService } from '../../services/expenseService';
+import { pickupRequestService } from '../../services/pickupRequestService';
 import { formatCurrency } from '../../utils/formatters';
 import { 
   ShoppingBag,
   Truck, 
   Wallet, 
   Receipt,
-  ExternalLink 
+  ExternalLink,
+  Bike
 } from 'lucide-react';
 
 /**
@@ -18,8 +20,9 @@ import {
  * 2. Tasks: In-POS Task & Delivery Dispatcher (live task count & direct URL)
  * 3. Balances: In-POS Balance Due Collection & Tracker (live due count & direct URL)
  * 4. Expenses: In-POS Counter Expense & Petty Cash Tracker (live count & direct URL)
+ * 5. Pickups: In-POS Doorstep Pickup Requests (live pending count & direct URL)
  * 
- * Supports full browser URL deep-linking (?view=orders, ?view=tasks, ?view=balances, ?view=expenses),
+ * Supports full browser URL deep-linking (?view=orders, ?view=tasks, ?view=balances, ?view=expenses, ?view=pickups),
  * bookmarking, middle-click / new tab support, and native in-POS modal opening
  * without redirecting to the admin panel or losing active cart state.
  */
@@ -31,7 +34,8 @@ export const PosQuickNavButtons = ({
   onOpenOrders = null,
   onOpenTasks = null,
   onOpenBalances = null,
-  onOpenExpenses = null
+  onOpenExpenses = null,
+  onOpenPickups = null
 }) => {
   const [stats, setStats] = useState({
     totalOrders: 0,
@@ -46,6 +50,7 @@ export const PosQuickNavButtons = ({
     totalDueAmount: 0,
     todayExpensesCount: 0,
     todayExpensesAmount: 0,
+    pendingPickupsCount: 0,
     loading: true,
   });
 
@@ -128,6 +133,14 @@ export const PosQuickNavButtons = ({
         console.warn('Could not load branch expenses for POS:', expErr);
       }
 
+      // 5. Doorstep Pickups Pending Metric
+      let pendingPickupsCount = 0;
+      try {
+        pendingPickupsCount = await pickupRequestService.getPendingCount();
+      } catch (puErr) {
+        console.warn('Could not load pending pickups for POS:', puErr);
+      }
+
       setStats({
         totalOrders,
         activeOrders,
@@ -141,6 +154,7 @@ export const PosQuickNavButtons = ({
         totalDueAmount,
         todayExpensesCount,
         todayExpensesAmount,
+        pendingPickupsCount,
         loading: false,
       });
     } catch (err) {
@@ -153,6 +167,7 @@ export const PosQuickNavButtons = ({
 
     // 1. Subscribe to new orders via orderService real-time engine
     const unsubOrders = orderService.subscribeToNewOrders(loadStats);
+    const unsubPickups = pickupRequestService.subscribeToPickupRequests(loadStats);
 
     // 2. Listen to custom window events triggered when orders or payments or expenses are modified
     const eventNames = [
@@ -162,7 +177,8 @@ export const PosQuickNavButtons = ({
       'techwash-new-order-placed',
       'techwash-worker-refresh-tasks',
       'techwash-order-deleted',
-      'techwash-expenses-updated'
+      'techwash-expenses-updated',
+      'techwash-pickup-requests-updated'
     ];
 
     const handleEvent = () => loadStats();
@@ -170,6 +186,7 @@ export const PosQuickNavButtons = ({
 
     return () => {
       if (typeof unsubOrders === 'function') unsubOrders();
+      if (typeof unsubPickups === 'function') unsubPickups();
       eventNames.forEach(ev => window.removeEventListener(ev, handleEvent));
     };
   }, [loadStats]);
@@ -196,6 +213,12 @@ export const PosQuickNavButtons = ({
     stats.todayExpensesCount > 0
       ? 'bg-purple-500/15 hover:bg-purple-500/25 border-purple-500/40 text-purple-200 shadow-sm shadow-purple-500/10'
       : 'bg-slate-800/80 hover:bg-slate-700/80 border-slate-700 text-slate-300'
+  }`;
+
+  const pickupsButtonClasses = `group relative px-2.5 sm:px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer border select-none ${
+    stats.pendingPickupsCount > 0
+      ? 'bg-amber-500/20 hover:bg-amber-500/30 border-amber-500/40 text-amber-200 shadow-sm shadow-amber-500/10'
+      : 'bg-emerald-500/15 hover:bg-emerald-500/25 border-emerald-500/30 text-emerald-300'
   }`;
 
   return (
@@ -462,6 +485,73 @@ export const PosQuickNavButtons = ({
             }`}
           >
             {stats.loading ? '…' : stats.todayExpensesCount}
+          </span>
+          <ExternalLink className="w-2.5 h-2.5 opacity-40 group-hover:opacity-100 transition-opacity hidden md:inline" />
+        </Link>
+      )}
+
+      {/* ───────────────────────────────────────────────────────────── */}
+      {/* 5. DOORSTEP PICKUPS BUTTON (WITH URL & LIVE NOTIFICATION)     */}
+      {/* ───────────────────────────────────────────────────────────── */}
+      {onOpenPickups ? (
+        <a
+          href={getButtonUrl('pickups')}
+          onClick={(e) => handleLinkClick(e, onOpenPickups)}
+          className={pickupsButtonClasses}
+          title={`Doorstep Pickup Requests: ${stats.pendingPickupsCount} pending website requests awaiting dispatch`}
+        >
+          <div className="relative">
+            <Truck className={`w-3.5 h-3.5 transition-transform group-hover:scale-110 ${
+              stats.pendingPickupsCount > 0 ? 'text-amber-400' : 'text-emerald-400'
+            }`} />
+            {stats.pendingPickupsCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-amber-400 ring-2 ring-slate-900 animate-ping" />
+            )}
+          </div>
+
+          <span className={`text-xs font-bold ${showLabelOnMobile ? 'inline' : 'hidden sm:inline'}`}>
+            Pickups
+          </span>
+
+          <span
+            className={`px-1.5 py-0.2 min-w-[20px] rounded-full text-[10px] font-mono font-black text-center shadow-xs transition-all ${
+              stats.pendingPickupsCount > 0
+                ? 'bg-amber-500 text-slate-950 ring-1 ring-amber-400/50'
+                : 'bg-slate-700/60 text-slate-300'
+            }`}
+          >
+            {stats.loading ? '…' : stats.pendingPickupsCount}
+          </span>
+        </a>
+      ) : (
+        <Link
+          to="/admin/pickup-requests"
+          target="_blank"
+          rel="noopener noreferrer"
+          className={pickupsButtonClasses}
+          title={`Doorstep Pickups Hub: ${stats.pendingPickupsCount} pending website requests`}
+        >
+          <div className="relative">
+            <Truck className={`w-3.5 h-3.5 transition-transform group-hover:scale-110 ${
+              stats.pendingPickupsCount > 0 ? 'text-amber-400' : 'text-emerald-400'
+            }`} />
+            {stats.pendingPickupsCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-amber-400 ring-2 ring-slate-900 animate-ping" />
+            )}
+          </div>
+
+          <span className={`text-xs font-bold ${showLabelOnMobile ? 'inline' : 'hidden sm:inline'}`}>
+            Pickups
+          </span>
+
+          <span
+            className={`px-1.5 py-0.2 min-w-[20px] rounded-full text-[10px] font-mono font-black text-center shadow-xs transition-all ${
+              stats.pendingPickupsCount > 0
+                ? 'bg-amber-500 text-slate-950 ring-1 ring-amber-400/50'
+                : 'bg-slate-700/60 text-slate-300'
+            }`}
+          >
+            {stats.loading ? '…' : stats.pendingPickupsCount}
           </span>
           <ExternalLink className="w-2.5 h-2.5 opacity-40 group-hover:opacity-100 transition-opacity hidden md:inline" />
         </Link>

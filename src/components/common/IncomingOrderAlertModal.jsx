@@ -21,6 +21,7 @@ import {
   isOrderRingingActive 
 } from '../../utils/audioNotification';
 import { orderService } from '../../services/orderService';
+import { pickupRequestService } from '../../services/pickupRequestService';
 import { useToast } from '../../context/ToastContext';
 import { formatCurrency, formatDateTime } from '../../utils/formatters';
 
@@ -91,9 +92,16 @@ export const IncomingOrderAlertModal = ({
     setAcceptingId(targetId);
 
     try {
-      await orderService.acceptOrder(targetId, acceptedByRole);
+      if (String(targetId).startsWith('TW-PU-')) {
+        await pickupRequestService.updatePickupRequestStatus(targetId, 'Confirmed', {
+          updatedBy: acceptedByRole,
+          note: 'Confirmed from Incoming Ringing Alert Banner'
+        });
+      } else {
+        await orderService.acceptOrder(targetId, acceptedByRole);
+      }
       stopOrderRingingAlarm(targetId);
-      success('Order Accepted!', `Booking #${orderToAccept.orderNumber || targetId} accepted. Ringing alarm silenced.`);
+      success('Request Accepted!', `Booking #${orderToAccept.orderNumber || targetId} accepted. Ringing alarm silenced.`);
     } catch (err) {
       console.error('Failed to accept order:', err);
       // Fallback: stop audio locally anyway
@@ -109,11 +117,18 @@ export const IncomingOrderAlertModal = ({
     try {
       for (const ord of ringingOrders) {
         const id = ord.id || ord.orderNumber;
-        await orderService.acceptOrder(id, acceptedByRole).catch(() => {});
+        if (String(id).startsWith('TW-PU-')) {
+          await pickupRequestService.updatePickupRequestStatus(id, 'Confirmed', {
+            updatedBy: acceptedByRole,
+            note: 'Confirmed from Incoming Ringing Alert Banner'
+          }).catch(() => {});
+        } else {
+          await orderService.acceptOrder(id, acceptedByRole).catch(() => {});
+        }
         stopOrderRingingAlarm(id);
       }
       stopOrderRingingAlarm('ALL');
-      success('All Orders Accepted!', `${ringingOrders.length} online orders accepted. Alarm silenced.`);
+      success('All Requests Accepted!', `${ringingOrders.length} online requests accepted. Alarm silenced.`);
     } finally {
       setAcceptingId(null);
     }

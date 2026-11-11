@@ -43,6 +43,7 @@ import {
   Calendar
 } from 'lucide-react';
 import { orderService } from '../../services/orderService';
+import { pickupRequestService } from '../../services/pickupRequestService';
 
 const SIDEBAR_COLLAPSED_KEY = 'techwash_admin_sidebar_collapsed';
 
@@ -51,6 +52,7 @@ export const AdminSidebar = ({ isOpen, onClose, isCollapsed, onToggleCollapse })
   const { pathname } = useLocation();
 
   const [taskCount, setTaskCount] = useState(0);
+  const [pendingPickupsCount, setPendingPickupsCount] = useState(0);
 
   useEffect(() => {
     const fetchTasks = async () => {
@@ -62,8 +64,21 @@ export const AdminSidebar = ({ isOpen, onClose, isCollapsed, onToggleCollapse })
     };
     fetchTasks();
     const unsub = orderService.subscribeToNewOrders(fetchTasks);
+
+    const fetchPickups = async () => {
+      try {
+        const count = await pickupRequestService.getPendingCount();
+        setPendingPickupsCount(count);
+      } catch {}
+    };
+    fetchPickups();
+    const unsubPickups = pickupRequestService.subscribeToPickupRequests((list) => {
+      setPendingPickupsCount(list.filter(r => r.status === 'Pending').length);
+    });
+
     return () => {
       if (typeof unsub === 'function') unsub();
+      if (typeof unsubPickups === 'function') unsubPickups();
     };
   }, []);
 
@@ -82,9 +97,16 @@ export const AdminSidebar = ({ isOpen, onClose, isCollapsed, onToggleCollapse })
       title: 'OPERATIONS & LOGISTICS',
       items: [
         { 
+          name: 'Doorstep Pickups', 
+          path: '/admin/pickup-requests', 
+          icon: Truck, 
+          badge: pendingPickupsCount > 0 ? `${pendingPickupsCount} Pending` : 'Doorstep', 
+          badgeColor: pendingPickupsCount > 0 ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' 
+        },
+        { 
           name: "Today's Tasks", 
           path: '/admin/tasks', 
-          icon: Truck, 
+          icon: Bike, 
           badge: taskCount > 0 ? `${taskCount} Today` : 'Schedule', 
           badgeColor: taskCount > 0 ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' 
         },

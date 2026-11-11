@@ -24,11 +24,13 @@ import {
   X,
   Plus,
   Wallet,
-  UserCheck
+  UserCheck,
+  Truck
 } from 'lucide-react';
 
 const SEARCHABLE_ITEMS = [
   // Core & Operations
+  { title: 'Doorstep Pickup Requests', category: 'Operations', path: '/admin/pickup-requests', icon: Truck, keywords: 'doorstep pickups website riders assign pos-02 tolichowki requests' },
   { title: 'Dashboard & Command Center', category: 'Navigation', path: '/admin/dashboard', icon: LayoutDashboard, keywords: 'home stats overview kpi' },
   { title: 'Analytics & BI Intelligence', category: 'Intelligence', path: '/admin/analytics', icon: Activity, keywords: 'revenue sales conversion charts telemetry' },
   { title: 'Expenses & Monthly P&L Ledger', category: 'Intelligence', path: '/admin/expenses', icon: Wallet, keywords: 'expenses profit loss pnl cost electricity water detergent maintenance labour margin' },

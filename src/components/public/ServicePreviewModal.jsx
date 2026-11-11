@@ -5,7 +5,7 @@ import { Button } from '../ui/Button';
 import { YouTubeEmbed } from '../ui/YouTubeEmbed';
 import { ProcessSteps } from '../ui/ProcessSteps';
 import { formatCurrency } from '../../utils/formatters';
-import { Calendar, CheckCircle2, ArrowLeft, Sparkles, ShieldCheck, Phone } from 'lucide-react';
+import { Calendar, CheckCircle2, ArrowLeft, Sparkles, ShieldCheck, Phone, Truck } from 'lucide-react';
 
 export const ServicePreviewModal = ({
   isOpen,
@@ -54,10 +54,18 @@ export const ServicePreviewModal = ({
                 {service.startingPrice ? `${formatCurrency(service.startingPrice)}` : 'Custom Quote'}
                 <span className="text-xs font-normal text-slate-400 ml-1">/ {service.pricingType || 'per piece'}</span>
               </div>
-              <div className="flex flex-wrap items-center gap-3 pt-2">
+              <div className="flex flex-wrap items-center gap-2.5 pt-2">
                 <Button variant="primary" size="md" icon={Calendar}>
-                  Book This Service
+                  Book Now
                 </Button>
+                <a
+                  href={`/request-pickup?service=${service.slug || ''}`}
+                  className="px-4 py-2.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm"
+                  title="Request Doorstep Pickup"
+                >
+                  <Truck className="w-3.5 h-3.5 text-emerald-300" />
+                  <span>Request Doorstep Pickup</span>
+                </a>
                 <a
                   href="tel:9000813444"
                   className="px-4 py-2.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 text-xs font-bold flex items-center gap-1.5 transition-all"
