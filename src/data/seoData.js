@@ -16,7 +16,7 @@ export const BUSINESS_INFO = {
   logo: `${BASE_URL}/techwashlogo.webp`,
   image: `${BASE_URL}/techwashlogo.webp`,
   telephone: '+91 90008 13444',
-  email: 'support@techwashlaundry.com',
+  email: 'techwashlaundry@gmail.com',
   priceRange: '₹12 - ₹350',
   currenciesAccepted: 'INR',
   paymentAccepted: 'Cash, Credit Card, Debit Card, UPI, Google Pay, PhonePe, Paytm, Net Banking',

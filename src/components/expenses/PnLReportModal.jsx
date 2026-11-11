@@ -314,7 +314,7 @@ Orders: ${pnlData.totalOrdersCount} | Processed: ${pnlData.totalProcessedKg} Kg`
                     Commercial Laundry, Eco Dry Cleaning & Garment Care Processing
                   </p>
                   <p className="text-[10px] text-slate-500 font-mono mt-0.5">
-                    GSTIN: 36AAACT9981F1Z8 • PAN: AAACT9981F • Central Command: Manikonda, Hyderabad
+                    Central Command: Manikonda, Hyderabad • Email: techwashlaundry@gmail.com
                   </p>
                 </div>
               </div>

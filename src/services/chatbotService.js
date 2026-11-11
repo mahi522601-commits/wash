@@ -632,7 +632,7 @@ export const chatbotService = {
         payload: {
           phone: settings?.general?.primaryPhone || '+91 90008 13444',
           whatsapp: settings?.general?.whatsappNumber || '+91 90008 13444',
-          email: settings?.general?.supportEmail || 'care@techwashlaundry.com',
+          email: settings?.general?.supportEmail || 'techwashlaundry@gmail.com',
         },
         contextPills: [
           { label: '📦 Book Online', value: 'Book a Doorstep Pickup' },

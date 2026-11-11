@@ -206,7 +206,7 @@ export const CORE_REGISTRY_PAGES = [
     sitemapEligible: true,
     targetIntent: 'Customer support hotline, store hours, and service email',
     title: 'Contact Techwash Laundry: Customer Support & Hotline | Hyderabad',
-    metaDescription: 'Get in touch with Techwash Laundry. Call +91 90008 13444 or email care@techwashlaundry.com. Operating 8:00 AM to 9:00 PM all 7 days with dedicated customer concierge.',
+    metaDescription: 'Get in touch with Techwash Laundry. Call +91 90008 13444 or email techwashlaundry@gmail.com. Operating 8:00 AM to 9:00 PM all 7 days with dedicated customer concierge.',
     h1: 'Contact Our Garment Concierge & Support Team',
     primaryKeyword: 'techwash laundry phone number',
     priority: '0.7',

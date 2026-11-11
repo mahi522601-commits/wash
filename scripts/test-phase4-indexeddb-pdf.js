@@ -213,7 +213,7 @@ function generateRedesignedInvoicePDF(order) {
       doc.fillColor(textColor).fontSize(8);
       doc.font('Helvetica').text('Subtotal:', 313, y + 8);
       doc.font('Helvetica').text(`₹${total.toFixed(2)}`, 490, y + 8, { width: 60, align: 'right' });
-      doc.font('Helvetica').text('Tax (GST):', 313, y + 20);
+      doc.font('Helvetica').text('Taxes:', 313, y + 20);
       doc.font('Helvetica').text(`₹0.00`, 490, y + 20, { width: 60, align: 'right' });
       doc.fillColor(primaryNavy).font('Helvetica-Bold').fontSize(9).text('GRAND TOTAL:', 313, y + 34);
       doc.font('Helvetica-Bold').fontSize(9).text(`₹${total.toFixed(2)}`, 490, y + 34, { width: 60, align: 'right' });

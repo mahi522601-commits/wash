@@ -263,7 +263,7 @@ export const PrintFinancialReport = ({
               Official Financial Settlement & Pin-to-Pin Operations Report
             </p>
             <p className="text-[10px] text-slate-500 font-medium">
-              Hyderabad, Telangana • Tel: {settings?.general?.primaryPhone || '+91 63048 45567'} • {settings?.general?.supportEmail || 'care@techwashlaundry.com'}
+              Hyderabad, Telangana • Tel: {settings?.general?.primaryPhone || '+91 90008 13444'} • {settings?.general?.supportEmail || 'techwashlaundry@gmail.com'}
             </p>
           </div>
         </div>

@@ -1,5 +1,5 @@
 /**
- * Tech Wash Laundry Services — Client-Side Pure JavaScript PDF Tax Invoice Generator
+ * Tech Wash Laundry Services — Client-Side Pure JavaScript PDF Invoice Generator
  * Generates official, 100% compliant PDF 1.4 binary documents without server dependencies.
  * Produces standard vector A4 format (595.28 x 841.89 pt) with crisp embedded logo
  * and verified terminal contact numbers (POS-1: 6304845567, POS-2: 9000813444, POS-3: 9866740179).
@@ -90,7 +90,7 @@ function formatTimeSafe(val) {
 }
 
 /**
- * Generates an official Tax Invoice PDF as a Blob (type: application/pdf)
+ * Generates an official Invoice PDF as a Blob (type: application/pdf)
  * @param {Object} order - Full order object
  * @returns {Blob}
  */
@@ -100,7 +100,7 @@ export function generateInvoicePDFBlob(order) {
 }
 
 /**
- * Generates an official Tax Invoice PDF as a Uint8Array
+ * Generates an official Invoice PDF as a Uint8Array
  * @param {Object} order - Full order object
  * @returns {Uint8Array}
  */
@@ -209,13 +209,13 @@ export function generateInvoicePDFUint8Array(order) {
   s += textAt('F2', 8, '0.15 0.39 0.92', 108, 775, 'Premium Eco-Laundry  Hydrocarbon Dry Cleaning  3D Steam Pressing');
   s += textAt('F1', 7.5, '0.3 0.35 0.4', 108, 763, termInfo.address);
   s += textAt('F2', 7.5, '0.06 0.09 0.16', 108, 751, 'Helpline: POS-1: 6304845567 | POS-2: 9000813444 | POS-3: 9866740179');
-  s += textAt('F1', 7, '0.5 0.55 0.6', 108, 740, 'GSTIN / State: 36 Telangana | www.techwashlaundry.com | Official Tax Invoice');
+  s += textAt('F1', 7, '0.5 0.55 0.6', 108, 740, 'Email: techwashlaundry@gmail.com | www.techwashlaundry.com | Official Invoice');
 
   // Invoice Meta Box (Top Right)
   s += '0.97 0.98 0.99 rg 400 735 159 65 re f\n';
   s += '0.8 0.85 0.9 RG 0.8 w 400 735 159 65 re S\n';
   s += '0.06 0.09 0.16 rg 400 782 159 18 re f\n';
-  s += textAt('F2', 9.5, '1 1 1', 442, 787, 'TAX INVOICE');
+  s += textAt('F2', 9.5, '1 1 1', 455, 787, 'INVOICE');
   s += textAt('F2', 8.5, '0.06 0.09 0.16', 408, 768, `Invoice #: ${bNum}`);
   s += textAt('F1', 7.5, '0.3 0.35 0.4', 408, 753, `Date: ${dateStr} | ${timeStr}`);
   s += textAt('F1', 7, '0.4 0.45 0.5', 408, 740, `POS: ${terminal} | ${cashier}`);
@@ -308,7 +308,7 @@ export function generateInvoicePDFUint8Array(order) {
   s += textAt('F2', 8, '0.15 0.2 0.25', 46, sumY + 22, `Payment Mode: ${payMethod}`);
   const shortSrv = (serviceBreakdown && serviceBreakdown.length > 0)
     ? serviceBreakdown.map(sb => `${sb.serviceName}: ${sb.count} Pcs`).join(' | ').slice(0, 48)
-    : 'All accounts reconciled  Official Tax Invoice';
+    : 'All accounts reconciled  Official Invoice';
   s += textAt('F1', 7, '0.2 0.35 0.55', 46, sumY + 8, shortSrv);
 
   // Right Box: Financial Summary Breakdown
@@ -318,7 +318,7 @@ export function generateInvoicePDFUint8Array(order) {
   s += textAt('F1', 8, '0.2 0.25 0.3', 313, sumY + 62, 'Subtotal (Gross Billed):');
   s += textAt('F2', 8, '0.1 0.15 0.2', 485, sumY + 62, `Rs. ${total.toFixed(2)}`);
 
-  s += textAt('F1', 8, '0.2 0.25 0.3', 313, sumY + 48, 'Taxes / GST:');
+  s += textAt('F1', 8, '0.2 0.25 0.3', 313, sumY + 48, 'Taxes:');
   s += textAt('F1', 8, '0.1 0.15 0.2', 505, sumY + 48, 'Rs. 0.00');
 
   s += `0.85 0.88 0.92 RG 0.5 w 313 ${sumY + 42} 236 0 re S\n`;
@@ -352,7 +352,7 @@ export function generateInvoicePDFUint8Array(order) {
   s += `0.6 0.65 0.7 RG 0.5 w 340 ${footY + 12} 180 0 re S\n`;
 
   s += textAt('F1', 6.5, '0.45 0.5 0.55', 36, 34, 'TERMS: Please verify garment count upon handover. Tech Wash is not liable for items uncollected after 30 days.');
-  s += textAt('F2', 7.5, '0.06 0.09 0.16', 36, 22, `Tech Wash POS Contacts: POS-1: 6304845567 | POS-2: 9000813444 | POS-3: 9866740179`);
+  s += textAt('F2', 7.5, '0.06 0.09 0.16', 36, 22, `Tech Wash Contacts: Helpline: 90008 13444 | Email: techwashlaundry@gmail.com | POS-1: 6304845567 | POS-3: 9866740179`);
 
   // --- ASSEMBLE PDF OBJECTS & OFFSETS ---
   const enc = new TextEncoder();

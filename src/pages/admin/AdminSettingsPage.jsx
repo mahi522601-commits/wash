@@ -299,6 +299,7 @@ export const AdminSettingsPage = () => {
                   type="email"
                   value={formData.general?.supportEmail || ''}
                   onChange={(e) => handleGeneralChange('supportEmail', e.target.value)}
+                  placeholder="techwashlaundry@gmail.com"
                   className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900"
                 />
               </div>

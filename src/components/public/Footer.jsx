@@ -19,7 +19,7 @@ export const Footer = () => {
   const businessName = settings?.general?.businessName || 'Tech Wash Laundry Services';
   const tagline = settings?.general?.tagline || 'Next-Generation Premium Garment Care';
   const primaryPhone = settings?.general?.primaryPhone || '+91 90008 13444';
-  const supportEmail = settings?.general?.supportEmail || 'support@techwashlaundry.com';
+  const supportEmail = settings?.general?.supportEmail || 'techwashlaundry@gmail.com';
   const hours = settings?.workingHours?.weekdays || '8:00 AM - 9:00 PM (Daily)';
 
   const quickLinks = [

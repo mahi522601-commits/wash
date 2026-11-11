@@ -9,18 +9,18 @@ export const DEFAULT_RECEIPT_CONFIG = {
   tagline: 'Next-Generation Premium Fabric Care & Couture Studio',
   phone: '+91 90008 13444',
   whatsapp: '+91 90008 13444',
-  email: 'care@techwashlaundry.com',
+  email: 'techwashlaundry@gmail.com',
   website: 'https://techwashlaundry.com',
   address: 'Shaikpet Main Rd, Sri Ram Nagar Colony, Manikonda, Hyderabad, Telangana - 500089',
-  gstNumber: '36AAAAA0000A1Z5',
+  gstNumber: '',
   fssaiOrReg: 'REG-TW-2026-HYD',
   prefixPattern: 'TW-{YEAR}-{NUMBER}',
   thankYouMessage: 'Thank you for trusting Tech Wash with your garments. Fresh clothes. Professional care.',
-  footerContactNote: 'For queries, scheduling changes or feedback, contact our concierge at +91 90008 13444.',
-  termsAndConditions: '1. Garments are inspected and processed according to international textile care standards.\n2. Please report any discrepancy within 24 hours of delivery.\n3. Digital invoices are GST compliant and stored securely.',
+  footerContactNote: 'For queries, scheduling changes or feedback, contact our concierge at +91 90008 13444 or email techwashlaundry@gmail.com.',
+  termsAndConditions: '1. Garments are inspected and processed according to international textile care standards.\n2. Please report any discrepancy within 24 hours of delivery.\n3. Digital invoices are stored securely.',
   
   // Visibility toggles
-  showGst: true,
+  showGst: false,
   showCustomerEmail: true,
   showTrackingQr: true,
   showPaymentQr: true,
@@ -40,11 +40,17 @@ export const receiptService = {
     try {
       const settings = await settingsService.getSettings();
       const upiId = settings?.payments?.upi?.upiId || settings?.paymentConfig?.upi?.upiId || 'techwash@upi';
-      return {
+      const merged = {
         ...DEFAULT_RECEIPT_CONFIG,
         upiId,
         ...(settings?.receiptConfig || {}),
       };
+      if (!merged.email || merged.email === 'care@techwashlaundry.com' || merged.email === 'support@techwashlaundry.com') {
+        merged.email = 'techwashlaundry@gmail.com';
+      }
+      merged.showGst = false;
+      merged.gstNumber = '';
+      return merged;
     } catch (e) {
       return DEFAULT_RECEIPT_CONFIG;
     }

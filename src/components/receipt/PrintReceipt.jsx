@@ -112,15 +112,10 @@ export const PrintReceipt = ({
             <div className="flex flex-wrap items-center gap-x-2 text-slate-600 font-semibold text-[8px]">
               <span>Tel: {receiptData.storePhone || config.phone || '+91 90008 13444'}</span>
               <span>•</span>
-              <span>{config.email || 'care@techwashlaundry.com'}</span>
+              <span>{config.email || 'techwashlaundry@gmail.com'}</span>
               <span>•</span>
               <span>{config.website || 'https://techwashlaundry.com'}</span>
             </div>
-            {config.showGst && config.gstNumber && (
-              <p className="font-bold text-slate-800 text-[8px]">
-                GSTIN: <span className="font-mono text-[#EA580C]">{config.gstNumber}</span>
-              </p>
-            )}
           </div>
         </div>
 
@@ -128,7 +123,7 @@ export const PrintReceipt = ({
         <div className="text-right space-y-0.5">
           <div className="flex items-center justify-end gap-1.5 flex-wrap">
             <div className="inline-block px-2 py-0.5 rounded-md bg-orange-50 border border-orange-200 text-[#EA580C] text-[9.5px] font-black tracking-wider uppercase">
-              Tax Invoice / Receipt
+              Official Invoice / Receipt
             </div>
             <div className={`inline-block px-2 py-0.5 rounded-md text-[9px] font-black tracking-wider uppercase border ${
               customerStage === 'DELIVERED' 
@@ -523,7 +518,7 @@ export const PrintReceipt = ({
             {config.thankYouMessage || 'Thank you for choosing Tech Wash Laundry Services.'}
           </p>
           <p className="text-[7.5px] text-slate-400">
-            {config.footerContactNote || 'Customer Concierge: +91 90008 13444 • care@techwashlaundry.com • https://techwashlaundry.com'}
+            {config.footerContactNote || 'Customer Concierge: +91 90008 13444 • techwashlaundry@gmail.com • https://techwashlaundry.com'}
           </p>
         </div>
 
