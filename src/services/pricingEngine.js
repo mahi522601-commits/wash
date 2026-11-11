@@ -4,6 +4,8 @@
  * an immutable `priceSnapshot` frozen inside the order.
  */
 
+import { calculateDeliveryFee, getDistanceFromBranch1 } from './locationService.js';
+
 export const PRICING_UNITS = {
   PER_PIECE: 'per piece',
   PER_KG: 'per kg',
@@ -30,6 +32,8 @@ export const calculateOrderTotal = ({
   isExpress = false,
   coupon = null,
   deliveryRules = DEFAULT_DELIVERY_RULES,
+  customerLocation = null,
+  distanceKm = null,
 }) => {
   // 1. Calculate items subtotal
   let itemsSubtotal = 0;
@@ -60,10 +64,25 @@ export const calculateOrderTotal = ({
   // 2. Express Delivery surcharge
   const expressFee = isExpress ? deliveryRules.expressFlatFee : 0;
 
-  // 3. Delivery Fee (Free if above threshold)
-  const deliveryFee = (baseAmount >= deliveryRules.freeDeliveryThreshold || baseAmount === 0)
-    ? 0
-    : (deliveryRules.standardDeliveryFee || 0);
+  // 3. Delivery Fee based on distance from Branch 1:
+  // If distance >= 15 km: ₹49 only
+  // If distance < 15 km: FREE (₹0)
+  let computedDist = distanceKm;
+  if (computedDist == null && customerLocation?.latitude != null && customerLocation?.longitude != null) {
+    computedDist = getDistanceFromBranch1(customerLocation.latitude, customerLocation.longitude);
+  }
+
+  let deliveryFee = 0;
+  let isLongDistance = false;
+  if (computedDist != null) {
+    const feeInfo = calculateDeliveryFee({ distanceKm: computedDist, itemsSubtotal: baseAmount });
+    deliveryFee = feeInfo.deliveryFee;
+    isLongDistance = feeInfo.isLongDistance;
+  } else {
+    deliveryFee = (baseAmount >= deliveryRules.freeDeliveryThreshold || baseAmount === 0)
+      ? 0
+      : (deliveryRules.standardDeliveryFee || 0);
+  }
 
   // 4. Calculate Discount
   let discountAmount = 0;
@@ -89,6 +108,9 @@ export const calculateOrderTotal = ({
     itemsSubtotal: baseAmount,
     expressFee,
     deliveryFee,
+    distanceKm: computedDist,
+    isLongDistance,
+    branch1DistanceKm: computedDist,
     discountAmount,
     taxAmount,
     finalTotal,
@@ -102,6 +124,8 @@ export const calculateOrderTotal = ({
     itemsSubtotal: baseAmount,
     expressFee,
     deliveryFee,
+    distanceKm: computedDist,
+    isLongDistance,
     discountAmount,
     taxAmount,
     finalTotal,

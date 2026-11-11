@@ -192,6 +192,20 @@ export function generateInvoicePDFUint8Array(order) {
     });
   }
 
+  // Add Doorstep Delivery / Logistics Fee if present
+  const delFee = Number(order.priceSnapshot?.deliveryFee || order.deliveryFee || 0);
+  if (delFee > 0) {
+    const dist = order.priceSnapshot?.distanceKm || order.distanceKm;
+    const distLabel = dist ? `Doorstep Logistics [${dist} km]` : 'Doorstep Logistics [>= 15 km]';
+    items.push({
+      sTitle: 'Logistics',
+      name: distLabel,
+      qty: '1 Trip',
+      rate: delFee,
+      lineTotal: delFee,
+    });
+  }
+
   // --- PDF GRAPHICS COMMANDS ---
   let s = '';
 

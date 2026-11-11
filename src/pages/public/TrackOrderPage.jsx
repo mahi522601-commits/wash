@@ -538,9 +538,13 @@ export const TrackOrderPage = () => {
                             <span>-{formatCurrency(order.priceSnapshot.discountAmount)}</span>
                           </div>
                         )}
-                        <div className="flex justify-between">
-                          <span>Delivery Fee:</span>
-                          <span>{order.priceSnapshot?.deliveryFee === 0 ? 'FREE' : formatCurrency(order.priceSnapshot?.deliveryFee)}</span>
+                        <div className="flex justify-between items-center">
+                          <span>
+                            Delivery Fee {order.priceSnapshot?.distanceKm ? `(${order.priceSnapshot.distanceKm} km)` : ''}:
+                          </span>
+                          <span className={order.priceSnapshot?.deliveryFee === 0 ? 'text-emerald-600 font-bold' : 'font-semibold text-slate-800'}>
+                            {order.priceSnapshot?.deliveryFee === 0 ? 'FREE' : formatCurrency(order.priceSnapshot?.deliveryFee)}
+                          </span>
                         </div>
                         {order.priceSnapshot?.taxAmount > 0 && (
                           <div className="flex justify-between text-slate-400">

@@ -248,6 +248,8 @@ export const LocationPicker = ({
       latitude: coordinates.latitude,
       longitude: coordinates.longitude,
       accuracy: coordinates.accuracy,
+      distanceKm: locationService.getDistanceFromBranch1(coordinates.latitude, coordinates.longitude),
+      isLongDistance: (locationService.getDistanceFromBranch1(coordinates.latitude, coordinates.longitude) || 0) >= 15,
       locationSource: addressDetails.locationSource || 'GPS',
       locationCapturedAt: new Date().toISOString(),
     };
@@ -507,6 +509,39 @@ export const LocationPicker = ({
                 <span>View on Google Maps ↗</span>
               </a>
             </div>
+
+            {/* Distance from Branch 1 & Delivery Policy Callout */}
+            {(() => {
+              const dist = locationService.getDistanceFromBranch1(coordinates.latitude, coordinates.longitude);
+              if (dist === null) return null;
+              const isLong = dist >= 15;
+              return (
+                <div className={`p-3 rounded-2xl border flex items-center justify-between text-xs ${
+                  isLong ? 'bg-amber-50/90 border-amber-300 text-amber-950' : 'bg-emerald-50/90 border-emerald-300 text-emerald-950'
+                }`}>
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-lg">{isLong ? '🚚' : '✨'}</span>
+                    <div>
+                      <div className="font-bold">
+                        {isLong
+                          ? `Distance from Branch 1: ${dist} km (≥ 15 km)`
+                          : `Distance from Branch 1: ${dist} km (< 15 km)`}
+                      </div>
+                      <div className="text-[11px] opacity-80">
+                        {isLong
+                          ? 'Special long-distance delivery fee: ₹49 only'
+                          : 'FREE Doorstep Pickup & Delivery included!'}
+                      </div>
+                    </div>
+                  </div>
+                  <span className={`px-2.5 py-1 rounded-xl text-xs font-black ${
+                    isLong ? 'bg-amber-200 text-amber-950' : 'bg-emerald-200 text-emerald-950'
+                  }`}>
+                    {isLong ? '₹49 Fee' : 'FREE'}
+                  </span>
+                </div>
+              );
+            })()}
 
             {/* Granular Editable Fields */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

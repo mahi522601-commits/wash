@@ -24,6 +24,7 @@ import { Button } from '../../components/ui/Button';
 import { Input, Textarea } from '../../components/ui/Input';
 import { Badge } from '../../components/ui/Badge';
 import { LocationPicker } from '../../components/location/LocationPicker';
+import { locationService, calculateDeliveryFee, BRANCH_1_COORDS } from '../../services/locationService';
 import { 
   Sparkles, 
   Calendar, 
@@ -758,7 +759,24 @@ export const BookPickupPage = () => {
 
     // Additional calculation rules
     const expressFee = isExpress ? 99 : 0;
-    const deliveryFee = (itemsSubtotal >= 499 || itemsSubtotal === 0) ? 0 : 49;
+
+    // Doorstep Delivery Fee calculation based on distance from Tech Wash Branch 1:
+    // If distance >= 15 km: ₹49 only
+    // If distance < 15 km: FREE (₹0)
+    let distanceKm = null;
+    let isLongDistance = false;
+    let deliveryFee = 0;
+
+    const lat = pickupLocation?.latitude;
+    const lon = pickupLocation?.longitude;
+    if (lat != null && lon != null) {
+      const feeInfo = calculateDeliveryFee({ latitude: lat, longitude: lon, itemsSubtotal });
+      deliveryFee = feeInfo.deliveryFee;
+      distanceKm = feeInfo.distanceKm;
+      isLongDistance = feeInfo.isLongDistance;
+    } else {
+      deliveryFee = (itemsSubtotal >= 499 || itemsSubtotal === 0) ? 0 : 49;
+    }
 
     let discountAmount = 0;
     if (appliedCoupon) {
@@ -786,6 +804,8 @@ export const BookPickupPage = () => {
       unpricedMessage,
       expressFee,
       deliveryFee,
+      distanceKm,
+      isLongDistance,
       discountAmount,
       taxAmount,
       finalTotal,
@@ -805,7 +825,8 @@ export const BookPickupPage = () => {
     shoeType,
     carpetItems,
     isExpress,
-    appliedCoupon
+    appliedCoupon,
+    pickupLocation
   ]);
 
   // Coupon handling
@@ -976,6 +997,10 @@ export const BookPickupPage = () => {
           itemsSubtotal: orderBreakdown.itemsSubtotal,
           expressFee: orderBreakdown.expressFee,
           deliveryFee: orderBreakdown.deliveryFee,
+          distanceKm: orderBreakdown.distanceKm,
+          isLongDistance: orderBreakdown.isLongDistance,
+          branch1DistanceKm: orderBreakdown.distanceKm,
+          branch1Coords: BRANCH_1_COORDS,
           discountAmount: orderBreakdown.discountAmount,
           taxAmount: orderBreakdown.taxAmount,
           finalTotal: orderBreakdown.finalTotal,
@@ -985,6 +1010,8 @@ export const BookPickupPage = () => {
           isExpress,
         },
         totalAmount: orderBreakdown.finalTotal,
+        distanceKm: orderBreakdown.distanceKm,
+        isLongDistance: orderBreakdown.isLongDistance,
         // Routed directly to Counter 2 (Branch 1 - Tolichowki) & Admin
         terminalId: 'counter-2',
         counterNumber: '2',
@@ -2573,6 +2600,35 @@ export const BookPickupPage = () => {
                           </div>
                         )}
 
+                        {orderBreakdown.distanceKm !== null && (
+                          <div className={`p-3 rounded-xl border flex items-center justify-between text-xs ${
+                            orderBreakdown.isLongDistance
+                              ? 'bg-amber-50 border-amber-300 text-amber-900'
+                              : 'bg-emerald-50 border-emerald-300 text-emerald-900'
+                          }`}>
+                            <div className="flex items-center gap-2">
+                              <span className="text-base">{orderBreakdown.isLongDistance ? '🚚' : '✨'}</span>
+                              <div>
+                                <div className="font-bold">
+                                  {orderBreakdown.isLongDistance
+                                    ? `Distance from Branch 1: ${orderBreakdown.distanceKm} km (≥ 15 km)`
+                                    : `Distance from Branch 1: ${orderBreakdown.distanceKm} km (< 15 km)`}
+                                </div>
+                                <div className="text-[11px] opacity-80">
+                                  {orderBreakdown.isLongDistance
+                                    ? 'Long-distance doorstep delivery fee: ₹49 only'
+                                    : 'FREE Doorstep Pickup & Delivery included!'}
+                                </div>
+                              </div>
+                            </div>
+                            <span className={`px-2.5 py-1 rounded-lg text-xs font-black ${
+                              orderBreakdown.isLongDistance ? 'bg-amber-200 text-amber-950' : 'bg-emerald-200 text-emerald-950'
+                            }`}>
+                              {orderBreakdown.isLongDistance ? '₹49 Fee' : 'FREE'}
+                            </span>
+                          </div>
+                        )}
+
                         <div className="pt-2 flex items-center justify-between">
                           <span className="text-[10px] text-slate-400 font-mono">
                             GPS: {pickupLocation.latitude?.toFixed(4)}, {pickupLocation.longitude?.toFixed(4)}
@@ -2909,7 +2965,15 @@ export const BookPickupPage = () => {
                           <span className="text-xs font-bold text-slate-900">48-Hour Standard Care</span>
                           <Badge variant={!isExpress ? 'brand' : 'slate'} size="sm">Standard</Badge>
                         </div>
-                        <span className="text-xs font-bold text-emerald-700">FREE delivery on ₹499+</span>
+                        {orderBreakdown.distanceKm !== null ? (
+                          orderBreakdown.isLongDistance ? (
+                            <span className="text-xs font-bold text-amber-700">₹49 delivery (≥ 15 km: {orderBreakdown.distanceKm} km)</span>
+                          ) : (
+                            <span className="text-xs font-bold text-emerald-700">FREE delivery (&lt; 15 km: {orderBreakdown.distanceKm} km)</span>
+                          )
+                        ) : (
+                          <span className="text-xs font-bold text-emerald-700">FREE within 15 km • ₹49 if ≥ 15 km</span>
+                        )}
                       </div>
 
                       <div
@@ -3135,9 +3199,18 @@ export const BookPickupPage = () => {
                     <span>-{formatCurrency(orderBreakdown.discountAmount)}</span>
                   </div>
                 )}
-                <div className="flex justify-between">
-                  <span>Doorstep Pickup:</span>
-                  <span className={orderBreakdown.deliveryFee === 0 ? 'text-emerald-600 font-bold' : ''}>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <span>Doorstep Pickup:</span>
+                    {orderBreakdown.distanceKm !== null && (
+                      <span className="block text-[10px] text-slate-500 font-medium">
+                        {orderBreakdown.isLongDistance
+                          ? `≥ 15 km from Branch 1 (${orderBreakdown.distanceKm} km)`
+                          : `< 15 km from Branch 1 (${orderBreakdown.distanceKm} km)`}
+                      </span>
+                    )}
+                  </div>
+                  <span className={orderBreakdown.deliveryFee === 0 ? 'text-emerald-600 font-bold' : 'font-bold text-slate-900'}>
                     {orderBreakdown.deliveryFee === 0 ? 'FREE' : formatCurrency(orderBreakdown.deliveryFee)}
                   </span>
                 </div>
@@ -3274,9 +3347,18 @@ export const BookPickupPage = () => {
                     <span className="font-semibold text-slate-900">{orderBreakdown.estimatedWeightKg} Kg</span>
                   </div>
                 )}
-                <div className="flex justify-between">
-                  <span>Doorstep Pickup:</span>
-                  <span className="text-emerald-600 font-bold">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <span>Doorstep Pickup:</span>
+                    {orderBreakdown.distanceKm !== null && (
+                      <span className="block text-[10px] text-slate-500 font-medium">
+                        {orderBreakdown.isLongDistance
+                          ? `≥ 15 km (${orderBreakdown.distanceKm} km)`
+                          : `< 15 km (${orderBreakdown.distanceKm} km)`}
+                      </span>
+                    )}
+                  </div>
+                  <span className={orderBreakdown.deliveryFee === 0 ? 'text-emerald-600 font-bold' : 'font-bold text-slate-900'}>
                     {orderBreakdown.deliveryFee === 0 ? 'FREE' : formatCurrency(orderBreakdown.deliveryFee)}
                   </span>
                 </div>

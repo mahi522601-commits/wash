@@ -12,6 +12,101 @@ import { settingsService } from './settingsService.js';
 // OpenStreetMap Nominatim Endpoint
 const NOMINATIM_BASE = 'https://nominatim.openstreetmap.org';
 
+// Tech Wash Laundry Services (Branch 1) Reference Coordinates
+// Google Maps: https://www.google.com/maps/place/Tech+Wash+Laundry+Services+(Branch+1)/@17.4061642,78.389446
+export const BRANCH_1_COORDS = {
+  latitude: 17.4061642,
+  longitude: 78.389446,
+  name: 'Tech Wash Laundry Services (Branch 1)',
+  address: 'Beside Dreamscape Hotel, Tolichowki, OU Colony, Shaikpet, Hyderabad, Telangana 500008',
+  googleMapsUrl: 'https://www.google.com/maps/place/Tech+Wash+Laundry+Services+(Branch+1)/@17.4061642,78.389446,15z/data=!4m6!3m5!1s0x3bcb976df9291123:0xcc1f32c0a7234c3c!8m2!3d17.4061642!4d78.389446!16s%2Fg%2F11yny8bl47',
+};
+
+export const DISTANCE_DELIVERY_RULES = {
+  longDistanceThresholdKm: 15,
+  longDistanceFee: 49,
+  withinDistanceFee: 0, // Free doorstep delivery within 15 km
+};
+
+/**
+ * Calculates great-circle distance (in kilometers) between two coordinates using Haversine formula
+ */
+export function calculateDistanceKm(lat1, lon1, lat2, lon2) {
+  if (lat1 == null || lon1 == null || lat2 == null || lon2 == null) return null;
+  const numLat1 = Number(lat1);
+  const numLon1 = Number(lon1);
+  const numLat2 = Number(lat2);
+  const numLon2 = Number(lon2);
+  if (isNaN(numLat1) || isNaN(numLon1) || isNaN(numLat2) || isNaN(numLon2)) return null;
+
+  const R = 6371; // Earth radius in kilometers
+  const dLat = (numLat2 - numLat1) * (Math.PI / 180);
+  const dLon = (numLon2 - numLon1) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(numLat1 * (Math.PI / 180)) *
+      Math.cos(numLat2 * (Math.PI / 180)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const distance = R * c;
+  return Math.round(distance * 10) / 10;
+}
+
+/**
+ * Calculate distance in km from Tech Wash Branch 1 to a customer coordinate
+ */
+export function getDistanceFromBranch1(customerLat, customerLon) {
+  return calculateDistanceKm(
+    BRANCH_1_COORDS.latitude,
+    BRANCH_1_COORDS.longitude,
+    customerLat,
+    customerLon
+  );
+}
+
+/**
+ * Computes doorstep delivery fee based on customer distance from Branch 1:
+ * - If distance is 15 km or more (>= 15 km): Rs. 49 only
+ * - If distance is under 15 km (< 15 km): FREE (Rs. 0)
+ */
+export function calculateDeliveryFee({ latitude, longitude, distanceKm = null, itemsSubtotal = 0 } = {}) {
+  let dist = distanceKm;
+  if (dist === null && latitude != null && longitude != null) {
+    dist = getDistanceFromBranch1(latitude, longitude);
+  }
+
+  if (dist !== null) {
+    if (dist >= DISTANCE_DELIVERY_RULES.longDistanceThresholdKm) {
+      return {
+        deliveryFee: DISTANCE_DELIVERY_RULES.longDistanceFee,
+        distanceKm: dist,
+        isLongDistance: true,
+        thresholdKm: DISTANCE_DELIVERY_RULES.longDistanceThresholdKm,
+        ruleDescription: `Distance from Branch 1 is ${dist} km (≥ 15 km). Long-distance delivery fee: ₹49 only.`,
+      };
+    } else {
+      return {
+        deliveryFee: DISTANCE_DELIVERY_RULES.withinDistanceFee,
+        distanceKm: dist,
+        isLongDistance: false,
+        thresholdKm: DISTANCE_DELIVERY_RULES.longDistanceThresholdKm,
+        ruleDescription: `Distance from Branch 1 is ${dist} km (< 15 km). Free doorstep pickup & delivery!`,
+      };
+    }
+  }
+
+  // Fallback if coordinates are not available:
+  const fallbackFee = (itemsSubtotal >= 499 || itemsSubtotal === 0) ? 0 : 49;
+  return {
+    deliveryFee: fallbackFee,
+    distanceKm: null,
+    isLongDistance: false,
+    thresholdKm: DISTANCE_DELIVERY_RULES.longDistanceThresholdKm,
+    ruleDescription: fallbackFee === 0 ? 'Free doorstep delivery' : 'Doorstep delivery: ₹49',
+  };
+}
+
 export const locationService = {
   /**
    * Request live device coordinates with high accuracy
@@ -279,5 +374,32 @@ export const locationService = {
     const list = this.getSavedAddresses().filter((a) => a.id !== id);
     localStorage.setItem('techwash_saved_addresses', JSON.stringify(list));
     return list;
+  },
+
+  // Distance & Delivery Calculation Helpers
+  BRANCH_1_COORDS,
+  DISTANCE_DELIVERY_RULES,
+  calculateDistanceKm,
+  getDistanceFromBranch1,
+  calculateDeliveryFee,
+
+  /**
+   * Geocode a text address to coordinates (cached or Nominatim lookup)
+   */
+  async geocodeAddress(addressText) {
+    if (!addressText || typeof addressText !== 'string' || addressText.trim().length < 3) return null;
+    try {
+      const results = await this.searchAddresses(addressText);
+      if (results && results.length > 0) {
+        return {
+          latitude: results[0].latitude,
+          longitude: results[0].longitude,
+          displayName: results[0].displayName,
+        };
+      }
+    } catch (e) {
+      console.warn("Geocode error:", e);
+    }
+    return null;
   },
 };

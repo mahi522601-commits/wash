@@ -140,7 +140,7 @@ export const PricingTableView = ({ onStartBookingWithItem }) => {
       {/* Rate Disclaimer & Free Delivery Callout */}
       <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-500">
         <span className="flex items-center gap-1 text-emerald-600 font-semibold">
-          <Tag className="w-3 h-3" /> Free doorstep pickup above ₹499
+          <Tag className="w-3 h-3" /> Free delivery within 15 km (₹49 if ≥ 15 km)
         </span>
         <Link to="/pricing" className="text-[#F97316] font-bold hover:underline">
           Full Tariff Sheet →

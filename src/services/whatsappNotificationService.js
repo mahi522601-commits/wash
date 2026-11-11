@@ -1,6 +1,7 @@
 import { db, isFirebaseConfigured } from './firebase.js';
 import { doc, getDoc, setDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { computeServiceBreakdown } from '../utils/formatters.js';
+import { locationService } from './locationService.js';
 
 const STORAGE_GATEWAY_KEY = 'techwash_whatsapp_gateway_config';
 export const LIVE_PRODUCTION_DOMAIN = 'https://techwashlaundry.com';
@@ -171,8 +172,14 @@ export const whatsappNotificationService = {
     const weightText = estWeight ? `• *Est. Weight:* ${estWeight} kg\n` : '';
 
     const snapshot = order.priceSnapshot || {};
+    const lat = order.pickupLocation?.latitude;
+    const lng = order.pickupLocation?.longitude;
+    const distanceKm = snapshot.distanceKm || order.distanceKm || order.pickupLocation?.distanceKm || (lat && lng ? locationService.getDistanceFromBranch1(lat, lng) : null);
+
     const subtotal = snapshot.itemsSubtotal || order.totalAmount || 0;
-    const deliveryFee = snapshot.deliveryFee !== undefined ? snapshot.deliveryFee : (subtotal >= 499 ? 0 : 49);
+    const deliveryFee = snapshot.deliveryFee !== undefined 
+      ? snapshot.deliveryFee 
+      : (distanceKm !== null ? (distanceKm >= 15 ? 49 : 0) : (subtotal >= 499 ? 0 : 49));
     const expressFee = snapshot.expressFee || (isExpress ? 99 : 0);
     const discountAmount = snapshot.discountAmount || 0;
     const finalTotal = snapshot.finalTotal || order.totalAmount || (subtotal + deliveryFee + expressFee - discountAmount);
@@ -195,8 +202,6 @@ export const whatsappNotificationService = {
     // ALWAYS use live production domain
     const trackingUrl = `${LIVE_PRODUCTION_DOMAIN}/track-order?id=${encodeURIComponent(orderNumber)}`;
 
-    const lat = order.pickupLocation?.latitude;
-    const lng = order.pickupLocation?.longitude;
     const mapsLink = (lat && lng) 
       ? `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`
       : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`;
@@ -225,7 +230,7 @@ ${weightText}
 ${itemsText}
 💰 *BILLING & PAYMENT SUMMARY*
 • *Items Subtotal:* Rs.${subtotal}
-${deliveryFee > 0 ? `• *Doorstep Logistics:* Rs.${deliveryFee}\n` : '• *Doorstep Delivery:* FREE (Rs.0)\n'}${expressFee > 0 ? `• *Express 24h Priority:* Rs.${expressFee}\n` : ''}${discountAmount > 0 ? `• *Special Coupon Discount:* -Rs.${discountAmount}\n` : ''}• *Estimated Total:* *Rs.${finalTotal}*
+${deliveryFee > 0 ? `• *Doorstep Logistics (${distanceKm ? `${distanceKm} km from Branch 1 — ≥ 15km` : '≥ 15 km' }):* Rs.${deliveryFee}\n` : `• *Doorstep Delivery (${distanceKm ? `${distanceKm} km from Branch 1` : 'Within 15 km'}):* FREE (Rs.0)\n`}${expressFee > 0 ? `• *Express 24h Priority:* Rs.${expressFee}\n` : ''}${discountAmount > 0 ? `• *Special Coupon Discount:* -Rs.${discountAmount}\n` : ''}• *Estimated Total:* *Rs.${finalTotal}*
 • *Payment Mode:* ${paymentMethodLabel}
 • *Payment Status:* ${paymentStatusBadge}
 

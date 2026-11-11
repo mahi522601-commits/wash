@@ -87,7 +87,15 @@ export const InteractiveBookingStepper = ({
 
   // Live total estimation
   const itemsSubtotal = items.reduce((acc, i) => acc + (i.unitPrice * i.quantity), 0);
-  const deliveryFee = itemsSubtotal >= 499 ? 0 : 49;
+  const distanceKm = address.latitude && address.longitude
+    ? locationService.getDistanceFromBranch1(address.latitude, address.longitude)
+    : null;
+  const isLongDistance = distanceKm !== null && distanceKm >= 15;
+  const deliveryFee = (distanceKm !== null && distanceKm >= 15)
+    ? 49
+    : (distanceKm !== null && distanceKm < 15)
+    ? 0
+    : (itemsSubtotal >= 499 ? 0 : 49);
   const estimatedTotal = itemsSubtotal + deliveryFee;
 
   const handleQtyChange = (item, delta) => {
@@ -183,11 +191,16 @@ export const InteractiveBookingStepper = ({
           itemsSubtotal,
           expressFee: 0,
           deliveryFee,
+          distanceKm,
+          isLongDistance,
+          branch1DistanceKm: distanceKm,
           discountAmount: 0,
-          taxAmount: Math.round(itemsSubtotal * 0.05),
+          taxAmount: 0, // No GST
           finalTotal: estimatedTotal,
         },
         totalAmount: estimatedTotal,
+        distanceKm,
+        isLongDistance,
         // Routed directly to Counter 2 (Branch 1 - Tolichowki) & Admin
         terminalId: 'counter-2',
         counterNumber: '2',
@@ -488,6 +501,16 @@ export const InteractiveBookingStepper = ({
                 </a>
               </div>
               <p className="leading-snug">{address.formattedAddress}</p>
+              {distanceKm !== null && (
+                <div className={`mt-1.5 p-2 rounded-lg border flex items-center justify-between text-[10px] ${
+                  isLongDistance ? 'bg-amber-100/80 border-amber-300 text-amber-950' : 'bg-emerald-100/80 border-emerald-300 text-emerald-950'
+                }`}>
+                  <span>
+                    <strong>Distance from Branch 1:</strong> {distanceKm} km {isLongDistance ? '(≥ 15 km)' : '(< 15 km)'}
+                  </span>
+                  <span className="font-bold">{isLongDistance ? '₹49 Delivery' : 'FREE Delivery'}</span>
+                </div>
+              )}
             </div>
           ) : (
             <div className="space-y-2">
@@ -597,6 +620,14 @@ export const InteractiveBookingStepper = ({
               <span className="text-slate-500">Schedule:</span>
               <span className="font-semibold text-slate-800">
                 {schedule.pickupDate} ({schedule.pickupSlot})
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-slate-500">
+                Doorstep Delivery {distanceKm !== null ? `(${distanceKm} km)` : ''}:
+              </span>
+              <span className={deliveryFee === 0 ? 'text-emerald-600 font-bold' : 'font-bold text-slate-800'}>
+                {deliveryFee === 0 ? 'FREE' : formatCurrency(deliveryFee)}
               </span>
             </div>
             <div className="flex justify-between pt-1 border-t border-slate-200 font-bold text-xs">

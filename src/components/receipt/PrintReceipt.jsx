@@ -383,7 +383,7 @@ export const PrintReceipt = ({
 
           {priceSnapshot?.deliveryFee > 0 && (
             <div className="flex justify-between py-0.2 text-[9.5px]">
-              <span>Doorstep Logistics:</span>
+              <span>Doorstep Logistics {priceSnapshot.distanceKm ? `(≥15km: ${priceSnapshot.distanceKm}km)` : ''}:</span>
               <span className="font-mono text-slate-900">
                 {formatCurrency(priceSnapshot.deliveryFee)}
               </span>
